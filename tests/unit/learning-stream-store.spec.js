@@ -646,7 +646,7 @@ it.each(['stop', 'hide'])('取消后的迟到错误不抢走%s页面焦点，原
     await flushPromises();
     if (change === 'stop') {
       expect(wrapper.findAll('#learning-composer .muse-send[aria-label="取消请求"]')).toHaveLength(1);
-      expect(wrapper.find('#learning-composer [aria-label="停止当前任务"]').exists()).toBe(false);
+      expect(wrapper.findAll('#learning-composer [aria-label="停止当前任务"]')).toHaveLength(1);
       const stop = wrapper.get('#learning-composer .muse-send[aria-label="取消请求"]');
       await stop.trigger('keydown', { key: 'Enter' });
       // The square cancels this request; stopping the task is a separate idle action.
@@ -654,8 +654,8 @@ it.each(['stop', 'hide'])('取消后的迟到错误不抢走%s页面焦点，原
       expect(store.active.stopped).toBeFalsy();
       expect(store.error).toContain('取消');
       expect(wrapper.find('#learning-composer .muse-send[aria-label="取消请求"]').exists()).toBe(false);
-      // 批次 12A：不恢复 pause 插槽，沿唯一输入区提交停止。
-      expect(wrapper.find('#learning-composer [aria-label="停止当前任务"]').exists()).toBe(false);
+      // 取消请求与停止任务保留不同语义；文字停止仍走结构化动作。
+      expect(wrapper.findAll('#learning-composer [aria-label="停止当前任务"]')).toHaveLength(1);
       await wrapper.get('#learning-composer textarea').setValue('停止当前任务');
       await wrapper.get('#learning-composer [aria-label="发送"]').trigger('keydown', { key: 'Enter' });
       await flushPromises();

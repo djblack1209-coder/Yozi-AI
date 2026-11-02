@@ -2591,7 +2591,7 @@ describe('学习空间的实际入口与目录', () => {
     expect(button('提交作答').attributes('aria-disabled')).toBe('true');
     await button('提交作答').trigger('tap');
     expect(store.state.attempts).toHaveLength(0);
-    expect(wrapper.find('#learning-composer [aria-label="停止当前任务"]').exists()).toBe(false);
+    expect(wrapper.findAll('#learning-composer [aria-label="停止当前任务"]')).toHaveLength(1);
     expect(wrapper.findAll('#learning-composer .muse-send[aria-label="取消请求"]')).toHaveLength(1);
     const stop = wrapper.get('#learning-composer .muse-send[aria-label="取消请求"]');
     expect(stop.attributes('aria-disabled')).toBe('false');
@@ -2941,7 +2941,7 @@ describe('学习空间的实际入口与目录', () => {
     expect(wrapper.find('.space-sidebar').classes()).toContain('sidebar-open');
     expect(document.activeElement).toBe(wrapper.find('.space-sidebar input').element);
     expect(wrapper.find('.space-main').attributes()).not.toHaveProperty('inert');
-    await wrapper.get('.sidebar-close').trigger('tap');
+    await collapseDirectory(wrapper);
     await flushPromises();
     expect(wrapper.find('.space-sidebar.sidebar-open').exists()).toBe(false);
     expect(document.activeElement).toBe(wrapper.find('.mobile-menu').element);
@@ -3027,6 +3027,17 @@ it('Muse settings preview appearance in a draft and save only on confirmation', 
     wrapper.unmount();
   }
 });
+async function collapseDirectory(wrapper) {
+  expect(wrapper.find('.sidebar-close').exists()).toBe(false);
+  await wrapper.get('.sidebar-options').trigger('tap');
+  const close = wrapper
+    .findAll('.directory-options-menu button')
+    .find((button) => button.text().includes('收起会话列表'));
+  expect(close).toBeDefined();
+  await close.trigger('tap');
+  await flushPromises();
+}
+
 it('Muse directory width is keyboard bounded and explicit close restores focus', async () => {
   const wrapper = mount(LearningShell, { global: { stubs }, attachTo: document.body });
   try {
@@ -3042,7 +3053,7 @@ it('Muse directory width is keyboard bounded and explicit close restores focus',
     await separator.trigger('keydown', { key: 'Home' });
     await separator.trigger('keydown', { key: 'ArrowLeft' });
     expect(separator.attributes('aria-valuenow')).toBe('180');
-    await wrapper.get('.sidebar-close').trigger('tap');
+    await collapseDirectory(wrapper);
     await flushPromises();
     expect(wrapper.get('.mobile-menu').attributes('aria-expanded')).toBe('false');
     expect(document.activeElement).toBe(wrapper.get('.mobile-menu').element);
@@ -3084,7 +3095,7 @@ it('Muse drawer resize cancellation preserves width and facts; a handle click pr
     window.dispatchEvent(pointer('pointerup', 217));
     await flushPromises();
     expect(wrapper.get('.space-sidebar').classes()).toContain('sidebar-open');
-    await wrapper.get('.sidebar-close').trigger('tap');
+    await collapseDirectory(wrapper);
     expect(wrapper.get('.mobile-menu').attributes('aria-expanded')).toBe('false');
     expect(document.activeElement).toBe(wrapper.get('.mobile-menu').element);
     expect(store.exportData()).toBe(before);

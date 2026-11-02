@@ -291,8 +291,8 @@ describe('learning interface states preserve learning facts', () => {
       originalScroll = Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView = scroll;
     try {
-      // 批次 12A 移除 composer pause；从唯一输入框明确提交停止意图。
-      expect(wrapper.find('#learning-composer [aria-label="停止当前任务"]').exists()).toBe(false);
+      // 停止已移入输入区动作条，文字意图仍走同一结构化停止路径。
+      expect(wrapper.findAll('#learning-composer [aria-label="停止当前任务"]')).toHaveLength(1);
       await wrapper.get('#learning-composer textarea').setValue('停止当前任务');
       await wrapper.get('#learning-composer [aria-label="发送"]').trigger('keydown', { key: 'Enter' });
       await flushPromises();
@@ -321,14 +321,15 @@ describe('learning interface states preserve learning facts', () => {
       Element.prototype.scrollIntoView = originalScroll;
     }
   });
-  it('the header stop control stops through a structured action without submitting an answer', async () => {
+  it('the composer action bar stops through a structured action without submitting an answer', async () => {
     const store = useConversationLearningStore();
     store.start('12 + 8');
     const wrapper = render();
     await flushPromises();
     const action = vi.spyOn(store, 'dispatchLearningAction');
     const stop = wrapper.findAll('button').find((button) => button.attributes('aria-label') === '停止当前任务');
-    expect(stop.element.closest('#learning-composer')).toBeNull();
+    expect(stop.element.closest('#learning-composer')).toBe(wrapper.get('#learning-composer').element);
+    expect(wrapper.find('.space-header [aria-label="停止当前任务"]').exists()).toBe(false);
     await stop.trigger('tap');
     await flushPromises();
     expect(action).toHaveBeenCalledWith({ type: 'stop' });
@@ -431,7 +432,7 @@ describe('learning interface states preserve learning facts', () => {
     store.busy = false;
     await flushPromises();
     expect(kitten()).toBe('waiting');
-    expect(identity().get('.brand-status').text()).toBe(t('muse.avatar.waiting'));
+    expect(identity().get('.brand-status').text()).toBe('12 + 8');
     expect(wrapper.find('.reply-state').exists()).toBe(false);
     store.busy = true;
     store.error = '合成连接错误';

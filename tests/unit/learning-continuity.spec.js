@@ -303,7 +303,14 @@ describe('资料异步结果与云端删除确认', () => {
       expect(store.syncState.message).toContain('按服务端事实重算');
       expect(store.syncBusy).toBe(false);
       expect(store.syncProgress).toBeNull();
-      expect(transport.mock.calls.map(([o]) => o.data.action)).toEqual(['pull', 'push', 'pull']);
+      const requests = transport.mock.calls.map(([options]) => options);
+      expect(
+        requests.filter((options) => options.data.action !== 'list').map((options) => options.data.action)
+      ).toEqual(['pull', 'push', 'pull']);
+      const metadataReads = requests.filter((options) => options.data.action === 'list');
+      expect(metadataReads).toHaveLength(1);
+      expect(metadataReads[0].url).toMatch(/\/learning-models$/);
+      expect(metadataReads[0].data).toEqual({ action: 'list' });
     } finally {
       transport.mockRestore();
       store.$dispose();
