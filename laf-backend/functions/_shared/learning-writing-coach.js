@@ -5,6 +5,7 @@ import { reviewFacts } from './learning-adherence.js';
 import { coachErrorReviews } from './learning-coach-review.js';
 import { WRITING_KNOWLEDGE_CONTRACT, writingKnowledgeBinding } from './learning-writing-knowledge.js';
 import { normalizeLearningModelOrigin } from './learning-model-origin.js';
+import { subjectCoachMethod, subjectCoachMethodByContract } from './learning-coach-methods.js';
 import {
   WRITING_PREDICTION_CONTRACT,
   writingPredictionSnapshot,
@@ -22,7 +23,7 @@ import {
   WRITING_BAND_PROMPT_VERSION,
   WRITING_BAND_LOCATED_PROMPT_VERSION
 } from './learning-rubric.js';
-// 用户正在准备的方向；当前只有考研英语写作能真正上课，其余先如实收集意图。
+// 用户正在准备的方向；教学能力由已确认的方法定义决定。
 export const COACH_SUBJECTS = Object.freeze([
   'kaoyan_english',
   'kaoyan_politics',
@@ -149,7 +150,16 @@ const date = (value, path = '') => {
 export function normalizeCoachRequest(value) {
   fail(value && value.contract === WRITING_COACH_CONTRACT, '教学方法版本不支持');
   fail(['diagnostic', 'daily', 'feedback', 'essay', 'summary'].includes(value.phase), '教学阶段不支持');
-  fail(['english1', 'english2', 'cs408', 'general'].includes(value.exam), '请选择学习方向');
+  const subjectMethod = subjectCoachMethod(value.exam, value.methodContract);
+  fail(
+    ['english1', 'english2', 'cs408', 'general'].includes(value.exam) || subjectCoachMethod(value.exam),
+    '请选择学习方向'
+  );
+  fail(
+    subjectMethod ? value.methodContract === subjectMethod.contract : value.methodContract === undefined,
+    '教学方法版本不支持',
+    'methodContract'
+  );
   fail(value.exam !== 'general' || value.essayType !== 'large', '未确定考试类型时先做通用应用文');
   fail(Array.isArray(value.sources || []), '资料格式不合法');
   const sources = (value.sources || []).map((source) => ({
@@ -160,6 +170,8 @@ export function normalizeCoachRequest(value) {
   }));
   fail(sources.length <= 3, '一次最多分享三段资料');
   if (value.exam === 'cs408') fail(sources.length > 0, '请先添加学习资料');
+  if (subjectMethod?.sourceRequired && value.phase !== 'summary')
+    fail(sources.length > 0, `请先添加${subjectMethod.subject}材料`);
   const target = text(value.target || value.phase, 160);
   fail(
     /^(diagnostic|daily|essay|rewrite|error-review|summary|analysis|paragraph-[0-2]|card-[a-zA-Z0-9_-]{1,80})$/.test(
@@ -171,9 +183,12 @@ export function normalizeCoachRequest(value) {
     contract: WRITING_COACH_CONTRACT,
     phase: value.phase,
     exam: value.exam,
+    ...(subjectMethod ? { methodContract: subjectMethod.contract } : {}),
     day: date(value.day),
     target,
-    minutes: Math.max(10, Math.min(90, Number(value.minutes) || 25)),
+    minutes: subjectMethod
+      ? Math.max(subjectMethod.minutes.min, Math.min(subjectMethod.minutes.max, Number(value.minutes) || 25))
+      : Math.max(10, Math.min(90, Number(value.minutes) || 25)),
     essayType: value.essayType === 'large' ? 'large' : 'small',
     sources,
     ...(value.rewriteId ? { rewriteId: text(value.rewriteId, 160) } : {}),
@@ -185,6 +200,20 @@ export function normalizeCoachRequest(value) {
     ...(value.summaryContract !== undefined ? { summaryContract: value.summaryContract } : {}),
     ...(value.foundation ? { foundation: text(value.foundation, 400) } : {})
   };
+  if (subjectMethod)
+    fail(
+      [
+        'feedbackVersion',
+        'dimensionContract',
+        'knowledgeContract',
+        'exerciseContract',
+        'predictionContract',
+        'summaryContract',
+        'writingBand'
+      ].every((key) => value[key] === undefined),
+      '本教学定义不使用英语教学合同',
+      'methodContract'
+    );
   if (value.feedbackVersion !== undefined) {
     fail(
       value.feedbackVersion === COACH_FEEDBACK_VERSION &&
@@ -509,6 +538,13 @@ export function coachAssessmentTask(request) {
 }
 export function coachInferenceContext(request) {
   const current = normalizeCoachRequest(request);
+  if (
+    subjectCoachMethod(current.exam, current.methodContract)?.observationOnly &&
+    ['feedback', 'essay'].includes(current.phase)
+  ) {
+    const { foundation: _foundation, ...answerContext } = current;
+    return { ...answerContext, weaknesses: [] };
+  }
   if (current.exam !== 'cs408' && current.phase === 'summary') return { ...current, weaknesses: [] };
   if (['feedback', 'essay'].includes(current.phase)) {
     // 建档可能夹带整篇写作目标；局部评阅只能以当前任务和原答为准。
@@ -613,6 +649,8 @@ export function coachQuoteOptions(input, wholeLines = false) {
 }
 export function coachSystemPrompt(request, outputSchema = null, embedSchema = true) {
   const r = normalizeCoachRequest(request);
+  const subjectMethod = subjectCoachMethod(r.exam, r.methodContract);
+  if (subjectMethod) return subjectMethod.prompt(r, { quotes: coachQuoteOptions(r.input, true) });
   if (r.exam === 'cs408') return materialCoachPrompt(r);
   const taskWords = (type) =>
     WRITING_METHOD.words[r.exam]?.[type] ? `字数写明${WRITING_METHOD.words[r.exam][type]}` : '字数';
@@ -819,6 +857,8 @@ ${classificationRule}${scoreRule}${jsonRule}${outputSchema ? bandRule.replace('b
 }
 export function normalizeCoachOutput(value, request) {
   const r = normalizeCoachRequest(request);
+  const subjectMethod = subjectCoachMethod(r.exam, r.methodContract);
+  const feedbackMethod = subjectMethod || (r.exam === 'cs408' ? MATERIAL_METHOD : WRITING_METHOD);
   fail(value && value.kind === r.phase, '模型返回的教学阶段不符', 'kind');
   const source = (id, path = '', quote) => {
     if (id == null) return { kind: 'model_generated', verified: false };
@@ -922,12 +962,13 @@ export function normalizeCoachOutput(value, request) {
       `cards[${cards.findIndex((c, i) => cards.findIndex((other) => other.id === c.id) !== i)}].id`
     );
     if (r.phase === 'diagnostic') {
+      const expected = subjectMethod?.diagnostic.length ?? 5;
       const index = cards.findIndex((c, i) => c.id !== `d${i + 1}` || c.kind !== 'diagnostic');
       fail(
-        (r.exam === 'cs408' ? [1, 5].includes(cards.length) : cards.length === 5) &&
+        (r.exam === 'cs408' ? [1, 5].includes(cards.length) : cards.length === expected) &&
           cards.every((c, i) => c.id === `d${i + 1}` && c.kind === 'diagnostic'),
         '摸底需依次覆盖五项',
-        cards.length !== 5 || index < 0
+        cards.length !== expected || index < 0
           ? 'cards'
           : cards[index].id !== `d${index + 1}`
             ? `cards[${index}].id`
@@ -945,19 +986,28 @@ export function normalizeCoachOutput(value, request) {
       return { kind: r.phase, cards };
     }
     const count = (kind) => cards.filter((c) => c.kind === kind).length;
-    fail(
-      cards.length >= 8 &&
-        cards.length <= 10 &&
-        count('collocation') >= 3 &&
-        count('collocation') <= 5 &&
-        count('translate_zh') === 2 &&
-        count('translate_en') === 2 &&
-        count('long_sentence') === 1,
-      '每日卡片数量或类型不符',
-      'cards'
-    );
-    const rank = { collocation: 0, translate_zh: 1, translate_en: 2, long_sentence: 3 };
-    cards.sort((a, b) => rank[a.kind] - rank[b.kind]);
+    if (subjectMethod) {
+      fail(
+        cards.length === subjectMethod.dailyCards.length &&
+          cards.every((card, i) => card.id === `c${i + 1}` && card.kind === subjectMethod.dailyCards[i].kind),
+        `${subjectMethod.subject}卡片顺序或类型不符`,
+        'cards'
+      );
+    } else {
+      fail(
+        cards.length >= 8 &&
+          cards.length <= 10 &&
+          count('collocation') >= 3 &&
+          count('collocation') <= 5 &&
+          count('translate_zh') === 2 &&
+          count('translate_en') === 2 &&
+          count('long_sentence') === 1,
+        '每日卡片数量或类型不符',
+        'cards'
+      );
+      const rank = { collocation: 0, translate_zh: 1, translate_en: 2, long_sentence: 3 };
+      cards.sort((a, b) => rank[a.kind] - rank[b.kind]);
+    }
     const w = value.writing;
     fail(
       w && Array.isArray(w.patterns) && w.patterns.length >= 2 && w.patterns.length <= 3,
@@ -1035,6 +1085,12 @@ export function normalizeCoachOutput(value, request) {
   });
   fail(Array.isArray(value.dimensions || []), '写作维度不合法', 'dimensions');
   const dimensions = (value.dimensions || []).map((d, i) => {
+    if (subjectMethod?.observationOnly)
+      fail(
+        d && typeof d === 'object' && Object.keys(d).every((key) => ['name', 'comment'].includes(key)),
+        '本教学定义只记录观察，不给分数或档位',
+        `dimensions[${i}]`
+      );
     const dimension = {
       name: text(d.name, 40, `dimensions[${i}].name`),
       comment: text(d.comment, 500, `dimensions[${i}].comment`)
@@ -1062,12 +1118,11 @@ export function normalizeCoachOutput(value, request) {
   });
   fail(new Set(dimensions.map((dimension) => dimension.name)).size === dimensions.length, '写作维度重复', 'dimensions');
   fail(
-    dimensions.length <= 4 &&
-      dimensions.every((d) => (r.exam === 'cs408' ? MATERIAL_METHOD : WRITING_METHOD).feedback.includes(d.name)),
+    dimensions.length <= 4 && dimensions.every((d) => feedbackMethod.feedback.includes(d.name)),
     '写作维度不合法',
     dimensions.length > 4
       ? 'dimensions'
-      : `dimensions[${dimensions.findIndex((d) => !(r.exam === 'cs408' ? MATERIAL_METHOD : WRITING_METHOD).feedback.includes(d.name))}].name`
+      : `dimensions[${dimensions.findIndex((d) => !feedbackMethod.feedback.includes(d.name))}].name`
   );
   if (r.phase === 'essay')
     fail(r.exam !== 'cs408' && new Set(dimensions.map((d) => d.name)).size === 4, '成文反馈需覆盖四维', 'dimensions');
@@ -1463,6 +1518,7 @@ export function parseCoachModelOutput(raw, request, captureDiagnostics = false, 
     '训练未引用已分享资料',
     'cards'
   );
+  subjectCoachMethod(request.exam, request.methodContract)?.validateLiveOutput(coach, request, fail);
   return {
     message: text(output.message, 500, 'message'),
     coach,
@@ -1472,6 +1528,8 @@ export function parseCoachModelOutput(raw, request, captureDiagnostics = false, 
   };
 }
 export function coachEssayType(coach, day) {
+  const subjectMethod = subjectCoachMethod(coach.profile?.exam, coach.profile?.methodContract);
+  if (subjectMethod?.fixedEssayType) return subjectMethod.fixedEssayType;
   if (!coach.profile?.exam) return 'small';
   const first = coach.startedDay;
   return Math.floor((Date.parse(day) - Date.parse(first)) / (7 * 86400000)) % 2 ? 'large' : 'small';
@@ -1717,17 +1775,21 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
   assert(coach?.contract === WRITING_COACH_CONTRACT, 'PRECONDITION', '请先建立写作学习档案');
   if (op.type === 'coach.profile') {
     const p = d.profile;
+    const subjectMethod = subjectCoachMethod(p?.exam, p?.methodContract);
     assert(
-      p && (p.exam === null || ['english1', 'english2', 'cs408'].includes(p.exam)),
+      p && (p.exam === null || ['english1', 'english2', 'cs408'].includes(p.exam) || subjectMethod),
       'INVALID_INPUT',
       '考试类型不合法'
     );
     const deadline = p.deadline == null ? null : date(p.deadline),
       minutes = p.minutes === null ? null : Number(p.minutes);
     assert(
-      minutes === null || (Number.isInteger(minutes) && minutes >= 10 && minutes <= 90),
+      minutes === null ||
+        (Number.isInteger(minutes) &&
+          minutes >= (subjectMethod?.minutes.min ?? 10) &&
+          minutes <= (subjectMethod?.minutes.max ?? 90)),
       'INVALID_INPUT',
-      '每天时间需在10至90分钟'
+      `每天时间需在${subjectMethod?.minutes.min ?? 10}至${subjectMethod?.minutes.max ?? 90}分钟`
     );
     assert(
       p.deadlineBucket == null || ['this', 'next'].includes(p.deadlineBucket),
@@ -1745,12 +1807,18 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
     );
     const track = p.track === undefined ? COACH_DEFAULT_TRACK : p.track;
     assert(
-      track === (p.exam === 'cs408' ? COACH_MATERIAL_TRACK : COACH_DEFAULT_TRACK),
+      track === (subjectMethod?.track || (p.exam === 'cs408' ? COACH_MATERIAL_TRACK : COACH_DEFAULT_TRACK)),
       'INVALID_INPUT',
       '教学方向不合法'
     );
+    assert(
+      subjectMethod ? p.methodContract === subjectMethod.contract : p.methodContract === undefined,
+      'INVALID_INPUT',
+      '教学方法版本不支持'
+    );
     coach.profile = {
       exam: p.exam,
+      ...(subjectMethod ? { methodContract: subjectMethod.contract } : {}),
       deadline,
       ...(p.deadlineBucket ? { deadlineBucket: p.deadlineBucket } : {}),
       minutes,
@@ -2012,11 +2080,14 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
       : null;
     delete output.bandCandidate;
     const modelOrigin =
-      (req.request.knowledgeContract || req.request.predictionContract) &&
+      (req.request.knowledgeContract ||
+        req.request.predictionContract ||
+        subjectCoachMethodByContract(req.request.methodContract)) &&
       normalizeLearningModelOrigin(d.modelOrigin, {
         requestId: req.id,
         modelId: req.modelId,
-        binding: req.binding
+        binding: req.binding,
+        methodContract: req.request.methodContract
       });
     if (['feedback', 'essay'].includes(output.kind)) {
       (coach.learningRecords ||= []).push({
@@ -2027,6 +2098,9 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
         day: req.request.day,
         source: 'host_validated',
         evaluation: 'AI评估',
+        ...(subjectCoachMethodByContract(req.request.methodContract)
+          ? { methodContract: req.request.methodContract }
+          : {}),
         dimensions: (output.dimensions || []).map(({ name, score }) => ({ name, score: score ?? null })),
         ...(modelOrigin ? { model: modelOrigin } : {}),
         ...(req.request.knowledgeContract
@@ -2036,6 +2110,7 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
       recordWritingPredictionFeedback(coach, req, coach.learningRecords.at(-1));
     }
     req.status = 'completed';
+    if (subjectCoachMethodByContract(req.request.methodContract) && modelOrigin) req.resultModel = modelOrigin;
     req.resultId = op.id;
     if (assessment) {
       const answers =

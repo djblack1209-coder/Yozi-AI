@@ -3,7 +3,7 @@
     active="learning"
     :waiting-for-answer="Boolean(answerTarget)"
     :notice="cancellationNotice"
-    :title="materialTrack ? '计算机专业课' : '考研英语写作'"
+    :title="subjectMethod ? subjectMethod.subject : materialTrack ? '计算机专业课' : '考研英语写作'"
     :style="{ '--muse-composer-height': `${composerHeight}px`, '--learning-composer-height': `${composerHeight}px` }"
     @new="newSession"
     @connections="openConnections"
@@ -169,19 +169,23 @@
       <BaseBubble v-else-if="!coach.profile" avatar rich class="coach-agent-turn">
         <view class="coach-intake coach-agent-message">
           <text v-if="profileStep < 3" class="coach-question">{{
-            ['英语一还是英语二？', '考试大概什么时候？（可跳过）', '每天能学多久？（可跳过）'][profileStep]
+            [
+              subjectMethod ? '学习方向' : '英语一还是英语二？',
+              '考试大概什么时候？（可跳过）',
+              '每天能学多久？（可跳过）'
+            ][profileStep]
           }}</text>
           <BaseSegmented
             v-if="profileStep === 0"
             v-model="profile.exam"
-            label="英语一还是英语二？"
-            :options="EXAM_OPTIONS"
+            :label="subjectMethod ? '学习方向' : '英语一还是英语二？'"
+            :options="subjectMethod ? [{ value: subjectMethod.exam, label: subjectMethod.subject }] : EXAM_OPTIONS"
           />
           <template v-else-if="profileStep === 1">
             <BaseOptions
               v-model="profile.deadlineBucket"
               label="考试大概什么时候？（可跳过）"
-              :options="DEADLINE_OPTIONS"
+              :options="subjectMethod ? [{ value: 'other', label: '填写日期' }] : DEADLINE_OPTIONS"
             />
             <BaseInput
               v-if="profile.deadlineBucket === 'other'"
@@ -287,8 +291,8 @@
                 v-if="record.feedback"
                 :feedback="record.feedback"
                 :writing-observation="DEV_TEST ? record.writingObservation : null"
-                :material-track="materialTrack"
-                :title="`${record.feedback.target === 'diagnostic' ? '摸底反馈' : record.title} · AI 评估`"
+                :material-track="materialTrack || Boolean(subjectMethod)"
+                :title="`${record.feedback.target === 'diagnostic' ? '摸底反馈' : subjectMethod && record.phase === 'essay' ? '成文反馈' : record.title} · AI 评估`"
                 :adoptable="
                   record.day === today && Object.values(day?.feedback || {}).some((f) => f.id === record.feedback.id)
                 "
@@ -367,8 +371,8 @@
             </BaseCard>
             <template v-else>
               <BaseCard v-if="!coach.diagnostic">
-                <text class="coach-title">{{ materialTrack ? '资料摸底' : '十分钟摸底' }}</text
-                ><text v-if="!materialTrack">成分、搭配、翻译、长难句和审题，每项一题。</text>
+                <text class="coach-title">{{ materialTrack || subjectMethod ? '资料摸底' : '十分钟摸底' }}</text
+                ><text v-if="!materialTrack && !subjectMethod">成分、搭配、翻译、长难句和审题，每项一题。</text>
                 <BaseButton
                   variant="primary"
                   :disabled="fileBusy || learning.busy || (!needsMaterial && (!loggedIn || !learning.sharingAllowed))"
@@ -380,7 +384,7 @@
                 <MusePracticeSheet
                   v-model="answer"
                   shared-input
-                  :title="materialTrack ? '资料摸底' : '十分钟摸底'"
+                  :title="materialTrack || subjectMethod ? '资料摸底' : '十分钟摸底'"
                   :cards="coach.diagnostic.cards"
                   :answers="coach.diagnostic.answers"
                   :current-id="diagnosticCard?.id || ''"
@@ -408,7 +412,11 @@
                 }}</text
                 ><text>{{
                   coach.diagnostic.feedback.weaknesses.slice(0, 2).join('、') ||
-                  (materialTrack ? '从资料里的一个概念开始' : '先练搭配和句子，再逐段写作')
+                  (subjectMethod
+                    ? subjectMethod.dailyIntro
+                    : materialTrack
+                      ? '从资料里的一个概念开始'
+                      : '先练搭配和句子，再逐段写作')
                 }}</text>
                 <BaseButton variant="primary" :disabled="requestDisabled('daily')" @tap="request('daily')">{{
                   requestLabel('daily', 'daily', '安排今日训练')
@@ -468,15 +476,20 @@
                   <text class="coach-title"
                     >第 {{ paragraphIndex + 1 }} 段 ·
                     {{
-                      paragraphIndex === 0
-                        ? '交代目的或描述'
-                        : paragraphIndex === day.pack.writing.patterns.length - 1
-                          ? '回应目的与建议'
-                          : '展开要点与理由'
+                      subjectMethod
+                        ? subjectMethod.paragraphLabels[
+                            paragraphIndex === 0 ? 0 : paragraphIndex === day.pack.writing.patterns.length - 1 ? 2 : 1
+                          ]
+                        : paragraphIndex === 0
+                          ? '交代目的或描述'
+                          : paragraphIndex === day.pack.writing.patterns.length - 1
+                            ? '回应目的与建议'
+                            : '展开要点与理由'
                     }}</text
                   >
                   <text>{{ day.pack.writing.prompt }}</text
-                  ><text class="coach-muted">全文字数以题干为准；先借助句式写，再按反馈改写。</text>
+                  ><text v-if="subjectMethod" class="coach-muted">{{ subjectMethod.writingHint }}</text>
+                  <text v-else class="coach-muted">全文字数以题干为准；先借助句式写，再按反馈改写。</text>
                   <text
                     v-for="pattern in day.pack.writing.patterns[paragraphIndex]"
                     :key="pattern"
@@ -490,7 +503,7 @@
                       label="写下本段"
                       submit-label="提交本段"
                       :maxlength="1800"
-                      english
+                      :english="subjectMethod?.language !== 'zh'"
                       :disabled="learning.busy"
                       @submit="saveParagraph(false)"
                   /></template>
@@ -510,7 +523,7 @@
                       label="改写本段"
                       submit-label="保存改写"
                       :maxlength="1800"
-                      english
+                      :english="subjectMethod?.language !== 'zh'"
                       :disabled="learning.busy"
                       @submit="saveParagraph(true)"
                   /></template>
@@ -634,6 +647,7 @@ import {
   coachUsesMaterials,
   coachAssessmentCounts
 } from '../../../../laf-backend/functions/_shared/learning-writing-coach.js';
+import { subjectCoachMethod } from '../../../../laf-backend/functions/_shared/learning-coach-methods.js';
 import LearningShell from '@/components/business/learning/learning-shell.vue';
 import PrivacyPopup from '@/components/common/privacy-popup.vue';
 import CustomModal from '@/components/common/CustomModal.vue';
@@ -703,7 +717,8 @@ const minuteOptions = computed(() =>
 );
 function profileDescription(value) {
   return [
-    { english1: '英语一', english2: '英语二', cs408: '计算机考研' }[value.exam],
+    subjectCoachMethod(value.exam)?.subject ||
+      { english1: '英语一', english2: '英语二', cs408: '计算机考研' }[value.exam],
     { this: '今年12月', next: '明年12月' }[value.deadlineBucket] || value.deadline,
     value.minutes ? `${value.minutes}分钟/天` : '',
     value.foundation ? `困难：${value.foundation}` : ''
@@ -754,6 +769,9 @@ const coachReply = computed(() =>
     : null
 );
 const materialTrack = computed(() => coachUsesMaterials(coach.value) || profile.subject === 'kaoyan_major');
+const subjectMethod = computed(() =>
+  subjectCoachMethod(coach.value?.profile?.exam || profile.exam, coach.value?.profile?.methodContract)
+);
 const today = computed(() => dayKey(learning.calendarTime, learning.state.timezone));
 const day = computed(() => coach.value?.days.find((d) => d.day === today.value));
 const canSubmitWriting = computed(
@@ -816,7 +834,9 @@ watch(
 const materials = computed(() =>
   learning.state.materials.filter((m) => !coach.value || coach.value.materialIds.includes(m.id))
 );
-const needsMaterial = computed(() => materialTrack.value && !materials.value.length);
+const needsMaterial = computed(
+  () => (materialTrack.value || subjectMethod.value?.sourceRequired) && !materials.value.length
+);
 const answerTarget = computed(() => {
   if (learning.active?.stopped) return null;
   if (coach.value && !coach.value.profile && profileStep.value === 3) return { kind: 'foundation' };
@@ -960,7 +980,9 @@ watch(
     resetProfileDraft();
     if (saved.profile) Object.assign(profile, saved.profile, { subjects: [...saved.profile.subjects] });
     else if (coach.value) {
-      profile.subject = coachUsesMaterials(coach.value) ? 'kaoyan_major' : 'kaoyan_english';
+      profile.subject =
+        subjectCoachMethod(coach.value.profile?.exam, coach.value.profile?.methodContract)?.subjectId ||
+        (coachUsesMaterials(coach.value) ? 'kaoyan_major' : 'kaoyan_english');
       profile.exam =
         coach.value.profile?.exam ||
         (/英语二|english\s*2/i.test(learning.active.goal)
@@ -1074,7 +1096,10 @@ function saveProfile(skip) {
             minutes: profile.minutes ? Number(profile.minutes) : null,
             foundation: profile.foundation || null,
             subjects: [...profile.subjects, profile.subject].filter(Boolean),
-            track: profile.subject === 'kaoyan_major' ? COACH_MATERIAL_TRACK : 'kaoyan-english-writing'
+            track:
+              subjectMethod.value?.track ||
+              (profile.subject === 'kaoyan_major' ? COACH_MATERIAL_TRACK : 'kaoyan-english-writing'),
+            ...(subjectMethod.value ? { methodContract: subjectMethod.value.contract } : {})
           }
     })
   );

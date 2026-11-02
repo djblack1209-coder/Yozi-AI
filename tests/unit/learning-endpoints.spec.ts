@@ -2747,6 +2747,85 @@ it.each(['opening', 'follow-up', 'finished', 'invented-choice', 'third-question'
       const listed = await models(context({ action: 'list' }));
       expect(listed.data.intakeContract).toBe('model-intake-v1');
       expect(listed.data.intakeContracts).toEqual(['model-intake-v1', 'model-intake-v2']);
+      expect(listed.data.coachMethods).toEqual(['shenlun-writing-method-v1']);
     }
+  }
+);
+
+it.each(['supported', 'unknown-method'])(
+  'versioned subject coaching preserves actual model provenance without English contracts: %s',
+  async (mode) => {
+    await streamProfile(false);
+    const request = {
+      contract: 'kaoyan-writing-coach-v1',
+      methodContract: mode === 'supported' ? 'shenlun-writing-method-v1' : 'unknown-method',
+      exam: 'shenlun',
+      phase: 'feedback',
+      target: 'card-c1',
+      day: '2026-11-02',
+      input: '部分居民在工作日白天办理不便。',
+      task: '依据资料概括现有办事困难。',
+      sources: [
+        {
+          id: 'synthetic-material:1',
+          name: '合成材料',
+          page: 1,
+          content: '社区窗口只在工作日白天开放，部分上班居民办理不便，拟增加周六预约时段。'
+        }
+      ]
+    };
+    vi.mocked(callLearningProvider).mockImplementation(async (config: any) => ({
+      ...streamCompleted,
+      actualModel: config.model,
+      content: JSON.stringify({
+        message: '来核对材料依据。',
+        question: null,
+        tools: [],
+        coach: {
+          kind: 'feedback',
+          target: request.target,
+          lines: [
+            { original: request.input, advice: '原答概括了材料中的办理不便。', rewrite: '保留原答，不补造实施成效。' }
+          ],
+          weaknesses: [],
+          weaknessEvidence: [],
+          strengths: [],
+          phrases: [],
+          dimensions: ['材料依据', '要点覆盖', '逻辑结构', '文字表达'].map((name) => ({
+            name,
+            comment: '仅为本次AI观察，不给官方分数。'
+          }))
+        }
+      })
+    }));
+    const body = { ...streamBody('subject-method-' + mode), learningContext: { owner: 'u1', coach: request } };
+    const result = await ai(context(body));
+    if (mode !== 'supported') {
+      expect(result.success).toBe(false);
+      expect(callLearningProvider).not.toHaveBeenCalled();
+      return;
+    }
+    expect(result.success).toBe(true);
+    expect(callLearningProvider).toHaveBeenCalledTimes(1);
+    const config = vi.mocked(callLearningProvider).mock.calls[0][0];
+    expect(config.writingOutput).toBeUndefined();
+    expect(result.data.modelOrigin).toMatchObject({
+      contract: 'learning-model-origin-prompt-v1',
+      source: 'byok',
+      actualModel: config.model,
+      inferencePolicy: 'subject-coach-prompt-v1',
+      outputContract: 'shenlun-writing-method-v1',
+      schemaDigest: null,
+      callId: body.requestId,
+      modelId: body.modelId,
+      requestBinding: body.requestBinding,
+      configurationVersion: expect.stringMatching(/^[a-f0-9]{64}$/),
+      upstreamVersion: null
+    });
+    expect(result.data.coach.dimensions.every((item: any) => item.score === undefined)).toBe(true);
+    for (const hidden of [request.input, request.sources[0].content, 'fixture-only-stream-key', 'endpoint'])
+      expect(JSON.stringify(result.data.modelOrigin)).not.toContain(hidden);
+    expect((await ai(context(body))).data.modelOrigin).toEqual(result.data.modelOrigin);
+    expect(callLearningProvider).toHaveBeenCalledTimes(1);
   }
 );

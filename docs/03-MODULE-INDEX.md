@@ -2,6 +2,8 @@
 
 宿主教学权限与快照：[共享策略](../laf-backend/functions/_shared/learning-runtime-policy.js)统一模型白名单、阶段额度、30／60秒时限、压缩状态与宿主复习档映射；[执行入口](../src/services/learning/learning-tools.js)在本地写入前检查2秒并只记元信息收据。新写作四维与次日改写沿原 writing-coach/reducer/repository，不建第二套事实库。
 
+申论材料与中文带写：[教学方法定义](../laf-backend/functions/_shared/learning-shenlun-method.js)经[宿主白名单](../laf-backend/functions/_shared/learning-coach-methods.js)接入既有coach阶段、明确提交和恢复事件；新建档须由服务端声明支持并保存方法版本，旧建档含义不变。四项中文观察不给官方分数，不进入英语节点、预测准确率或搭配复习；[全链路合同回归](../tests/unit/shenlun-method.spec.js)、[建档／授权／中文编辑](../tests/unit/shenlun-method-ui.spec.js)。
+
 跨学科记录查找：[当前账户规范事实的只读查询/筛选](../laf-backend/functions/_shared/learning-record-search.js)，由现有Store连接侧栏搜索和学习页旧稿呈现。复用原题定位、生命周期与有效判分，无新端点、模型或持久化索引；[查找/更正/筛选/账户/恢复专项](../tests/unit/learning-record-search.spec.js)。
 
 学习路线与整批训练：[共享路线/复盘/两日证据](../laf-backend/functions/_shared/learning-journey.js)、[提醒日期与资格](../laf-backend/functions/_shared/learning-reminders.js)、[受限题目工厂适配](../src/services/learning/journey-training.js)，沿原reducer、Store和repository保存。界面为[路线](../src/pages/learning/components/learning-journey.vue)、[题组](../src/components/business/learning/training-group.vue)、[复盘与巩固](../src/pages/learning/components/journey-review.vue)、[提醒](../src/components/business/learning/journey-reminders.vue)和[安全消息排版](../src/pages/learning/components/learning-message.vue)。

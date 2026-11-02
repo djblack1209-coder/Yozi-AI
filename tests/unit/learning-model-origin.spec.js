@@ -56,6 +56,28 @@ describe('bound learning model provenance', () => {
     ).toEqual({ max_tokens: 8192, thinking: { type: 'disabled' } });
     expect(learningSentParameters({})).toEqual({});
   });
+  it('records a prompt-only subject method without inventing a schema or relaxing strict-format origins', () => {
+    const methodContract = 'shenlun-writing-method-v1';
+    const value = {
+      ...origin(),
+      contract: 'learning-model-origin-prompt-v1',
+      inferencePolicy: 'subject-coach-prompt-v1',
+      outputContract: methodContract,
+      schemaDigest: null
+    };
+    expect(normalizeLearningModelOrigin(value, { ...binding, methodContract })).toEqual(value);
+    expect(normalizeLearningModelOrigin(value, binding)).toBeNull();
+    expect(normalizeLearningModelOrigin(value, { ...binding, methodContract: 'unregistered-method' })).toBeNull();
+    expect(
+      normalizeLearningModelOrigin({ ...value, schemaDigest: 'b'.repeat(64) }, { ...binding, methodContract })
+    ).toBeNull();
+    expect(
+      normalizeLearningModelOrigin({ ...value, contract: 'learning-model-origin-v1' }, { ...binding, methodContract })
+    ).toBeNull();
+    expect(
+      normalizeLearningModelOrigin({ ...value, requestBinding: 'other-request' }, { ...binding, methodContract })
+    ).toBeNull();
+  });
   it('preserves a completed bounded repair call without changing the original request binding', () => {
     expect(normalizeLearningModelOrigin({ ...origin(), callId: 'request-0:repair1' }, binding).callId).toBe(
       'request-0:repair1'

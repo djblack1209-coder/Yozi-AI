@@ -1,9 +1,12 @@
 // A read-only view of saved originals. Never infer a grade or reconstruct deleted facts from events.
 import { writingAnswerHash, writingBandRubric, WRITING_BAND_RESULT_CONTRACT } from './learning-rubric.js';
+import { subjectCoachMethod } from './learning-coach-methods.js';
 
 function currentWritingSubmission(coach, day) {
+  const method = subjectCoachMethod(coach.profile?.exam, coach.profile?.methodContract);
   if (
-    !['english1', 'english2'].includes(coach.profile?.exam) ||
+    (!['english1', 'english2'].includes(coach.profile?.exam) &&
+      !(method?.guidedWriting && coach.profile.methodContract === method.contract)) ||
     !['small', 'large'].includes(day.pack.writing?.essayType) ||
     !day.writingTask
   )
@@ -58,7 +61,9 @@ export function coachSavedRecords(conversation) {
   for (const day of coach.days) {
     const submission = currentWritingSubmission(coach, day);
     const writingObservation =
-      submission && day.writingBandResults?.length ? currentWritingObservation(coach, day, submission) : null;
+      ['english1', 'english2'].includes(coach.profile?.exam) && submission && day.writingBandResults?.length
+        ? currentWritingObservation(coach, day, submission)
+        : null;
     for (const answer of day.answers) {
       const card = day.pack.cards.find((item) => item.id === answer.cardId);
       rows.push({

@@ -7,6 +7,7 @@ import {
 import { readModelCredential } from './_shared/model-connections.js';
 import {
   LEARNING_MODEL_ORIGIN_CONTRACT,
+  LEARNING_MODEL_ORIGIN_PROMPT_CONTRACT,
   learningSentParameters,
   normalizeLearningModelOrigin
 } from './_shared/learning-model-origin.js';
@@ -23,6 +24,7 @@ import {
   coachSystemPrompt,
   parseCoachModelOutput
 } from './_shared/learning-writing-coach.js';
+import { subjectCoachMethodByContract } from './_shared/learning-coach-methods.js';
 import { reservePlatformDay, settlePlatformDay } from './_shared/learning-daily-budget.js';
 import { assertTrialUser } from './_shared/learning-trial.js';
 import { DEV_TEST } from './_shared/build-channel.js';
@@ -874,13 +876,16 @@ export async function runLearningModelTask(
           }
         : response.usage;
     if (dailyReservation) await settlePlatformDay(db, dailyReservation, actualCost);
+    const subjectMethod = subjectCoachMethodByContract(coach?.methodContract);
+    const promptOrigin = subjectMethod && !model.writingOutput;
     const modelOrigin =
       coach?.knowledgeContract === 'writing-knowledge-binding-v1' ||
-      coach?.predictionContract === 'writing-prediction-check-v1'
+      coach?.predictionContract === 'writing-prediction-check-v1' ||
+      subjectMethod
         ? normalizeLearningModelOrigin(
             redactModelValue(
               {
-                contract: LEARNING_MODEL_ORIGIN_CONTRACT,
+                contract: promptOrigin ? LEARNING_MODEL_ORIGIN_PROMPT_CONTRACT : LEARNING_MODEL_ORIGIN_CONTRACT,
                 callId: body.requestId,
                 modelId: reservation.call.modelId || model.id,
                 requestBinding: body.requestBinding,
@@ -889,9 +894,9 @@ export async function runLearningModelTask(
                 actualModel: response.actualModel,
                 configurationVersion: connectionVersion,
                 upstreamVersion: null,
-                inferencePolicy: model.writingOutput?.inferencePolicy,
-                outputContract: model.writingOutput?.contract,
-                schemaDigest: model.writingOutput?.schemaDigest,
+                inferencePolicy: promptOrigin ? 'subject-coach-prompt-v1' : model.writingOutput?.inferencePolicy,
+                outputContract: promptOrigin ? subjectMethod.contract : model.writingOutput?.contract,
+                schemaDigest: promptOrigin ? null : model.writingOutput?.schemaDigest,
                 sentParameters: learningSentParameters(buildLearningRequest(model, [], Boolean(options.stream))),
                 verificationModels: verificationSources.map(({ provider, model, paidFallback }) => ({
                   provider,
@@ -901,7 +906,12 @@ export async function runLearningModelTask(
               },
               model.apiKey
             ),
-            { requestId: body.requestId, modelId: reservation.call.modelId || model.id, binding: body.requestBinding }
+            {
+              requestId: body.requestId,
+              modelId: reservation.call.modelId || model.id,
+              binding: body.requestBinding,
+              methodContract: coach?.methodContract
+            }
           )
         : null;
     const data = {

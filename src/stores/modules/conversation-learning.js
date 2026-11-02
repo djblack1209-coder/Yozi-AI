@@ -19,6 +19,11 @@ import { coachMaterialContext } from '@/services/learning/coach-material-context
 import { WRITING_KNOWLEDGE_CONTRACT } from '../../../laf-backend/functions/_shared/learning-writing-knowledge.js';
 import { WRITING_PREDICTION_CONTRACT } from '../../../laf-backend/functions/_shared/learning-writing-prediction.js';
 import {
+  subjectCoachMethod,
+  subjectCoachMethodByContract,
+  subjectCoachMethodForIntake
+} from '../../../laf-backend/functions/_shared/learning-coach-methods.js';
+import {
   WRITING_COACH_CONTRACT,
   COACH_FEEDBACK_VERSION,
   COACH_EXERCISE_CONTRACT,
@@ -404,6 +409,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     intakeError = ref('');
   let intakeController = null;
   let modelIntakeAvailable = false;
+  let modelCoachMethods = [];
   const modelIntakeContract = shallowRef(null);
   const coachError = ref('');
   const coachProfileDraft = computed(() => explicitIntakeFacts(active.value?.goal || ''));
@@ -668,6 +674,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   function resetModelResources() {
     cancelModelReads(undefined, 'CONTEXT_CHANGED');
     modelIntakeAvailable = false;
+    modelCoachMethods = [];
     modelIntakeContract.value = null;
     models.value = [];
     modelPresets.value = [];
@@ -1372,6 +1379,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     localConnection.value = null;
     materialConnection.value = null;
     modelIntakeAvailable = false;
+    modelCoachMethods = [];
     modelIntakeContract.value = null;
     models.value = [];
     modelPresets.value = [];
@@ -1828,7 +1836,12 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       );
       const weaknesses = coachWeaknesses(coach);
       const sources = coachMaterialContext(state.value, active.value, { phase, ...bound, weaknesses });
-      assert(coach.profile.exam !== 'cs408' || sources.length, 'MATERIAL_REQUIRED', '请先添加专业课资料');
+      const subjectMethod = subjectCoachMethod(coach.profile.exam, coach.profile.methodContract);
+      assert(
+        (coach.profile.exam !== 'cs408' && (!subjectMethod?.sourceRequired || phase === 'summary')) || sources.length,
+        'MATERIAL_REQUIRED',
+        subjectMethod ? `请先添加${subjectMethod.subject}材料` : '请先添加专业课资料'
+      );
       const id = retryOf ? learningId('coach') : reply.value.requestId,
         binding = learningId('binding');
       const data = {
@@ -1837,24 +1850,28 @@ export const useConversationLearningStore = defineStore('conversation-learning',
         target,
         day: requestDay,
         exam: coach.profile.exam ?? 'general',
+        ...(subjectMethod ? { methodContract: subjectMethod.contract } : {}),
         minutes: coach.profile.minutes,
         ...(coach.profile.foundation ? { foundation: coach.profile.foundation } : {}),
         essayType: coachEssayType(coach, requestDay),
-        ...(['feedback', 'essay'].includes(phase) && coach.profile.exam !== 'cs408'
+        ...(['feedback', 'essay'].includes(phase) && coach.profile.exam !== 'cs408' && !subjectMethod
           ? { feedbackVersion: COACH_FEEDBACK_VERSION }
           : {}),
-        ...(['diagnostic', 'daily'].includes(phase) && coach.profile.exam !== 'cs408'
+        ...(['diagnostic', 'daily'].includes(phase) && coach.profile.exam !== 'cs408' && !subjectMethod
           ? { exerciseContract: COACH_EXERCISE_CONTRACT, predictionContract: WRITING_PREDICTION_CONTRACT }
           : {}),
-        ...(phase === 'summary' && coach.profile.exam !== 'cs408' ? { summaryContract: COACH_SUMMARY_CONTRACT } : {}),
-        ...(['feedback', 'essay'].includes(phase) && coach.profile.exam !== 'cs408'
+        ...(phase === 'summary' && coach.profile.exam !== 'cs408' && !subjectMethod
+          ? { summaryContract: COACH_SUMMARY_CONTRACT }
+          : {}),
+        ...(['feedback', 'essay'].includes(phase) && coach.profile.exam !== 'cs408' && !subjectMethod
           ? { dimensionContract: 'writing-dimensions-v1', knowledgeContract: WRITING_KNOWLEDGE_CONTRACT }
           : {}),
         ...bound,
         sources,
         weaknesses
       };
-      const writingBand = DEV_TEST && phase === 'essay' ? coachWritingBandContext(coach, day, id) : null;
+      const writingBand =
+        DEV_TEST && phase === 'essay' && !subjectMethod ? coachWritingBandContext(coach, day, id) : null;
       if (writingBand) data.writingBand = writingBand;
       commit('coach.request', {
         conversationId,
@@ -1977,7 +1994,10 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           explicit: true,
           requestId: request.id,
           output: result.data.coach,
-          ...((request.request.knowledgeContract || request.request.predictionContract) && result.data.modelOrigin
+          ...((request.request.knowledgeContract ||
+            request.request.predictionContract ||
+            subjectCoachMethodByContract(request.request.methodContract)) &&
+          result.data.modelOrigin
             ? { modelOrigin: result.data.modelOrigin }
             : {})
         },
@@ -3988,6 +4008,10 @@ export const useConversationLearningStore = defineStore('conversation-learning',
               ? 'model-intake-v1'
               : null;
         modelIntakeAvailable = Boolean(modelIntakeContract.value);
+        modelCoachMethods =
+          result.success && Array.isArray(result.data.coachMethods)
+            ? result.data.coachMethods.filter((method) => subjectCoachMethodByContract(method))
+            : [];
         models.value = result.success ? result.data.models : [];
         modelPresets.value = result.success ? result.data.presets || [] : [];
         if (result.success && !preferencesDirty && result.data.preferences) {
@@ -4428,7 +4452,11 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   function acceptModelIntake() {
     idleRecords();
     const selected = state.value.intake?.modelId;
-    const conversation = commit('intake.accept', { explicit: true });
+    const subjectMethod = subjectCoachMethodForIntake(state.value.intake, modelCoachMethods);
+    const conversation = commit('intake.accept', {
+      explicit: true,
+      ...(subjectMethod ? { coachMethod: subjectMethod.contract } : {})
+    });
     selectedConversationId.value = conversation.id;
     modelId.value = selected;
     selectedMode.value = 'cloud';

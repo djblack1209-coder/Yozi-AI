@@ -10,6 +10,7 @@ import {
   MODEL_INTAKE_V2_CONTRACT
 } from './learning-intake.js';
 import { applyWritingCoachOperation } from './learning-writing-coach.js';
+import { subjectCoachMethodByContract } from './learning-coach-methods.js';
 import {
   normalizeRubric,
   assessWithRubric,
@@ -1297,6 +1298,12 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
         '请先确认模型提出的学习档案'
       );
       const profile = normalizeStudyProfile(state.intake.reply.intake.profile);
+      const subjectMethod = subjectCoachMethodByContract(data.coachMethod);
+      assert(
+        data.coachMethod === undefined || subjectMethod?.intakeEligible(state.intake),
+        'INVALID_INPUT',
+        '教学方法与本次明确回答不符'
+      );
       assert(!state.intake.acceptedConversationId, 'ALREADY_ACCEPTED', '此学习档案已经确认');
       const messages = state.intake.turns.flatMap((turn, index) => [
         { id: `${opId}:intake:${index}:q`, role: 'assistant', content: turn.question, at: now },
@@ -1313,7 +1320,7 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
         stopped: false
       };
       state.conversations.push(conversation);
-      if (['english1', 'english2', 'cs408'].includes(profile.exam)) {
+      if (subjectMethod || ['english1', 'english2', 'cs408'].includes(profile.exam)) {
         applyWritingCoachOperation(
           state,
           { id: `${opId}:coach`, type: 'coach.begin', at: now, data: { conversationId: opId, explicit: true } },
@@ -1330,9 +1337,11 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
               explicit: true,
               profile: {
                 ...profile,
-                subjects: [profile.exam === 'cs408' ? 'kaoyan_major' : 'kaoyan_english'],
+                ...(subjectMethod ? { exam: subjectMethod.exam, methodContract: subjectMethod.contract } : {}),
+                subjects: [subjectMethod?.subjectId || (profile.exam === 'cs408' ? 'kaoyan_major' : 'kaoyan_english')],
                 minutes: profile.minutes,
-                track: profile.exam === 'cs408' ? 'kaoyan-cs-material' : 'kaoyan-english-writing'
+                track:
+                  subjectMethod?.track || (profile.exam === 'cs408' ? 'kaoyan-cs-material' : 'kaoyan-english-writing')
               }
             }
           },

@@ -1,6 +1,8 @@
 // Informational provenance from a bound API response, not independent grading
 // authority or eligibility for a platform reference experiment.
+import { subjectCoachMethodByContract } from './learning-coach-methods.js';
 export const LEARNING_MODEL_ORIGIN_CONTRACT = 'learning-model-origin-v1';
+export const LEARNING_MODEL_ORIGIN_PROMPT_CONTRACT = 'learning-model-origin-prompt-v1';
 export const learningModelSourceKey = (source) =>
   JSON.stringify([source.source, source.modelId, source.provider || '', source.actualModel || '']);
 const record = (value) => value && typeof value === 'object' && !Array.isArray(value);
@@ -76,11 +78,12 @@ export function learningSentParameters(wire) {
   return result;
 }
 
-export function normalizeLearningModelOrigin(value, { requestId, modelId, binding } = {}) {
+export function normalizeLearningModelOrigin(value, { requestId, modelId, binding, methodContract } = {}) {
+  const prompt = value?.contract === LEARNING_MODEL_ORIGIN_PROMPT_CONTRACT;
   if (
     !record(value) ||
     Object.keys(value).some((key) => !keys.includes(key)) ||
-    value.contract !== LEARNING_MODEL_ORIGIN_CONTRACT ||
+    (value.contract !== LEARNING_MODEL_ORIGIN_CONTRACT && !prompt) ||
     !identifier(requestId) ||
     !identifier(modelId) ||
     !identifier(binding) ||
@@ -96,8 +99,12 @@ export function normalizeLearningModelOrigin(value, { requestId, modelId, bindin
     value.upstreamVersion !== null ||
     !identifier(value.inferencePolicy) ||
     !identifier(value.outputContract) ||
-    typeof value.schemaDigest !== 'string' ||
-    !/^[a-f0-9]{64}$/.test(value.schemaDigest) ||
+    (prompt
+      ? value.schemaDigest !== null ||
+        value.inferencePolicy !== 'subject-coach-prompt-v1' ||
+        !subjectCoachMethodByContract(methodContract) ||
+        value.outputContract !== methodContract
+      : typeof value.schemaDigest !== 'string' || !/^[a-f0-9]{64}$/.test(value.schemaDigest)) ||
     !record(value.sentParameters) ||
     !Array.isArray(value.verificationModels) ||
     value.verificationModels.length > 16
@@ -124,7 +131,7 @@ export function normalizeLearningModelOrigin(value, { requestId, modelId, bindin
     verificationModels.push({ provider: model.provider, model: model.model, paidFallback: model.paidFallback });
   }
   return {
-    contract: LEARNING_MODEL_ORIGIN_CONTRACT,
+    contract: value.contract,
     callId: value.callId,
     modelId,
     requestBinding: binding,
