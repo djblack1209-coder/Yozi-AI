@@ -500,11 +500,18 @@ it('计划分包组件呈现待确认、四类、历史与来源回跳，浏览�
   const learning = useConversationLearningStore();
   learning.$patch({ state: repo.read() });
   const wrapper = mount(EntriesBoard, {
-    global: { stubs: { BaseButton: { template: '<button @click="$emit(\'tap\')"><slot /></button>' } } }
+    global: {
+      stubs: {
+        BaseButton: {
+          props: ['label'],
+          template: '<button :aria-label="label" @click="$emit(\'tap\')"><slot /></button>'
+        }
+      }
+    }
   });
   expect(wrapper.text()).toContain('待确认');
   expect(wrapper.text()).toContain('写作卡片');
-  expect(wrapper.text()).toContain('查看来源');
+  expect(wrapper.find('[aria-label="查看来源"]').exists()).toBe(true);
   expect(wrapper.text()).toContain('记忆');
   wrapper.unmount();
   learning.$dispose();
@@ -525,7 +532,14 @@ it('真实Store实时规则只产生确认卡，计划页按钮确认写入并�
   await learning.send('明天晚上8点提醒我练英语写作。', { id: 'live-reminder' });
   expect(learning.active.reminders).toBeUndefined();
   const wrapper = mount(EntriesBoard, {
-    global: { stubs: { BaseButton: { template: '<button @click="$emit(\'tap\')"><slot /></button>' } } }
+    global: {
+      stubs: {
+        BaseButton: {
+          props: ['label'],
+          template: '<button :aria-label="label" @click="$emit(\'tap\')"><slot /></button>'
+        }
+      }
+    }
   });
   await wrapper
     .findAll('button')
@@ -539,7 +553,7 @@ it('真实Store实时规则只产生确认卡，计划页按钮确认写入并�
   expect(wrapper.text()).toContain('20:00');
   await wrapper
     .findAll('button')
-    .find((b) => b.text() === '查看来源')
+    .find((b) => b.attributes('aria-label') === '查看来源')
     .trigger('click');
   expect(learning.conversationLocation).toMatchObject({ messageId: 'live-reminder:message' });
   expect(net).not.toHaveBeenCalled();

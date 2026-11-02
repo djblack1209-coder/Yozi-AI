@@ -23,14 +23,34 @@
         >{{ label }}</BaseButton
       >
     </view>
-    <view v-for="item in visible" :key="item.id" class="entry-card">
-      <view class="entry-top"
-        ><text class="entry-text">{{ item.text }}</text
-        ><text class="entry-label">{{ statuses[item.status] }}</text></view
+    <view v-for="item in visible" :key="item.id" class="entry-card entry-row">
+      <BaseIcon
+        :name="
+          selected === 'Goal'
+            ? 'checkbox-off'
+            : selected === 'Reminder'
+              ? 'calendar'
+              : selected === 'Idea'
+                ? 'bulb'
+                : 'book-open'
+        "
+        size="18px"
+      />
+      <view class="entry-copy"
+        ><view class="entry-top"
+          ><text class="entry-text">{{ item.text }}</text
+          ><text class="entry-label">{{ statuses[item.status] }}</text></view
+        >
+        <text v-if="selected === 'Memory'" class="entry-label">用户确认 · {{ item.field }}</text>
+        <text v-if="selected === 'Reminder'" class="entry-label">已保存 · 通知送达未确认</text></view
       >
-      <text v-if="selected === 'Memory'" class="entry-label">用户确认 · {{ item.field }}</text>
-      <text v-if="selected === 'Reminder'" class="entry-label">已保存 · 通知送达未确认</text>
-      <BaseButton variant="quiet" @tap="source(item.conversationId, item.sourceRefs)">查看来源</BaseButton>
+      <BaseButton
+        variant="quiet"
+        icon="arrow-right"
+        icon-only
+        label="查看来源"
+        @tap="source(item.conversationId, item.sourceRefs)"
+      />
     </view>
     <text v-if="!visible.length" class="entry-label">暂无{{ labels[selected] }}</text>
     <BaseButton variant="quiet" :aria-expanded="history" @tap="history = !history"
@@ -53,6 +73,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import BaseButton from '@/components/base/base-button/base-button.vue';
+import BaseIcon from '@/components/base/base-icon/base-icon.vue';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { entryObjects } from '../../../../laf-backend/functions/_shared/learning-entries.js';
 import { proposalStatus } from '../../../../laf-backend/functions/_shared/learning-proposals.js';
@@ -166,7 +187,8 @@ function source(conversationId, refs) {
   min-width: 0;
 }
 .entry-board {
-  margin-bottom: 24px;
+  margin-bottom: 0;
+  row-gap: 4px;
 }
 .entry-tabs,
 .entry-actions,
@@ -181,18 +203,46 @@ function source(conversationId, refs) {
 }
 .entry-card {
   display: grid;
-  gap: 10px;
-  padding: 16px;
-  border: 1px solid var(--control-line);
-  border-radius: 16px;
-  background: var(--muse-rich-surface);
+  gap: 6px;
+  padding: 8px 0;
   min-width: 0;
+}
+.entry-row {
+  display: flex;
+  padding: 0;
+  min-height: 44px;
+  align-items: center;
+  gap: 12px;
+}
+.entry-row > .base-icon {
+  flex: none;
+  margin-top: 3px;
+}
+.entry-copy {
+  flex: 1;
+  min-width: 0;
+}
+.entry-row > .base-button {
+  flex: none;
+}
+.entry-board .entry-tabs .base-button {
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-3);
+}
+.entry-board .entry-tabs .base-button[aria-selected='true'] {
+  color: var(--blue);
 }
 .entry-heading {
   font-size: 18px;
   font-weight: 600;
 }
+.entry-top .entry-text {
+  flex: 1;
+  min-width: 0;
+}
 .entry-text {
+  font-size: 14px;
   overflow-wrap: anywhere;
   line-height: 1.55;
 }
@@ -202,13 +252,5 @@ function source(conversationId, refs) {
 }
 .entry-error {
   color: var(--danger);
-}
-@media (min-width: 900px) {
-  .entry-section {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .entry-heading {
-    grid-column: 1/-1;
-  }
 }
 </style>

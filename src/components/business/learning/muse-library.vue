@@ -11,6 +11,20 @@
             maxlength="120" /></view
       ></view>
       <view class="library-sidebar-scroll">
+        <view v-for="group in typeGroups" :key="group.id" class="lib-section library-types">
+          <text class="library-type-heading">{{ group.label }}</text>
+          <BaseButton
+            v-for="item in group.items"
+            :key="item.value"
+            class="lib-nav library-type"
+            variant="quiet"
+            align="start"
+            :class="{ 'is-current': kind === item.value && section === 'all' }"
+            :aria-pressed="kind === item.value && section === 'all'"
+            @tap="chooseKind(item.value)"
+            ><BaseIcon :name="item.icon" size="20px" /><text>{{ item.label }}</text></BaseButton
+          >
+        </view>
         <view
           v-for="group in groups"
           :key="group.id"
@@ -177,20 +191,23 @@
                 align="start"
                 :aria-pressed="selecting ? selected.includes(item.id) : undefined"
                 :label="`${selecting ? '选择 ' : '打开 '}${item.title}`"
+                :title="
+                  item.sources.length
+                    ? '来源对话：' + item.sources.map((source) => source.label).join('、')
+                    : '未归类 · 暂无来源对话'
+                "
                 @tap="openArtifact(item)"
                 ><view class="artifact-cover" :class="`artifact-cover-${item.kind}`"
-                  ><BaseIcon :name="item.icon" size="30px" /><BaseIcon
+                  ><view v-if="artifactPreviews[item.id]" class="artifact-preview">
+                    <text class="artifact-preview-title">{{ item.title }}</text>
+                    <text class="artifact-preview-copy">{{ artifactPreviews[item.id] }}</text> </view
+                  ><BaseIcon v-else :name="item.icon" size="30px" /><BaseIcon
                     v-if="selecting"
                     class="artifact-selection"
                     :name="selected.includes(item.id) ? 'checkbox-on' : 'checkbox-off'"
                     size="20px" /></view
                 ><view class="artifact-meta"
                   ><text class="artifact-title">{{ item.title }}</text
-                  ><text class="artifact-subject">{{
-                    item.sources.length
-                      ? '来源对话：' + item.sources.map((source) => source.label).join('、')
-                      : '未归类 · 暂无来源对话'
-                  }}</text
                   ><text
                     >{{ kindLabel(item.kind) }} · {{ dateLabel(item.at, item.day) }} · {{ item.detail }}</text
                   ></view
@@ -254,7 +271,7 @@ const root = ref(null),
   query = ref(''),
   section = ref('all'),
   kind = ref('all'),
-  collapsed = ref({}),
+  collapsed = ref({ conversations: true, subjects: true, collections: true }),
   oldest = ref(false),
   selecting = ref(false),
   selected = ref([]),
@@ -293,10 +310,14 @@ const mobileFilterSections = computed(() =>
   groups.value.filter((group) => group.id !== 'conversations').flatMap((group) => group.items)
 );
 const sectionTitle = computed(() =>
-  section.value === 'files'
-    ? '原始资料'
-    : mobileSections.value.find((item) => item.id === (section.value === 'all' ? context.id.value : section.value))
-        ?.label || '全部学习内容'
+  kind.value !== 'all' && section.value === 'all'
+    ? kindLabel(kind.value)
+    : section.value === 'files'
+      ? '原始资料'
+      : section.value === 'all' && context.id.value === 'all'
+        ? '全部学习内容'
+        : mobileSections.value.find((item) => item.id === (section.value === 'all' ? context.id.value : section.value))
+            ?.label || '全部学习内容'
 );
 const kindFilters = [
   { value: 'all', label: '全部类型' },
@@ -313,6 +334,34 @@ const kindFilters = [
   { value: 'animation', label: '动画' },
   { value: 'web', label: '交互学习内容' }
 ];
+const typeGroups = [
+  {
+    id: 'artifacts',
+    label: '学习产物',
+    items: [
+      { value: 'all', label: '全部学习内容', icon: 'folder' },
+      { value: 'document', label: '文档', icon: 'file-text' },
+      { value: 'web', label: '交互学习内容', icon: 'globe' }
+    ]
+  },
+  {
+    id: 'media',
+    label: '媒体',
+    items: [
+      { value: 'image', label: '图片', icon: 'image' },
+      { value: 'video', label: '视频', icon: 'play' },
+      { value: 'audio', label: '音频', icon: 'volume' }
+    ]
+  }
+];
+function chooseKind(value) {
+  section.value = 'all';
+  kind.value = value;
+  filterOpen.value = false;
+}
+const matchesKind = (item) =>
+  kind.value === 'all' ||
+  (kind.value === 'document' ? ['document', 'material', 'writing'].includes(item.kind) : item.kind === kind.value);
 const items = computed(() =>
   library.value.items
     .filter((item) => {
@@ -322,7 +371,7 @@ const items = computed(() =>
       if (section.value !== 'all' && section.value !== 'files' && !selectedSection?.itemIds?.includes(item.id))
         return false;
       return (
-        (kind.value === 'all' || item.kind === kind.value) &&
+        matchesKind(item) &&
         `${item.title} ${item.goal || ''}`.toLocaleLowerCase().includes(query.value.trim().toLocaleLowerCase())
       );
     })
@@ -330,6 +379,29 @@ const items = computed(() =>
       (a, b) => Number(!!pins.value[b.id]) - Number(!!pins.value[a.id]) || (oldest.value ? a.at - b.at : b.at - a.at)
     )
 );
+const artifactPreviews = computed(() => {
+  const conversations = new Map(learning.state.conversations.map((c) => [c.id, c]));
+  const cardsText = (cards) =>
+    (cards || [])
+      .slice(0, 4)
+      .map((card) => card.prompt || card.title || '')
+      .join('\n');
+  return Object.fromEntries(
+    library.value.items.map((item) => {
+      const conversation = conversations.get(item.conversationId);
+      const day = conversation?.coach?.days?.find((value) => value.day === item.day);
+      let content = item.content || item.material?.segments?.[0]?.content || '';
+      if (!content && item.messageId)
+        content = conversation?.messages?.find((m) => m.id === item.messageId)?.content || '';
+      if (!content && item.kind === 'practice')
+        content = cardsText(day?.pack?.cards || conversation?.coach?.diagnostic?.cards);
+      if (!content && item.kind === 'summary') content = (day?.summary?.learned || []).join('\n');
+      if (!content && item.kind === 'writing')
+        content = (day?.rewrites || day?.drafts || []).map((part) => part.text || '').join('\n');
+      return [item.id, typeof content === 'string' ? content.slice(0, 640) : ''];
+    })
+  );
+});
 watch(() => [learning.recordContext(), ...library.value.items.filter((i) => i.source).map((i) => i.id)], readPins, {
   immediate: true
 });
@@ -484,8 +556,8 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
 }
 .library-sidebar {
   background: var(--muse-panel);
-  /* Muse 2 实现参数：styles/app.css:498-517，分类栏 217px。 */
-  width: 217px;
+  /* Original Muse capture: approximately 240px beside the rail. */
+  width: 240px;
   flex: none;
   display: flex;
   flex-direction: column;
@@ -624,7 +696,7 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-  padding: 28px 28px 16px;
+  padding: 20px 60px 16px;
   flex-wrap: wrap;
 }
 .library-context {
@@ -703,7 +775,7 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 0 28px 36px;
+  padding: 0 60px 36px;
   scrollbar-width: none;
 }
 .library-scroll::-webkit-scrollbar {
@@ -846,19 +918,13 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
 }
 .library-grid {
   display: grid;
-  /* Muse 2 实现参数：styles/app.css:517，3 列、19px 间距。 */
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 264px));
   justify-content: start;
   gap: 19px;
   margin-top: 4px;
 }
 :global(.has-artifact) .library-grid {
   grid-template-columns: minmax(0, 1fr);
-}
-@media (max-width: 1050px) {
-  .library-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 .artifact {
   position: relative;
@@ -895,20 +961,42 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   width: 100%;
   aspect-ratio: 16/10;
   height: auto;
-  background: linear-gradient(135deg, #2a4f8a, #16243c);
-  color: #fff;
+  background: var(--muse-panel);
+  color: var(--ink-3);
 }
 .artifact-cover :deep(.base-icon) {
   color: inherit !important;
 }
-.artifact-cover-material {
-  background: linear-gradient(135deg, #255c46, #12241c);
+.artifact-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  padding: 16px 20px;
+  overflow: hidden;
+  background: #fafafa;
+  color: #24262b;
+  text-align: left;
 }
-.artifact-cover-writing {
-  background: linear-gradient(135deg, #7a4a21, #2a1a0e);
+.artifact-preview-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.artifact-cover-summary {
-  background: linear-gradient(135deg, #4b3a78, #1d1730);
+.artifact-preview-copy {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-line;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 16px;
 }
 .artifact-selection {
   position: absolute;
@@ -935,6 +1023,30 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   font-weight: 600;
   color: var(--ink);
   overflow-wrap: anywhere;
+}
+.artifact-title,
+.artifact-meta > text:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.library-type-heading {
+  display: block;
+  padding: 12px 10px 6px;
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 18px;
+}
+.library-sidebar .lib-nav :deep(.base-button__content > text) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (min-width: 978px) and (pointer: fine) {
+  .library-sidebar .lib-nav {
+    min-height: 36px;
+    padding: 4px 8px;
+  }
 }
 .library-sidebar :deep(.base-icon),
 .library-empty :deep(.base-icon) {
@@ -988,6 +1100,14 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   line-height: 1.7;
 }
 @media (max-width: 977px) {
+  .library-head {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+  .library-scroll {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
   .library-context {
     display: block;
   }
@@ -1073,7 +1193,7 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
 }
 @media (min-width: 600px) {
   .artifact-cover {
-    height: 150px;
+    height: 166px;
     aspect-ratio: auto;
   }
 }

@@ -1,4 +1,4 @@
-/* Muse2 Pages.tsx: geometry is shared by Feed, Ideas and Goals. */
+/* Shared page geometry; original Muse goal alignment is scoped below. */
 .muse-page {
   display: flex;
   flex-direction: column;
@@ -436,4 +436,108 @@
   font-size: 16px;
   font-weight: 600;
   color: var(--ink-2);
+}
+
+/* Original Muse Goals: a centered single column with a compact options control. */
+.muse-page--goals .muse-page-head,
+.muse-page--goals .muse-page-body {
+  max-width: 800px;
+}
+.muse-page--goals .muse-page-head {
+  position: relative;
+  z-index: 15;
+  padding: 20px 16px 12px;
+}
+.muse-page--goals .muse-page-title {
+  font-size: 34px;
+  line-height: 40px;
+}
+.muse-page--goals .muse-page-body {
+  padding: 0 16px;
+  gap: 12px;
+}
+.goal-options {
+  position: relative;
+  margin-left: auto;
+  flex: none;
+}
+.muse-page--goals .goal-options > .base-button {
+  background: var(--muse-raised);
+}
+.goal-options-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  max-width: calc(100vw - 32px);
+  max-height: min(480px, calc(100vh - 140px));
+  overflow: auto;
+  padding: 8px;
+  border-radius: 16px;
+  background: var(--muse-popover);
+  box-shadow: var(--lift-3);
+}
+.goal-options-menu .goal-entry-links {
+  display: flex;
+  flex-direction: column;
+}
+.muse-page--goals .goal-options-menu .base-button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  border-radius: 8px;
+}
+.goals-tracking {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.goal-section-heading {
+  display: block;
+  margin: 12px 0 8px;
+  color: var(--ink-3);
+  font-size: 13px;
+  line-height: 20px;
+}
+.goal-tracking-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 4px 0;
+  min-width: 0;
+}
+.goal-tracking-row > .base-icon {
+  flex: none;
+  margin-top: 5px;
+}
+.goal-tracking-copy {
+  flex: 1;
+  min-width: 0;
+}
+.goal-tracking-copy .goal-name,
+.goal-tracking-copy .hero-copy {
+  display: block;
+}
+.goal-tracking-copy .hero-copy {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 18px;
+}
+.goal-tracking-row > .base-button {
+  flex: none;
+}
+.goal-progress {
+  flex: none;
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 22px;
+}
+@media (max-width: 760px) {
+  .muse-page--goals .muse-page-title {
+    font-size: 24px;
+    line-height: 32px;
+  }
 }

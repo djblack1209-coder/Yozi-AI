@@ -40,6 +40,31 @@ it('keeps history, insights, practice and saved items reachable from the product
   expect(JSON.stringify(harness.store.state)).toBe(before);
 });
 describe('Muse library keeps selection and private reading local', () => {
+  it('keeps type navigation visible, previews saved text, and does not fabricate empty media or write facts', async () => {
+    const before = JSON.stringify(harness.store.state);
+    expect(wrapper.findAll('.library-type').map((node) => node.text())).toEqual([
+      '全部学习内容',
+      '文档',
+      '交互学习内容',
+      '图片',
+      '视频',
+      '音频'
+    ]);
+    await wrapper
+      .findAll('.library-type')
+      .find((node) => node.text() === '文档')
+      .trigger('tap');
+    expect(wrapper.get('.library-title').text()).toBe('文档');
+    expect(wrapper.findAll('.artifact')).toHaveLength(2);
+    expect(wrapper.get('[aria-label="打开 我的私人资料"] .artifact-preview-copy').text()).toBe('本人原文');
+    await wrapper
+      .findAll('.library-type')
+      .find((node) => node.text() === '视频')
+      .trigger('tap');
+    expect(wrapper.findAll('.artifact')).toHaveLength(0);
+    expect(wrapper.get('.library-empty').text()).toContain('没有匹配的资料');
+    expect(JSON.stringify(harness.store.state)).toBe(before);
+  });
   it('带练成果使用已保存的学习日期，避免 UTC 零点显示成前一天', async () => {
     harness.store.state.conversations.push({
       id: 'cs',

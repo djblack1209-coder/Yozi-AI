@@ -1,7 +1,7 @@
 <template>
   <MuseLibrary v-if="view === 'materials'" @view="$emit('view', $event)" />
   <MuseUsageBoard v-else-if="view === 'usage'" @close="$emit('view', 'materials')" />
-  <view v-else class="muse-page">
+  <view v-else class="muse-page" :class="{ 'muse-page--goals': view === 'plan' }">
     <view class="muse-page-head">
       <text class="muse-page-title" role="heading" aria-level="1">{{
         t(view === 'plan' ? 'muse.goals' : 'muse.activity')
@@ -16,11 +16,65 @@
           >{{ filter.label }}</BaseButton
         >
       </view>
+      <view v-else-if="view === 'plan'" class="goal-options" @focusout="goalOptionsFocusOut">
+        <BaseButton
+          ref="goalOptionsButton"
+          variant="quiet"
+          icon="ellipsis"
+          icon-only
+          label="目标选项"
+          aria-haspopup="menu"
+          :aria-expanded="goalOptionsOpen"
+          @tap="toggleGoalOptions"
+        />
+        <view
+          v-if="goalOptionsOpen"
+          ref="goalOptionsMenu"
+          class="goal-options-menu"
+          role="group"
+          aria-label="目标选项"
+          @keydown.esc.stop.prevent="closeGoalOptions(true)"
+        >
+          <MuseConversationFilter />
+          <BaseButton
+            variant="quiet"
+            icon="plus"
+            :disabled="learning.busy"
+            @tap="
+              closeGoalOptions();
+              start();
+            "
+            >新建目标</BaseButton
+          >
+          <view class="goal-entry-links">
+            <BaseButton
+              variant="quiet"
+              icon="calendar"
+              :disabled="learning.busy"
+              @tap="
+                closeGoalOptions();
+                openToday();
+              "
+              >{{ t('tutor.insights.todayPlan') }}</BaseButton
+            >
+            <BaseButton
+              variant="quiet"
+              icon="refresh"
+              :disabled="learning.busy"
+              @tap="
+                closeGoalOptions();
+                safeNavigateTo('/pages/learning/review');
+              "
+              >分批复习</BaseButton
+            >
+          </view>
+        </view>
+      </view>
       <BaseButton v-else variant="primary" icon="plus" :disabled="learning.busy" @tap="start">新建目标</BaseButton>
     </view>
     <view class="muse-page-scroll">
       <view class="muse-page-body" :class="{ 'muse-page-body--wide': view === 'all' }">
-        <MuseConversationFilter />
+        <MuseConversationFilter v-if="view !== 'plan' || context.id.value !== 'all'" />
         <template v-if="view === 'all'">
           <view class="workspace-filters subject-filters" role="group" aria-label="历史学科筛选">
             <BaseButton
@@ -36,11 +90,11 @@
             <view class="history-date-row"
               ><text class="history-date" role="heading" aria-level="2">{{ group.day }}</text>
               <BaseButton
+                v-if="shareableDay(group.day)"
                 variant="quiet"
                 icon="download"
                 icon-only
                 :label="`保存 ${group.day} 学习图片`"
-                v-if="shareableDay(group.day)"
                 @tap="shareDay = group.day"
               />
             </view>
@@ -75,64 +129,27 @@
           >
         </template>
         <template v-else-if="view === 'plan'">
-          <view class="workspace-filters goal-entry-links">
-            <BaseButton variant="quiet" icon="calendar" :disabled="learning.busy" @tap="openToday">{{
-              t('tutor.insights.todayPlan')
-            }}</BaseButton>
-            <BaseButton
-              variant="quiet"
-              icon="refresh"
-              :disabled="learning.busy"
-              @tap="safeNavigateTo('/pages/learning/review')"
-              >分批复习</BaseButton
-            >
-          </view>
           <ConversationEntries />
-          <view v-if="current" class="goals-hero"
-            ><view class="goal-hero-main"
-              ><text class="workspace-eyebrow">当前目标</text
-              ><text class="goal-hero-title">{{ goalTitle(current) }}</text
-              ><text class="hero-copy">{{ goalMeta(current) }}</text
-              ><text v-if="current.coach.profile?.foundation" class="hero-copy goal-foundation"
-                >困难：{{ current.coach.profile.foundation }}</text
-              ><view class="goal-hero-foot"
-                ><text class="hero-copy">{{ current.next }}</text
-                ><BaseButton variant="quiet" @tap="open(current.id)">{{
-                  current.stopped ? '查看记录' : '继续训练'
-                }}</BaseButton></view
-              ></view
-            ><view
-              v-if="current.percent !== null"
-              class="goal-ring"
-              :style="{ '--goal-percent': `${current.percent}%` }"
-              ><text>{{ current.percent }}%</text></view
-            ><view v-else class="goal-days"
-              ><text>{{ current.completedDays }}</text
-              ><text>已完成天数</text></view
-            ></view
-          >
-          <view v-if="goals.length > 1" class="goal-list"
-            ><view v-for="goal in goals.slice(1)" :key="goal.id" class="goal-card"
-              ><view class="goal-card-top"
-                ><text class="goal-name">{{ goalTitle(goal) }}</text
-                ><text>{{ goal.completedDays }}{{ goal.totalDays ? ` / ${goal.totalDays}` : '' }} 天</text></view
-              ><view
-                v-if="goal.percent !== null"
-                class="goal-track"
-                role="progressbar"
-                aria-label="已完成训练天数"
-                :aria-valuenow="goal.completedDays"
-                :aria-valuemax="goal.totalDays"
-                aria-valuemin="0"
-                ><view :style="{ width: `${goal.percent}%` }" /></view
-              ><view class="goal-card-foot"
-                ><text>{{ goal.next }}</text
-                ><BaseButton variant="quiet" @tap="open(goal.id)">{{
-                  goal.stopped ? '查看记录' : '继续训练'
-                }}</BaseButton></view
-              ></view
-            ></view
-          >
+          <view v-if="goals.length" class="goals-tracking">
+            <text class="goal-section-heading" role="heading" aria-level="2">训练进度</text>
+            <view v-for="goal in goals" :key="goal.id" class="goal-tracking-row">
+              <BaseIcon :name="goal.percent === 100 ? 'checkbox-on' : 'checkbox-off'" size="20px" />
+              <view class="goal-tracking-copy">
+                <text class="goal-name">{{ goalTitle(goal) }}</text>
+                <text class="hero-copy">{{ goalMeta(goal) }} · {{ goal.next }}</text>
+              </view>
+              <text class="goal-progress"
+                >{{ goal.completedDays }}{{ goal.totalDays ? ` / ${goal.totalDays}` : '' }} 天</text
+              >
+              <BaseButton
+                variant="quiet"
+                icon="arrow-right"
+                icon-only
+                :label="goal.stopped ? '查看记录' : '继续训练'"
+                @tap="open(goal.id)"
+              />
+            </view>
+          </view>
           <view v-if="current?.tasks.length" class="goal-tasks"
             ><text class="task-heading">今天的完成标准</text
             ><BaseButton
@@ -165,7 +182,7 @@
 import ConversationEntries from '@/pages/archive/components/conversation-entries.vue';
 import MuseConversationFilter from './muse-conversation-filter.vue';
 import { workspaceConversationContext } from '@/services/learning/workspace-context.js';
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
+import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import '@/i18n/muse.js';
 import '@/i18n/tutor.js';
 import { t } from '@/i18n/index.js';
@@ -181,6 +198,36 @@ defineProps({ view: { type: String, default: 'all' } });
 defineEmits(['view']);
 const learning = useConversationLearningStore();
 const context = workspaceConversationContext(learning);
+const goalOptionsOpen = ref(false),
+  goalOptionsButton = ref(null),
+  goalOptionsMenu = ref(null);
+function closeGoalOptions(restoreFocus = false) {
+  goalOptionsOpen.value = false;
+  // #ifdef H5
+  if (restoreFocus) (goalOptionsButton.value?.$el || goalOptionsButton.value)?.focus?.();
+  // #endif
+}
+async function toggleGoalOptions() {
+  if (goalOptionsOpen.value) return closeGoalOptions();
+  goalOptionsOpen.value = true;
+  await nextTick();
+  // #ifdef H5
+  (goalOptionsMenu.value?.$el || goalOptionsMenu.value)?.querySelector?.('[role="button"]')?.focus?.();
+  // #endif
+}
+function outsideGoalOptions(event) {
+  if (!event.target?.closest?.('.goal-options')) closeGoalOptions();
+}
+function goalOptionsFocusOut(event) {
+  if (event.relatedTarget && !event.relatedTarget.closest?.('.goal-options')) closeGoalOptions();
+}
+function goalOptionsKey(event) {
+  const menu = goalOptionsMenu.value?.$el || goalOptionsMenu.value;
+  if (event.key !== 'Escape' || !goalOptionsOpen.value || !menu?.getClientRects?.().length) return;
+  event.preventDefault();
+  event.stopPropagation();
+  closeGoalOptions(true);
+}
 const subject = ref('all');
 const feedFilter = ref('all'),
   shareDay = ref(null),
@@ -259,8 +306,20 @@ function shareableDay(day) {
   );
 }
 const reader = learning.observeCalendar();
-onMounted(() => reader.show());
-onUnmounted(() => reader.dispose());
+onMounted(() => {
+  reader.show();
+  // #ifdef H5
+  document.addEventListener('pointerdown', outsideGoalOptions);
+  document.addEventListener('keydown', goalOptionsKey, true);
+  // #endif
+});
+onUnmounted(() => {
+  reader.dispose();
+  // #ifdef H5
+  document.removeEventListener('pointerdown', outsideGoalOptions);
+  document.removeEventListener('keydown', goalOptionsKey, true);
+  // #endif
+});
 function kindLabel(kind) {
   return { practice: '练习', feedback: '反馈', material: '资料', writing: '写作', summary: '小结' }[kind] || kind;
 }
