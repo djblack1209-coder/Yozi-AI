@@ -119,7 +119,7 @@ it('routes an explicitly saved error-review answer through the real store reques
         requestBinding: body.requestBinding,
         modelId: body.modelId,
         coach: output,
-        ...(request.knowledgeContract
+        ...(request.knowledgeContract || request.predictionContract
           ? {
               modelOrigin: {
                 contract: 'learning-model-origin-v1',
@@ -145,6 +145,12 @@ it('routes an explicitly saved error-review answer through the real store reques
   try {
     store.coachSave('profile', { profile: { exam: 'english2', minutes: 25, deadline: null } });
     await store.requestCoach('diagnostic');
+    expect(store.active.coach.requests[0]).toMatchObject({
+      request: { predictionContract: 'writing-prediction-check-v1' },
+      predictionSnapshot: { contract: 'writing-prediction-check-v1' },
+      resultModel: { source: 'byok', actualModel: 'synthetic-actual-model' }
+    });
+    expect(store.active.coach.predictionChecks).toHaveLength(5);
     for (const [index, card] of store.active.coach.diagnostic.cards.entries())
       store.coachSave('answer', {
         target: 'diagnostic',

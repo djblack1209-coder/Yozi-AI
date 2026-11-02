@@ -10,6 +10,7 @@ export { PROGRESS_NODE_RULES, progressNodeIds };
 import { dayKey, effectiveGrade, questionKey } from './learning-domain.js';
 import { knowledgeGraphSeed } from './knowledge-graph-seed.js';
 import { normalizeLearningModelOrigin } from '../../../laf-backend/functions/_shared/learning-model-origin.js';
+import { writingPredictionAudit } from '../../../laf-backend/functions/_shared/learning-writing-prediction.js';
 
 // Display floor only. N3 must calibrate it with unseen, unprompted first answers.
 export const MIN_PROGRESS_EVENTS = 5;
@@ -341,6 +342,7 @@ export function learningProgressReadModel(state = {}) {
     // No selected/frozen platform reference model or predictive validation yet.
     // Personal BYOK observations, unknown IDs and local grades never enter it.
     platformReference: { status: 'insufficient', percentage: null, evidenceIds: [] },
+    predictionAudit: writingPredictionAudit(state),
     mindMap: {
       id: writingSubject,
       label: '考研英语写作',

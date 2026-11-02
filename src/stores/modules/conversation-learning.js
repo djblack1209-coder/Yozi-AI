@@ -12,6 +12,7 @@ import { mapContentBlocks } from '../../../laf-backend/functions/_shared/learnin
 import { normalizeIntakeReply, explicitIntakeFacts } from '../../../laf-backend/functions/_shared/learning-intake.js';
 import { coachMaterialContext } from '@/services/learning/coach-material-context.js';
 import { WRITING_KNOWLEDGE_CONTRACT } from '../../../laf-backend/functions/_shared/learning-writing-knowledge.js';
+import { WRITING_PREDICTION_CONTRACT } from '../../../laf-backend/functions/_shared/learning-writing-prediction.js';
 import {
   WRITING_COACH_CONTRACT,
   COACH_FEEDBACK_VERSION,
@@ -1715,6 +1716,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     assert(active.value?.coach && !busy.value, 'BUSY', '请回到当前带练，等待请求结束');
     return commit(`coach.${type}`, {
       ...data,
+      ...(type === 'answer' ? { predictionContract: WRITING_PREDICTION_CONTRACT } : {}),
       conversationId: active.value.id,
       explicit: true,
       day: dayKey(Date.now(), state.value.timezone)
@@ -1834,7 +1836,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           ? { feedbackVersion: COACH_FEEDBACK_VERSION }
           : {}),
         ...(['diagnostic', 'daily'].includes(phase) && coach.profile.exam !== 'cs408'
-          ? { exerciseContract: COACH_EXERCISE_CONTRACT }
+          ? { exerciseContract: COACH_EXERCISE_CONTRACT, predictionContract: WRITING_PREDICTION_CONTRACT }
           : {}),
         ...(phase === 'summary' && coach.profile.exam !== 'cs408' ? { summaryContract: COACH_SUMMARY_CONTRACT } : {}),
         ...(['feedback', 'essay'].includes(phase) && coach.profile.exam !== 'cs408'
@@ -1967,7 +1969,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           explicit: true,
           requestId: request.id,
           output: result.data.coach,
-          ...(request.request.knowledgeContract && result.data.modelOrigin
+          ...((request.request.knowledgeContract || request.request.predictionContract) && result.data.modelOrigin
             ? { modelOrigin: result.data.modelOrigin }
             : {})
         },

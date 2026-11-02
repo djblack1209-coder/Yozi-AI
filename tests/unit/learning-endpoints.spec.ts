@@ -2249,7 +2249,8 @@ it.each(['calibrated', 'bad-then-good', 'bad-twice', 'verifier-fails', 'second-r
       minutes: 25,
       sources: [],
       input: '安排今天的训练',
-      exerciseContract: 'writing-exercises-v1'
+      exerciseContract: 'writing-exercises-v1',
+      predictionContract: 'writing-prediction-check-v1'
     };
     const english = [
       'We raise money ___ children.',
@@ -2322,6 +2323,16 @@ it.each(['calibrated', 'bad-then-good', 'bad-twice', 'verifier-fails', 'second-r
     });
     const body = { ...streamBody('cloze-calibration-' + mode), learningContext: { owner: 'u1', coach: request } };
     const result = await ai(context(body));
+    if (result.success) {
+      expect(result.data.modelOrigin).toMatchObject({
+        contract: 'learning-model-origin-v1',
+        modelId: body.modelId,
+        requestBinding: body.requestBinding,
+        source: 'byok',
+        upstreamVersion: null
+      });
+      expect(JSON.stringify(result.data.modelOrigin)).not.toContain('fixture-only-stream-key');
+    }
     const calls = vi.mocked(callLearningProvider).mock.calls;
     const blanks = JSON.parse(
       calls.find(([config]: any) => config.writingOutput?.contract === 'writing-exercise-calibration-v3')![1][1].content

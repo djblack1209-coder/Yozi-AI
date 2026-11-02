@@ -6,6 +6,13 @@ import { coachErrorReviews } from './learning-coach-review.js';
 import { WRITING_KNOWLEDGE_CONTRACT, writingKnowledgeBinding } from './learning-writing-knowledge.js';
 import { normalizeLearningModelOrigin } from './learning-model-origin.js';
 import {
+  WRITING_PREDICTION_CONTRACT,
+  writingPredictionSnapshot,
+  createWritingPredictionChecks,
+  recordWritingPredictionAnswer,
+  recordWritingPredictionFeedback
+} from './learning-writing-prediction.js';
+import {
   writingAnswerHash,
   writingBandRubric,
   normalizeWritingBandContext,
@@ -222,6 +229,14 @@ export function normalizeCoachRequest(value) {
       'exerciseContract'
     );
     request.exerciseContract = value.exerciseContract;
+  }
+  if (value.predictionContract !== undefined) {
+    fail(
+      value.predictionContract === WRITING_PREDICTION_CONTRACT && request.exerciseContract === COACH_EXERCISE_CONTRACT,
+      '首答核对合同不支持',
+      'predictionContract'
+    );
+    request.predictionContract = WRITING_PREDICTION_CONTRACT;
   }
   if (value.summaryContract !== undefined) {
     fail(
@@ -1934,7 +1949,16 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
       binding: text(d.binding, 100),
       ...(retry ? { retryOf: retry.id } : {}),
       status: 'pending',
-      at: op.at
+      at: op.at,
+      ...(request.predictionContract
+        ? {
+            predictionSnapshot: writingPredictionSnapshot(state, coach, {
+              id: d.requestId,
+              modelId: d.modelId,
+              at: op.at
+            })
+          }
+        : {})
     });
     return { requestId: d.requestId };
   }
@@ -1988,13 +2012,13 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
       : null;
     delete output.bandCandidate;
     const modelOrigin =
-      req.request.knowledgeContract &&
+      (req.request.knowledgeContract || req.request.predictionContract) &&
       normalizeLearningModelOrigin(d.modelOrigin, {
         requestId: req.id,
         modelId: req.modelId,
         binding: req.binding
       });
-    if (['feedback', 'essay'].includes(output.kind))
+    if (['feedback', 'essay'].includes(output.kind)) {
       (coach.learningRecords ||= []).push({
         id: op.id,
         requestId: req.id,
@@ -2009,6 +2033,8 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
           ? { knowledge: writingKnowledgeBinding(output, coachAssessmentTask(req.request)) }
           : {})
       });
+      recordWritingPredictionFeedback(coach, req, coach.learningRecords.at(-1));
+    }
     req.status = 'completed';
     req.resultId = op.id;
     if (assessment) {
@@ -2024,9 +2050,13 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
     }
     if (output.kind === 'diagnostic') {
       assert(!coach.diagnostic, 'CONFLICT', '摸底已建立');
+      createWritingPredictionChecks(state, c, req, output, op);
+      if (req.request.predictionContract && modelOrigin) req.resultModel = modelOrigin;
       coach.diagnostic = { cards: output.cards, answers: [], feedback: null };
     } else if (output.kind === 'daily') {
       assert(!coach.days.some((v) => v.day === today), 'CONFLICT', '今日训练已建立');
+      createWritingPredictionChecks(state, c, req, output, op);
+      if (req.request.predictionContract && modelOrigin) req.resultModel = modelOrigin;
       coach.days.push({
         day: today,
         pack: output,
@@ -2133,6 +2163,7 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
       assessmentStatus: 'pending',
       source: JSON.parse(JSON.stringify(card.source))
     });
+    recordWritingPredictionAnswer(state, coach, op, card);
     return { answerId: op.id };
   }
   if (op.type === 'coach.review') {

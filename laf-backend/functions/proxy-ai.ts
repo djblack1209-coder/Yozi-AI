@@ -875,7 +875,8 @@ export async function runLearningModelTask(
         : response.usage;
     if (dailyReservation) await settlePlatformDay(db, dailyReservation, actualCost);
     const modelOrigin =
-      coach?.knowledgeContract === 'writing-knowledge-binding-v1'
+      coach?.knowledgeContract === 'writing-knowledge-binding-v1' ||
+      coach?.predictionContract === 'writing-prediction-check-v1'
         ? normalizeLearningModelOrigin(
             redactModelValue(
               {
