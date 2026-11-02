@@ -232,6 +232,30 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
       expect(() => parse(output, r)).toThrow();
     }
   );
+  it.each(['diagnostic', 'daily'])(
+    'retains complete authorized short context only at the live boundary: %s',
+    (phase) => {
+      const r = request(phase);
+      const raw = generation(r);
+      raw.cards[0].sourceQuote = '社区计划增加周六上午的预约办理时段';
+      const historical = normalizeCoachOutput(raw, r);
+      expect(historical.cards[0].source.quote).toBe(raw.cards[0].sourceQuote);
+      const live = parse(raw, r);
+      expect(live.cards[0].source.quote).toBe(materialText);
+      expect(live.cards[0].source.verified).toBe(false);
+      expect(raw.cards[0].sourceQuote).toBe('社区计划增加周六上午的预约办理时段');
+      if (live.writing) expect(live.writing.source.quote).toBe(materialText);
+    }
+  );
+  it('keeps long-source references bounded and never replaces a rejected quote with source text', () => {
+    const r = request('daily');
+    r.sources[0].content = materialText + '\n' + '这是另一段背景信息，不是本次问题的事实依据。'.repeat(12);
+    const raw = generation(r);
+    raw.cards[0].sourceQuote = materialText;
+    expect(parse(raw, r).cards[0].source.quote).toBe(materialText);
+    raw.cards[0].sourceQuote = '材料中不存在的实施效果已经得到证实';
+    expect(() => parse(raw, r)).toThrow('准确引文');
+  });
   it('records supported observations without scores, fabricated original quotes or ungrounded weakness labels', () => {
     const r = request('essay', { input: '建议增设周六上午的预约办理时段。', task: '写建议稿' });
     const output = feedback(r);

@@ -2829,3 +2829,64 @@ it.each(['supported', 'unknown-method'])(
     expect(callLearningProvider).toHaveBeenCalledTimes(1);
   }
 );
+
+it.each(['clean', 'secret-in-context'])(
+  'short subject source context preserves the post-parse secret guard: %s',
+  async (mode) => {
+    const sentinel = 'fixture-only-stream-key';
+    await streamProfile(false, 'u1', sentinel);
+    const quote = '社区窗口只在工作日白天开放';
+    const source =
+      quote +
+      '，部分居民办理不便，拟增加周六预约时段。' +
+      (mode === 'secret-in-context' ? `合成凭据：${sentinel}` : '尚无实施效果数据。');
+    const request = {
+      contract: 'kaoyan-writing-coach-v1',
+      methodContract: 'shenlun-writing-method-v1',
+      exam: 'shenlun',
+      phase: 'diagnostic',
+      target: 'diagnostic',
+      day: '2026-11-02',
+      input: '开始资料摸底',
+      task: '依据资料进行五项摸底',
+      sources: [{ id: 'synthetic-context', name: '合成材料', page: 1, content: source }]
+    };
+    vi.mocked(callLearningProvider).mockImplementation(async (config: any) => ({
+      ...streamCompleted,
+      actualModel: config.model,
+      content: JSON.stringify({
+        message: '先读材料。',
+        question: null,
+        tools: [],
+        coach: {
+          kind: 'diagnostic',
+          cards: Array.from({ length: 5 }, (_, index) => ({
+            id: `d${index + 1}`,
+            kind: 'diagnostic',
+            title: `合成题${index + 1}`,
+            prompt: '依据材料说明窗口目前的开放时间。',
+            example: '',
+            sourceId: 'synthetic-context',
+            sourceQuote: quote,
+            sourcePage: 1
+          }))
+        }
+      })
+    }));
+    const body = { ...streamBody('short-subject-context-' + mode), learningContext: { owner: 'u1', coach: request } };
+    const result = await ai(context(body));
+    expect(callLearningProvider).toHaveBeenCalledTimes(1);
+    if (mode === 'clean') {
+      expect(result.success).toBe(true);
+      expect(result.data.coach.cards.every((card: any) => card.source.quote === source && !card.source.verified)).toBe(
+        true
+      );
+    } else {
+      expect(result).toMatchObject({ success: false, error: 'COACH_INVALID', validationPath: 'raw' });
+      expect(result).not.toHaveProperty('data');
+      const usage = await models(context({ action: 'usage' }));
+      expect(usage.data.calls[0]).toMatchObject({ status: 'failed', actualCost: null, costStatus: 'pending' });
+      expect(JSON.stringify([result, usage.data.calls])).not.toContain(sentinel);
+    }
+  }
+);
