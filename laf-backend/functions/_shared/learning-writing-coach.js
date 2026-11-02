@@ -2,6 +2,7 @@ import { phraseReviewRating } from './learning-runtime-policy.js';
 /* global __YOZI_DEV_TEST__ */
 // 教学方法与已保存事实共用现有学习 reducer、备份及同步；模型不授予可靠判分。
 import { reviewFacts } from './learning-adherence.js';
+import { coachErrorReviews } from './learning-coach-review.js';
 import {
   writingAnswerHash,
   writingBandRubric,
@@ -152,7 +153,9 @@ export function normalizeCoachRequest(value) {
   if (value.exam === 'cs408') fail(sources.length > 0, '请先添加学习资料');
   const target = text(value.target || value.phase, 160);
   fail(
-    /^(diagnostic|daily|essay|rewrite|summary|analysis|paragraph-[0-2]|card-[a-zA-Z0-9_-]{1,80})$/.test(target),
+    /^(diagnostic|daily|essay|rewrite|error-review|summary|analysis|paragraph-[0-2]|card-[a-zA-Z0-9_-]{1,80})$/.test(
+      target
+    ),
     '反馈目标不合法'
   );
   const request = {
@@ -194,6 +197,10 @@ export function normalizeCoachRequest(value) {
     request.dimensionContract = WRITING_DIMENSION_CONTRACT;
   }
   if (value.writingBand !== undefined) request.writingBand = normalizeWritingBandContext(value.writingBand, request);
+  if (value.errorReviewId !== undefined) {
+    fail(request.phase === 'feedback' && target === 'error-review', '重练反馈目标不符', 'errorReviewId');
+    request.errorReviewId = text(value.errorReviewId, 160);
+  }
   if (value.exerciseContract !== undefined) {
     fail(
       value.exerciseContract === COACH_EXERCISE_CONTRACT &&
@@ -480,6 +487,9 @@ export function coachInferenceContext(request) {
     // 建档可能夹带整篇写作目标；局部评阅只能以当前任务和原答为准。
     const { foundation: _foundation, ...answerContext } = current;
     const assessment = coachAssessmentTask(current);
+    // Replaying a saved error answer must not change its stored task. Scope
+    // only the new inference: a cloze retry is still a word, not an essay.
+    if (current.target === 'error-review' && assessment?.kind === 'cloze') assessment.category = 'collocation';
     return {
       ...answerContext,
       task: assessment ? JSON.stringify(assessment) : current.task.split('\n题目提供的原句或示例')[0],
@@ -1412,6 +1422,17 @@ function coachTaskMatches(request, bound, day) {
 }
 // 反馈只能读取已经保存的原答；请求中的任务说明也由这些事实构造。
 export function coachInputFor(coach, day, phase, target) {
+  if (target === 'error-review') {
+    const attempt = (coach.errorReviews || []).find((item) => !item.feedback);
+    fail(phase === 'feedback' && attempt, '请先提交重练原答');
+    return {
+      input: attempt.answer,
+      task: attempt.task,
+      errorReviewId: attempt.id,
+      ...(attempt.sourceKind ? { sourceKind: attempt.sourceKind } : {}),
+      ...(attempt.sourceId ? { sourceId: attempt.sourceId } : {})
+    };
+  }
   if (target === 'rewrite') {
     const task = (coach.rewriteTasks || []).find((item) => item.answer && !item.feedback);
     fail(phase === 'essay' && task, '请先提交待改写稿件');
@@ -1674,6 +1695,59 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
   }
   assert(coach.profile, 'PRECONDITION', '请先保存或跳过建档问题');
   const day = coach.days.find((v) => v.day === (op.type === 'coach.request' ? d.request?.day : d.day || today));
+  if (op.type === 'coach.errorAnswer') {
+    const review = coachErrorReviews(state, op.at, c.id).find(
+      (item) => item.id === d.reviewId && !item.completedBy && item.availableAt <= op.at
+    );
+    assert(review, 'CONTEXT_CHANGED', '待重练错误已变化，请重新打开');
+    assert(!(coach.errorReviews || []).some((item) => !item.feedback), 'PRECONDITION', '请先完成已提交重练的反馈');
+    const answer = text(d.answer, 4000);
+    const originalRequest = coach.requests.find((item) => item.id === review.sourceRequestId);
+    const assessment = coachAssessmentTask({
+      ...originalRequest.request,
+      target: 'card-retry',
+      task: review.prompt,
+      input: answer
+    });
+    const diagnostic = review.sourceTarget === 'diagnostic' ? coachAssessmentTask(originalRequest.request) : null;
+    const index = coach.diagnostic?.answers.findIndex((item) => item.id === review.sourceAnswerId);
+    const task =
+      diagnostic?.kind === 'diagnostic_set' && diagnostic.items[index]
+        ? JSON.stringify({ ...diagnostic, items: [{ ...diagnostic.items[index], quoteId: 'q1' }] })
+        : review.sourceTarget === 'analysis'
+          ? JSON.stringify({
+              contract: 'writing-assessment-v1',
+              kind: 'diagnostic_set',
+              items: [
+                {
+                  quoteId: 'q1',
+                  kind: 'writing_analysis',
+                  task: review.prompt,
+                  answerFormat: DIAGNOSTIC_ANSWER_FORMATS.writing_analysis,
+                  allowedDimensions: ['任务完成'],
+                  allowReplacement: false
+                }
+              ]
+            })
+          : assessment
+            ? JSON.stringify(assessment)
+            : originalRequest.request.task;
+    (coach.errorReviews ||= []).push({
+      id: op.id,
+      reviewId: review.id,
+      sourceFeedbackId: review.sourceFeedbackId,
+      sourceAnswerId: review.sourceAnswerId,
+      sourceDay: review.sourceDay,
+      day: today,
+      at: op.at,
+      answer,
+      task,
+      prompt: review.prompt,
+      ...(originalRequest.request.sourceKind ? { sourceKind: originalRequest.request.sourceKind } : {}),
+      feedback: null
+    });
+    return { reviewId: review.id, answerId: op.id };
+  }
   if (op.type === 'coach.rewriteAnswer') {
     const task = (coach.rewriteTasks || []).find((item) => item.id === d.rewriteId);
     assert(task && task.dueDay <= today && !task.answer, 'PRECONDITION', '请回到已到期且尚未提交的改写任务');
@@ -1718,6 +1792,7 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
     const request = normalizeCoachRequest(d.request);
     const retry = d.retryOf ? coach.requests.find((v) => v.id === d.retryOf) : null;
     const bound = coachInputFor(coach, day, request.phase, request.target);
+    assert(request.errorReviewId === bound.errorReviewId, 'PRECONDITION', '重练原答已变化');
     if (d.retryOf)
       assert(
         retry?.status === 'closed' &&
@@ -1823,6 +1898,10 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
       req.request.target === 'rewrite'
         ? (coach.rewriteTasks || []).find((item) => item.id === req.request.rewriteId)
         : null;
+    const errorAttempt =
+      req.request.target === 'error-review'
+        ? (coach.errorReviews || []).find((item) => item.id === req.request.errorReviewId)
+        : null;
     const resultDay = rewriteTask
       ? coach.days.find((item) => item.day === rewriteTask.sourceDay)
       : assessment
@@ -1893,6 +1972,9 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
         '请先提交摸底原答'
       );
       coach.diagnostic.feedback = output;
+    } else if (errorAttempt) {
+      assert(errorAttempt.answer === req.request.input && !errorAttempt.feedback, 'PRECONDITION', '重练原答已变化');
+      errorAttempt.feedback = { ...output, id: op.id };
     } else if (rewriteTask) {
       assert(rewriteTask.answer?.text === req.request.input && !rewriteTask.feedback, 'PRECONDITION', '改写稿件已变化');
       rewriteTask.feedback = { ...output, id: op.id };
@@ -2180,6 +2262,11 @@ export function coachAssessmentCounts(coach, date) {
         submitted++;
         if (day.feedback[`paragraph-${index}`]) assessed++;
       }
+  }
+  for (const attempt of coach.errorReviews || []) {
+    if (date && attempt.day !== date) continue;
+    submitted++;
+    if (attempt.feedback) assessed++;
   }
   return { submitted, assessed, pending: submitted - assessed };
 }

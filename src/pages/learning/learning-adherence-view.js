@@ -115,7 +115,7 @@ export function learningBehaviors(state, at = Date.now(), options = {}) {
       r.due,
       r.conversationId,
       r.questionKey,
-      r.kind === 'coach' ? 'coach' : 'fsrs',
+      r.kind?.startsWith('coach') ? 'coach' : 'fsrs',
       null,
       { reviewId: r.id }
     );
@@ -126,7 +126,7 @@ export function learningBehaviors(state, at = Date.now(), options = {}) {
         r.completedAt,
         r.conversationId,
         r.questionKey,
-        r.kind === 'coach' ? 'coach' : 'learning',
+        r.kind?.startsWith('coach') ? 'coach' : 'learning',
         null,
         {
           reviewId: r.id,

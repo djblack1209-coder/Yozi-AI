@@ -24,6 +24,7 @@ import {
   parseCoachModelOutput
 } from '../../laf-backend/functions/_shared/learning-writing-coach.js';
 import { writingBandExample } from '../../laf-backend/functions/_shared/learning-rubric.js';
+import { coachErrorReviews } from '../../laf-backend/functions/_shared/learning-coach-review.js';
 
 const testChannel = vi.hoisted(() => ({ enabled: false }));
 vi.mock('@/config/build-channel.js', () => ({
@@ -82,6 +83,62 @@ function freshStore() {
 }
 
 const material = (text) => parsePastedMaterial(text, `m_${Math.random().toString(36).slice(2, 8)}`);
+
+it('routes an explicitly saved error-review answer through the real store request and result lifecycle', async () => {
+  const store = freshStore(),
+    previousGenerate = generateLearningTurn.getMockImplementation();
+  vi.mocked(generateLearningTurn).mockImplementation(async (body) => {
+    const request = body.learningContext.coach;
+    const output = coachFixture(request);
+    if (request.phase === 'feedback')
+      Object.assign(output, {
+        feedbackVersion: 2,
+        lines: [
+          {
+            original: request.target === 'diagnostic' ? 'On' : request.input,
+            advice: 'Synthetic assessment.',
+            rewrite: request.target === 'diagnostic' ? 'On' : request.input
+          }
+        ],
+        weaknesses: request.target === 'diagnostic' ? ['介词搭配'] : [],
+        weaknessEvidence:
+          request.target === 'diagnostic' ? [{ label: '介词搭配', quote: 'On', classification: 'error' }] : [],
+        dimensions: [
+          {
+            name: '搭配',
+            score: request.target === 'diagnostic' ? 1 : 2,
+            evidence: [request.target === 'diagnostic' ? 'On' : request.input],
+            comment: 'Synthetic dimension.'
+          }
+        ]
+      });
+    return {
+      success: true,
+      data: { requestId: body.requestId, requestBinding: body.requestBinding, modelId: body.modelId, coach: output }
+    };
+  });
+  try {
+    store.coachSave('profile', { profile: { exam: 'english2', minutes: 25, deadline: null } });
+    await store.requestCoach('diagnostic');
+    for (const [index, card] of store.active.coach.diagnostic.cards.entries())
+      store.coachSave('answer', {
+        target: 'diagnostic',
+        cardId: card.id,
+        answer: index === 1 ? 'On' : `Original answer ${index}.`
+      });
+    await store.requestCoach('feedback', 'diagnostic');
+    const [item] = coachErrorReviews(store.state, Date.now(), store.active.id);
+    expect(item).toBeDefined();
+    store.coachSave('errorAnswer', { reviewId: item.id, answer: 'in' });
+    expect((await store.requestCoach('feedback', 'error-review')).success).toBe(true);
+    expect(store.active.coach.errorReviews[0].feedback.target).toBe('error-review');
+    expect(coachErrorReviews(store.state, Date.now(), store.active.id)[0].completedBy).toBeTruthy();
+    expect(store.active.coach.diagnostic.answers[1].answer).toBe('On');
+  } finally {
+    vi.mocked(generateLearningTurn).mockImplementation(previousGenerate);
+    store.$dispose();
+  }
+});
 
 it('明确提交全文独立于共享和模型，快照重放保留；测试渠道同请求独立保存观察结果', async () => {
   const store = freshStore();

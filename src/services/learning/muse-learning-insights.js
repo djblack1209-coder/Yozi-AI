@@ -25,6 +25,7 @@ export function museLearningInsights(state, now) {
     if (!coach) continue;
     assessed += coachAssessmentCounts(coach).assessed;
     submitted += coach.diagnostic?.answers.length || 0;
+    submitted += coach.errorReviews?.length || 0;
     const collect = (feedback, day) => {
       if (!feedback) return;
       const evidence = { feedback, conversationId: conversation.id, goal: conversation.goal, day };

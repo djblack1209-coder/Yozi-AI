@@ -139,6 +139,19 @@ export function coachSavedRecords(conversation) {
         answer: review.answer,
         at: review.at
       });
+  for (const attempt of coach.errorReviews || [])
+    rows.push({
+      key: attempt.id,
+      day: attempt.day,
+      title: '错因重练',
+      target: 'error-review',
+      prompt: attempt.prompt,
+      answer: attempt.answer,
+      at: attempt.at,
+      feedback: attempt.feedback,
+      sourceFeedbackId: attempt.sourceFeedbackId,
+      sourceAnswerId: attempt.sourceAnswerId
+    });
   for (const row of rows)
     if (row.target && !row.feedback && !(row.target === 'diagnostic' && coach.diagnostic.feedback)) {
       row.request = [...(coach.requests || [])]
@@ -147,6 +160,7 @@ export function coachSavedRecords(conversation) {
           (request) =>
             ['pending', 'closed'].includes(request.status) &&
             request.request.target === row.target &&
+            (row.target !== 'error-review' || request.request.errorReviewId === row.key) &&
             request.request.phase === (row.phase || 'feedback') &&
             (row.target === 'diagnostic' || request.request.day === row.day)
         );

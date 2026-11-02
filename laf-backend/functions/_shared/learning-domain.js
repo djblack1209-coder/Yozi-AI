@@ -1137,6 +1137,7 @@ export function summarizeLearning(state, time = Date.now(), options = {}) {
       .filter(
         (r) =>
           r.kind !== 'coach' &&
+          r.kind !== 'coach_error' &&
           r.availableAt <= time &&
           !r.cancelled &&
           !r.completedBy &&
@@ -1324,6 +1325,7 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
     case 'coach.reassess':
     case 'coach.result':
     case 'coach.answer':
+    case 'coach.errorAnswer':
     case 'coach.review':
     case 'coach.analysis':
     case 'coach.paragraph':

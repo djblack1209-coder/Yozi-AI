@@ -325,6 +325,7 @@
                 ] || '按当前计划带练'
               }}</text
             >
+            <MuseErrorReview :conversation-id="learning.active.id" />
             <BaseCard v-if="dueRewrite">
               <text class="coach-title">次日改写</text>
               <text>{{ dueRewrite.task }}</text>
@@ -619,6 +620,7 @@ import MuseRichText from '@/components/business/learning/muse-rich-text.vue';
 import MuseWritingCard from '@/components/business/learning/muse-writing-card.vue';
 import MusePracticeSheet from '@/pages/learning/components/muse-practice-sheet.vue';
 import MuseFeedbackCard from '@/components/business/learning/muse-feedback-card.vue';
+import MuseErrorReview from '@/components/business/learning/muse-error-review.vue';
 import { useConversationLearningStore, learningId } from '@/stores/modules/conversation-learning.js';
 import { dayKey } from '@/services/learning/learning-domain.js';
 import { getToken } from '@/services/auth-storage.js';

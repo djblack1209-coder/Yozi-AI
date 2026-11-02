@@ -138,11 +138,14 @@ const ideas = computed(() =>
   )
 );
 const prompt = (item) =>
-  item.kind === 'coach'
-    ? learning.state.conversations
-        .find((c) => c.id === item.conversationId)
-        ?.coach?.library.find((i) => i.id === item.itemId)?.text || '句式记录'
-    : learning.state.questions.find((q) => `${q.id}@${q.version}` === item.questionKey)?.prompt || '原题已随旧题库下线';
+  item.kind === 'coach_error'
+    ? `${item.labels.join('、')} · ${item.prompt}`
+    : item.kind === 'coach'
+      ? learning.state.conversations
+          .find((c) => c.id === item.conversationId)
+          ?.coach?.library.find((i) => i.id === item.itemId)?.text || '句式记录'
+      : learning.state.questions.find((q) => `${q.id}@${q.version}` === item.questionKey)?.prompt ||
+        '原题已随旧题库下线';
 const dueLabel = (at) =>
   new Intl.DateTimeFormat('zh-CN', { timeZone: learning.state.timezone, month: 'numeric', day: 'numeric' }).format(at);
 watch(
@@ -198,7 +201,7 @@ function startBatch() {
 }
 function openReview(item) {
   run(() => {
-    if (item.kind === 'coach') {
+    if (['coach', 'coach_error'].includes(item.kind)) {
       learning.commit('review.open', { ...data(), reviewId: item.id }, learningId('review_open'));
       learning.selectedConversationId = item.conversationId;
       learning.locateConversation(item.conversationId);

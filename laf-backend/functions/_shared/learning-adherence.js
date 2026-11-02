@@ -1,3 +1,4 @@
+import { coachErrorReviews } from './learning-coach-review.js';
 // Read-only views over the existing private event stream. No network, grades or BKT estimates.
 export const REVIEW_REASONS = Object.freeze({
   time_short: '今天时间不够',
@@ -34,6 +35,7 @@ function scope(state, owner, conversationId) {
 export function reviewFacts(state, at = Date.now(), { owner = state.owner, conversationId } = {}) {
   scope(state, owner, conversationId);
   const rows = [];
+  rows.push(...coachErrorReviews(state, at, conversationId));
   // Coach phrase reviews already have their own FSRS facts. Reuse their saved cycles.
   for (const c of state.conversations.filter((c) => !conversationId || c.id === conversationId)) {
     for (const item of c.coach?.library || []) {
@@ -143,7 +145,7 @@ export function reviewGoalProgress(state, conversationId, at = Date.now()) {
         id: `${r.id}:goal`,
         owner: state.owner,
         at: r.completedAt,
-        source: r.kind === 'coach' ? 'coach' : 'learning',
+        source: r.kind?.startsWith('coach') ? 'coach' : 'learning',
         conversationId,
         questionKey: r.questionKey,
         reason: null,
