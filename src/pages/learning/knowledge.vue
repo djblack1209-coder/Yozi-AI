@@ -6,7 +6,7 @@
     </view>
     <view class="knowledge-title">
       <text role="heading" aria-level="1">{{ graph.title }}</text>
-      <text class="knowledge-subtitle">考研英语写作 · 验证版，内容待教师审核</text>
+      <text class="knowledge-subtitle">成人考研 · 英语一／英语二</text>
     </view>
     <ProgressOverview v-if="overview" class="knowledge-progress" :model="overview" @open="openEvidence" />
     <view class="knowledge-views" role="group" aria-label="知识框架">
@@ -94,7 +94,7 @@
       </view>
     </view>
     <view v-else class="knowledge-empty" role="status">暂无知识框架</view>
-    <text class="knowledge-footer">验证版 · 图谱自建，未复制外部数据；诊断接入待审核</text>
+    <text class="knowledge-footer">大纲对齐待核对</text>
     <CustomModal
       :visible="Boolean(record)"
       title="学习记录"

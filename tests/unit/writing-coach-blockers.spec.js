@@ -134,6 +134,23 @@ it('routes an explicitly saved error-review answer through the real store reques
     expect(store.active.coach.errorReviews[0].feedback.target).toBe('error-review');
     expect(coachErrorReviews(store.state, Date.now(), store.active.id)[0].completedBy).toBeTruthy();
     expect(store.active.coach.diagnostic.answers[1].answer).toBe('On');
+    const records = store.active.coach.learningRecords;
+    expect(records).toHaveLength(2);
+    expect(records.every((record) => record.knowledge?.contract === 'writing-knowledge-binding-v1')).toBe(true);
+    expect(records[1].knowledge).toMatchObject({
+      graphVersion: 'yozi-writing-diagnosis-v0.1',
+      mappingVersion: 'writing-knowledge-map-v1',
+      scope: 'adult-kaoyan-english-writing',
+      curriculumStatus: 'pending_verification',
+      observations: [expect.objectContaining({ nodeId: 'collocation', dimension: '搭配', score: 2 })]
+    });
+    const restored = prepareLearningRestore(
+      emptyLearningState('synthetic-blocker-owner', store.state.timezone),
+      JSON.stringify(store.state)
+    ).state;
+    expect(restored.conversations.find((session) => session.id === store.active.id).coach.learningRecords).toEqual(
+      records
+    );
   } finally {
     vi.mocked(generateLearningTurn).mockImplementation(previousGenerate);
     store.$dispose();

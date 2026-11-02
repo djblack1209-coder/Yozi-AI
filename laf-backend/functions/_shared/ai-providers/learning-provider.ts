@@ -177,6 +177,7 @@ export type ModelConfig = {
     reasoningEffort?: 'low' | 'high';
     quoteReferences?: Array<{ id: string; quote: string }>;
     responseBinding?: { kind: string; target: string };
+    knowledgeContract?: string;
     correctionPolicy?: 'anchored-edits-v1';
     responseMode?: 'generation';
     generationEssayType?: string;
@@ -686,6 +687,7 @@ export function prepareCoachFeedbackModel(
             quoteReferences: references,
             ...(quoteRoles ? { quoteRoles, scorePolicy: 'host-derived-v1' as const } : {}),
             responseBinding: { kind: request.phase, target: request.target },
+            ...(request.knowledgeContract ? { knowledgeContract: request.knowledgeContract } : {}),
             ...(anchoredEdits
               ? {
                   correctionPolicy: 'anchored-edits-v1' as const,
@@ -948,7 +950,16 @@ export function decodeCoachResponse(config: ModelConfig, content: string): strin
     value.weaknessEvidence = observations
       .filter((o: any) => o.classification !== 'strength')
       .map(({ label, quoteId, classification }: any) => ({ label, quoteId, classification }));
-    delete value.errors;
+    if (config.writingOutput!.knowledgeContract === 'writing-knowledge-binding-v1')
+      value.errors = value.errors.map(({ quoteId, dimension, label, errorText, replacement, rule }: any) => ({
+        quoteId,
+        dimension,
+        label,
+        errorText,
+        replacement,
+        ...(rule !== undefined ? { rule } : {})
+      }));
+    else delete value.errors;
     delete value.uncertainties;
   }
   if (config.writingOutput!.feedbackVersion === COACH_FEEDBACK_VERSION)

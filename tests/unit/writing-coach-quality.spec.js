@@ -458,6 +458,31 @@ describe('片段修正不能扩写成新的作文或事实', () => {
     expect(out).not.toHaveProperty('observations');
     expect(wire.errors[0].errorText).toBe('We has');
   });
+  it('新知识合同保存最终错误维度和引用，旧请求不补写字段；篡改维度或引文仍被拒绝', () => {
+    const request = { ...r, knowledgeContract: 'writing-knowledge-binding-v1' };
+    const prepared = prepareCoachFeedbackModel(config, request, false, false, false, true);
+    const wire = reply(prepared);
+    const decoded = JSON.parse(decodeCoachResponse(prepared, JSON.stringify(wire))).coach;
+    const saved = normalizeCoachOutput(decoded, request);
+    expect(saved.errors).toEqual(wire.errors);
+    expect(normalizeCoachOutput(saved, request).errors).toEqual(wire.errors);
+    expect(normalizeCoachOutput(saved, r)).not.toHaveProperty('errors');
+    for (const patch of [{ dimension: '搭配' }, { quoteId: 'q2' }, { errorText: 'Never written' }]) {
+      const altered = structuredClone(saved);
+      Object.assign(altered.errors[0], patch);
+      expect(() => normalizeCoachOutput(altered, request)).toThrowError(
+        expect.objectContaining({ code: 'COACH_INVALID' })
+      );
+    }
+    const clean = structuredClone(wire);
+    clean.errors = [];
+    Object.values(clean.dimensionReviews).forEach((d) => {
+      d.score = 2;
+    });
+    expect(
+      normalizeCoachOutput(JSON.parse(decodeCoachResponse(prepared, JSON.stringify(clean))).coach, request).errors
+    ).toEqual([]);
+  });
   it('反馈只容纳三处重点，结构名称可占用180字符但仍拒绝溢出', () => {
     const prepared = model(),
       wire = reply(prepared);

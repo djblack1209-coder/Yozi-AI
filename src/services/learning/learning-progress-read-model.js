@@ -1,3 +1,12 @@
+import {
+  PROGRESS_NODE_RULES,
+  progressNodeIds,
+  writingNodeObservations,
+  WRITING_KNOWLEDGE_CONTRACT,
+  WRITING_KNOWLEDGE_GRAPH,
+  WRITING_KNOWLEDGE_MAPPING
+} from '../../../laf-backend/functions/_shared/learning-writing-knowledge.js';
+export { PROGRESS_NODE_RULES, progressNodeIds };
 import { dayKey, effectiveGrade, questionKey } from './learning-domain.js';
 import { knowledgeGraphSeed } from './knowledge-graph-seed.js';
 
@@ -6,47 +15,6 @@ export const MIN_PROGRESS_EVENTS = 5;
 export const PROGRESS_CONTRACT = 'learning-progress-read-v1';
 export const PROGRESS_RUBRIC_LABELS = Object.freeze(['需重练', '可改进', '达成本次要求']);
 export const PROGRESS_DIMENSIONS = Object.freeze(['语法', '搭配', '表达', '任务完成']);
-
-// Read-time mapping table. Exact labels only: never mine student quotes for keywords.
-// Dimension anchors describe observations, not predictive mastery. 表达 has no
-// equivalent generic seed node; only a named skill or task can locate it.
-export const PROGRESS_NODE_RULES = Object.freeze(
-  [
-    { nodeId: 'sentence', dimension: '语法', labels: ['语法', '句子结构', '句子不完整', '构造完整句'] },
-    { nodeId: 'agreement', dimension: '语法', labels: ['主谓一致', '主谓不一致'] },
-    { nodeId: 'tense', dimension: '语法', labels: ['时态', '时态错误', '选择时间表达'] },
-    { nodeId: 'articles', dimension: '语法', labels: ['冠词', '可数性', '冠词与可数性'] },
-    { nodeId: 'clause', dimension: '语法', labels: ['从句结构', '连接主从句'] },
-    { nodeId: 'collocation', dimension: '搭配', labels: ['搭配', '固定搭配', '介词搭配', '动词搭配', '使用固定搭配'] },
-    { nodeId: 'register', dimension: '表达', labels: ['语域', '语气', '保持得体语域'] },
-    { nodeId: 'paraphrase', dimension: '表达', labels: ['改写', '准确改写'] },
-    { nodeId: 'linking', dimension: '表达', labels: ['逻辑衔接', '选择逻辑衔接'] },
-    { nodeId: 'coherence', dimension: '表达', labels: ['段落连贯', '保持段落连贯'] },
-    { nodeId: 'task', dimension: '任务完成', labels: ['任务完成', '任务覆盖', '提取任务要求'] },
-    { nodeId: 'audience', dimension: '任务完成', labels: ['读者关系', '识别读者关系'] },
-    { nodeId: 'purpose', dimension: '任务完成', labels: ['交际目的', '明确交际目的'] },
-    { nodeId: 'genre', dimension: '任务完成', labels: ['体裁', '区分体裁要求'] },
-    {
-      nodeId: 'outline',
-      dimension: '任务完成',
-      labels: ['提纲', '组织写作提纲', '应用文审题'],
-      kinds: ['writing_analysis']
-    },
-    { nodeId: 'translation', labels: ['中译英', '短句意义转写'], kinds: ['translation'] },
-    { nodeId: 'sentence', labels: ['成分识别', '长难句拆分'], kinds: ['syntax', 'sentence_analysis'] },
-    { nodeId: 'collocation', dimension: '搭配', labels: [], kinds: ['collocation', 'cloze'] },
-    { nodeId: 'opening', dimension: '任务完成', labels: ['开篇直达目的'] },
-    { nodeId: 'detail', dimension: '任务完成', labels: ['展开任务细节'] },
-    { nodeId: 'closing', dimension: '任务完成', labels: ['结尾推动回应'] },
-    { nodeId: 'claim', dimension: '任务完成', labels: ['形成明确观点'] },
-    { nodeId: 'example', dimension: '任务完成', labels: ['用例子支持观点'] },
-    { nodeId: 'revision-task', dimension: '任务完成', labels: ['检查任务覆盖'] },
-    { nodeId: 'revision-language', dimension: '语法', labels: ['检查语言错误'] },
-    { nodeId: 'timed-check', dimension: '任务完成', labels: ['限时检查排序'] }
-  ].map((rule) =>
-    Object.freeze({ ...rule, labels: Object.freeze(rule.labels), kinds: Object.freeze(rule.kinds || []) })
-  )
-);
 
 const list = (value) => (Array.isArray(value) ? value : []);
 const distinct = (values) => [...new Set(values)];
@@ -60,16 +28,6 @@ const questionTypes = Object.freeze({
   boolean: '判断题'
 });
 const subjectId = (subject) => (['考研英语写作', writingSubject].includes(subject) ? writingSubject : subject);
-
-export function progressNodeIds({ dimension, labels = [], kind = '', nodeIds = [] } = {}) {
-  const valid = new Set(knowledgeGraphSeed.topics.map((node) => node.id));
-  const mapped = PROGRESS_NODE_RULES.filter(
-    (rule) =>
-      (!rule.dimension || !dimension || rule.dimension === dimension) &&
-      (rule.labels.some((label) => labels.includes(label)) || rule.kinds.includes(kind))
-  ).map((rule) => rule.nodeId);
-  return distinct([...nodeIds, ...mapped].filter((id) => valid.has(id)));
-}
 
 function modelOrigin(modelId = '') {
   // muse-ai-connectors creates byok_ IDs; the persisted request keeps that ID.
@@ -237,7 +195,7 @@ export function learningProgressReadModel(state = {}) {
           (req) =>
             req.status === 'completed' &&
             req.request?.target === target &&
-            req.request.day === day &&
+            (target === 'diagnostic' || req.request.day === day) &&
             ['feedback', 'essay'].includes(req.request.phase) &&
             (!feedback.id || feedback.id === req.resultId)
         );
@@ -258,30 +216,27 @@ export function learningProgressReadModel(state = {}) {
           list(dimension.evidence).some((quote) => typeof quote === 'string' && quote.trim())
       );
       if (!dimensions.length) return;
-      const nodeObservations = [];
-      for (const dimension of dimensions) {
-        const errors = list(feedback.errors).filter((error) => error.dimension === dimension.name);
-        const labels = [
-          ...errors.map((error) => error.label),
-          // Canonical, post-verification evidence only. Summary labels, prior
-          // feedback and verification internals cannot restore deleted errors.
-          ...list(feedback.weaknessEvidence)
-            .filter((item) => item.classification === 'error')
-            .map((item) => item.label)
-        ];
-        const ids = progressNodeIds({ dimension: dimension.name, labels: [dimension.name, ...labels] });
-        // A mixed diagnostic is one observation; it does not establish a score on
-        // every card's specific skill. Only single-task feedback gets a task map.
-        if (cards.length === 1)
-          ids.push(...progressNodeIds({ dimension: dimension.name, kind: cards[0].kind, labels: [cards[0].title] }));
-        for (const nodeId of distinct(ids))
-          nodeObservations.push({
-            nodeId,
-            dimension: dimension.name,
-            score: dimension.score,
-            weakness: dimension.score < 2
-          });
-      }
+      const stored = list(coach.learningRecords).find(
+        (record) => record.id === receipt.id && record.requestId === request.id
+      )?.knowledge;
+      const bound = request.request.knowledgeContract === WRITING_KNOWLEDGE_CONTRACT;
+      const validBinding =
+        bound &&
+        stored?.contract === WRITING_KNOWLEDGE_CONTRACT &&
+        stored.graphVersion === WRITING_KNOWLEDGE_GRAPH &&
+        stored.mappingVersion === WRITING_KNOWLEDGE_MAPPING &&
+        stored.rubricVersion === request.request.dimensionContract &&
+        stored.subject === writingSubject;
+      const nodeObservations = bound
+        ? validBinding
+          ? list(stored.observations).filter(
+              (item) =>
+                knowledgeGraphSeed.topics.some((node) => node.id === item.nodeId) &&
+                dimensions.some((dimension) => dimension.name === item.dimension && dimension.score === item.score) &&
+                item.weakness === item.score < 2
+            )
+          : []
+        : writingNodeObservations({ ...feedback, dimensions }, cards);
       const key = recordKey || answers.at(-1).id;
       append({
         id: receipt.id,
@@ -304,6 +259,12 @@ export function learningProgressReadModel(state = {}) {
           .map((dimension) => `${dimension.name} · ${PROGRESS_RUBRIC_LABELS[dimension.score]}`)
           .join('；'),
         model: modelOrigin(request.modelId),
+        binding: {
+          mode: bound ? (validBinding ? 'saved' : 'unavailable') : 'read-time',
+          graphVersion: bound ? stored?.graphVersion || null : WRITING_KNOWLEDGE_GRAPH,
+          mappingVersion: bound ? stored?.mappingVersion || null : WRITING_KNOWLEDGE_MAPPING,
+          rubricVersion: request.request.dimensionContract
+        },
         dimensions: dimensions.map(({ name, score }) => ({ name, score })),
         nodeObservations
       });

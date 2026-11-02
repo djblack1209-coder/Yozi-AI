@@ -11,6 +11,7 @@ import { extractConversationEntries } from '../../../laf-backend/functions/_shar
 import { mapContentBlocks } from '../../../laf-backend/functions/_shared/learning-content-blocks.js';
 import { normalizeIntakeReply, explicitIntakeFacts } from '../../../laf-backend/functions/_shared/learning-intake.js';
 import { coachMaterialContext } from '@/services/learning/coach-material-context.js';
+import { WRITING_KNOWLEDGE_CONTRACT } from '../../../laf-backend/functions/_shared/learning-writing-knowledge.js';
 import {
   WRITING_COACH_CONTRACT,
   COACH_FEEDBACK_VERSION,
@@ -1837,7 +1838,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           : {}),
         ...(phase === 'summary' && coach.profile.exam !== 'cs408' ? { summaryContract: COACH_SUMMARY_CONTRACT } : {}),
         ...(['feedback', 'essay'].includes(phase) && coach.profile.exam !== 'cs408'
-          ? { dimensionContract: 'writing-dimensions-v1' }
+          ? { dimensionContract: 'writing-dimensions-v1', knowledgeContract: WRITING_KNOWLEDGE_CONTRACT }
           : {}),
         ...bound,
         sources,

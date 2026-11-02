@@ -1,5 +1,6 @@
 // Original Yozi validation material, authored for batch 15. Not a public exam bank.
 // No cn-math-taxonomy code, labels, edges, questions or data are included.
+import { WRITING_KNOWLEDGE_GRAPH } from '../../../laf-backend/functions/_shared/learning-writing-knowledge.js';
 const subject = 'kaoyan-english-writing';
 
 function rubric(prompt, criterion) {
@@ -305,7 +306,7 @@ const hard = (from, to) => ({ from, to, strength: 'hard', reason: '本验证任�
 const soft = (from, to) => ({ from, to, strength: 'soft', reason: '可能有助于表现，仅提示，不据此回溯' });
 
 export const knowledgeGraphSeed = {
-  version: 'yozi-writing-diagnosis-v0.1',
+  version: WRITING_KNOWLEDGE_GRAPH,
   subject,
   subjectLabel: '考研英语写作',
   topics,

@@ -3,6 +3,7 @@ import { phraseReviewRating } from './learning-runtime-policy.js';
 // 教学方法与已保存事实共用现有学习 reducer、备份及同步；模型不授予可靠判分。
 import { reviewFacts } from './learning-adherence.js';
 import { coachErrorReviews } from './learning-coach-review.js';
+import { WRITING_KNOWLEDGE_CONTRACT, writingKnowledgeBinding } from './learning-writing-knowledge.js';
 import {
   writingAnswerHash,
   writingBandRubric,
@@ -195,6 +196,16 @@ export function normalizeCoachRequest(value) {
       'dimensionContract'
     );
     request.dimensionContract = WRITING_DIMENSION_CONTRACT;
+  }
+  if (value.knowledgeContract !== undefined) {
+    fail(
+      value.knowledgeContract === WRITING_KNOWLEDGE_CONTRACT &&
+        request.feedbackVersion === COACH_FEEDBACK_VERSION &&
+        request.dimensionContract === WRITING_DIMENSION_CONTRACT,
+      '知识绑定合同不支持',
+      'knowledgeContract'
+    );
+    request.knowledgeContract = WRITING_KNOWLEDGE_CONTRACT;
   }
   if (value.writingBand !== undefined) request.writingBand = normalizeWritingBandContext(value.writingBand, request);
   if (value.errorReviewId !== undefined) {
@@ -1109,6 +1120,55 @@ export function normalizeCoachOutput(value, request) {
       'weaknessEvidence'
     );
   }
+  let errors;
+  if (r.knowledgeContract && value.errors !== undefined) {
+    fail(Array.isArray(value.errors) && value.errors.length <= 8, '错误绑定格式不合法', 'errors');
+    const quotes = coachQuoteOptions(r.input, true);
+    errors = value.errors.map((item, index) => {
+      const path = `errors[${index}]`;
+      fail(
+        item &&
+          typeof item === 'object' &&
+          !Array.isArray(item) &&
+          Object.keys(item).every((key) =>
+            ['quoteId', 'dimension', 'label', 'errorText', 'replacement', 'rule'].includes(key)
+          ) &&
+          /^q[1-6]$/.test(item.quoteId),
+        '错误绑定字段不合法',
+        path
+      );
+      const quote = quotes[Number(item.quoteId.slice(1)) - 1];
+      const label = text(item.label, 100, `${path}.label`);
+      const dimension = dimensions.find((d) => d.name === item.dimension);
+      fail(
+        quote &&
+          dimension &&
+          [0, 1].includes(dimension.score) &&
+          dimension.evidence.includes(quote) &&
+          weaknessEvidence.some((e) => e.classification === 'error' && e.label === label && e.quote === quote),
+        '错误缺少本维度的原答证据',
+        path
+      );
+      const errorText = item.errorText === null ? null : text(item.errorText, 1200, `${path}.errorText`);
+      const replacement = item.replacement === null ? null : text(item.replacement, 120, `${path}.replacement`);
+      fail(errorText === null || quote.includes(errorText), '错误片段不在绑定原答中', `${path}.errorText`);
+      fail(errorText !== null || replacement === null, '缺项不能代填事实', `${path}.replacement`);
+      return {
+        quoteId: item.quoteId,
+        dimension: dimension.name,
+        label,
+        errorText,
+        replacement,
+        ...(item.rule !== undefined ? { rule: text(item.rule, 180, `${path}.rule`) } : {})
+      };
+    });
+    fail(
+      new Set(errors.map((e) => JSON.stringify([e.quoteId, e.errorText, e.errorText === null ? e.label : null])))
+        .size === errors.length,
+      '同一错误不能重复绑定',
+      'errors'
+    );
+  }
   return {
     kind: r.phase,
     target: r.target,
@@ -1120,6 +1180,7 @@ export function normalizeCoachOutput(value, request) {
     ...(value.strengths !== undefined ? { strengths: strings(value.strengths, 6, 100, 'strengths') } : {}),
     ...(value.strengthEvidence !== undefined ? { strengthEvidence } : {}),
     ...(value.weaknessEvidence !== undefined ? { weaknessEvidence } : {}),
+    ...(errors !== undefined ? { errors } : {}),
     ...(['pending_verification', 'material_uncovered'].includes(value.sourceStatus)
       ? { sourceStatus: value.sourceStatus }
       : {}),
@@ -1319,6 +1380,7 @@ export function parseCoachModelOutput(raw, request, captureDiagnostics = false, 
   if (request.sourceKind === 'model_generated' && ['feedback', 'essay'].includes(request.phase)) {
     coach.weaknesses = [];
     coach.weaknessEvidence = [];
+    if (coach.errors) coach.errors = [];
     coach.sourceStatus = 'material_uncovered';
   }
   if (request.phase === 'feedback' && request.sources?.length && coachSourceDisputed(request.input)) {
@@ -1334,6 +1396,7 @@ export function parseCoachModelOutput(raw, request, captureDiagnostics = false, 
     coach.weaknesses = [];
     coach.strengths = [];
     coach.weaknessEvidence = [];
+    if (coach.errors) coach.errors = [];
     coach.strengthEvidence = [];
     coach.phrases = [];
     coach.dimensions = [];
@@ -1932,7 +1995,10 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
         day: req.request.day,
         source: 'host_validated',
         evaluation: 'AI评估',
-        dimensions: (output.dimensions || []).map(({ name, score }) => ({ name, score: score ?? null }))
+        dimensions: (output.dimensions || []).map(({ name, score }) => ({ name, score: score ?? null })),
+        ...(req.request.knowledgeContract
+          ? { knowledge: writingKnowledgeBinding(output, coachAssessmentTask(req.request)) }
+          : {})
       });
     req.status = 'completed';
     req.resultId = op.id;

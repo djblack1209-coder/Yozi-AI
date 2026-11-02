@@ -6,6 +6,10 @@ import {
   progressNodeIds
 } from '@/services/learning/learning-progress-read-model.js';
 import { knowledgeGraphSeed } from '@/services/learning/knowledge-graph-seed.js';
+import {
+  WRITING_KNOWLEDGE_NODE_IDS,
+  writingKnowledgeBinding
+} from '../../laf-backend/functions/_shared/learning-writing-knowledge.js';
 import { progressBoundaryFixture, progressFixture, progressRound3Fixture } from '../fixtures/learning-progress.js';
 const writing = (model) => model.subjects.find((subject) => subject.id === 'kaoyan-english-writing');
 const grammar = (model) => writing(model).dimensions.find((dimension) => dimension.id === '语法');
@@ -87,12 +91,8 @@ describe('learning progress: canonical, traceable, read-only observations', () =
       denominator: 5,
       percentage: 100
     });
-    expect(model.weaknesses.map((node) => node.id).sort()).toEqual([
-      'agreement',
-      'articles',
-      'sentence',
-      'translation'
-    ]);
+    // 冠词只留在兼容标签里，最终 errors 没有它，不能重新登记为节点错误。
+    expect(model.weaknesses.map((node) => node.id).sort()).toEqual(['agreement', 'sentence', 'translation']);
     expect(model.nodes.find((node) => node.id === 'tense')).toMatchObject({
       level: null,
       sampleCount: 0,
@@ -291,6 +291,68 @@ describe('learning progress: canonical, traceable, read-only observations', () =
     expect(grammar(model).denominator).toBe(1);
     expect(model.evidence[0].learningEventIds).toHaveLength(5);
   });
+  it('a diagnostic assessed on a later day remains tied to its actual result and originals', () => {
+    const state = progressFixture(1, 0),
+      coach = state.conversations[0].coach,
+      day = coach.days[0];
+    coach.diagnostic = {
+      cards: day.pack.cards,
+      answers: day.answers,
+      feedback: { ...day.feedback['card-card0'], target: 'diagnostic' }
+    };
+    coach.requests[0].request.target = 'diagnostic';
+    coach.requests[0].request.day = '2026-11-01';
+    coach.days = [];
+    const before = JSON.stringify(state);
+    const model = learningProgressReadModel(state);
+    expect(model.evidence).toHaveLength(1);
+    expect(model.evidence[0]).toMatchObject({
+      id: 'receipt-0',
+      learningEventIds: ['writing-answer-0'],
+      receiptEventIds: ['receipt-0']
+    });
+    expect(JSON.stringify(state)).toBe(before);
+  });
+  it('an explicit final empty error list cannot resurrect a removed weakness from the compatibility view', () => {
+    const state = progressBoundaryFixture(5, 0);
+    for (const feedback of Object.values(state.conversations[0].coach.days[0].feedback)) feedback.errors = [];
+    const model = learningProgressReadModel(state);
+    expect(model.nodes.find((node) => node.id === 'agreement').sampleCount).toBe(0);
+    expect(model.nodes.find((node) => node.id === 'sentence').sampleCount).toBe(5);
+  });
+  it('legacy evidence labels cannot leak from a different dimension quotation', () => {
+    const state = progressBoundaryFixture(5, 0);
+    for (const feedback of Object.values(state.conversations[0].coach.days[0].feedback)) {
+      delete feedback.errors;
+      feedback.weaknessEvidence[0].quote = 'A separate quotation.';
+    }
+    expect(learningProgressReadModel(state).nodes.find((node) => node.id === 'agreement').sampleCount).toBe(0);
+  });
+  it('new receipts use the saved graph binding; missing, foreign or unknown versions cannot fall back to remapping', () => {
+    const state = progressFixture(1, 0),
+      coach = state.conversations[0].coach,
+      feedback = coach.days[0].feedback['card-card0'];
+    coach.requests[0].request.knowledgeContract = 'writing-knowledge-binding-v1';
+    const knowledge = writingKnowledgeBinding(feedback, { kind: 'translate_en' });
+    coach.learningRecords = [{ id: 'receipt-0', requestId: 'request-0', knowledge }];
+    const before = JSON.stringify(state);
+    expect(learningProgressReadModel(state).evidence[0]).toMatchObject({
+      binding: { mode: 'saved', graphVersion: knowledgeGraphSeed.version },
+      nodeObservations: knowledge.observations
+    });
+    expect(JSON.stringify(state)).toBe(before);
+    for (const change of ['missing', 'foreign', 'graph', 'mapping']) {
+      const altered = structuredClone(state),
+        record = altered.conversations[0].coach.learningRecords[0];
+      if (change === 'missing') delete record.knowledge;
+      if (change === 'foreign') record.requestId = 'someone-else';
+      if (change === 'graph') record.knowledge.graphVersion = 'unrecognized';
+      if (change === 'mapping') record.knowledge.mappingVersion = 'unrecognized';
+      expect(learningProgressReadModel(altered).evidence[0].nodeObservations).toEqual([]);
+    }
+    expect(JSON.stringify(knowledge)).not.toContain('Synthetic answer');
+    expect(learningProgressReadModel(state).platformReference.percentage).toBeNull();
+  });
   it('help, redo and pending answers do not inflate independent objective samples', () => {
     const state = progressFixture(0, 6);
     state.attempts[0].hints = [{ level: 1 }];
@@ -319,6 +381,7 @@ describe('learning progress: canonical, traceable, read-only observations', () =
     expect(JSON.stringify(node)).not.toContain('掌握');
   });
   it('all mapping targets exist; exact labels and task rules do not guess from text or unknown labels', () => {
+    expect([...WRITING_KNOWLEDGE_NODE_IDS].sort()).toEqual(knowledgeGraphSeed.topics.map((node) => node.id).sort());
     for (const rule of PROGRESS_NODE_RULES) {
       expect(knowledgeGraphSeed.topics.some((topic) => topic.id === rule.nodeId)).toBe(true);
       for (const label of rule.labels)

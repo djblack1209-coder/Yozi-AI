@@ -1,6 +1,6 @@
 # 知识点框架图 / 思维导图 · 候选与选型（2026-10-21）
 
-当前状态：已用零新增依赖的只读 [知识框架页](../src/pages/learning/knowledge.vue) 和 [学习事实投影](../src/services/learning/learning-progress-read-model.js) 呈现 26 个节点、36 条关系，节点可回看已有证据。它不写掌握事实，不能替代 N3 的收据绑定和预测性准确率核对；本轮原生实操确认无证据节点显示「数据不足」。当前顺序以 [13 的 N1–N3](13-DEVELOPMENT-PLAN.md) 为准。
+当前状态：已用零新增依赖的只读 [知识框架页](../src/pages/learning/knowledge.vue) 和 [学习事实投影](../src/services/learning/learning-progress-read-model.js) 呈现26个节点、36条关系，节点可回看已有证据。新写作反馈由[宿主绑定模块](../laf-backend/functions/_shared/learning-writing-knowledge.js)保存图／映射／量表版本，旧记录只读投影、不回填；它不写掌握事实，预测性准确率仍待核对。无证据节点显示「数据不足」，成人英语一／二范围的大纲对齐尚未完成。当前顺序以 [13 的 N1–N3](13-DEVELOPMENT-PLAN.md) 为准。
 
 下列 2026-10-21 候选仅保留选型背景，并非当前依赖或新增授权；小程序开发与验收已暂停。现阶段是只读框架和节点详情，不开放自由编辑、图上答题或对用户资料做外部上传。
 
