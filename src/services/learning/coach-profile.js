@@ -11,10 +11,12 @@ import {
 
 // 跳过保留明确回答；未知字段不写成系统默认值。
 export const COACH_EXAMS = Object.freeze([
-  'english1',
-  'english2',
-  'cs408',
-  ...SUBJECT_COACH_METHODS.map((contract) => subjectCoachMethodByContract(contract).exam)
+  ...new Set([
+    'english1',
+    'english2',
+    'cs408',
+    ...SUBJECT_COACH_METHODS.map((contract) => subjectCoachMethodByContract(contract).exam)
+  ])
 ]);
 export { COACH_SUBJECTS, COACH_DEFAULT_TRACK };
 

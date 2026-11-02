@@ -147,6 +147,12 @@ const date = (value, path = '') => {
   fail(Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value, '日期不合法', path);
   return value;
 };
+function coachParagraphIndex(target, method) {
+  const match = /^paragraph-(0|[1-9]\d*)$/.exec(target);
+  if (!match) return null;
+  const index = Number(match[1]);
+  return Number.isSafeInteger(index) && (method?.paragraphsFromTask || index < 3) ? index : null;
+}
 export function normalizeCoachRequest(value) {
   fail(value && value.contract === WRITING_COACH_CONTRACT, '教学方法版本不支持');
   fail(['diagnostic', 'daily', 'feedback', 'essay', 'summary'].includes(value.phase), '教学阶段不支持');
@@ -174,9 +180,8 @@ export function normalizeCoachRequest(value) {
     fail(sources.length > 0, `请先添加${subjectMethod.subject}材料`);
   const target = text(value.target || value.phase, 160);
   fail(
-    /^(diagnostic|daily|essay|rewrite|error-review|summary|analysis|paragraph-[0-2]|card-[a-zA-Z0-9_-]{1,80})$/.test(
-      target
-    ),
+    /^(diagnostic|daily|essay|rewrite|error-review|summary|analysis|card-[a-zA-Z0-9_-]{1,80})$/.test(target) ||
+      coachParagraphIndex(target, subjectMethod) !== null,
     '反馈目标不合法'
   );
   const request = {
@@ -1010,11 +1015,15 @@ export function normalizeCoachOutput(value, request) {
     }
     const w = value.writing;
     fail(
-      w && Array.isArray(w.patterns) && w.patterns.length >= 2 && w.patterns.length <= 3,
-      '写作结构需二至三段',
+      w &&
+        Array.isArray(w.patterns) &&
+        w.patterns.length >= 2 &&
+        (subjectMethod?.paragraphsFromTask || w.patterns.length <= 3),
+      subjectMethod?.paragraphsFromTask ? '请按本题职责提供完整写作结构' : '写作结构需二至三段',
       w ? 'writing.patterns' : 'writing'
     );
-    if (r.essayType === 'large') fail(w.patterns.length === 3, '大作文需三段', 'writing.patterns');
+    if (r.essayType === 'large' && !subjectMethod?.paragraphsFromTask)
+      fail(w.patterns.length === 3, '大作文需三段', 'writing.patterns');
     return {
       kind: r.phase,
       cards,
@@ -1140,7 +1149,14 @@ export function normalizeCoachOutput(value, request) {
         )
         .map(({ label, quote }) => ({ label, quote }))
     : [];
-  const classified = r.feedbackVersion === COACH_FEEDBACK_VERSION;
+  // New subject observations reuse existing classes, without the English score
+  // contract. Unclassified historical subject output keeps its prior meaning;
+  // only the live method boundary requires classification for new results.
+  const subjectClassified =
+    subjectMethod?.classifiedObservations &&
+    Array.isArray(value.weaknessEvidence) &&
+    value.weaknessEvidence.every((item) => item?.classification !== undefined);
+  const classified = r.feedbackVersion === COACH_FEEDBACK_VERSION || subjectClassified;
   if (classified)
     fail(
       Array.isArray(value.weaknessEvidence) &&
@@ -1243,7 +1259,7 @@ export function normalizeCoachOutput(value, request) {
   return {
     kind: r.phase,
     target: r.target,
-    ...(classified ? { feedbackVersion: COACH_FEEDBACK_VERSION } : {}),
+    ...(r.feedbackVersion === COACH_FEEDBACK_VERSION ? { feedbackVersion: COACH_FEEDBACK_VERSION } : {}),
     lines,
     weaknesses: classified
       ? [...new Set(weaknessEvidence.filter((item) => item.classification === 'error').map((item) => item.label))]
@@ -1544,9 +1560,8 @@ function coachCardTask(card) {
 // New requests bind a structured card kind; saved requests keep their exact legacy task valid.
 function coachTaskMatches(request, bound, day) {
   const card = day?.pack.cards.find((item) => `card-${item.id}` === request.target);
-  const patterns = /^paragraph-[0-2]$/.test(request.target)
-    ? day?.pack.writing.patterns[Number(request.target.slice(-1))]
-    : null;
+  const paragraph = coachParagraphIndex(request.target, subjectCoachMethod(request.exam, request.methodContract));
+  const patterns = paragraph !== null ? day?.pack.writing.patterns[paragraph] : null;
   return (
     request.task === bound.task ||
     (card && request.phase === 'feedback' && request.task === coachCardTask(card)) ||
@@ -1644,9 +1659,10 @@ export function coachInputFor(coach, day, phase, target) {
       ...(day.pack.writing.source?.materialUncovered ? { sourceKind: 'model_generated' } : {})
     };
   }
-  if (phase === 'feedback' && /^paragraph-[0-2]$/.test(target)) {
-    const index = Number(target.slice(-1));
-    fail(day.drafts[index] && !day.feedback[target], '请先提交本段原答');
+  const paragraph = coachParagraphIndex(target, subjectCoachMethod(coach.profile?.exam, coach.profile?.methodContract));
+  if (phase === 'feedback' && paragraph !== null) {
+    const index = paragraph;
+    fail(index < day.pack.writing.patterns.length && day.drafts[index] && !day.feedback[target], '请先提交本段原答');
     return {
       input: day.drafts[index].text,
       task:
@@ -1908,13 +1924,17 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
       '当前渠道不支持重新点评'
     );
     const feedback = d.target === 'essay' ? day?.essay : day?.feedback[d.target];
+    const paragraph = coachParagraphIndex(
+      d.target,
+      subjectCoachMethod(coach.profile?.exam, coach.profile?.methodContract)
+    );
     const answer =
       d.target === 'essay'
         ? day?.writingSubmissions?.find((item) => item.text === day.rewrites.map((part) => part.text).join('\n\n'))
         : d.target === 'analysis'
           ? day?.analysis
-          : /^paragraph-[0-2]$/.test(d.target)
-            ? day?.drafts[Number(d.target.slice(-1))]
+          : paragraph !== null
+            ? day?.drafts[paragraph]
             : day?.answers.find((item) => `card-${item.cardId}` === d.target);
     assert(
       day && !day.completed && day.day === today && answer && feedback?.id === d.feedbackId,
@@ -2119,7 +2139,14 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
           : req.request.target.startsWith('card-')
             ? resultDay.answers.filter((a) => `card-${a.cardId}` === req.request.target)
             : req.request.target.startsWith('paragraph-')
-              ? [resultDay.drafts[Number(req.request.target.slice(-1))]]
+              ? [
+                  resultDay.drafts[
+                    coachParagraphIndex(
+                      req.request.target,
+                      subjectCoachMethod(req.request.exam, req.request.methodContract)
+                    )
+                  ]
+                ]
               : [];
       for (const answer of answers) if (answer.assessmentStatus === 'pending') answer.assessmentStatus = 'assessed';
     }

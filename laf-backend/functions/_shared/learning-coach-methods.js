@@ -1,5 +1,6 @@
 import {
   SHENLUN_METHOD,
+  SHENLUN_METHOD_V2,
   shenlunIntakeEligible,
   shenlunCoachPrompt,
   validateShenlunLiveOutput
@@ -7,6 +8,12 @@ import {
 
 // Curated subject definitions only. Model text cannot register code or methods.
 const methods = Object.freeze([
+  Object.freeze({
+    ...SHENLUN_METHOD_V2,
+    intakeEligible: shenlunIntakeEligible,
+    prompt: shenlunCoachPrompt,
+    validateLiveOutput: validateShenlunLiveOutput
+  }),
   Object.freeze({
     ...SHENLUN_METHOD,
     intakeEligible: shenlunIntakeEligible,

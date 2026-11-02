@@ -2747,18 +2747,23 @@ it.each(['opening', 'follow-up', 'finished', 'invented-choice', 'third-question'
       const listed = await models(context({ action: 'list' }));
       expect(listed.data.intakeContract).toBe('model-intake-v1');
       expect(listed.data.intakeContracts).toEqual(['model-intake-v1', 'model-intake-v2']);
-      expect(listed.data.coachMethods).toEqual(['shenlun-writing-method-v1']);
+      expect(listed.data.coachMethods).toEqual(['shenlun-writing-method-v2', 'shenlun-writing-method-v1']);
     }
   }
 );
 
-it.each(['supported', 'unknown-method'])(
+it.each(['supported', 'supported-v2', 'unknown-method'])(
   'versioned subject coaching preserves actual model provenance without English contracts: %s',
   async (mode) => {
     await streamProfile(false);
     const request = {
       contract: 'kaoyan-writing-coach-v1',
-      methodContract: mode === 'supported' ? 'shenlun-writing-method-v1' : 'unknown-method',
+      methodContract:
+        mode === 'supported-v2'
+          ? 'shenlun-writing-method-v2'
+          : mode === 'supported'
+            ? 'shenlun-writing-method-v1'
+            : 'unknown-method',
       exam: 'shenlun',
       phase: 'feedback',
       target: 'card-c1',
@@ -2800,7 +2805,7 @@ it.each(['supported', 'unknown-method'])(
     }));
     const body = { ...streamBody('subject-method-' + mode), learningContext: { owner: 'u1', coach: request } };
     const result = await ai(context(body));
-    if (mode !== 'supported') {
+    if (mode === 'unknown-method') {
       expect(result.success).toBe(false);
       expect(callLearningProvider).not.toHaveBeenCalled();
       return;
@@ -2814,7 +2819,7 @@ it.each(['supported', 'unknown-method'])(
       source: 'byok',
       actualModel: config.model,
       inferencePolicy: 'subject-coach-prompt-v1',
-      outputContract: 'shenlun-writing-method-v1',
+      outputContract: request.methodContract,
       schemaDigest: null,
       callId: body.requestId,
       modelId: body.modelId,

@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applyLearningOperation, emptyLearningState } from '@/services/learning/learning-domain.js';
 import { parsePastedMaterial } from '@/services/learning/material-intake.js';
 import { coachMaterialContext } from '@/services/learning/coach-material-context.js';
 import { learningProgressReadModel } from '@/services/learning/learning-progress-read-model.js';
 import { coachSavedRecords } from '../../laf-backend/functions/_shared/learning-coach-records.js';
-import { resolveSkippedProfile } from '@/services/learning/coach-profile.js';
+import { COACH_EXAMS, resolveSkippedProfile } from '@/services/learning/coach-profile.js';
 import {
   subjectCoachMethod,
   subjectCoachMethodByContract,
@@ -22,6 +22,7 @@ import {
 import {
   SHENLUN_METHOD,
   SHENLUN_METHOD_CONTRACT as METHOD,
+  SHENLUN_METHOD_V2_CONTRACT as METHOD_V2,
   COACH_SHENLUN_TRACK as TRACK,
   shenlunIntakeEligible
 } from '../../laf-backend/functions/_shared/learning-shenlun-method.js';
@@ -119,11 +120,15 @@ function readyIntake() {
 }
 
 describe('versioned Shenlun teaching definition on the existing coach', () => {
+  afterEach(() => vi.unstubAllGlobals());
   it('selects only a curated method and its saved version', () => {
     expect(subjectCoachMethod('shenlun', METHOD)?.contract).toBe(METHOD);
     expect(subjectCoachMethod('shenlun', 'unknown-version')).toBeNull();
     expect(subjectCoachMethodByContract('model-invented-method')).toBeNull();
     expect(subjectCoachMethodForIntake(readyIntake(), [])).toBeNull();
+    expect(subjectCoachMethodForIntake(readyIntake()).contract).toBe(METHOD_V2);
+    expect(subjectCoachMethodForIntake(readyIntake(), [METHOD]).contract).toBe(METHOD);
+    expect(COACH_EXAMS.filter((exam) => exam === 'shenlun')).toHaveLength(1);
   });
   it('enables a new method only on explicit versioned confirmation, preserving old accept semantics', () => {
     const before = emptyLearningState('synthetic-shenlun');
@@ -179,11 +184,12 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
     expect(resolveSkippedProfile({ subject: 'gongkao_shenlun' })).toMatchObject({
       exam: 'shenlun',
       track: TRACK,
-      methodContract: METHOD,
+      methodContract: METHOD_V2,
       minutes: null,
       deadline: null,
       foundation: null
     });
+    expect(resolveSkippedProfile({ exam: 'shenlun', methodContract: METHOD }).methodContract).toBe(METHOD);
   });
   it('requires a matching method version and real material before generation', () => {
     expect(() => normalizeCoachRequest(request('daily', { methodContract: undefined }))).toThrow('版本');
@@ -219,6 +225,33 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
     const invalid = generation(r);
     invalid.cards[0].kind = 'collocation';
     expect(() => parse(invalid, r)).toThrow('类型');
+  });
+  it('uses task paragraphs only for the new registered version and preserves the old short task contract', () => {
+    const legacy = request(),
+      next = request('daily', { methodContract: METHOD_V2 });
+    const raw = generation(next);
+    raw.writing.prompt = '请依据材料，以服务改进为主题写一篇800至1000字文章，按开篇、三个主体段和结尾组织。';
+    raw.writing.patterns = Array.from({ length: 5 }, (_, i) => [`第${i + 1}段本题职责`]);
+    expect(parse(raw, next).writing.patterns).toHaveLength(5);
+    expect(() => parse(raw, legacy)).toThrow('二至三段');
+    expect(coachSystemPrompt(next)).toContain('不能换成另一份短稿');
+    expect(coachSystemPrompt(next)).toContain('数组长度由本题实际职责决定');
+    expect(coachSystemPrompt(legacy)).toContain('适合二至三段带写的中文短稿');
+  });
+  it.each(['paragraph--1', 'paragraph-01', 'paragraph-9007199254740992'])(
+    'rejects ambiguous or unsafe paragraph indexes: %s',
+    (target) => {
+      expect(() => normalizeCoachRequest(request('feedback', { methodContract: METHOD_V2, target }))).toThrow('目标');
+    }
+  );
+  it('retains old English and subject paragraph target limits while allowing complete new task targets', () => {
+    expect(
+      normalizeCoachRequest(request('feedback', { methodContract: METHOD_V2, target: 'paragraph-10' })).target
+    ).toBe('paragraph-10');
+    expect(() => normalizeCoachRequest(request('feedback', { target: 'paragraph-3' }))).toThrow('目标');
+    expect(() =>
+      normalizeCoachRequest(request('feedback', { exam: 'english2', methodContract: undefined, target: 'paragraph-3' }))
+    ).toThrow('目标');
   });
   it.each(['wrong-quote', 'wrong-page', 'no-source', 'no-word-count'])(
     'rejects ungrounded live task output: %s',
@@ -270,6 +303,45 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
     output.lines[0].original = '不存在于学生原稿的句子';
     expect(() => parse(output, r)).toThrow('当前原答');
   });
+  it.each(['error', 'suggestion', 'uncertain'])(
+    'projects only classified errors for new subject feedback: %s',
+    (classification) => {
+      const r = request('feedback', {
+        methodContract: METHOD_V2,
+        target: 'card-c1',
+        input: '原答已按三类列出事实、讨论安排和建议。'
+      });
+      const raw = feedback(r),
+        label = classification === 'error' ? '合成确定错误' : '条目呈现可以更醒目';
+      raw.weaknesses = [label];
+      raw.weaknessEvidence = [{ label, quote: r.input, classification }];
+      const normalized = parse(raw, r);
+      expect(normalized.weaknesses).toEqual(classification === 'error' ? [label] : []);
+      expect(normalized.weaknessEvidence).toEqual(raw.weaknessEvidence);
+      expect(normalized).not.toHaveProperty('feedbackVersion');
+      expect(normalized.dimensions.every((dimension) => dimension.score === undefined)).toBe(true);
+    }
+  );
+  it('keeps historical unclassified observations unchanged but rejects new unclassified labels', () => {
+    const r = request('feedback', {
+      methodContract: METHOD_V2,
+      target: 'card-c1',
+      input: '原答已经说明材料中的情况。'
+    });
+    const raw = feedback(r);
+    raw.weaknesses = ['历史未分类观察'];
+    raw.weaknessEvidence = [{ label: raw.weaknesses[0], quote: r.input }];
+    expect(normalizeCoachOutput(raw, r).weaknesses).toEqual(raw.weaknesses);
+    expect(() => parse(raw, r)).toThrow('区分错误');
+    expect(normalizeCoachOutput(raw, { ...r, methodContract: METHOD }).weaknesses).toEqual(raw.weaknesses);
+  });
+  it('rejects invented observation classes rather than converting them into errors', () => {
+    const r = request('feedback', { methodContract: METHOD_V2, target: 'card-c1', input: '这是待核对的原答。' });
+    const raw = feedback(r);
+    raw.weaknesses = ['合成观察'];
+    raw.weaknessEvidence = [{ label: raw.weaknesses[0], quote: r.input, classification: 'mastered' }];
+    expect(() => parse(raw, r)).toThrow('分类');
+  });
   it('keeps five-field analysis evidence verbatim in the live prompt example without relaxing feedback limits', () => {
     const r = request('feedback', {
       target: 'analysis',
@@ -304,7 +376,12 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
     const example = JSON.parse(prompt.split('只返回一个JSON对象：')[1].split('。示例中的说明文字')[0]);
     expect(parse(example.coach, r).lines[0].original).toBe(r.input);
   });
-  it('reuses the full coach lifecycle, explicit writing submission and immutable event replay', () => {
+  it.each([
+    { contract: METHOD, paragraphs: 2 },
+    { contract: METHOD_V2, paragraphs: 5 },
+    { contract: METHOD_V2, paragraphs: 12 }
+  ])('reuses full submission and event replay: $contract / $paragraphs paragraphs', ({ contract, paragraphs }) => {
+    if (paragraphs > 10) vi.stubGlobal('__YOZI_DEV_TEST__', true);
     let state = emptyLearningState('synthetic-shenlun', 'Asia/Shanghai'),
       serial = 0;
     const commit = (type, data = {}, id = `op-${++serial}`) => {
@@ -320,7 +397,7 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
     commit('coach.profile', {
       profile: {
         exam: 'shenlun',
-        methodContract: METHOD,
+        methodContract: contract,
         track: TRACK,
         subjects: ['gongkao_shenlun'],
         minutes: null,
@@ -334,6 +411,7 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
       const day = coach().days[0],
         bound = coachInputFor(coach(), day, phase, target);
       const r = request(phase, {
+        methodContract: contract,
         ...bound,
         target,
         sources: coachMaterialContext(state, state.conversations[0], bound),
@@ -346,6 +424,8 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
         : phase === 'summary'
           ? { kind: 'summary', learned: ['练习了材料归纳与短稿表达'], tomorrow: ['回看本次反馈'] }
           : feedback(r);
+      if (phase === 'daily')
+        output.writing.patterns = Array.from({ length: paragraphs }, (_, i) => [`第${i + 1}段职责`]);
       commit('coach.result', { requestId, output: parse(output, r) });
     };
     generate('diagnostic');
@@ -371,19 +451,32 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
       }
     });
     generate('feedback', 'analysis');
-    for (let index = 0; index < 2; index++) {
+    expect(() => coachInputFor(coach(), coach().days[0], 'feedback', `paragraph-${paragraphs}`)).toThrow();
+    for (let index = 0; index < paragraphs; index++) {
       commit('coach.paragraph', {
         index,
-        text: '当前窗口开放时间给部分上班居民带来办理困难。',
+        text: `第${index + 1}段：当前窗口开放时间给部分上班居民带来办理困难。`,
         authorship: 'user_typed'
       });
       generate('feedback', `paragraph-${index}`);
+      expect(coach().days[0].feedback[`paragraph-${index}`].lines[0].original).toContain(`第${index + 1}段`);
+      expect(coach().days[0].drafts[index].assessmentStatus).toBe('assessed');
       commit('coach.paragraph', {
         index,
         rewrite: true,
         text: '建议增设周六上午的预约办理时段，并于月底收集居民意见。',
         authorship: 'user_typed'
       });
+    }
+    if (paragraphs > 10) {
+      const day = coach().days[0],
+        originalFeedback = day.feedback['paragraph-10'];
+      commit('coach.reassess', { target: 'paragraph-10', feedbackId: originalFeedback.id });
+      expect(coach().days[0].drafts[10].assessmentStatus).toBe('pending');
+      expect(coach().days[0].drafts[0].assessmentStatus).toBe('assessed');
+      generate('feedback', 'paragraph-10');
+      expect(coach().days[0].feedbackHistory['paragraph-10'][0].id).toBe(originalFeedback.id);
+      expect(coach().days[0].drafts[10].assessmentStatus).toBe('assessed');
     }
     commit('coach.essaySubmit');
     generate('essay');
@@ -397,7 +490,7 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
     const forged = JSON.parse(JSON.stringify(state.conversations[0]));
     forged.coach.days[0].writingSubmissions[0].answerHash = 'wrong-content-hash';
     expect(coachSavedRecords(forged).find((record) => record.phase === 'essay').writingProcessSource).toBe('unknown');
-    expect(coach().learningRecords.every((record) => record.methodContract === METHOD)).toBe(true);
+    expect(coach().learningRecords.every((record) => record.methodContract === contract)).toBe(true);
     expect(coach().predictionChecks || []).toEqual([]);
     expect(coach().library).toEqual([]);
     expect(learningProgressReadModel(state).evidence).toEqual([]);
