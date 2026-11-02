@@ -87,6 +87,23 @@ function exercisePack() {
     }
   };
 }
+function nativeExerciseReply(pack = exercisePack()) {
+  return {
+    message: '开始练习',
+    exercises: Object.fromEntries(
+      pack.cards.map((card) => [
+        card.id,
+        {
+          [card.kind === 'translate_en' ? 'chinese' : 'english']: card.exercise.source,
+          sourceId: null,
+          sourceQuote: null,
+          sourcePage: null
+        }
+      ])
+    ),
+    writing: { ...pack.writing, sourceQuote: null, sourcePage: null }
+  };
+}
 describe('练习和小结按事实组装', () => {
   const request = {
     ...base,
@@ -128,14 +145,13 @@ describe('练习和小结按事实组装', () => {
     const generated = {
       message: '开始练习',
       exercises,
-      writing: { prompt: pack.writing.prompt, sourceId: null, sourceQuote: null, sourcePage: null }
+      writing: { ...pack.writing, sourceQuote: null, sourcePage: null }
     };
     const decoded = decodeCoachResponse(prepared, JSON.stringify(generated));
     const out = parseCoachModelOutput(decoded, request).coach;
     expect(out.cards).toHaveLength(8);
     expect(out.cards.map((c) => c.id)).toEqual(pack.cards.map((c) => c.id));
-    expect(out.writing.patterns).toHaveLength(3);
-    expect(out.writing.patterns.flat().join(' ')).not.toMatch(/Friday|charity/);
+    expect(out.writing.patterns).toEqual(pack.writing.patterns);
     expect(coachSystemPrompt(request, prepared.writingOutput.schema)).toContain('只调用yozi_coach_response');
     expect(() => decodeCoachResponse(prepared, JSON.stringify({ ...generated, coach: { kind: 'daily' } }))).toThrow();
   });
@@ -159,7 +175,7 @@ describe('练习和小结按事实组装', () => {
           }
         ])
       ),
-      writing: { prompt: pack.writing.prompt, sourceId: null, sourceQuote: null, sourcePage: null }
+      writing: { ...pack.writing, sourceQuote: null, sourcePage: null }
     };
     expect(parseCoachModelOutput(decodeCoachResponse(prepared, JSON.stringify(raw)), request).coach.cards).toHaveLength(
       8
@@ -170,6 +186,93 @@ describe('练习和小结按事实组装', () => {
     expect(() => decodeCoachResponse(prepared, JSON.stringify(raw) + '}')).toThrow(
       expect.objectContaining({ code: 'COACH_INVALID' })
     );
+  });
+  it.each([
+    [
+      '建议信',
+      'Write the student union a letter suggesting two ways to improve the study environment. About 100 words.',
+      [
+        ['I am writing to suggest ways to improve {problem}.'],
+        ['First, {suggestion1} would {benefit1}.', 'In addition, I suggest {suggestion2} because {reason}.'],
+        ['Thank you for considering these suggestions.']
+      ]
+    ],
+    [
+      '申请信',
+      'Write Professor Wang an email applying to be a volunteer. State your interest and experience. About 100 words.',
+      [
+        ['I am writing to apply for {role}.'],
+        ['My experience in {experience} would help me {contribution}.'],
+        ['I would appreciate an opportunity to discuss {next step}.']
+      ]
+    ],
+    [
+      '通知',
+      'Write a notice giving new students information about the library and how to seek help. About 100 words.',
+      [
+        ['This notice is to introduce {service} to {audience}.'],
+        ['Please {required action}. For further information, contact {contact}.']
+      ]
+    ]
+  ])('%s按本题句式带写，不被宿主换成活动安排', (_, prompt, patterns) => {
+    const pack = exercisePack();
+    pack.writing = { ...pack.writing, prompt, patterns };
+    const before = structuredClone(pack);
+    for (const endpoint of [
+      config,
+      { ...config, model: 'deepseek-flash', endpoint: 'https://api.deepseek.com/chat/completions' }
+    ]) {
+      const prepared = prepareCoachFeedbackModel(endpoint, request);
+      const out = parseCoachModelOutput(
+        decodeCoachResponse(prepared, JSON.stringify(nativeExerciseReply(pack))),
+        request
+      ).coach;
+      expect(out.writing.prompt).toBe(prompt);
+      expect(out.writing.patterns).toEqual(patterns);
+      expect(out.writing.patterns.flat().join(' ')).not.toContain('will take place');
+    }
+    expect(pack).toEqual(before);
+  });
+  it.each(
+    [undefined, [], [['Only one paragraph.']], [['Valid sentence.'], [1]], [[], ['Valid sentence.']]].map(
+      (patterns) => ({ patterns })
+    )
+  )('缺失或坏句式拒收，不默默补入活动模板 %#', ({ patterns }) => {
+    const prepared = prepareCoachFeedbackModel(config, request);
+    const raw = nativeExerciseReply();
+    raw.writing.patterns = patterns;
+    expect(() => decodeCoachResponse(prepared, JSON.stringify(raw))).toThrow(
+      expect.objectContaining({ code: 'COACH_INVALID' })
+    );
+  });
+  it('大作文保留本题三段描述、解释与评论的句式，缺段仍拒收', () => {
+    const large = { ...request, exam: 'english1', essayType: 'large' };
+    const prepared = prepareCoachFeedbackModel(config, large);
+    const pack = exercisePack();
+    pack.writing = {
+      ...pack.writing,
+      prompt:
+        'The picture shows one student reading a book at a desk and another student using a phone in front of an unopened textbook. Write an essay of 160–200 words describing the picture, explaining their different study habits and giving your comments.',
+      patterns: [
+        ['In the picture, {visible detail}.'],
+        ['The contrast suggests that {interpretation}.'],
+        ['In my view, {comment}.']
+      ]
+    };
+    const raw = nativeExerciseReply(pack);
+    expect(parseCoachModelOutput(decodeCoachResponse(prepared, JSON.stringify(raw)), large).coach.writing).toEqual(
+      expect.objectContaining({ patterns: pack.writing.patterns })
+    );
+    raw.writing.patterns.pop();
+    expect(() => decodeCoachResponse(prepared, JSON.stringify(raw))).toThrow(
+      expect.objectContaining({ code: 'COACH_INVALID' })
+    );
+    expect(coachSystemPrompt(large, prepared.writingOutput.schema)).toContain('按本题体裁与要点给三段');
+    expect(coachSystemPrompt(large, prepared.writingOutput.schema)).toContain('图画作文任务，必须用文字完整描述');
+    expect(coachSystemPrompt({ ...large, exam: 'english2' }, prepared.writingOutput.schema)).toContain(
+      '图表作文任务，必须完整给出数值与单位'
+    );
+    expect(coachSystemPrompt({ ...request, exerciseContract: undefined })).not.toContain('1800tokens');
   });
   it('无资料时先指定三个不同的固定搭配考点并轮换，仍要求模型写完整新句与独立盲填', () => {
     const p = prepareCoachFeedbackModel(config, request);
@@ -2155,7 +2258,7 @@ describe('新出搭配填空经盲填校准才下发', () => {
           }
         ])
       ),
-      writing: { prompt: pack.writing.prompt, sourceId: null, sourceQuote: null, sourcePage: null }
+      writing: { ...pack.writing, sourceQuote: null, sourcePage: null }
     });
   };
   it('模型标出的原词由宿主换成空格，只交给校准补上复核员漏判的词，不随题下发', async () => {

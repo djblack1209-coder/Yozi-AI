@@ -351,7 +351,21 @@ export function prepareCoachFeedbackModel(
       )
     };
     if (request.phase === 'daily')
-      properties.writing = closed({ prompt: { ...string, minLength: 1, maxLength: 1500 }, ...source });
+      properties.writing = closed({
+        prompt: { ...string, minLength: 1, maxLength: 1500 },
+        patterns: {
+          type: 'array',
+          minItems: request.essayType === 'large' ? 3 : 2,
+          maxItems: 3,
+          items: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 2,
+            items: { ...string, minLength: 1, maxLength: 240 }
+          }
+        },
+        ...source
+      });
     const schema = closed(properties);
     return {
       ...config,
@@ -751,23 +765,11 @@ export function decodeCoachResponse(config: ModelConfig, content: string): strin
       };
     });
     collocationAnswers.set(config, answers);
-    const patterns =
-      config.writingOutput!.generationEssayType === 'large'
-        ? [
-            ['As is shown in the {picture/chart}, {observation}.'],
-            ['This suggests that {point}. For example, {support}.'],
-            ['To conclude, {summary}. We should {action}.']
-          ]
-        : [
-            ['I am writing to {purpose}.'],
-            ['The {event} will take place at {place} on {time}.', 'We will {details}.'],
-            ['Please {action}. We look forward to {response}.']
-          ];
     return JSON.stringify({
       message,
       question: null,
       tools: [],
-      coach: { kind: phase, cards, ...(writing ? { writing: { ...writing, patterns } } : {}) }
+      coach: { kind: phase, cards, ...(writing ? { writing } : {}) }
     });
   }
   if (config.writingOutput!.correctionPolicy === 'anchored-edits-v1') {

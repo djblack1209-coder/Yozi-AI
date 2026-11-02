@@ -2258,6 +2258,11 @@ it.each(['calibrated', 'bad-then-good', 'bad-twice', 'verifier-fails', 'second-r
       ),
       writing: {
         prompt: 'Write your classmates an email about a charity sale. About 100 words.',
+        patterns: [
+          ['I am writing to invite you to {event}.'],
+          ['The event will take place at {place} on {time}.'],
+          ['We look forward to your participation.']
+        ],
         sourceId: null,
         sourceQuote: null,
         sourcePage: null
