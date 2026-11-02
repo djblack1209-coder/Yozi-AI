@@ -18,6 +18,7 @@ beforeEach(() => {
   storageService.saveLoginSession({ userId: 'synthetic-intake-owner', token: 'fixture-only-token', userInfo: {} });
   setActivePinia(createPinia());
   store = useConversationLearningStore();
+  store.sharingAllowed = true;
   calls = [];
   queue = [];
   vi.spyOn(uni, 'request').mockImplementation((options) => {
@@ -65,6 +66,15 @@ function panel() {
 const modelCalls = () => calls.filter((c) => c.action === 'test');
 
 describe('DeepSeek intake receipt and request recovery', () => {
+  it('does not transmit an answer or register a new request after sharing consent is withdrawn', async () => {
+    await greeting();
+    store.sharingAllowed = false;
+    const before = JSON.stringify(store.state),
+      count = modelCalls().length;
+    await expect(store.answerModelIntake('考研')).rejects.toMatchObject({ code: 'CONSENT_REQUIRED' });
+    expect(modelCalls()).toHaveLength(count);
+    expect(JSON.stringify(store.state)).toBe(before);
+  });
   it('uses confirmed account data when connecting a model from a different conversation', async () => {
     const original = store.commit('conversation.start', { goal: '考研英语二' });
     store.commit('coach.begin', { conversationId: original.id, explicit: true });

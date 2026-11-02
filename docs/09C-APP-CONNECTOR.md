@@ -37,11 +37,11 @@ Android 适配器用 `invokeAndKeepAlive` 保留中间回调、终止用 `invoke
 
 ## 移动 SDK 编译
 
-**2026-10-14当前准备状态【未装配】**：本机Xcode路径 `/Applications/Xcode.app/Contents/Developer`、iPhoneOS SDK27.0可用；实际DCloud Android classpath和iOS头/框架路径均未配置，未发现已安装HBuilderX入口。现有 `npm run build:app:connector -- --ios` 新鲜预查仅因 `DCUniModule.h` 及依赖未配置退出2，未生成二进制、下载、改App配置或云打包。没有以基础Apple/Android SDK代替DCloud模块SDK，也没有新建模拟器代替真机验收。
+**2026-11-02当前准备状态【未装配】**：本机Xcode可用；实际DCloud Android classpath和iOS头/框架路径均未配置，未发现已安装HBuilderX入口。本轮沿既有build-only入口预查，因 `DCUniModule.h` 及依赖未配置退出2，未生成二进制、下载、改App配置或云打包。已配对iPhone当前未连接，未启动手机执行服务；没有以Apple SDK或模拟器代替DCloud装配与真机验收。
 
-当前锁定DCloud系列为 `3.0.0-alpha-5030120260930001`；已安装vite-plugin-uni的 `uni-app.compilerVersion` 与当前App产物manifest均为 **5.31**。下方10月2日的5.08只属于历史准备记录，不能继续作为当前SDK装配基线。官方[iOS下载/升级说明](https://nativesupport.dcloud.net.cn/AppDocs/download/ios.html)与[Android下载说明](https://nativesupport.dcloud.net.cn/AppDocs/download/android.html)当前页面列5.26包，尚无本机包、完整来源摘要或与5.31资源组合的兼容验收；不能据“最新版”或单个头文件存在直接判定可装配。收到SDK本机路径后，由助手核对官方来源、完整包/版本、依赖库与资源，再沿现有build-only入口编译；不同版本须有对应平台兼容依据和实际验收，不以关闭版本提示代替。
+当前锁定DCloud系列为 `3.0.0-alpha-5030120260930001`；已安装vite-plugin-uni的 `uni-app.compilerVersion` 与当前App产物manifest均为 **5.31**。下方10月2日的5.08只属于历史准备记录，不能继续作为当前SDK装配基线。11月2日官方[iOS下载/升级说明](https://nativesupport.dcloud.net.cn/AppDocs/download/ios.html)列稳定版5.34及alpha版5.33，尚无与5.31匹配的本机完整包或兼容验收；不能据“最新版”或单个头文件存在直接判定可装配。取得包后核对官方来源、许可、完整版本、依赖库与资源，再沿现有build-only入口编译；不同版本须有对应平台兼容依据和实际验收，不以关闭版本提示代替。
 
-历史官方入口的浏览器安全拒绝继续保留，不换工具绕过。客户随后明确暂不处理iPhone端，优先网页/官网和macOS；SDK问题不再等待本轮回复，iPhone装配/设备留作后续待办，不继续下载、编译或安装。此项尚未闭环，不称App开发或设备验收完成。
+客户11月2日已授权下载与当前编译器匹配的官方iOS离线SDK并本机装配测试，不做云打包或部署；此前暂缓安排由此接续。历史官方入口的浏览器安全拒绝保留，不换工具绕过。SDK取得、实际装配和设备业务验收尚未完成，不称App开发或设备验收闭环。
 
 源码/元数据在 `nativeplugins/Yozi-Connector/`，对应 [DCloud Android](https://nativesupport.dcloud.net.cn/NativePlugin/course/android.html)、[iOS 模块](https://nativesupport.dcloud.net.cn/NativePlugin/course/ios.html)和[打包规范](https://nativesupport.dcloud.net.cn/NativePlugin/course/package.html)。不以模拟 SDK 声明或空二进制替代编译。
 

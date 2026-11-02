@@ -143,11 +143,13 @@
       <template v-if="!coach">
         <MuseChatEmpty v-if="showChatEmpty" connected @draft="goal = $event" />
         <MuseModelIntake
-          v-if="!DEV_TEST"
+          v-if="usesModelIntake"
           ref="intakePanel"
           v-model="goal"
           :empty-greeting="showChatEmpty"
           shared-input
+          new-goal
+          auto-open
           @accepted="acceptedProfile"
         />
       </template>
@@ -616,6 +618,7 @@ import MuseModelFeedback from '@/components/business/learning/muse-model-feedbac
 import { modelErrorPresentation } from '../../../../laf-backend/functions/_shared/model-errors.js';
 import MuseModelIntake from '@/components/business/learning/muse-model-intake.vue';
 import { DEV_TEST } from '@/config/build-channel.js';
+import { MODEL_INTAKE_V2_CONTRACT } from '../../../../laf-backend/functions/_shared/learning-intake.js';
 import MuseRichText from '@/components/business/learning/muse-rich-text.vue';
 import MuseWritingCard from '@/components/business/learning/muse-writing-card.vue';
 import MusePracticeSheet from '@/pages/learning/components/muse-practice-sheet.vue';
@@ -862,7 +865,7 @@ const composerLabel = computed(() =>
 );
 const composerPlaceholder = computed(() => {
   if (!coach.value)
-    return !DEV_TEST && learning.state.intake && !learning.state.intake.acceptedConversationId
+    return usesModelIntake.value && learning.state.intake && !learning.state.intake.acceptedConversationId
       ? '写下你的回答'
       : '写下你的学习目标';
   if (learning.active.stopped) return '带练已暂停，可在上方继续';
@@ -870,6 +873,13 @@ const composerPlaceholder = computed(() => {
   if (!answerTarget.value) return '请先完成上方当前步骤';
   return answerTarget.value.kind === 'foundation' ? '写下目前的基础或困难（选填）' : composerLabel.value;
 });
+const usesModelIntake = computed(
+  () =>
+    !learning.active &&
+    (!DEV_TEST ||
+      learning.modelIntakeContract === MODEL_INTAKE_V2_CONTRACT ||
+      learning.state.intake?.contract === MODEL_INTAKE_V2_CONTRACT)
+);
 const composerDraft = computed({
   get: () => (answerTarget.value?.kind === 'foundation' ? profile.foundation : coach.value ? answer.value : goal.value),
   set: (value) => {
@@ -885,7 +895,7 @@ async function submitComposer() {
     if (!input) return;
     const submittedDraft = draftBinding;
     const previousConversation = learning.selectedConversationId;
-    if (!DEV_TEST && !learning.state.intake?.acceptedConversationId) {
+    if (usesModelIntake.value) {
       const result = await intakePanel.value?.submitDraft();
       if (
         draftAlive &&

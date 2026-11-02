@@ -6,7 +6,7 @@
         v-if="learning.modelId && !learning.needsConnection"
         variant="primary"
         :disabled="learning.intakeBusy || !learning.sharingAllowed"
-        @tap="act(() => learning.beginModelIntake(learning.modelId))"
+        @tap="act(() => learning.beginModelIntake(learning.modelId, { newGoal }))"
         >开始建档</BaseButton
       >
     </view>
@@ -58,13 +58,14 @@
             ></template
           >
         </template>
-        <BaseButton v-else-if="intake.turns.length >= 4" variant="quiet" @tap="act(() => learning.restartModelIntake())"
+        <BaseButton v-else-if="intakeFinished(intake)" variant="quiet" @tap="act(() => learning.restartModelIntake())"
           >重新选择方向</BaseButton
         >
         <template v-else>
           <BaseOptions
             v-if="reply.intake.options.length"
             v-model="choice"
+            :class="{ 'intake-capsules': intake.contract === MODEL_INTAKE_V2_CONTRACT }"
             :label="reply.message"
             :options="reply.intake.options"
             :disabled="learning.intakeBusy"
@@ -120,7 +121,14 @@ import MuseModelFeedback from './muse-model-feedback.vue';
 import { modelErrorPresentation } from '../../../../laf-backend/functions/_shared/model-errors.js';
 import { safeNavigateTo } from '@/utils/safe-navigate.js';
 import { studentAvatar } from '@/services/learning/shell-navigation.js';
-const props = defineProps({ sharedInput: Boolean, emptyGreeting: Boolean, modelValue: { type: String, default: '' } });
+import { intakeFinished, MODEL_INTAKE_V2_CONTRACT } from '../../../../laf-backend/functions/_shared/learning-intake.js';
+const props = defineProps({
+  sharedInput: Boolean,
+  emptyGreeting: Boolean,
+  newGoal: Boolean,
+  autoOpen: Boolean,
+  modelValue: { type: String, default: '' }
+});
 const emit = defineEmits(['accepted', 'update:modelValue']);
 const learning = useConversationLearningStore();
 const userAvatar = computed(() => studentAvatar(learning.state.owner));
@@ -132,7 +140,9 @@ const input = computed({
   get: () => (props.sharedInput ? props.modelValue : localInput.value),
   set: (value) => (props.sharedInput ? emit('update:modelValue', value) : (localInput.value = value))
 });
-const intake = computed(() => learning.state.intake);
+const intake = computed(() =>
+  props.newGoal && learning.state.intake?.acceptedConversationId ? null : learning.state.intake
+);
 const reply = computed(() => intake.value?.reply);
 const proposal = computed(() => reply.value?.intake.profile);
 const answer = computed(() =>
@@ -177,6 +187,38 @@ async function act(action) {
 function submit() {
   if (answer.value) return act(() => learning.answerModelIntake(answer.value));
 }
+let openingKey = null;
+watch(
+  () => [
+    props.autoOpen,
+    learning.modelId,
+    learning.sharingAllowed,
+    learning.needsConnection,
+    learning.active,
+    intake.value,
+    learning.intakeBusy,
+    learning.busy,
+    props.autoOpen ? learning.recordContext() : null
+  ],
+  () => {
+    if (
+      !props.autoOpen ||
+      intake.value ||
+      !learning.modelId ||
+      !learning.sharingAllowed ||
+      learning.needsConnection ||
+      learning.active ||
+      learning.intakeBusy ||
+      learning.busy
+    )
+      return;
+    const key = JSON.stringify([learning.recordContext(), learning.modelId]);
+    if (key === openingKey) return;
+    openingKey = key;
+    void act(() => learning.beginModelIntake(learning.modelId, { newGoal: props.newGoal }));
+  },
+  { immediate: true }
+);
 async function submitDraft() {
   if (!intake.value) {
     const raw = input.value.trim(),
@@ -190,13 +232,13 @@ async function submitDraft() {
       failure.value = { error: 'CONSENT_REQUIRED' };
       return;
     }
-    const started = await act(() => learning.beginModelIntake(learning.modelId));
+    const started = await act(() => learning.beginModelIntake(learning.modelId, { newGoal: props.newGoal }));
     if (context !== learning.recordContext()) return;
     if (started?.success) return act(() => learning.answerModelIntake(raw));
     if (!input.value) input.value = raw;
     return;
   }
-  if (intake.value?.turns.length >= 4 && !proposal.value) return;
+  if (intakeFinished(intake.value) && !proposal.value) return;
   if (proposal.value) {
     if ((editing.value || props.sharedInput) && input.value.trim())
       return act(() => learning.answerModelIntake(input.value.trim()));
@@ -225,6 +267,24 @@ function accept() {
 }
 </script>
 <style scoped>
+.intake-capsules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+.intake-capsules :deep(.base-option) {
+  width: auto;
+  min-height: 44px;
+  flex: none;
+  border-radius: var(--r-pill);
+  padding: var(--s-2) var(--s-4);
+}
+.intake-capsules :deep(.base-option__key) {
+  display: none;
+}
+.intake-capsules :deep(.base-option__label) {
+  flex: none;
+}
 .model-intake {
   display: flex;
   flex-direction: column;

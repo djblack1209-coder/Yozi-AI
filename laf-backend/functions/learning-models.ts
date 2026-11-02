@@ -1,6 +1,6 @@
 import { ProviderError } from './_shared/ai-providers/learning-provider.js';
 import cloud from '@lafjs/cloud';
-import { normalizeIntakeContext, MODEL_INTAKE_CONTRACT } from './_shared/learning-intake.js';
+import { normalizeIntakeContext, MODEL_INTAKE_CONTRACT, MODEL_INTAKE_CONTRACTS } from './_shared/learning-intake.js';
 import crypto from 'node:crypto';
 import { requireAuth, isAuthError } from './_shared/auth-middleware.js';
 import { requireActiveUser } from './_shared/active-user.js';
@@ -348,6 +348,7 @@ export default async function (ctx: any) {
               profile.capabilityCheck?.structured
           ),
           intakeContract: MODEL_INTAKE_CONTRACT,
+          intakeContracts: MODEL_INTAKE_CONTRACTS,
           platformEnabled: process.env.LEARNING_PLATFORM_CALLS_ENABLED === 'true',
           coreLearningFree: true,
           keyStorage: 'server_aes_gcm',

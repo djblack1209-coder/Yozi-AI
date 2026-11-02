@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { intakeChoicesFor } from '../../laf-backend/functions/_shared/learning-intake.js';
 import {
   mixedDiagnosticRequest,
   mixedDiagnosticReply,
@@ -2701,3 +2702,51 @@ describe('灵感建议只用自带 API、独立小额度，回复先校验再显
     expect(JSON.stringify([...mock.rows.entries()])).toBe(before);
   });
 });
+
+it.each(['opening', 'follow-up', 'finished', 'invented-choice', 'third-question'])(
+  'two-round intake API enforces the requested version and closed branches: %s',
+  async (mode) => {
+    await streamProfile(false);
+    const intake = {
+      contract: 'model-intake-v2',
+      turns: (mode === 'opening'
+        ? []
+        : mode === 'finished' || mode === 'third-question'
+          ? ['考研', '其他科目']
+          : ['考研']
+      ).map((answer) => ({ question: '合成提问', answer }))
+    };
+    const finished = mode === 'finished' || mode === 'third-question';
+    const output = {
+      message: mode === 'opening' ? '你在准备什么？' : finished ? '方向尚未确定，可稍后重新选择。' : '想先准备哪一科？',
+      intake: { options: finished ? [] : intakeChoicesFor(intake), input: mode === 'opening', profile: null },
+      question: null,
+      tools: []
+    };
+    if (mode === 'invented-choice')
+      output.intake.options = [
+        { value: 'execute-task', label: '自动建立计划' },
+        { value: 'skip', label: '尚未确定' }
+      ];
+    if (mode === 'third-question')
+      output.intake.options = [
+        { value: 'again', label: '再问一次' },
+        { value: 'skip', label: '尚未确定' }
+      ];
+    vi.mocked(callLearningProvider).mockImplementation(async () => ({
+      ...streamCompleted,
+      content: JSON.stringify(output)
+    }));
+    const body = { ...streamBody('two-round-' + mode), learningContext: { owner: 'u1', intake } };
+    const result = await ai(context(body));
+    expect(result.success).toBe(!['invented-choice', 'third-question'].includes(mode));
+    expect(callLearningProvider).toHaveBeenCalledTimes(1);
+    if (result.success) expect(result.data.intake).toEqual(output.intake);
+    else expect(result.error).toBe('INTAKE_INVALID');
+    if (mode === 'opening') {
+      const listed = await models(context({ action: 'list' }));
+      expect(listed.data.intakeContract).toBe('model-intake-v1');
+      expect(listed.data.intakeContracts).toEqual(['model-intake-v1', 'model-intake-v2']);
+    }
+  }
+);

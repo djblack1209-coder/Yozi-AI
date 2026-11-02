@@ -31,7 +31,8 @@ const ROOT_FIELDS = new Set([
   'strategy',
   'reviews',
   'legacy',
-  'materialDeletions'
+  'materialDeletions',
+  'intake'
 ]);
 const UNSAFE_KEYS =
   /^(?:__proto__|prototype|constructor|apiKey|api_key|accessToken|refreshToken|authorization|password|secret|vaultKey)$/i;

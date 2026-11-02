@@ -9,7 +9,12 @@ import { DEV_TEST } from '@/config/build-channel.js';
 import { activeEntryMemories } from '../../../laf-backend/functions/_shared/learning-entries.js';
 import { extractConversationEntries } from '../../../laf-backend/functions/_shared/learning-entry-extractor.js';
 import { mapContentBlocks } from '../../../laf-backend/functions/_shared/learning-content-blocks.js';
-import { normalizeIntakeReply, explicitIntakeFacts } from '../../../laf-backend/functions/_shared/learning-intake.js';
+import {
+  normalizeIntakeReply,
+  explicitIntakeFacts,
+  intakeFinished,
+  MODEL_INTAKE_V2_CONTRACT
+} from '../../../laf-backend/functions/_shared/learning-intake.js';
 import { coachMaterialContext } from '@/services/learning/coach-material-context.js';
 import { WRITING_KNOWLEDGE_CONTRACT } from '../../../laf-backend/functions/_shared/learning-writing-knowledge.js';
 import { WRITING_PREDICTION_CONTRACT } from '../../../laf-backend/functions/_shared/learning-writing-prediction.js';
@@ -399,6 +404,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     intakeError = ref('');
   let intakeController = null;
   let modelIntakeAvailable = false;
+  const modelIntakeContract = shallowRef(null);
   const coachError = ref('');
   const coachProfileDraft = computed(() => explicitIntakeFacts(active.value?.goal || ''));
   const models = ref([]);
@@ -662,6 +668,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   function resetModelResources() {
     cancelModelReads(undefined, 'CONTEXT_CHANGED');
     modelIntakeAvailable = false;
+    modelIntakeContract.value = null;
     models.value = [];
     modelPresets.value = [];
     usage.value = null;
@@ -1365,6 +1372,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     localConnection.value = null;
     materialConnection.value = null;
     modelIntakeAvailable = false;
+    modelIntakeContract.value = null;
     models.value = [];
     modelPresets.value = [];
     usage.value = null;
@@ -3973,6 +3981,13 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       }
       if (kind === 'models') {
         modelIntakeAvailable = result.success && result.data.intakeContract === 'model-intake-v1';
+        modelIntakeContract.value =
+          result.success && result.data.intakeContracts?.includes(MODEL_INTAKE_V2_CONTRACT)
+            ? MODEL_INTAKE_V2_CONTRACT
+            : modelIntakeAvailable
+              ? 'model-intake-v1'
+              : null;
+        modelIntakeAvailable = Boolean(modelIntakeContract.value);
         models.value = result.success ? result.data.models : [];
         modelPresets.value = result.success ? result.data.presets || [] : [];
         if (result.success && !preferencesDirty && result.data.preferences) {
@@ -4200,11 +4215,22 @@ export const useConversationLearningStore = defineStore('conversation-learning',
         if (state.value.intake.finalFailure) return { success: false, status: 'failed', reused: true };
         requestId = state.value.intake.requestId;
       } else {
+        const contract =
+          reset || !state.value.intake || state.value.intake.acceptedConversationId
+            ? modelIntakeContract.value
+            : state.value.intake.contract;
+        assert(
+          sharingAllowed.value || (answer === undefined && (reset || !state.value.intake?.turns.length)),
+          'CONSENT_REQUIRED',
+          '请先允许发送本次建档回答'
+        );
         requestId = learningId('intake');
         commit('intake.request', {
           modelId: id,
           requestId,
           explicit: true,
+          ...(contract === MODEL_INTAKE_V2_CONTRACT ? { contract } : {}),
+          ...(contract === MODEL_INTAKE_V2_CONTRACT ? { binding: learningId('intake-binding') } : {}),
           ...(reset ? { reset: true } : {}),
           ...(answer !== undefined ? { answer } : {})
         });
@@ -4213,18 +4239,51 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       reply.value.id = `${requestId}:reply`;
       intakeError.value = '';
       const turns = state.value.intake.turns;
-      const result = await modelAction((options) =>
-        recover
+      const binding = state.value.intake.binding;
+      const intakeOwner = state.value.owner;
+      const intakeContext = {
+        turns,
+        ...(state.value.intake.contract ? { contract: state.value.intake.contract } : {})
+      };
+      const result = await modelAction((options) => {
+        ensureSessionCurrent(origin, control.signal);
+        assert(
+          recordContext() === expected && state.value.intake?.requestId === requestId,
+          'CONTEXT_CHANGED',
+          '建档上下文已变化，未发送旧回答'
+        );
+        assert(recover || sharingAllowed.value || !turns.length, 'CONSENT_REQUIRED', '请先允许发送本次建档回答');
+        return recover
           ? fetchLearningResult(requestId, {
               ...options,
               signal: globalThis.AbortSignal.any([options.signal, control.signal])
             })
-          : testLearningModel(id, requestId, {
-              ...options,
-              signal: globalThis.AbortSignal.any([options.signal, control.signal]),
-              intake: { turns }
-            })
-      );
+          : binding
+            ? generateLearningTurn(
+                {
+                  modelId: id,
+                  requestId,
+                  requestBinding: binding,
+                  shareConsent: true,
+                  messages: turns.length
+                    ? turns.flatMap((turn) => [
+                        { role: 'assistant', content: turn.question },
+                        { role: 'user', content: turn.answer }
+                      ])
+                    : [{ role: 'user', content: '请发出学习建档的第一问。' }],
+                  learningContext: { owner: intakeOwner, intake: intakeContext }
+                },
+                {
+                  ...options,
+                  signal: globalThis.AbortSignal.any([options.signal, control.signal])
+                }
+              )
+            : testLearningModel(id, requestId, {
+                ...options,
+                signal: globalThis.AbortSignal.any([options.signal, control.signal]),
+                intake: intakeContext
+              });
+      });
       ensureSessionCurrent(origin);
       assert(!control.signal.aborted && intakeController === control, 'CANCELLED', '请求已取消');
       assert(recordContext() === expected, 'CONTEXT_CHANGED', '学习记录已变化');
@@ -4232,8 +4291,12 @@ export const useConversationLearningStore = defineStore('conversation-learning',
         if (!result.data || typeof result.data !== 'object')
           throw Object.assign(new Error('建档回复不完整'), { code: 'INTAKE_INVALID' });
         assert(
-          (!result.data.requestId || result.data.requestId === requestId) &&
-            (!result.data.modelId || result.data.modelId === id),
+          binding
+            ? result.data.requestId === requestId &&
+                result.data.modelId === id &&
+                result.data.requestBinding === binding
+            : (!result.data.requestId || result.data.requestId === requestId) &&
+                (!result.data.modelId || result.data.modelId === id),
           'CONTEXT_CHANGED',
           '建档回复不属于当前请求'
         );
@@ -4245,9 +4308,9 @@ export const useConversationLearningStore = defineStore('conversation-learning',
             tools: result.data.tools
           },
           !turns.length,
-          { turns }
+          intakeContext
         );
-        commit('intake.result', { requestId, modelId: id, reply });
+        commit('intake.result', { requestId, modelId: id, reply, ...(binding ? { binding } : {}) });
         finishReply(control, reply.message);
         modelId.value = id;
         selectedMode.value = 'cloud';
@@ -4302,39 +4365,53 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   }
   function restartModelIntake() {
     const intake = state.value.intake;
-    const finished = intake?.status === 'ready' && intake.turns.length >= 4 && !intake.reply?.intake.profile;
+    const finished = intake?.status === 'ready' && intakeFinished(intake);
     assert(intake?.finalFailure === true || finished, 'PRECONDITION', '请先查询原请求状态');
     return runModelIntake(intake.modelId, undefined, false, finished);
   }
-  async function beginModelIntake(id) {
+  async function beginModelIntake(id, { newGoal = false } = {}) {
     if (reply.value?.pending) return { success: false, message: '请等待当前请求完成' };
     const control = beginReply('intake', learningId('intake'));
     try {
-      return await beginModelIntakeTurn(id, control);
+      return await beginModelIntakeTurn(id, control, newGoal);
     } finally {
       finishReply(control);
     }
   }
-  async function beginModelIntakeTurn(id, control) {
+  async function beginModelIntakeTurn(id, control, newGoal) {
     if (!['ready', 'remote'].includes(accountRecordState.value)) await readAccountRecords();
     assert(!control.signal.aborted, 'CANCELLED', '请求已取消');
     if (accountRecordState.value !== 'ready')
       return { success: false, message: '账号已有学习记录，请先在数据面板确认采用云端记录' };
-    if (DEV_TEST) return loadModels();
+    if (DEV_TEST && modelIntakeContract.value !== MODEL_INTAKE_V2_CONTRACT) return loadModels();
     idleRecords();
     const intake = state.value.intake;
     if (
-      state.value.conversations.some((conversation) => conversation.coach?.profile || conversation.studyProfile) ||
-      state.value.profile.length ||
-      state.value.attempts.length ||
-      state.value.events.some((event) => ['coach.answer', 'training.complete'].includes(event.type)) ||
-      (intake?.status === 'ready' && intake.turns.length >= 4 && !intake.reply?.intake.profile)
+      !newGoal &&
+      (state.value.conversations.some((conversation) => conversation.coach?.profile || conversation.studyProfile) ||
+        state.value.profile.length ||
+        state.value.attempts.length ||
+        state.value.events.some((event) => ['coach.answer', 'training.complete'].includes(event.type)) ||
+        (intake?.status === 'ready' && intakeFinished(intake)))
     )
       return testModel(id);
     const catalog = await loadModels();
     assert(!control.signal.aborted, 'CANCELLED', '请求已取消');
     if (!catalog.success) return catalog;
     if (!modelIntakeAvailable) return { success: false, code: 426, error: 'INTAKE_UNAVAILABLE' };
+    if (
+      intake &&
+      !intake.acceptedConversationId &&
+      ['pending', 'failed'].includes(intake.status) &&
+      !intake.finalFailure &&
+      intake.modelId !== id
+    )
+      return {
+        success: false,
+        error: 'CONTEXT_CHANGED',
+        message: '请先查询原建档请求，再使用其他模型',
+        requestId: intake.requestId
+      };
     if (state.value.intake?.modelId === id && !state.value.intake.acceptedConversationId) {
       if (state.value.intake.status === 'ready') return Promise.resolve({ success: true });
       if (state.value.intake.finalFailure === true) return restartModelIntake();
@@ -5473,6 +5550,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     acceptModelIntake,
     intakeBusy,
     intakeError,
+    modelIntakeContract,
     checkLocalConnection,
     checkMaterialConnection,
     modelId,

@@ -2,7 +2,13 @@ import { ENTRY_EVENTS, applyEntryOperation, normalizeEntrySchedule } from './lea
 import { applyAdherenceOperation, ADHERENCE_EVENTS, reviewFacts } from './learning-adherence.js';
 import { normalizeLearningProposal, assertLearningProposalAcceptance } from './learning-proposals.js';
 import { normalizeContentBlocks } from './learning-content-blocks.js';
-import { normalizeIntakeContext, normalizeIntakeReply, normalizeStudyProfile } from './learning-intake.js';
+import {
+  normalizeIntakeContext,
+  normalizeIntakeReply,
+  normalizeStudyProfile,
+  intakeFinished,
+  MODEL_INTAKE_V2_CONTRACT
+} from './learning-intake.js';
 import { applyWritingCoachOperation } from './learning-writing-coach.js';
 import {
   normalizeRubric,
@@ -1233,10 +1239,29 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
           'INVALID_STATE',
           '当前没有待回答的问题'
         );
+      if (data.answer !== undefined && previous?.contract === MODEL_INTAKE_V2_CONTRACT)
+        assert(!intakeFinished(previous), 'INVALID_STATE', '方向尚未确定，请重新选择；未追加第三轮问题');
+      if (data.answer !== undefined && data.contract !== undefined)
+        assert(
+          data.contract === (previous?.contract || 'model-intake-v1'),
+          'CONTEXT_CHANGED',
+          '请沿原建档合同回答或明确重新开始'
+        );
+      const context = normalizeIntakeContext({
+        turns,
+        ...(data.contract !== undefined
+          ? { contract: data.contract }
+          : !data.reset && previous?.contract
+            ? { contract: previous.contract }
+            : {})
+      });
+      if (data.binding !== undefined)
+        assert(context.contract === MODEL_INTAKE_V2_CONTRACT, 'INVALID_INPUT', '建档关联需要新版合同');
       state.intake = {
         requestId: text(data.requestId, 160),
         modelId: text(data.modelId, 160),
-        turns: normalizeIntakeContext({ turns }).turns,
+        ...context,
+        ...(data.binding !== undefined ? { binding: text(data.binding, 100) } : {}),
         status: 'pending',
         reply: null,
         at: now
@@ -1248,6 +1273,7 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
       assert(
         state.intake?.requestId === data.requestId &&
           state.intake.modelId === data.modelId &&
+          (state.intake.binding === undefined || state.intake.binding === data.binding) &&
           ['pending', 'failed'].includes(state.intake.status),
         'CONTEXT_CHANGED',
         '旧模型建档回复不再适用'
