@@ -24,6 +24,38 @@ function createTrackedFixture() {
 }
 
 describe('audit tracked secrets script', () => {
+  it('does not treat the suffix of a task candidate path as a credential', () => {
+    const { root, scriptCopy } = createTrackedFixture();
+    try {
+      writeFileSync(join(root, 'receipt.md'), `Candidate: tmp/task-${'candidate-'.repeat(4)}.noindex/Yozi AI.app\n`);
+      runGit(['add', 'receipt.md'], root);
+      const result = spawnSync('bash', [scriptCopy], { cwd: root, encoding: 'utf8' });
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('no tracked secret patterns found');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('still rejects and redacts credentials after quote, assignment and URL separators', () => {
+    const { root, scriptCopy } = createTrackedFixture();
+    try {
+      const tokens = [`sk-${'a'.repeat(24)}`, `github_pat_${'b'.repeat(24)}`, `ghp_${'c'.repeat(32)}`];
+      writeFileSync(
+        join(root, 'config.txt'),
+        `key="${tokens[0]}"\nTOKEN=${tokens[1]}\nhttps://example.com/${tokens[2]}\n`
+      );
+      runGit(['add', 'config.txt'], root);
+      const result = spawnSync('bash', [scriptCopy], { cwd: root, encoding: 'utf8' });
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain('config.txt');
+      for (const token of tokens) expect(result.stdout).not.toContain(token);
+      expect(result.stdout).toContain('***REDACTED***');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('redacts matched tracked secrets while ignoring binary and oversized tracked files', () => {
     const { root, scriptCopy } = createTrackedFixture();
     try {

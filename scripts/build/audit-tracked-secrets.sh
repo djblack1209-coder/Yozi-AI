@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PATTERN='(sk-[A-Za-z0-9_-]{20,}|github_pat_[A-Za-z0-9_]{20,}|gh[pousr]_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|AKID[0-9A-Za-z]{16,}|AIza[0-9A-Za-z_-]{30,}|hf_[A-Za-z0-9]{20,}|xox[baprs]-[0-9A-Za-z-]{10,}|laf_[A-Za-z0-9]{20,}|BSAT[0-9A-Za-z_-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)'
+# Match a credential prefix, not the suffix of a word such as a task-… path.
+PATTERN='(^|[^A-Za-z0-9_])(sk-[A-Za-z0-9_-]{20,}|github_pat_[A-Za-z0-9_]{20,}|gh[pousr]_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|AKID[0-9A-Za-z]{16,}|AIza[0-9A-Za-z_-]{30,}|hf_[A-Za-z0-9]{20,}|xox[baprs]-[0-9A-Za-z-]{10,}|laf_[A-Za-z0-9]{20,}|BSAT[0-9A-Za-z_-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)'
 AUDIT_FILE=$(mktemp "${TMPDIR:-/tmp}/yozi-ai-secret-audit.XXXXXX")
 SCAN_LIST=$(mktemp "${TMPDIR:-/tmp}/yozi-ai-secret-scan-list.XXXXXX")
 MAX_SCAN_BYTES="${SECRET_AUDIT_MAX_SCAN_BYTES:-2097152}"

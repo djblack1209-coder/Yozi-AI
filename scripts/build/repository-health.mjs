@@ -9,6 +9,15 @@ import { DUPLICATE_PAIRS } from './check-subpkg-duplicates.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const sourceExtensions = new Set(['.js', '.mjs', '.cjs', '.ts', '.vue', '.py', '.sh', '.css', '.scss']);
 const excluded = /(^|\/)(node_modules|uni_modules|dist|tmp|output|logs|\.git|__pycache__)(\/|$)/;
+// This local launcher runs a separately compiled, ignored dev/test package.
+// Inventory its three build prerequisites; all other imports remain strict.
+const devTestRuntimeImports = new Set([
+  '../../tmp/yozi-candidate-build/backend/functions/_shared/build-channel.js',
+  '../../tmp/yozi-candidate-build/backend/functions/_shared/ai-providers/free-model-presets.js',
+  '../../tmp/yozi-candidate-build/backend/standalone/server.js'
+]);
+const historicalDocument = (file) =>
+  /^docs\/archive\//.test(file) || /^reports\/\d{4}-\d{2}-\d{2}[^/]*\.md$/.test(file);
 
 export function literalImports(content, file) {
   if (file.endsWith('.ts')) {
@@ -18,7 +27,7 @@ export function literalImports(content, file) {
     );
   }
   const input = content.replace(/^#![^\n]*/, (line) => ' '.repeat(line.length));
-  const { ast } = vueParser.parseForESLint(input, { ecmaVersion: 2022, sourceType: 'module', filePath: file });
+  const { ast } = vueParser.parseForESLint(input, { ecmaVersion: 'latest', sourceType: 'module', filePath: file });
   const references = new Set();
   const seen = new WeakSet();
   function visit(node) {
@@ -71,6 +80,7 @@ export function scanRepository(projectRoot = root) {
   const sources = existing.filter((file) => sourceExtensions.has(path.extname(file)));
   const documents = existing.filter((file) => file.endsWith('.md'));
   const missingImports = [];
+  const generatedRuntimeImports = [];
   const parseErrors = [];
   const brokenLinks = [];
   const localLinks = [];
@@ -91,6 +101,10 @@ export function scanRepository(projectRoot = root) {
       continue;
     }
     for (const reference of references) {
+      if (file === 'scripts/build/start-dev-test-backend.mjs' && devTestRuntimeImports.has(reference)) {
+        generatedRuntimeImports.push({ file, reference });
+        continue;
+      }
       const target = resolveLocalReference(file, reference, projectRoot);
       if (target === null) continue;
       if (target === false) missingImports.push({ file, reference });
@@ -137,8 +151,10 @@ export function scanRepository(projectRoot = root) {
     for (const target of result.stdout.split('\0').filter(Boolean)) ignored.add(target);
   }
   const ignoredLocalLinks = [];
+  const historicalLinks = [];
   for (const { file, link, target } of localLinks) {
-    if (ignored.has(target)) ignoredLocalLinks.push({ file, link, target });
+    if (historicalDocument(file)) historicalLinks.push({ file, link, target });
+    else if (ignored.has(target)) ignoredLocalLinks.push({ file, link, target });
     else if (!existsSync(path.resolve(projectRoot, target))) brokenLinks.push({ file, link });
   }
   const duplicates = [...hashes.values()].filter((group) => group.length > 1);
@@ -173,10 +189,12 @@ export function scanRepository(projectRoot = root) {
       sourceBytes
     },
     missingImports,
+    generatedRuntimeImports,
     parseErrors,
     missingScripts,
     brokenLinks,
     ignoredLocalLinks,
+    historicalLinks,
     exactSourceDuplicates: duplicates.filter((group) => !isSubpackagePair(group)),
     intentionalSourceDuplicates: duplicates.filter(isSubpackagePair),
     reviewCandidates,
@@ -184,6 +202,8 @@ export function scanRepository(projectRoot = root) {
       'JS/Vue literal imports use AST; TypeScript uses a conservative textual inventory. Dynamic loaders, auto-imports and platform branches require manual review.',
       'No files are deleted or executed. Secrets, ignored data and third-party vendored code are excluded.',
       'Git-ignored local Markdown targets are inventoried, not required; tracked targets, imports and scripts remain checked. Link anchors are not checked.',
+      'Immutable archived receipts and dated reports retain historical links as an inventory, not current repository contracts. Current links into archives are still required.',
+      'Only the local dev/test launcher’s three explicit compiled-runtime imports are inventoried as build prerequisites; other ignored imports and script entries remain strict.',
       'Zero inbound literal references do not prove a module is unused.'
     ]
   };

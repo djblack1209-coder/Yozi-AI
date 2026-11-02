@@ -18,7 +18,8 @@ const exact = (value, keys) =>
 // Links, contacts and mastery or official-score claims are never ours to show as a suggestion.
 const UNSAFE = /https?:\/\/|www\.|[\w.-]+@[\w-]+\.[a-z]|已掌握|已经掌握|掌握度|官方(?:评分|分数)|保证/i;
 // Data refs and raw states belong in basis only; the learner never sees what "w1" or "in_progress" means.
-const REF_CODE = /(?<![A-Za-z0-9])[wp]\d{1,2}(?![A-Za-z0-9])|not_started|in_progress|(?<![A-Za-z])due(?![A-Za-z]|\s+to\b)/i;
+const REF_CODE =
+  /(?<![A-Za-z0-9])[wp]\d{1,2}(?![A-Za-z0-9])|not_started|in_progress|(?<![A-Za-z])due(?![A-Za-z]|\s+to\b)/i;
 
 export function normalizeIdeasContext(value) {
   if (

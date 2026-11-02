@@ -8,11 +8,11 @@
 
 ## 1. 已有能力与四层事实
 
-| 层次 | 定义及本轮能够确认的事实 |
-| --- | --- |
-| 目录预设 | 源码内的厂商、端点、候选型号与说明；只表示可供选择的模板，不表示型号当前在线、凭据有效或免费。 |
-| 可发现 | 官方文档明确提供只读模型／能力接口，且适用地域、协议、鉴权方式已明确；本文核到文档不等于已实际调用。仅有网页模型清单时，仍只是文档证据。 |
-| 已绑定 | 当前账号通过正常流程保存了既有连接；必须有当前正常账号投影。源码、Logo、旧回执或 `configured` 的历史值不能证明现在仍绑定。 |
+| 层次     | 定义及本轮能够确认的事实                                                                                                                     |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| 目录预设 | 源码内的厂商、端点、候选型号与说明；只表示可供选择的模板，不表示型号当前在线、凭据有效或免费。                                               |
+| 可发现   | 官方文档明确提供只读模型／能力接口，且适用地域、协议、鉴权方式已明确；本文核到文档不等于已实际调用。仅有网页模型清单时，仍只是文档证据。     |
+| 已绑定   | 当前账号通过正常流程保存了既有连接；必须有当前正常账号投影。源码、Logo、旧回执或 `configured` 的历史值不能证明现在仍绑定。                   |
 | 真实验证 | 相同账号、连接配置版本、精确型号／端点／参数的真实调用回执；连接检查、教学结构、教学语义与免费结算分别成立。发现成功不升级任何真实验证状态。 |
 
 本轮只确认目录与文档；**当前已绑定状态、当前免费剩余额度和新的真实验证均未检查，保持未知**。现有历史回执原样保留，不据此给整个厂商打“已接通”或“当前免费”的标签。国内可展示静态厂商目录；国外继续只显示已有配置允许展示的已连接项，不因公共 models 返回更多型号扩大可见范围或改变选择。
@@ -31,59 +31,59 @@
 
 ### 2.1 国内目录（14 家）
 
-| 厂商 ID／当前模板型号 | 官方模型列表 API 核查 | 能力元数据 API 或文档／已证实范围 |
-| --- | --- | --- |
-| `deepseek`：`deepseek-v4-pro`、`deepseek-flash` | [官方 Lists Models](https://api-docs.deepseek.com/api/list-models/)：`GET https://api.deepseek.com/models`，文档已证实 | 同一响应声明 ID、上下文、输出上限、模态、effort 等；不是另一个能力 API。实际值／当前账号权限未取。 |
-| `zhipu`：`glm-5.3`、`glm-4.7-flash` | 列表 API 未核实；拟查列表文档工具无法访问，见第 9 节 | 项目引用[模型指南](https://docs.bigmodel.cn/cn/guide/models/text/glm-5.3)；本轮未核其正文，不能照 OpenAI 路径猜 `/models` 或套用国际站事实。 |
-| `dashscope`：`qwen3.8-max` | [查询模型列表](https://help.aliyun.com/zh/model-studio/list-models)：`GET /api/v1/models`；北京文档地址为 `https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/api/v1/models`，已证实 | 同一接口有 `model_info`、能力、模态和定价字段；地域／业务空间必须匹配。不能在当前旧 `dashscope.aliyuncs.com/compatible-mode/v1` 后机械拼接这条新接口。 |
-| `moonshot`：`kimi-k3.1-pro` | [官方模型列表页](https://platform.kimi.com/docs/models)已读；该页不是 models HTTP API，后者未核实 | [推理强度](https://platform.kimi.com/docs/guide/use-reasoning-effort)明确 K3.1 Pro 顶层 `reasoning_effort` 三档及上下文传递要求；不是实时能力接口。 |
-| `ark`：`doubao-seed-2.0-pro` | 官方索引给出 [ListFoundationModels](https://docs.volcengine.com/docs/ark/list-foundation-models-api?lang=zh)：管理面 `POST ...?Action=ListFoundationModels&Version=2024-01-01`，索引注明 Access Key 鉴权；正文工具超时 | 返回字段细节／当前推理 API Key 是否可发现未确认。不能把管理面 AK／签名需求当成现有推理凭据可用，更不能开通、激活模型或套餐。 |
-| `hunyuan`：`hy4-preview` | [TokenHub API 使用说明](https://cloud.tencent.com/document/product/1823/130078)：`GET https://tokenhub.tencentmaas.com/v1/models`，已证实 | 列表文档有 `id`／`name`／`status`；[模型列表文档](https://cloud.tencent.com/document/product/1823/130051)有上下文和输入／输出上限。独立能力 HTTP API 未核实；TokenHub 不等同旧混元域名。 |
-| `minimax`：`MiniMax-M3.1-Flash` | [模型调用指南](https://platform.minimax.cn/docs/guides/text-generation)已读；独立列表 HTTP API 未核实 | 指南列模型、上下文和 `effort` 档；能力自动查询接口未核实。国内／国际站、订阅／按量凭据不能互换推定。 |
-| `baichuan`：`Baichuan4-Turbo` | [官方 API 导航](https://platform.baichuan-ai.com/docs-v2/api)已读；未确认 models HTTP API | 该页仅导航／申请体验信息，不足以证明当前模板在线、上下文、输出或思考档；各字段未知。 |
-| `siliconflow`：`Qwen/Qwen3-8B` | [官方快速上手](https://docs.siliconflow.cn/docs/userguide/quickstart)说明模型广场；本轮拟查 REST 文档 404，列表 HTTP 合同未确认 | 官方[JSON 模式](https://docs.siliconflow.cn/docs/userguide/guides/json-mode)是能力文档，不是模型能力发现响应。不能据兼容声明猜完整参数／上限；`/user/info` 也不在本方案中调用。 |
-| `modelscope`：`Qwen/Qwen3.8-27B` | 项目引用[官方推理说明](https://modelscope.cn/docs/model-service/API-Inference/intro)；本轮未核正文，列表 API 未核实 | 社区仓库的模型卡／配置不自动代表该推理服务当前部署的参数、账号额度或支持的最高档；保持未知。 |
-| `qianfan`：`ernie-4.5-turbo` | [获取模型列表](https://cloud.baidu.com/doc/qianfan-api/s/Dmba8k71y)：`GET https://qianfan.baidubce.com/v2/models`，API Key 鉴权，已证实 | 同一响应文档含 ID、类型、`context_length` 等扩展；该上下文包含输入、输出和思维链。其他能力字段须逐字段核对，未核实的上限／档位不填。 |
-| `stepfun`：`step-3.7-flash` | [官方模型列表页](https://platform.stepfun.com/docs/zh/guides/models/list)已读；列表 HTTP API 未核实 | 文档按型号给上下文／模态，Step 3.7 Flash 的推理档有文档声明；最高输出与具体请求参数映射未逐项核实，不凭网页标签生成参数。 |
-| `spark`：`spark-x` | 项目引用[官方 X1 HTTP 文档](https://www.xfyun.cn/doc/spark/X1http.html)；本轮未核正文，models API 未核实 | 不能把 X1 文档推定为 `spark-x` 的完整当前能力；具体型号／协议／最高档均待核。 |
-| `yi`：`yi-lightning` | 项目引用[官方文档](https://platform.lingyiwanwu.com/docs)；本轮未核正文，models API 未核实 | 当前可用性、能力 API、上下文、最大输出及思考档未确认；目录仍保留，不自动删除或替换。 |
+| 厂商 ID／当前模板型号                           | 官方模型列表 API 核查                                                                                                                                                                                                  | 能力元数据 API 或文档／已证实范围                                                                                                                                                        |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `deepseek`：`deepseek-v4-pro`、`deepseek-flash` | [官方 Lists Models](https://api-docs.deepseek.com/api/list-models/)：`GET https://api.deepseek.com/models`，文档已证实                                                                                                 | 同一响应声明 ID、上下文、输出上限、模态、effort 等；不是另一个能力 API。实际值／当前账号权限未取。                                                                                       |
+| `zhipu`：`glm-5.3`、`glm-4.7-flash`             | 列表 API 未核实；拟查列表文档工具无法访问，见第 9 节                                                                                                                                                                   | 项目引用[模型指南](https://docs.bigmodel.cn/cn/guide/models/text/glm-5.3)；本轮未核其正文，不能照 OpenAI 路径猜 `/models` 或套用国际站事实。                                             |
+| `dashscope`：`qwen3.8-max`                      | [查询模型列表](https://help.aliyun.com/zh/model-studio/list-models)：`GET /api/v1/models`；北京文档地址为 `https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/api/v1/models`，已证实                                   | 同一接口有 `model_info`、能力、模态和定价字段；地域／业务空间必须匹配。不能在当前旧 `dashscope.aliyuncs.com/compatible-mode/v1` 后机械拼接这条新接口。                                   |
+| `moonshot`：`kimi-k3.1-pro`                     | [官方模型列表页](https://platform.kimi.com/docs/models)已读；该页不是 models HTTP API，后者未核实                                                                                                                      | [推理强度](https://platform.kimi.com/docs/guide/use-reasoning-effort)明确 K3.1 Pro 顶层 `reasoning_effort` 三档及上下文传递要求；不是实时能力接口。                                      |
+| `ark`：`doubao-seed-2.0-pro`                    | 官方索引给出 [ListFoundationModels](https://docs.volcengine.com/docs/ark/list-foundation-models-api?lang=zh)：管理面 `POST ...?Action=ListFoundationModels&Version=2024-01-01`，索引注明 Access Key 鉴权；正文工具超时 | 返回字段细节／当前推理 API Key 是否可发现未确认。不能把管理面 AK／签名需求当成现有推理凭据可用，更不能开通、激活模型或套餐。                                                             |
+| `hunyuan`：`hy4-preview`                        | [TokenHub API 使用说明](https://cloud.tencent.com/document/product/1823/130078)：`GET https://tokenhub.tencentmaas.com/v1/models`，已证实                                                                              | 列表文档有 `id`／`name`／`status`；[模型列表文档](https://cloud.tencent.com/document/product/1823/130051)有上下文和输入／输出上限。独立能力 HTTP API 未核实；TokenHub 不等同旧混元域名。 |
+| `minimax`：`MiniMax-M3.1-Flash`                 | [模型调用指南](https://platform.minimax.cn/docs/guides/text-generation)已读；独立列表 HTTP API 未核实                                                                                                                  | 指南列模型、上下文和 `effort` 档；能力自动查询接口未核实。国内／国际站、订阅／按量凭据不能互换推定。                                                                                     |
+| `baichuan`：`Baichuan4-Turbo`                   | [官方 API 导航](https://platform.baichuan-ai.com/docs-v2/api)已读；未确认 models HTTP API                                                                                                                              | 该页仅导航／申请体验信息，不足以证明当前模板在线、上下文、输出或思考档；各字段未知。                                                                                                     |
+| `siliconflow`：`Qwen/Qwen3-8B`                  | [官方快速上手](https://docs.siliconflow.cn/docs/userguide/quickstart)说明模型广场；本轮拟查 REST 文档 404，列表 HTTP 合同未确认                                                                                        | 官方[JSON 模式](https://docs.siliconflow.cn/docs/userguide/guides/json-mode)是能力文档，不是模型能力发现响应。不能据兼容声明猜完整参数／上限；`/user/info` 也不在本方案中调用。          |
+| `modelscope`：`Qwen/Qwen3.8-27B`                | 项目引用[官方推理说明](https://modelscope.cn/docs/model-service/API-Inference/intro)；本轮未核正文，列表 API 未核实                                                                                                    | 社区仓库的模型卡／配置不自动代表该推理服务当前部署的参数、账号额度或支持的最高档；保持未知。                                                                                             |
+| `qianfan`：`ernie-4.5-turbo`                    | [获取模型列表](https://cloud.baidu.com/doc/qianfan-api/s/Dmba8k71y)：`GET https://qianfan.baidubce.com/v2/models`，API Key 鉴权，已证实                                                                                | 同一响应文档含 ID、类型、`context_length` 等扩展；该上下文包含输入、输出和思维链。其他能力字段须逐字段核对，未核实的上限／档位不填。                                                     |
+| `stepfun`：`step-3.7-flash`                     | [官方模型列表页](https://platform.stepfun.com/docs/zh/guides/models/list)已读；列表 HTTP API 未核实                                                                                                                    | 文档按型号给上下文／模态，Step 3.7 Flash 的推理档有文档声明；最高输出与具体请求参数映射未逐项核实，不凭网页标签生成参数。                                                                |
+| `spark`：`spark-x`                              | 项目引用[官方 X1 HTTP 文档](https://www.xfyun.cn/doc/spark/X1http.html)；本轮未核正文，models API 未核实                                                                                                               | 不能把 X1 文档推定为 `spark-x` 的完整当前能力；具体型号／协议／最高档均待核。                                                                                                            |
+| `yi`：`yi-lightning`                            | 项目引用[官方文档](https://platform.lingyiwanwu.com/docs)；本轮未核正文，models API 未核实                                                                                                                             | 当前可用性、能力 API、上下文、最大输出及思考档未确认；目录仍保留，不自动删除或替换。                                                                                                     |
 
 ### 2.2 其他目录（16 家）及已有定向路由
 
-| 厂商 ID／当前模板型号 | 官方模型列表 API 核查 | 能力元数据 API 或文档／已证实范围 |
-| --- | --- | --- |
-| `gemini`：`gemini-2.5-flash-lite` | [Models](https://ai.google.dev/api/models)：原生 `GET /v1beta/models` 及 `/v1beta/models/{model}`，已证实；不是自动追加到 `/v1beta/openai` | 同一 Model 资源有输入／输出限制、支持方法和 thinking 布尔；具体思考档另依[兼容协议文档](https://ai.google.dev/gemini-api/docs/openai)，布尔不等于档位表。 |
-| `groq`：`openai/gpt-oss-20b` | [API Reference](https://console.groq.com/docs/api-reference)：`GET /openai/v1/models`、`GET /openai/v1/models/{model}`，已证实 | 文档示例分别含 `context_window`、详情的 `max_completion_tokens`；具体字段缺失时不补默认。gpt-oss 的 effort 支持集合见同页精确型号说明。 |
-| `openrouter`：`google/gemma-4-31b-it:free` | [当前 Models 文档](https://openrouter.ai/docs/api/api-reference/models/list-all-models-and-their-properties)：`GET /api/v1/models`，已证实 | 同一资源有上下文、价格、支持参数和 top_provider 上限；型号总目录不等于特定 provider 路由均支持，仍需精确路由证据。 |
-| `aion`：`aion-labs/aion-rp-llama-3.1-8b` | 项目引用[官方文档](https://www.aionlabs.ai/docs/)；本轮未核列表 API | 兼容聊天入口不证明模型发现／独立能力 API，参数和额度未知。 |
-| `llm7`：`codestral-latest` | 项目引用[官方文档](https://docs.llm7.io/)；本轮未核列表 API | 聚合服务自己的部署／路由能力需单独证据，不继承同名模型原厂上限和免费资格。 |
-| `zai`：`glm-4.5-flash` | 已读[官方 Chat Completion](https://docs.z.ai/api-reference/llm/chat-completion)；未在本轮确认 models API | Chat schema 不是独立能力列表；与国内智谱分开绑定端点、价格版本和型号，不相互套用。 |
-| `ollama_cloud`：`gpt-oss:20b` | [List models](https://docs.ollama.com/api/tags)证实原生 `/api/tags`，示例是本地实例 | 不能由本地 tags 推定 `https://ollama.com/v1` 云端 models／show 行为；云端列表与能力 API 本轮未核实，不接入用户本地模型服务。 |
-| `mistral`：`mistral-small-latest` | [Models Endpoints](https://docs.mistral.ai/api/endpoint/models)：`GET /v1/models`、`GET /v1/models/{model_id}`，已证实 | ModelCard 文档有 `max_context_length`、capabilities；最大输出、effort、价格若未返回，仍需精确官方型号文档或保持未知。 |
-| `nvidia`：`openai/gpt-oss-20b` | 项目引用[官方 NIM API](https://docs.api.nvidia.com/nim/reference/llm-apis)；本轮未核托管 models API | 自部署 NIM 与 integrate.api 托管目录不混同；单一聊天模板不证明通用发现协议。 |
-| `ovh`：源码只有 endpoint 目录，无连接预设 | 项目引用[官方 AI Endpoints 目录](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/catalog/)；本轮未核 models API | 网页目录、匿名调用、项目当前保险库接口能力是不同事项，不造假密钥或新增匿名鉴权分支。 |
-| `cohere`：`command-a-03-2025` | 项目引用[官方兼容指南](https://docs.cohere.com/docs/compatibility-api)；本轮未核当前兼容路径的列表 API | 原生 API 即使另有模型资源，也不能未经核实套到 `/compatibility/v1`；能力字段未知。 |
-| `huggingface`：`meta-llama/Llama-3.1-8B-Instruct` | 项目引用[官方 Inference Providers](https://huggingface.co/docs/inference-providers/tasks/chat-completion)；本轮未核 router 的列表 API | Hub 仓库列表／config 不等于某推理 provider 的部署能力、可路由性和费用。 |
-| `cloudflare`：源码只有含 `{account_id}` 的 endpoint 目录，无连接预设 | 拟查官方 API 页面工具无法访问，见第 9 节；当前列表 HTTP 合同未确认 | 项目已有[OpenAI 兼容文档引用](https://developers.cloudflare.com/workers-ai/configuration/open-ai-compatibility/)不能证明发现权限；不读取账户路径或扩大 token scope。 |
-| `kilo`：`kilo-auto/free` | 项目引用[官方 Gateway 指南](https://kilo.ai/docs/gateway/models-and-providers)；本轮未核列表 API | 自动路由名不代表稳定单一模型和固定能力；provider／actualModel／免费条件须精确绑定。 |
-| `cerebras`：`gpt-oss-120b` | 本轮官方公开检索未取得可靠的 models API 文档；保留项目[OpenAI 兼容指南引用](https://inference-docs.cerebras.ai/resources/openai) | 不用 MCP／迁移教程或其他型号文档推定 models 返回字段；独立能力接口及最高档未知。 |
-| `sambanova`：`Meta-Llama-3.3-70B-Instruct` | [官方 VS Code 接入指南](https://docs.sambanova.ai/docs/en/integrations/vscode)只给聊天接入；未核当前云端 models API | 检索取得的 SambaStudio Model Hub 属另一产品，不能代替 `api.sambanova.ai/v1` 的云端发现合同。 |
-| Agnes 定向路由：`agnes-2.5-flash` | 不在上述 30 家目录；现有精确参数分支／历史故障回执存在，当前绑定未检查；官方列表 API 未核实 | 本轮不使用新来源或探测该服务；`enable_thinking=true` 是已有精确映射，不证明最高档、模型能力或当前免费资格。 |
+| 厂商 ID／当前模板型号                                                | 官方模型列表 API 核查                                                                                                                      | 能力元数据 API 或文档／已证实范围                                                                                                                                    |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gemini`：`gemini-2.5-flash-lite`                                    | [Models](https://ai.google.dev/api/models)：原生 `GET /v1beta/models` 及 `/v1beta/models/{model}`，已证实；不是自动追加到 `/v1beta/openai` | 同一 Model 资源有输入／输出限制、支持方法和 thinking 布尔；具体思考档另依[兼容协议文档](https://ai.google.dev/gemini-api/docs/openai)，布尔不等于档位表。            |
+| `groq`：`openai/gpt-oss-20b`                                         | [API Reference](https://console.groq.com/docs/api-reference)：`GET /openai/v1/models`、`GET /openai/v1/models/{model}`，已证实             | 文档示例分别含 `context_window`、详情的 `max_completion_tokens`；具体字段缺失时不补默认。gpt-oss 的 effort 支持集合见同页精确型号说明。                              |
+| `openrouter`：`google/gemma-4-31b-it:free`                           | [当前 Models 文档](https://openrouter.ai/docs/api/api-reference/models/list-all-models-and-their-properties)：`GET /api/v1/models`，已证实 | 同一资源有上下文、价格、支持参数和 top_provider 上限；型号总目录不等于特定 provider 路由均支持，仍需精确路由证据。                                                   |
+| `aion`：`aion-labs/aion-rp-llama-3.1-8b`                             | 项目引用[官方文档](https://www.aionlabs.ai/docs/)；本轮未核列表 API                                                                        | 兼容聊天入口不证明模型发现／独立能力 API，参数和额度未知。                                                                                                           |
+| `llm7`：`codestral-latest`                                           | 项目引用[官方文档](https://docs.llm7.io/)；本轮未核列表 API                                                                                | 聚合服务自己的部署／路由能力需单独证据，不继承同名模型原厂上限和免费资格。                                                                                           |
+| `zai`：`glm-4.5-flash`                                               | 已读[官方 Chat Completion](https://docs.z.ai/api-reference/llm/chat-completion)；未在本轮确认 models API                                   | Chat schema 不是独立能力列表；与国内智谱分开绑定端点、价格版本和型号，不相互套用。                                                                                   |
+| `ollama_cloud`：`gpt-oss:20b`                                        | [List models](https://docs.ollama.com/api/tags)证实原生 `/api/tags`，示例是本地实例                                                        | 不能由本地 tags 推定 `https://ollama.com/v1` 云端 models／show 行为；云端列表与能力 API 本轮未核实，不接入用户本地模型服务。                                         |
+| `mistral`：`mistral-small-latest`                                    | [Models Endpoints](https://docs.mistral.ai/api/endpoint/models)：`GET /v1/models`、`GET /v1/models/{model_id}`，已证实                     | ModelCard 文档有 `max_context_length`、capabilities；最大输出、effort、价格若未返回，仍需精确官方型号文档或保持未知。                                                |
+| `nvidia`：`openai/gpt-oss-20b`                                       | 项目引用[官方 NIM API](https://docs.api.nvidia.com/nim/reference/llm-apis)；本轮未核托管 models API                                        | 自部署 NIM 与 integrate.api 托管目录不混同；单一聊天模板不证明通用发现协议。                                                                                         |
+| `ovh`：源码只有 endpoint 目录，无连接预设                            | 项目引用[官方 AI Endpoints 目录](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/catalog/)；本轮未核 models API                      | 网页目录、匿名调用、项目当前保险库接口能力是不同事项，不造假密钥或新增匿名鉴权分支。                                                                                 |
+| `cohere`：`command-a-03-2025`                                        | 项目引用[官方兼容指南](https://docs.cohere.com/docs/compatibility-api)；本轮未核当前兼容路径的列表 API                                     | 原生 API 即使另有模型资源，也不能未经核实套到 `/compatibility/v1`；能力字段未知。                                                                                    |
+| `huggingface`：`meta-llama/Llama-3.1-8B-Instruct`                    | 项目引用[官方 Inference Providers](https://huggingface.co/docs/inference-providers/tasks/chat-completion)；本轮未核 router 的列表 API      | Hub 仓库列表／config 不等于某推理 provider 的部署能力、可路由性和费用。                                                                                              |
+| `cloudflare`：源码只有含 `{account_id}` 的 endpoint 目录，无连接预设 | 拟查官方 API 页面工具无法访问，见第 9 节；当前列表 HTTP 合同未确认                                                                         | 项目已有[OpenAI 兼容文档引用](https://developers.cloudflare.com/workers-ai/configuration/open-ai-compatibility/)不能证明发现权限；不读取账户路径或扩大 token scope。 |
+| `kilo`：`kilo-auto/free`                                             | 项目引用[官方 Gateway 指南](https://kilo.ai/docs/gateway/models-and-providers)；本轮未核列表 API                                           | 自动路由名不代表稳定单一模型和固定能力；provider／actualModel／免费条件须精确绑定。                                                                                  |
+| `cerebras`：`gpt-oss-120b`                                           | 本轮官方公开检索未取得可靠的 models API 文档；保留项目[OpenAI 兼容指南引用](https://inference-docs.cerebras.ai/resources/openai)           | 不用 MCP／迁移教程或其他型号文档推定 models 返回字段；独立能力接口及最高档未知。                                                                                     |
+| `sambanova`：`Meta-Llama-3.3-70B-Instruct`                           | [官方 VS Code 接入指南](https://docs.sambanova.ai/docs/en/integrations/vscode)只给聊天接入；未核当前云端 models API                        | 检索取得的 SambaStudio Model Hub 属另一产品，不能代替 `api.sambanova.ai/v1` 的云端发现合同。                                                                         |
+| Agnes 定向路由：`agnes-2.5-flash`                                    | 不在上述 30 家目录；现有精确参数分支／历史故障回执存在，当前绑定未检查；官方列表 API 未核实                                                | 本轮不使用新来源或探测该服务；`enable_thinking=true` 是已有精确映射，不证明最高档、模型能力或当前免费资格。                                                          |
 
 ## 3. 已证实的字段映射与仍未知的部分
 
 以下均是官方文档结构，不是本轮账户返回值；文档示例的型号、token 数和价格不抄成运行时事实。其余厂商没有逐字段证据时全部 `unknown`，不能由兼容协议、模型名称或模型大小推导。
 
-| 来源 | 可按原语义投影的字段 | 不能推定的内容 |
-| --- | --- | --- |
-| [DeepSeek models](https://api-docs.deepseek.com/api/list-models/) | `data[].id`；`context_window` 是输入＋输出总上下文；`max_output_tokens`；输入／输出模态；`effort.supported_levels`／`default_level` | 推荐展示顺序不自动当成所有型号统一强度排序；价格／账户赠额没有因此确认。 |
-| [百炼 models](https://help.aliyun.com/zh/model-studio/list-models) | `output.models[].model`；`model_info.context_window`／`max_input_tokens`／`max_output_tokens`；思考相关上限、能力、模态、分段 prices | 文档的 null 可有“不适用／无限制”口径；Yozi 不能自动解释为无限预算，应保存未知／不适用原因并停用依赖它的最高档调用。 |
-| [Gemini Model](https://ai.google.dev/api/models) | `name`／`baseModelId` 保留各自语义；`inputTokenLimit`、`outputTokenLimit`、`supportedGenerationMethods`、`thinking` | 输入限制不能重命名为输入＋输出总上下文；thinking 布尔不能生成 effort 集合。 |
-| [Groq API](https://console.groq.com/docs/api-reference) | 精确 `id`、列表可见的 `context_window`、详情实际返回的 `max_completion_tokens` | 示例字段不保证每个型号都有；具体 effort 集合按型号文档，不能取全站参数枚举的并集。 |
-| [OpenRouter models](https://openrouter.ai/docs/api/api-reference/models/list-all-models-and-their-properties) | `id`、`context_length`、`architecture`、`supported_parameters`、`pricing`、`top_provider.max_completion_tokens` | 顶层能力／top_provider 上限不代表任意 provider 路由；未确认精确路由时最高档仍不可自动放行。 |
-| [Mistral ModelCard](https://docs.mistral.ai/api/endpoint/models) | `id`、`max_context_length`、`capabilities` | 不能用上下文数作为最大输出；缺失的 effort／价格不补默认。 |
-| [腾讯 TokenHub](https://cloud.tencent.com/document/product/1823/130078) | 列表的 `id`／`name`／`status`；静态能力取对应[官方型号表](https://cloud.tencent.com/document/product/1823/130051)并记录文档来源 | `online` 不证明账号已开通、还有免费额度或取得最高思考参数。 |
-| [千帆 models](https://cloud.baidu.com/doc/qianfan-api/s/Dmba8k71y) | 精确 `id`、`type`、`context_length`，其中总上下文包含思维链 | 其他字段本轮未逐项核实，不按相似字段名猜最大输出／思考档。 |
+| 来源                                                                                                          | 可按原语义投影的字段                                                                                                                 | 不能推定的内容                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| [DeepSeek models](https://api-docs.deepseek.com/api/list-models/)                                             | `data[].id`；`context_window` 是输入＋输出总上下文；`max_output_tokens`；输入／输出模态；`effort.supported_levels`／`default_level`  | 推荐展示顺序不自动当成所有型号统一强度排序；价格／账户赠额没有因此确认。                                            |
+| [百炼 models](https://help.aliyun.com/zh/model-studio/list-models)                                            | `output.models[].model`；`model_info.context_window`／`max_input_tokens`／`max_output_tokens`；思考相关上限、能力、模态、分段 prices | 文档的 null 可有“不适用／无限制”口径；Yozi 不能自动解释为无限预算，应保存未知／不适用原因并停用依赖它的最高档调用。 |
+| [Gemini Model](https://ai.google.dev/api/models)                                                              | `name`／`baseModelId` 保留各自语义；`inputTokenLimit`、`outputTokenLimit`、`supportedGenerationMethods`、`thinking`                  | 输入限制不能重命名为输入＋输出总上下文；thinking 布尔不能生成 effort 集合。                                         |
+| [Groq API](https://console.groq.com/docs/api-reference)                                                       | 精确 `id`、列表可见的 `context_window`、详情实际返回的 `max_completion_tokens`                                                       | 示例字段不保证每个型号都有；具体 effort 集合按型号文档，不能取全站参数枚举的并集。                                  |
+| [OpenRouter models](https://openrouter.ai/docs/api/api-reference/models/list-all-models-and-their-properties) | `id`、`context_length`、`architecture`、`supported_parameters`、`pricing`、`top_provider.max_completion_tokens`                      | 顶层能力／top_provider 上限不代表任意 provider 路由；未确认精确路由时最高档仍不可自动放行。                         |
+| [Mistral ModelCard](https://docs.mistral.ai/api/endpoint/models)                                              | `id`、`max_context_length`、`capabilities`                                                                                           | 不能用上下文数作为最大输出；缺失的 effort／价格不补默认。                                                           |
+| [腾讯 TokenHub](https://cloud.tencent.com/document/product/1823/130078)                                       | 列表的 `id`／`name`／`status`；静态能力取对应[官方型号表](https://cloud.tencent.com/document/product/1823/130051)并记录文档来源      | `online` 不证明账号已开通、还有免费额度或取得最高思考参数。                                                         |
+| [千帆 models](https://cloud.baidu.com/doc/qianfan-api/s/Dmba8k71y)                                            | 精确 `id`、`type`、`context_length`，其中总上下文包含思维链                                                                          | 其他字段本轮未逐项核实，不按相似字段名猜最大输出／思考档。                                                          |
 
 ## 4. 每个模型、每个字段的来源合同（提案）
 
@@ -91,23 +91,23 @@
 
 每个下表字段必须单独带 `value`、`state`、`sourceKind`、`sourceUrl`、`sourcePath`、`observedAt`、`sourceUpdatedAt`、`expiresAt` 和适用协议／型号／地域。日期用带时区的时间；缺少文档更新时间写 null＋原因，不能把抓取时间冒充发布时间。来源 URL 只用允许的官方公开文档／既有核准 API 路径，不含凭据、账户标识、query 秘密或任意厂商返回跳转。
 
-| 模型字段 | 类型／含义与未知处理 |
-| --- | --- |
-| `modelId` | 精确、区分大小写的 ID；提案最长 256 个 ASCII 字符，不 trim／改名后自动调用。来源为实际 API 的 ID 或明确官方型号文档；模板值另标 catalogue。 |
-| `displayName` | 可选纯文本，提案最长 128 字符；只供展示，不代替 ID、不执行 HTML。 |
-| `availability` | `listed`／`unlisted`／`unknown`；只描述该来源，不能改成账号“已激活”。 |
-| `contextWindowTokens` | 有限正安全整数或 null；仅在文档明示总上下文语义时填。 |
-| `maxInputTokens` | 有限正安全整数或 null；与总上下文独立。 |
-| `maxOutputTokens` | 厂商／精确协议允许的响应上限，有限正安全整数或 null；绝不以产品 2000 填充。 |
-| `maxReasoningTokens` | 厂商明示的推理 token 上限或 null；不能由最大输出减法推断。 |
-| `inputModalities`／`outputModalities` | 从官方枚举投影的有限集合；未知不装成仅文本或全部支持。 |
-| `supportedParameters` | 精确协议／型号的允许参数名与适用范围；未知不附加。全站 Chat schema 的参数并集不能直接复制到单模型。 |
-| `reasoningLevels` | 厂商原生枚举及正式映射，保持原大小写／顺序；布尔 enable 不构造等级。 |
-| `highestReasoningLevel` | 只有正式文档明确强度次序／最高值且精确协议适用时赋值；否则 null，即使列表顺序看似从低到高。 |
-| `reasoningParameter` | 官方请求字段路径、值类型、互斥条件和支持范围；不传模型不支持的 `max`、`xhigh` 或其他厂商字段。 |
-| `pricing` | 有来源的币种、计费单位、输入／输出／缓存／推理与分段价格；未知分量为 null。零价格须精确型号／路由／有效期证据，不能因名称含 free 或历史 settled0 自动赋零。 |
-| `freeQuota` | scope、适用精确型号／地域、剩余额度与单位、有效期、证据时间；本轮全为未知。公共赠额说明不证明该账户已经领取、未过期或仍有余额。 |
-| `verifiedInference` | 只引用既有、合法且仍适用的正常调用回执状态；发现动作不生成此事实，本轮不刷新。 |
+| 模型字段                              | 类型／含义与未知处理                                                                                                                                        |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modelId`                             | 精确、区分大小写的 ID；提案最长 256 个 ASCII 字符，不 trim／改名后自动调用。来源为实际 API 的 ID 或明确官方型号文档；模板值另标 catalogue。                 |
+| `displayName`                         | 可选纯文本，提案最长 128 字符；只供展示，不代替 ID、不执行 HTML。                                                                                           |
+| `availability`                        | `listed`／`unlisted`／`unknown`；只描述该来源，不能改成账号“已激活”。                                                                                       |
+| `contextWindowTokens`                 | 有限正安全整数或 null；仅在文档明示总上下文语义时填。                                                                                                       |
+| `maxInputTokens`                      | 有限正安全整数或 null；与总上下文独立。                                                                                                                     |
+| `maxOutputTokens`                     | 厂商／精确协议允许的响应上限，有限正安全整数或 null；绝不以产品 2000 填充。                                                                                 |
+| `maxReasoningTokens`                  | 厂商明示的推理 token 上限或 null；不能由最大输出减法推断。                                                                                                  |
+| `inputModalities`／`outputModalities` | 从官方枚举投影的有限集合；未知不装成仅文本或全部支持。                                                                                                      |
+| `supportedParameters`                 | 精确协议／型号的允许参数名与适用范围；未知不附加。全站 Chat schema 的参数并集不能直接复制到单模型。                                                         |
+| `reasoningLevels`                     | 厂商原生枚举及正式映射，保持原大小写／顺序；布尔 enable 不构造等级。                                                                                        |
+| `highestReasoningLevel`               | 只有正式文档明确强度次序／最高值且精确协议适用时赋值；否则 null，即使列表顺序看似从低到高。                                                                 |
+| `reasoningParameter`                  | 官方请求字段路径、值类型、互斥条件和支持范围；不传模型不支持的 `max`、`xhigh` 或其他厂商字段。                                                              |
+| `pricing`                             | 有来源的币种、计费单位、输入／输出／缓存／推理与分段价格；未知分量为 null。零价格须精确型号／路由／有效期证据，不能因名称含 free 或历史 settled0 自动赋零。 |
+| `freeQuota`                           | scope、适用精确型号／地域、剩余额度与单位、有效期、证据时间；本轮全为未知。公共赠额说明不证明该账户已经领取、未过期或仍有余额。                             |
+| `verifiedInference`                   | 只引用既有、合法且仍适用的正常调用回执状态；发现动作不生成此事实，本轮不刷新。                                                                              |
 
 字段状态提案：`known`、`unknown`、`not_applicable`、`stale`、`conflict`。未知／不适用均显式展示其原因；不把 null 静默转成 0、false、无限制或默认高档。厂商单位“k／M”不明时保留未解析状态，不能擅用 1000／1024 换算。
 
@@ -131,13 +131,13 @@
 
 ## 6. 最高档参数与输出／费用边界
 
-| 已读官方事实 | 本草案约束 |
-| --- | --- |
+| 已读官方事实                                                                                                                                                  | 本草案约束                                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | [Kimi K3.1 Pro](https://platform.kimi.com/docs/guide/use-reasoning-effort)文档明确顶层 `reasoning_effort` 为 low／high／max；并要求相关多轮上下文保留推理字段 | 仅适用于该精确型号与协议。保留／回传隐藏推理涉及现行隐私和上下文合同，必须另交主线／Claude裁决；不为最高档新增隐藏推理持久化。 |
-| [MiniMax-M3.1-Flash 指南](https://platform.minimax.cn/docs/guides/text-generation)明确 `effort` 有 low／medium／high／xhigh／max | 不改名为通用 `reasoning_effort`，也不把这组枚举套到其他 MiniMax 型号／国际路由；具体协议路径须核准。 |
-| [Groq Chat](https://console.groq.com/docs/api-reference)对 gpt-oss 精确声明 low／medium／high | 不能因全站 schema 有 max／xhigh 就对 gpt-oss 发送它们。 |
-| [Gemini OpenAI compatibility](https://ai.google.dev/gemini-api/docs/openai)按型号系列映射 effort 到 thinking level／budget，并有互斥条件 | 原生能力与兼容协议档位分开；不能同时附上两套互斥配置，也不推定所有 Gemini 都可关闭思考或支持 max。 |
-| 现有源码对若干精确路由有 thinking／enable_thinking／reasoning 映射 | 它们是已有局部分支，不能升级为所有厂商的最高档合同；现有路径本轮不改。 |
+| [MiniMax-M3.1-Flash 指南](https://platform.minimax.cn/docs/guides/text-generation)明确 `effort` 有 low／medium／high／xhigh／max                              | 不改名为通用 `reasoning_effort`，也不把这组枚举套到其他 MiniMax 型号／国际路由；具体协议路径须核准。                           |
+| [Groq Chat](https://console.groq.com/docs/api-reference)对 gpt-oss 精确声明 low／medium／high                                                                 | 不能因全站 schema 有 max／xhigh 就对 gpt-oss 发送它们。                                                                        |
+| [Gemini OpenAI compatibility](https://ai.google.dev/gemini-api/docs/openai)按型号系列映射 effort 到 thinking level／budget，并有互斥条件                      | 原生能力与兼容协议档位分开；不能同时附上两套互斥配置，也不推定所有 Gemini 都可关闭思考或支持 max。                             |
+| 现有源码对若干精确路由有 thinking／enable_thinking／reasoning 映射                                                                                            | 它们是已有局部分支，不能升级为所有厂商的最高档合同；现有路径本轮不改。                                                         |
 
 选择最高思考档不等于使用最大输出预算，不等于选择上下文最大的型号，更不等于厂商质量排名。没有正式强度次序时返回 `HIGHEST_LEVEL_UNKNOWN`，不能按字符串排序、发布日期或模板中的 flagship 字样自动选择。
 
@@ -151,13 +151,13 @@
 
 只复用现有读取合并机制与进程内缓存，不新增持久缓存、配置文件、集合、状态库或定时轮询。进程重启可丢弃元数据，不影响原连接与选择。公共文档映射随现有代码／文档审阅更新，不能在运行时任意抓网页解析后直接生成推理参数。
 
-| 提案 | 原因／失效条件 |
-| --- | --- |
-| 动态列表／详情缓存 5 分钟；文档映射最迟 24 小时标待复核 | 限制失效元数据使用与重复请求；不是价格／额度有效期保证。每字段另受其更早 expiresAt／下线时间约束。 |
-| 缓存键含 owner、现有会话代数、profileId、配置版本、厂商／地域／协议、精确模型和路由 | 账号专属模型列表不得跨账号共享；不使用或外传密钥散列作为新缓存标识。 |
-| 相同键合并一个在途读取；用户明确刷新之间至少 60 秒 | 复用现有 promise 合并，不新增轮询／重试循环；失败不触发推理。 |
-| 单次响应累计最多 2 MiB、1000 条、20 页，每页／全次均受既有取消与总计 10 秒约束 | 防止拉取无界目录；先触及任一限制返回 incomplete／limit，不把被截断目录当完整。不是允许发满这些请求的授权。 |
-| 至多按当前连接建立一个元数据快照；总进程缓存提案 1 MiB，满额先释放最旧失效条目 | 有限内存复用；淘汰元数据不删除 profile／型号选择，不额外落盘。 |
+| 提案                                                                                | 原因／失效条件                                                                                             |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 动态列表／详情缓存 5 分钟；文档映射最迟 24 小时标待复核                             | 限制失效元数据使用与重复请求；不是价格／额度有效期保证。每字段另受其更早 expiresAt／下线时间约束。         |
+| 缓存键含 owner、现有会话代数、profileId、配置版本、厂商／地域／协议、精确模型和路由 | 账号专属模型列表不得跨账号共享；不使用或外传密钥散列作为新缓存标识。                                       |
+| 相同键合并一个在途读取；用户明确刷新之间至少 60 秒                                  | 复用现有 promise 合并，不新增轮询／重试循环；失败不触发推理。                                              |
+| 单次响应累计最多 2 MiB、1000 条、20 页，每页／全次均受既有取消与总计 10 秒约束      | 防止拉取无界目录；先触及任一限制返回 incomplete／limit，不把被截断目录当完整。不是允许发满这些请求的授权。 |
+| 至多按当前连接建立一个元数据快照；总进程缓存提案 1 MiB，满额先释放最旧失效条目      | 有限内存复用；淘汰元数据不删除 profile／型号选择，不额外落盘。                                             |
 
 凭据绑定轮换／撤销、profile 保存／删除、owner／epoch 变化、端点／地域／协议变动、配置版本改变立即失效相关缓存与在途结果。401／403 不换凭据重试；404／410 标该资源不再可确认；429 尊重既有固定冷却，不切路由；网络失败可展示上次快照但必须 stale，不用它通过新最高档／免费准入。
 
@@ -165,14 +165,14 @@
 
 ## 8. 失败语义与日志（未实施提案）
 
-| 固定状态／错误类别 | 行为 |
-| --- | --- |
-| `AUTH_REQUIRED`／`SESSION_UNAVAILABLE`／`CONTEXT_CHANGED` | 不发送厂商请求；不登录、不造会话、不展示旧 owner 结果。 |
-| `UNSUPPORTED_DISCOVERY`／`UNSUPPORTED_DISCOVERY_AUTH` | 官方接口或既有鉴权不适用，保持 unknown；不猜路径、不索要新凭据、不用 test。 |
-| `METADATA_PARTIAL`／`METADATA_LIMIT` | 保留字段级已证事实与 incomplete 标识；缺字段／页不装默认，不自动用部分列表选“最强”。 |
-| `METADATA_UNAVAILABLE`／`RATE_LIMITED`／`STALE` | 保留原连接／选择，显示固定状态；不回传厂商 error.message／stack／headers／body，不自动重放。 |
-| `METADATA_CONFLICT`／`HIGHEST_LEVEL_UNKNOWN` | 记录最小来源冲突，停止依赖该字段的最高能力调用，回主线裁决。 |
-| `BUDGET_OR_FREE_SCOPE_CONFLICT` | 停止该次调用；不充值、降档、改预算或回退。 |
+| 固定状态／错误类别                                        | 行为                                                                                         |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `AUTH_REQUIRED`／`SESSION_UNAVAILABLE`／`CONTEXT_CHANGED` | 不发送厂商请求；不登录、不造会话、不展示旧 owner 结果。                                      |
+| `UNSUPPORTED_DISCOVERY`／`UNSUPPORTED_DISCOVERY_AUTH`     | 官方接口或既有鉴权不适用，保持 unknown；不猜路径、不索要新凭据、不用 test。                  |
+| `METADATA_PARTIAL`／`METADATA_LIMIT`                      | 保留字段级已证事实与 incomplete 标识；缺字段／页不装默认，不自动用部分列表选“最强”。         |
+| `METADATA_UNAVAILABLE`／`RATE_LIMITED`／`STALE`           | 保留原连接／选择，显示固定状态；不回传厂商 error.message／stack／headers／body，不自动重放。 |
+| `METADATA_CONFLICT`／`HIGHEST_LEVEL_UNKNOWN`              | 记录最小来源冲突，停止依赖该字段的最高能力调用，回主线裁决。                                 |
+| `BUDGET_OR_FREE_SCOPE_CONFLICT`                           | 停止该次调用；不充值、降档、改预算或回退。                                                   |
 
 非法类型、未知 JSON 结构、循环分页、任意跳转／外部链接、超限和非允许端点均拒绝相关元数据；不保存原厂响应、隐藏推理或自由错误文本。日志只用固定事件码、有限字段状态与数量，不记录用户身份、秘密、含账户路径的 URL、完整对象或请求／响应原文。新增诊断持久化另受[草案A](DRAFT-DIAGNOSTIC-PERSISTENCE-CONTRACT-20261024.md)约束；B 不成为另一条采集渠道。
 
@@ -180,13 +180,13 @@
 
 以下均是公开文档读取，无凭据或鉴权请求；没有改用浏览器／curl／私有接口绕过工具访问限制。
 
-| 动作与精确目标 | 结果／处理 |
-| --- | --- |
-| 打开 `https://docs.bigmodel.cn/api-reference/模型管理/模型列表` | 工具报告 URL 不可访问；该拟查页不足以证明列表 API，未继续猜路径或换工具。 |
-| 打开 `https://openrouter.ai/docs/api-reference/list-available-models` | HTTP 404；随后正常公开官方搜索找到当前文档，工具正常跟随官方重定向至本稿所引 canonical URL。不是实际调用 models，也未绕过鉴权。 |
-| 打开 `https://docs.siliconflow.cn/cn/api-reference/models/get-model-list` | HTTP 404；本稿不据此假定 `/v1/models` 可用，列表 HTTP 合同仍未确认。 |
-| 打开 `https://developers.cloudflare.com/api/resources/ai/methods/models/` | 工具报告 URL 不可访问；未换工具／读取账户，保持未确认。 |
-| 打开 `https://docs.volcengine.com/docs/ark/list-foundation-models-api?lang=zh` | 工具正文抓取超时；只保留已取得的官方索引信息，不把索引当完整字段核验。 |
+| 动作与精确目标                                                                 | 结果／处理                                                                                                                      |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| 打开 `https://docs.bigmodel.cn/api-reference/模型管理/模型列表`                | 工具报告 URL 不可访问；该拟查页不足以证明列表 API，未继续猜路径或换工具。                                                       |
+| 打开 `https://openrouter.ai/docs/api-reference/list-available-models`          | HTTP 404；随后正常公开官方搜索找到当前文档，工具正常跟随官方重定向至本稿所引 canonical URL。不是实际调用 models，也未绕过鉴权。 |
+| 打开 `https://docs.siliconflow.cn/cn/api-reference/models/get-model-list`      | HTTP 404；本稿不据此假定 `/v1/models` 可用，列表 HTTP 合同仍未确认。                                                            |
+| 打开 `https://developers.cloudflare.com/api/resources/ai/methods/models/`      | 工具报告 URL 不可访问；未换工具／读取账户，保持未确认。                                                                         |
+| 打开 `https://docs.volcengine.com/docs/ark/list-foundation-models-api?lang=zh` | 工具正文抓取超时；只保留已取得的官方索引信息，不把索引当完整字段核验。                                                          |
 
 其他未核实行仅有明确标注的项目官方引用或有限公开文档；未穷尽整个厂商网站，不能写成“厂商没有 API”。本轮文档取得日期不是实际 API 响应时间；未访问任何用户额度／套餐页面，也未验证模型名是否出现在某账户列表。
 

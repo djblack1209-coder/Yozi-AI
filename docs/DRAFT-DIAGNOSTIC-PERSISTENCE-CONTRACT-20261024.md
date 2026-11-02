@@ -8,15 +8,15 @@
 
 本草案只讨论 dev/test 隔离 QA 的最小故障元数据。18:31 登录搁置、真实账号与教学主流程暂停、新密钥／费用／服务器禁止项继续生效。正式构建、正常教学记录、费用账本和现有隐私删除合同不因本文改变。
 
-| 已有事实 | 依据与限制 |
-| --- | --- |
+| 已有事实                                                                               | 依据与限制                                                                                                                                                                                                                                                                                                   |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 教学回复已在原始内存输入上严格解析；解析后的属性名／字符串叶子及出站结果有密钥回显阻断 | [learning-writing-coach.js](../laf-backend/functions/_shared/learning-writing-coach.js)、[learning-provider.ts](../laf-backend/functions/_shared/ai-providers/learning-provider.ts)、[proxy-ai.ts](../laf-backend/functions/proxy-ai.ts)。已交付检查与 QA 四模块对齐沿用，不在本轮重验；不代表真实教学通过。 |
-| 目前有受限 `responseDiagnostics` 元数据 | `proxy-ai.ts` 的 `captureDiagnostics` 受现行 DEV_TEST 与特定获准 QA owner 限制；不是所有账号开关，也不是全站采集授权。 |
-| 已有账号账本可承载诊断 | [learning-account.ts](../laf-backend/functions/_shared/learning-account.ts) 在 `learning_accounts` 的同一账号文档、既有 `calls[]` 条目内，经 `boundedResponseDiagnostics` 筛选后写 `responseDiagnostics`。`mutateAccount` 使用 owner 条件与 revision CAS。 |
-| 已有扁平白名单与字段路径清洗 | `boundedResponseDiagnostics` 仅接收闭合的类型／枚举／布尔和有界数值；`modelValidationPath` 仅保留已知业务 schema 坐标，其他段变为 `unknown`，长度不超过 160。它们不是原文存储。 |
-| 结果缓存与诊断不是同一保留合同 | [learning-model-resources.ts](../laf-backend/functions/_shared/learning-model-resources.ts) 的现行默认结果缓存为 24 小时、32 条、1 MiB，按访问维护；这些值约束 `call.result`，不能据此声称诊断已按同一期限物理清除。 |
-| 已有私人结果删除会移除诊断 | `eraseModelResultCache` 会移除 `responseDiagnostics`、`validationPath`，并保留成本／权益事实；不能把它当成已有诊断回收站。 |
-| 正常结果查询有身份边界 | [learning-models.ts](../laf-backend/functions/learning-models.ts) 的 `action=result` 经认证并按 owner 查请求；失败投影提供有界状态／错误码／校验路径，未直接开放完整诊断对象。读取也会做既有维护，不等于无数据库写入。 |
+| 目前有受限 `responseDiagnostics` 元数据                                                | `proxy-ai.ts` 的 `captureDiagnostics` 受现行 DEV_TEST 与特定获准 QA owner 限制；不是所有账号开关，也不是全站采集授权。                                                                                                                                                                                       |
+| 已有账号账本可承载诊断                                                                 | [learning-account.ts](../laf-backend/functions/_shared/learning-account.ts) 在 `learning_accounts` 的同一账号文档、既有 `calls[]` 条目内，经 `boundedResponseDiagnostics` 筛选后写 `responseDiagnostics`。`mutateAccount` 使用 owner 条件与 revision CAS。                                                   |
+| 已有扁平白名单与字段路径清洗                                                           | `boundedResponseDiagnostics` 仅接收闭合的类型／枚举／布尔和有界数值；`modelValidationPath` 仅保留已知业务 schema 坐标，其他段变为 `unknown`，长度不超过 160。它们不是原文存储。                                                                                                                              |
+| 结果缓存与诊断不是同一保留合同                                                         | [learning-model-resources.ts](../laf-backend/functions/_shared/learning-model-resources.ts) 的现行默认结果缓存为 24 小时、32 条、1 MiB，按访问维护；这些值约束 `call.result`，不能据此声称诊断已按同一期限物理清除。                                                                                         |
+| 已有私人结果删除会移除诊断                                                             | `eraseModelResultCache` 会移除 `responseDiagnostics`、`validationPath`，并保留成本／权益事实；不能把它当成已有诊断回收站。                                                                                                                                                                                   |
+| 正常结果查询有身份边界                                                                 | [learning-models.ts](../laf-backend/functions/learning-models.ts) 的 `action=result` 经认证并按 owner 查请求；失败投影提供有界状态／错误码／校验路径，未直接开放完整诊断对象。读取也会做既有维护，不等于无数据库写入。                                                                                       |
 
 ## 2. 建议采用的最小方案
 
@@ -28,22 +28,22 @@
 
 未列出的字段一律禁止。可选值未知时省略，不能用 `0`、`false` 或猜测枚举填未知；`null` 也不作为绕过类型的容器。所有长度按序列化前的字符串计，最终另计 UTF-8 JSON 总字节。
 
-| 字段 | 类型、允许值或上限 | 来源／解释 |
-| --- | --- | --- |
-| `version` | 固定字符串 `diag-meta-proposal-1` | 提案版本标识；不表示本文已获批。 |
-| `capturedAt` | 安全整数毫秒时间戳；服务端生成 | 提案；只用于诊断过期，不代替原请求时间和成本事实。 |
-| `failureStage` | `http_envelope`、`json_parse`、`schema`、`secret_guard`、`unknown` | 提案；仅按实际到达的本地分支赋值，不推测上游根因。 |
-| `networkStage` | `headers`、`received` | 沿现有枚举；未观察到则省略。 |
-| `mimeCategory` | `json`、`sse`、`text`、`other`、`missing` | 沿现有类别；不保存完整响应头或 MIME 参数。 |
-| `httpStatus` | 整数 100～599 | 提案收紧为实际 HTTP 状态；没有状态则省略。 |
-| `envelopeJson` | `valid`、`invalid` | 沿现有枚举；只描述外层解析。 |
-| `envelopeType`、`choicesType`、`choiceType`、`messageType`、`contentType`、`reasoning_contentType`、`reasoningType`、`thinkingType`、`finishReasonType`、`expectedType`、`actualType` | 各为 `missing`、`null`、`array`、`object`、`string`、`number`、`boolean`、`json_object`、`invalid_json` 之一；每值最长 12 个 ASCII 字符 | 沿现有固定字段和枚举；`reasoning*`／`thinking*` 只记录类型，不记录内容。 |
-| `responseBytes`、`contentChars`、`reasoning_contentChars`、`reasoningChars`、`thinkingChars` | 安全整数 0～2,097,152 | 现有数值防护上限；提案继续采用。超过上限则省略，不截成上限或冒称实际值。字节与字符计数不可互换。 |
-| `syntaxPosition` | 安全整数 0～2,097,152，且不大于对应实际输入长度 | 提案：只有位置来源及单位被确认才写；不保存附近文字。 |
-| `positionUnit` | `utf16_code_unit` 或 `byte` | 提案：必须与该次解析器实际口径一致；未确认时连同 `syntaxPosition` 省略，不默认单位。 |
-| `syntaxEnd`、`hasJsonFence`、`hasThinkingPrefix`、`hasBom` | 布尔 | 沿现有观察值；不保存围栏／前缀文本，不据此断言根因。 |
-| `startToken` | `object`、`array`、`string`、`other`、`empty` | 沿现有类别，不保存首字符或首段。 |
-| `finishReason` | `stop`、`length`、`content_filter`、`tool_calls`、`function_call`、`end_turn`、`max_tokens`、`other` | 沿现有枚举；非白名单原值只能归 `other`，原值不写盘。 |
+| 字段                                                                                                                                                                                  | 类型、允许值或上限                                                                                                                      | 来源／解释                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `version`                                                                                                                                                                             | 固定字符串 `diag-meta-proposal-1`                                                                                                       | 提案版本标识；不表示本文已获批。                                                                 |
+| `capturedAt`                                                                                                                                                                          | 安全整数毫秒时间戳；服务端生成                                                                                                          | 提案；只用于诊断过期，不代替原请求时间和成本事实。                                               |
+| `failureStage`                                                                                                                                                                        | `http_envelope`、`json_parse`、`schema`、`secret_guard`、`unknown`                                                                      | 提案；仅按实际到达的本地分支赋值，不推测上游根因。                                               |
+| `networkStage`                                                                                                                                                                        | `headers`、`received`                                                                                                                   | 沿现有枚举；未观察到则省略。                                                                     |
+| `mimeCategory`                                                                                                                                                                        | `json`、`sse`、`text`、`other`、`missing`                                                                                               | 沿现有类别；不保存完整响应头或 MIME 参数。                                                       |
+| `httpStatus`                                                                                                                                                                          | 整数 100～599                                                                                                                           | 提案收紧为实际 HTTP 状态；没有状态则省略。                                                       |
+| `envelopeJson`                                                                                                                                                                        | `valid`、`invalid`                                                                                                                      | 沿现有枚举；只描述外层解析。                                                                     |
+| `envelopeType`、`choicesType`、`choiceType`、`messageType`、`contentType`、`reasoning_contentType`、`reasoningType`、`thinkingType`、`finishReasonType`、`expectedType`、`actualType` | 各为 `missing`、`null`、`array`、`object`、`string`、`number`、`boolean`、`json_object`、`invalid_json` 之一；每值最长 12 个 ASCII 字符 | 沿现有固定字段和枚举；`reasoning*`／`thinking*` 只记录类型，不记录内容。                         |
+| `responseBytes`、`contentChars`、`reasoning_contentChars`、`reasoningChars`、`thinkingChars`                                                                                          | 安全整数 0～2,097,152                                                                                                                   | 现有数值防护上限；提案继续采用。超过上限则省略，不截成上限或冒称实际值。字节与字符计数不可互换。 |
+| `syntaxPosition`                                                                                                                                                                      | 安全整数 0～2,097,152，且不大于对应实际输入长度                                                                                         | 提案：只有位置来源及单位被确认才写；不保存附近文字。                                             |
+| `positionUnit`                                                                                                                                                                        | `utf16_code_unit` 或 `byte`                                                                                                             | 提案：必须与该次解析器实际口径一致；未确认时连同 `syntaxPosition` 省略，不默认单位。             |
+| `syntaxEnd`、`hasJsonFence`、`hasThinkingPrefix`、`hasBom`                                                                                                                            | 布尔                                                                                                                                    | 沿现有观察值；不保存围栏／前缀文本，不据此断言根因。                                             |
+| `startToken`                                                                                                                                                                          | `object`、`array`、`string`、`other`、`empty`                                                                                           | 沿现有类别，不保存首字符或首段。                                                                 |
+| `finishReason`                                                                                                                                                                        | `stop`、`length`、`content_filter`、`tool_calls`、`function_call`、`end_turn`、`max_tokens`、`other`                                    | 沿现有枚举；非白名单原值只能归 `other`，原值不写盘。                                             |
 
 以下数据只复用父 `call` 的既有合法字段，不在诊断对象内重复持久化：请求 ID、`executionStage`、成功／失败／取消状态、规范化 `validationPath`、既有 `errorCode`、用量和费用。父字段现有的保留与授权不因本草案扩张。对外读取诊断时，错误码仍须本地白名单投影，不能回传厂商任意错误字符串。
 
@@ -62,12 +62,12 @@
 
 ## 5. 容量、异常与并发（新增数值均为提案）
 
-| 约束提案 | 简短依据 |
-| --- | --- |
-| 每次请求最多 1 份最终诊断，UTF-8 紧凑 JSON 不超过 1,024 字节 | 固定元数据可容纳；不以容量扩张代替明确字段合同。1 KiB 尚未获批。 |
-| 单账号最多 32 份、诊断投影累计不超过 32,768 字节，两个条件同时满足 | 有限 QA 排错窗口；计算包含版本／时间等诊断字段和累计数组结构开销。不会重定义既有费用账本条数。 |
-| 首期整体上限同为 32 份／32,768 字节 | 首期仅允许一个既有获准 QA owner，因此不需要新的全局计数器。扩大 owner 前必须先裁定整体预算，不默认按账号无限倍增。 |
-| 每个请求结算只进行既有结算尝试，不因诊断新增模型重试 | 诊断不能引发二次推理、扣费或重复结算。数据库 CAS 沿现有有限策略，不另起重试框架。 |
+| 约束提案                                                           | 简短依据                                                                                                           |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| 每次请求最多 1 份最终诊断，UTF-8 紧凑 JSON 不超过 1,024 字节       | 固定元数据可容纳；不以容量扩张代替明确字段合同。1 KiB 尚未获批。                                                   |
+| 单账号最多 32 份、诊断投影累计不超过 32,768 字节，两个条件同时满足 | 有限 QA 排错窗口；计算包含版本／时间等诊断字段和累计数组结构开销。不会重定义既有费用账本条数。                     |
+| 首期整体上限同为 32 份／32,768 字节                                | 首期仅允许一个既有获准 QA owner，因此不需要新的全局计数器。扩大 owner 前必须先裁定整体预算，不默认按账号无限倍增。 |
+| 每个请求结算只进行既有结算尝试，不因诊断新增模型重试               | 诊断不能引发二次推理、扣费或重复结算。数据库 CAS 沿现有有限策略，不另起重试框架。                                  |
 
 在既有 owner CAS 内先去除已逻辑过期的诊断，再按 `capturedAt` 从旧到新释放超出容量的诊断字段，直至新诊断满足双上限；**只释放诊断，不删 call、费用、用量、结果或学生记录**。这类到期／容量物理释放须先获得第 7 节规定的明确合同授权；未获授权不能开启该淘汰方案。
 
@@ -91,13 +91,13 @@
 
 建议首期作为受控 QA 窗口：只在主线已明确安排收尾处置、且已批准诊断字段到期／容量释放方式时才允许开启持久采集；窗口收尾执行获准的诊断字段清除，并报告实际完成时间。若主线要求无人访问时也必须具备硬性物理删除期限，必须先裁定可复用的执行入口与失败处置；落实前保持新增持久采集关闭，仅保留现有内存校验。不得以“逻辑过期”冒称“已物理删除”。
 
-| 动作 | 能否恢复、授权与报告要求 |
-| --- | --- |
-| 隐藏过期诊断／停止新增采集 | 不等于删除；不影响学生记录、结果与费用事实。 |
-| 已存在且获准的诊断导出文件进入正常废纸篓 | 可恢复回收；仅在原文件确有合法用途和删除授权时操作。先核对精确路径／消费者，不主动制造导出或备份；不清空废纸篓。 |
-| 从数据库移除诊断嵌入字段 | 不是废纸篓，不能保证恢复；必须由主线明确审阅并批准这一诊断保留／淘汰合同及执行范围，或来自产品既有明确删除动作。草案本身不授权执行。不能用源码回滚、备份存在或变更字段名冒称可恢复。 |
-| 账户注销／私人结果删除 | 沿既有真实用户授权与删除合同；不能借诊断清理提前注销、删除学习事实、费用凭证或指定恢复材料。 |
-| 备份中的诊断 | 首期禁止新增诊断备份／导出；如既有受保护备份包含旧诊断，不暗改／删恢复链，先列范围给主线裁定，不宣称在线字段移除已清除所有副本。 |
+| 动作                                     | 能否恢复、授权与报告要求                                                                                                                                                             |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 隐藏过期诊断／停止新增采集               | 不等于删除；不影响学生记录、结果与费用事实。                                                                                                                                         |
+| 已存在且获准的诊断导出文件进入正常废纸篓 | 可恢复回收；仅在原文件确有合法用途和删除授权时操作。先核对精确路径／消费者，不主动制造导出或备份；不清空废纸篓。                                                                     |
+| 从数据库移除诊断嵌入字段                 | 不是废纸篓，不能保证恢复；必须由主线明确审阅并批准这一诊断保留／淘汰合同及执行范围，或来自产品既有明确删除动作。草案本身不授权执行。不能用源码回滚、备份存在或变更字段名冒称可恢复。 |
+| 账户注销／私人结果删除                   | 沿既有真实用户授权与删除合同；不能借诊断清理提前注销、删除学习事实、费用凭证或指定恢复材料。                                                                                         |
+| 备份中的诊断                             | 首期禁止新增诊断备份／导出；如既有受保护备份包含旧诊断，不暗改／删恢复链，先列范围给主线裁定，不宣称在线字段移除已清除所有副本。                                                     |
 
 无删除授权或清理失败时，关闭新增持久采集、禁止对外读取已过期项，只报告固定失败状态与实际范围给主线；不得为满足空间／期限偷偷永久删除或新增恢复副本。
 

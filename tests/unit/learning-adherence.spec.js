@@ -94,7 +94,7 @@ describe('T3/T4 existing private event stream', () => {
     op('conversation.start', { goal: '考研写作' }, 'goal', NOW - 20 * DAY);
     state.conversations[0].coach = {
       contract: 'kaoyan-writing-coach-v1',
-      profile: {exam:'english1'},
+      profile: { exam: 'english1' },
       days: [],
       library: Array.from({ length: 23 }, (_, i) => ({
         id: `phrase${i}`,

@@ -33,7 +33,8 @@ function checkShape(value, rule, location, errors) {
     for (const key of rule.required || []) if (!Object.hasOwn(value, key)) fail(`required:${key}`);
     for (const [key, v] of Object.entries(value)) {
       if (rule.properties?.[key]) checkShape(v, rule.properties[key], `${location}/${key}`, errors);
-      else if (rule.additionalProperties === false) errors.push({ path: `${location}/${key}`, code: 'additional_property' });
+      else if (rule.additionalProperties === false)
+        errors.push({ path: `${location}/${key}`, code: 'additional_property' });
     }
   }
 }
@@ -73,7 +74,7 @@ export function validateDiagnosisPackage(pkg) {
     };
     const root = (value, location) => {
       references(value.attribute_ids, `${location}/attribute_ids`);
-      if ((value.status === 'attributed') !== (value.attribute_ids.length > 0)) error(location, 'root_status_labels');
+      if ((value.status === 'attributed') !== value.attribute_ids.length > 0) error(location, 'root_status_labels');
     };
     need(subject.source, `${loc}/source`, 'missing_source');
     for (const field of ['attributes', 'items', 'trajectories']) unique(subject[field], 'id', `${loc}/${field}`);
@@ -82,13 +83,18 @@ export function validateDiagnosisPackage(pkg) {
       const at = `${loc}/items/${i}`;
       need(item.source, `${at}/source`, 'missing_source');
       references(item.attribute_ids, `${at}/attribute_ids`);
-      need(item.answer_review?.status === 'approved' && item.answer_review.reviewer_id, `${at}/answer_review`, 'answer_not_reviewed');
+      need(
+        item.answer_review?.status === 'approved' && item.answer_review.reviewer_id,
+        `${at}/answer_review`,
+        'answer_not_reviewed'
+      );
       const humans = item.q_reviews.filter((r) => r.method === 'human' && r.reviewer_id);
       unique(humans, 'reviewer_id', `${at}/q_reviews/humans`);
       item.q_reviews.forEach((review, ri) => {
         references(review.attribute_ids, `${at}/q_reviews/${ri}/attribute_ids`);
         need(review.reviewer_id, `${at}/q_reviews/${ri}/reviewer_id`, 'missing_q_reviewer');
-        if (review.method === 'strong_model') need(review.model_version, `${at}/q_reviews/${ri}/model_version`, 'missing_model_version');
+        if (review.method === 'strong_model')
+          need(review.model_version, `${at}/q_reviews/${ri}/model_version`, 'missing_model_version');
       });
     });
     subject.trajectories.forEach((t, ti) => {
@@ -103,16 +109,23 @@ export function validateDiagnosisPackage(pkg) {
       });
       const reviews = t.gold?.reviews || [];
       const adjudication = t.gold?.adjudication;
-      need(reviews.length === 2 && reviews.every((r) => r.reviewer_id && r.independent === true), `${at}/gold/reviews`, 'missing_independent_double_review');
+      need(
+        reviews.length === 2 && reviews.every((r) => r.reviewer_id && r.independent === true),
+        `${at}/gold/reviews`,
+        'missing_independent_double_review'
+      );
       need(adjudication?.reviewer_id, `${at}/gold/adjudication`, 'missing_adjudication');
       const reviewers = reviews.map((r) => r.reviewer_id).filter(Boolean);
       need(new Set(reviewers).size === 2, `${at}/gold/reviews`, 'reviewers_not_distinct');
-      if (adjudication?.reviewer_id) need(!reviewers.includes(adjudication.reviewer_id), `${at}/gold/adjudication`, 'adjudicator_not_independent');
+      if (adjudication?.reviewer_id)
+        need(!reviewers.includes(adjudication.reviewer_id), `${at}/gold/adjudication`, 'adjudicator_not_independent');
       [...reviews, ...(adjudication ? [adjudication] : [])].forEach((annotation, i) => {
         const aloc = `${at}/gold/annotations/${i}`;
         root(annotation.root_cause, `${aloc}/root_cause`);
-        if (annotation.root_cause.status !== 'insufficient_evidence') need(annotation.evidence_turns.length, `${aloc}/evidence_turns`, 'missing_evidence');
-        for (const round of annotation.evidence_turns) if (!rounds.has(round)) error(`${aloc}/evidence_turns`, 'unknown_round');
+        if (annotation.root_cause.status !== 'insufficient_evidence')
+          need(annotation.evidence_turns.length, `${aloc}/evidence_turns`, 'missing_evidence');
+        for (const round of annotation.evidence_turns)
+          if (!rounds.has(round)) error(`${aloc}/evidence_turns`, 'unknown_round');
       });
       const predictions = t.predictions || [];
       unique(predictions, 'run_id', `${at}/predictions`);
@@ -123,8 +136,12 @@ export function validateDiagnosisPackage(pkg) {
         runs.set(p.run_id, config);
         if (p.root_cause) root(p.root_cause, `${ploc}/root_cause`);
         unique(p.mastery, 'attribute_id', `${ploc}/mastery`);
-        references(p.mastery.map((m) => m.attribute_id), `${ploc}/mastery`);
-        if (p.mastery.some((m) => !t.mastery_attribute_ids.includes(m.attribute_id))) error(`${ploc}/mastery`, 'outside_mastery_scope');
+        references(
+          p.mastery.map((m) => m.attribute_id),
+          `${ploc}/mastery`
+        );
+        if (p.mastery.some((m) => !t.mastery_attribute_ids.includes(m.attribute_id)))
+          error(`${ploc}/mastery`, 'outside_mastery_scope');
       });
     });
   }
@@ -132,19 +149,36 @@ export function validateDiagnosisPackage(pkg) {
 }
 
 function rootCounts(subject, primaryRunId) {
-  const result = { total: subject.trajectories.length, gold_eligible: 0, gold_insufficient: 0, missing_gold: 0, missing_prediction: 0, abstained_prediction: 0, numerator: 0, denominator: 0, compared: 0, cases: [] };
+  const result = {
+    total: subject.trajectories.length,
+    gold_eligible: 0,
+    gold_insufficient: 0,
+    missing_gold: 0,
+    missing_prediction: 0,
+    abstained_prediction: 0,
+    numerator: 0,
+    denominator: 0,
+    compared: 0,
+    cases: []
+  };
   for (const t of subject.trajectories) {
     const gold = t.gold?.adjudication?.root_cause;
     const prediction = t.predictions?.find((p) => p.run_id === primaryRunId)?.root_cause;
     let outcome;
-    if (!gold) { result.missing_gold++; outcome = 'missing_gold'; }
-    else if (gold.status === 'insufficient_evidence') { result.gold_insufficient++; outcome = 'gold_insufficient'; }
-    else {
+    if (!gold) {
+      result.missing_gold++;
+      outcome = 'missing_gold';
+    } else if (gold.status === 'insufficient_evidence') {
+      result.gold_insufficient++;
+      outcome = 'gold_insufficient';
+    } else {
       result.gold_eligible++;
       // Missing predictions and model abstentions stay in the gold denominator.
       result.denominator++;
-      if (!prediction) { result.missing_prediction++; outcome = 'missing_prediction'; }
-      else {
+      if (!prediction) {
+        result.missing_prediction++;
+        outcome = 'missing_prediction';
+      } else {
         result.compared++;
         if (prediction.status === 'insufficient_evidence') result.abstained_prediction++;
         const correct = sameRoot(gold, prediction);
@@ -158,22 +192,40 @@ function rootCounts(subject, primaryRunId) {
 }
 
 function masteryCounts(subject) {
-  const result = { total_trajectories: subject.trajectories.length, numerator: 0, denominator: 0, possible_pairs: 0, unknown_pairs: 0, same_config_pairs: 0, missing_prediction_trajectories: 0, cases: [] };
+  const result = {
+    total_trajectories: subject.trajectories.length,
+    numerator: 0,
+    denominator: 0,
+    possible_pairs: 0,
+    unknown_pairs: 0,
+    same_config_pairs: 0,
+    missing_prediction_trajectories: 0,
+    cases: []
+  };
   for (const t of subject.trajectories) {
     const predictions = t.predictions || [];
     if (predictions.length < 2) result.missing_prediction_trajectories++;
-    for (let i = 0; i < predictions.length; i++) for (let j = i + 1; j < predictions.length; j++) {
-      const a = predictions[i]; const b = predictions[j];
-      if (configKey(a) === configKey(b)) { result.same_config_pairs++; continue; }
-      result.possible_pairs++;
-      const vector = (p) => t.mastery_attribute_ids.map((id) => p.mastery.find((m) => m.attribute_id === id)?.classification);
-      const av = vector(a); const bv = vector(b);
-      const known = [...av, ...bv].every((v) => v && v !== 'unknown');
-      const agreement = known ? av.every((v, k) => v === bv[k]) : null;
-      if (known) { result.denominator++; if (agreement) result.numerator++; }
-      else result.unknown_pairs++;
-      result.cases.push({ trajectory_id: t.id, run_ids: [a.run_id, b.run_id], agreement });
-    }
+    for (let i = 0; i < predictions.length; i++)
+      for (let j = i + 1; j < predictions.length; j++) {
+        const a = predictions[i];
+        const b = predictions[j];
+        if (configKey(a) === configKey(b)) {
+          result.same_config_pairs++;
+          continue;
+        }
+        result.possible_pairs++;
+        const vector = (p) =>
+          t.mastery_attribute_ids.map((id) => p.mastery.find((m) => m.attribute_id === id)?.classification);
+        const av = vector(a);
+        const bv = vector(b);
+        const known = [...av, ...bv].every((v) => v && v !== 'unknown');
+        const agreement = known ? av.every((v, k) => v === bv[k]) : null;
+        if (known) {
+          result.denominator++;
+          if (agreement) result.numerator++;
+        } else result.unknown_pairs++;
+        result.cases.push({ trajectory_id: t.id, run_ids: [a.run_id, b.run_id], agreement });
+      }
   }
   return result;
 }
@@ -181,13 +233,24 @@ function masteryCounts(subject) {
 function qCounts(subject) {
   const cases = subject.items.map((item) => {
     const reviews = item.q_reviews;
-    const humanIds = new Set(reviews.filter((r) => r.method === 'human' && r.status === 'approved' && r.reviewer_id).map((r) => r.reviewer_id));
-    const model = reviews.some((r) => r.method === 'strong_model' && r.status === 'approved' && r.reviewer_id && r.model_version);
-    const conflict = reviews.some((r) => r.status === 'rejected' || (r.status === 'approved' && !sameSet(r.attribute_ids, item.attribute_ids)));
+    const humanIds = new Set(
+      reviews.filter((r) => r.method === 'human' && r.status === 'approved' && r.reviewer_id).map((r) => r.reviewer_id)
+    );
+    const model = reviews.some(
+      (r) => r.method === 'strong_model' && r.status === 'approved' && r.reviewer_id && r.model_version
+    );
+    const conflict = reviews.some(
+      (r) => r.status === 'rejected' || (r.status === 'approved' && !sameSet(r.attribute_ids, item.attribute_ids))
+    );
     const reviewed = !conflict && (humanIds.size >= 2 || (model && humanIds.size >= 1));
     return { item_id: item.id, reviewed, outcome: conflict ? 'conflict' : reviewed ? 'reviewed' : 'unreviewed' };
   });
-  return { numerator: cases.filter((c) => c.reviewed).length, denominator: cases.length, unknown: cases.filter((c) => !c.reviewed).length, cases };
+  return {
+    numerator: cases.filter((c) => c.reviewed).length,
+    denominator: cases.length,
+    unknown: cases.filter((c) => !c.reviewed).length,
+    cases
+  };
 }
 
 function metrics(counts, validation, kind) {
@@ -198,8 +261,22 @@ function metrics(counts, validation, kind) {
       ...root,
       numerator: publishRoot ? root.numerator : null,
       value: publishRoot ? ratio(root.numerator, root.denominator) : null,
-      status: !publishRoot ? 'unavailable_incomplete_package' : !root.denominator ? 'unavailable_no_eligible_gold' : kind === 'synthetic' ? 'synthetic_only' : 'measured',
-      cases: root.cases.map((c) => ({ ...c, correct: publishRoot && ['correct', 'incorrect', 'missing_prediction'].includes(c.outcome) ? c.outcome === 'correct' : null, outcome: !publishRoot && ['correct', 'incorrect'].includes(c.outcome) ? 'not_scored_incomplete_package' : c.outcome }))
+      status: !publishRoot
+        ? 'unavailable_incomplete_package'
+        : !root.denominator
+          ? 'unavailable_no_eligible_gold'
+          : kind === 'synthetic'
+            ? 'synthetic_only'
+            : 'measured',
+      cases: root.cases.map((c) => ({
+        ...c,
+        correct:
+          publishRoot && ['correct', 'incorrect', 'missing_prediction'].includes(c.outcome)
+            ? c.outcome === 'correct'
+            : null,
+        outcome:
+          !publishRoot && ['correct', 'incorrect'].includes(c.outcome) ? 'not_scored_incomplete_package' : c.outcome
+      }))
     },
     mastery_consistency: { ...mastery, value: ratio(mastery.numerator, mastery.denominator) },
     q_matrix_review_rate: { ...q, value: ratio(q.numerator, q.denominator) }
@@ -209,18 +286,33 @@ function metrics(counts, validation, kind) {
 /** Pure aggregation. No models, files, env, account storage, timestamps or pass thresholds. */
 export function evaluateDiagnosisPackage(pkg) {
   const validation = validateDiagnosisPackage(pkg);
-  if (validation.status === 'invalid') return { package_status: 'invalid', real_effect: 'unavailable', validation, metrics: null, subjects: [] };
-  const groups = pkg.subjects.map((s) => ({ subject: s.subject, version: s.version, counts: { root: rootCounts(s, pkg.primary_run_id), mastery: masteryCounts(s), q: qCounts(s) } }));
+  if (validation.status === 'invalid')
+    return { package_status: 'invalid', real_effect: 'unavailable', validation, metrics: null, subjects: [] };
+  const groups = pkg.subjects.map((s) => ({
+    subject: s.subject,
+    version: s.version,
+    counts: { root: rootCounts(s, pkg.primary_run_id), mastery: masteryCounts(s), q: qCounts(s) }
+  }));
   const totals = {};
   for (const metric of ['root', 'mastery', 'q']) {
     totals[metric] = {};
-    for (const group of groups) for (const [key, value] of Object.entries(group.counts[metric])) {
-      if (key === 'cases') totals[metric].cases = [...(totals[metric].cases || []), ...value.map((c) => ({ subject: group.subject, ...c }))];
-      else totals[metric][key] = (totals[metric][key] || 0) + value;
-    }
+    for (const group of groups)
+      for (const [key, value] of Object.entries(group.counts[metric])) {
+        if (key === 'cases')
+          totals[metric].cases = [
+            ...(totals[metric].cases || []),
+            ...value.map((c) => ({ subject: group.subject, ...c }))
+          ];
+        else totals[metric][key] = (totals[metric][key] || 0) + value;
+      }
   }
   // Real effects also require every eligible trajectory's preselected prediction.
-  const realAvailable = pkg.data_kind === 'real' && validation.status === 'complete' && totals.root.denominator > 0 && totals.root.missing_prediction === 0 && pkg.subjects.every((_, i) => groups[i].counts.root.denominator > 0);
+  const realAvailable =
+    pkg.data_kind === 'real' &&
+    validation.status === 'complete' &&
+    totals.root.denominator > 0 &&
+    totals.root.missing_prediction === 0 &&
+    pkg.subjects.every((_, i) => groups[i].counts.root.denominator > 0);
   return {
     schema_version: pkg.schema_version,
     version: pkg.version,
@@ -230,16 +322,22 @@ export function evaluateDiagnosisPackage(pkg) {
     real_effect: realAvailable ? 'measured' : 'unavailable',
     validation,
     metrics: metrics(totals, validation, pkg.data_kind),
-    subjects: groups.map((g) => ({ subject: g.subject, version: g.version, metrics: metrics(g.counts, validation, pkg.data_kind) }))
+    subjects: groups.map((g) => ({
+      subject: g.subject,
+      version: g.version,
+      metrics: metrics(g.counts, validation, pkg.data_kind)
+    }))
   };
 }
 
 // stdout JSON only; exit 0 = complete package/command, never a diagnostic-effect pass.
 export function runCli(args) {
-  let packagePath; let validateOnly = false;
+  let packagePath;
+  let validateOnly = false;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--validate' && !validateOnly) validateOnly = true;
-    else if (args[i] === '--package' && !packagePath && args[i + 1] && !args[i + 1].startsWith('--')) packagePath = args[++i];
+    else if (args[i] === '--package' && !packagePath && args[i + 1] && !args[i + 1].startsWith('--'))
+      packagePath = args[++i];
     else throw new Error('Usage: node scripts/eval/diagnosis-validation.mjs --package PATH [--validate]');
   }
   if (!packagePath) throw new Error('Usage: node scripts/eval/diagnosis-validation.mjs --package PATH [--validate]');
@@ -256,7 +354,13 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     process.exitCode = report.package_status === 'complete' ? 0 : 2;
   } catch (error) {
     // Do not echo malformed inputs, source locators or student answers in errors.
-    console.log(JSON.stringify({ package_status: 'invalid', real_effect: 'unavailable', error: error.message.startsWith('Usage:') ? error.message : 'PACKAGE_READ_OR_JSON_ERROR' }));
+    console.log(
+      JSON.stringify({
+        package_status: 'invalid',
+        real_effect: 'unavailable',
+        error: error.message.startsWith('Usage:') ? error.message : 'PACKAGE_READ_OR_JSON_ERROR'
+      })
+    );
     process.exitCode = 2;
   }
 }

@@ -44,18 +44,16 @@ export async function runConversationEntryScan(db: any, userId: string, options:
         .update({ extraction: { ...meta, leaseToken: null, leaseUntil: 0 } });
     } catch (e) {
       const attempts = (meta.attempts || 0) + 1;
-      await collection
-        .where({ _id: doc._id, user_id: userId, extraction: lease })
-        .update({
-          extraction: {
-            ...meta,
-            attempts,
-            retryAt: clock() + [60000, 300000, 1800000][Math.min(2, attempts - 1)],
-            leaseToken: null,
-            leaseUntil: 0,
-            error: 'SCAN_FAILED'
-          }
-        });
+      await collection.where({ _id: doc._id, user_id: userId, extraction: lease }).update({
+        extraction: {
+          ...meta,
+          attempts,
+          retryAt: clock() + [60000, 300000, 1800000][Math.min(2, attempts - 1)],
+          leaseToken: null,
+          leaseUntil: 0,
+          error: 'SCAN_FAILED'
+        }
+      });
       return { status: 'failed', attempts }; // Never copy message bodies or exception text to metadata.
     }
   }

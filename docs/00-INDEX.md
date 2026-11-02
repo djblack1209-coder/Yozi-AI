@@ -20,16 +20,16 @@
 | 构建、空间清理与生产边界      | [09 构建与维护](09-DEPLOYMENT-GUIDE.md)           |
 | Laf 与独立后端适配            | [09A 后端运行](09A-LAF-BACKEND-DEPLOYMENT.md)     |
 | 恢复、迁移与回滚              | [09B 迁移](09B-BACKEND-MIGRATION-GUIDE.md)        |
-| App 原生传输、文件与移动 SDK | [09C 原生连接器](09C-APP-CONNECTOR.md) |
+| App 原生传输、文件与移动 SDK  | [09C 原生连接器](09C-APP-CONNECTOR.md)            |
 | 写代码和审查的规则            | [10 开发规范](10-DEV-RULES.md)                    |
 | 完整功能清单、证据与发布缺口  | [11 功能与验收](11-RELEASE-NOTES.md)              |
 | 重要变更记录                  | [12 变更](12-CHANGELOG.md)                        |
 | 当前基线、下一阶段安排与待办  | [13 开发计划](13-DEVELOPMENT-PLAN.md)             |
-| 总监与执行侧每轮简报和验收   | [18 开发日志](18-DEVELOPMENT-LOG.md)              |
+| 总监与执行侧每轮简报和验收    | [18 开发日志](18-DEVELOPMENT-LOG.md)              |
 | 模型接入、隐私、费用和权益    | [14 模型与费用](14-MODEL-PRIVACY-COST.md)         |
 | 平台申请、扫码/证件接管与材料 | [15 人工操作指南](15-MANUAL-SETUP-GUIDE.md)       |
-| 知识图谱候选与展示方向       | [16 框架图候选](16-KNOWLEDGE-MAPS-BACKLOG.md)     |
-| 自适应诊断引擎与种子边界     | [17 诊断验证版](17-KNOWLEDGE-GRAPH-DIAGNOSIS.md)   |
+| 知识图谱候选与展示方向        | [16 框架图候选](16-KNOWLEDGE-MAPS-BACKLOG.md)     |
+| 自适应诊断引擎与种子边界      | [17 诊断验证版](17-KNOWLEDGE-GRAPH-DIAGNOSIS.md)  |
 
 ## 维护规则
 

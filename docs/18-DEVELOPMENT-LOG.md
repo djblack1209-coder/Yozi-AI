@@ -19,11 +19,11 @@
 - 混合摸底根因：旧题 q2 含无依据的 provide/give 优越性前提，模型把学生的有据否定当错；又把 q5 要点提纲追加为必须自拟时间地点。旧 prompt 虽有禁令，逐题缺作答形式，模型会先给低档再写评论。Agnes 修前首轮语法档1，却只有搭配错误，严格门禁在 `dimensions[0].score` 拒收；后两轮被接收但任务档1仍含语义误判。原样本为[旧五题](../tmp/writing-quality-20261027/legacy-teaching-cases.json)，未新增或挑选留出题。
 - 最小修复：[`learning-writing-coach.js`](../laf-backend/functions/_shared/learning-writing-coach.js) 为逐题补 `answerFormat`，明确否定范围、提纲与成文边界、先登记真实错误再给档；[`learning-provider.ts`](../laf-backend/functions/_shared/ai-providers/learning-provider.ts) 保留同维同引用降档门禁，补 wire 字段路径、维度、封闭引用编号；[`proxy-ai.ts`](../laf-backend/functions/proxy-ai.ts) 仅透传白名单诊断元数据，不写学生正文或扩执行权限。
 
-| 连续复跑 | 语法／搭配／表达／任务 | 各维引用（顺序同左） | 拒收 |
-| --- | --- | --- | --- |
-| 1 | 2／2／2／2 | q2,q3；q2,q3；q3,q4；q1,q2,q3 | 否 |
-| 2 | 2／2／2／2 | q2,q3；q2,q3；q3,q4；q1,q2,q5 | 否 |
-| 3 | 2／2／2／2 | q2,q3；q2,q3；q3,q4；q1,q2,q3 | 否 |
+| 连续复跑 | 语法／搭配／表达／任务 | 各维引用（顺序同左）          | 拒收 |
+| -------- | ---------------------- | ----------------------------- | ---- |
+| 1        | 2／2／2／2             | q2,q3；q2,q3；q3,q4；q1,q2,q3 | 否   |
+| 2        | 2／2／2／2             | q2,q3；q2,q3；q3,q4；q1,q2,q5 | 否   |
+| 3        | 2／2／2／2             | q2,q3；q2,q3；q3,q4；q1,q2,q3 | 否   |
 
 - 通道：**OpenRouter / `nvidia/nemotron-3-ultra-550b-a55b:free`**，实际型号回执一致；[官方精确免费路由](https://openrouter.ai/nvidia/nemotron-3-ultra-550b-a55b:free)。[三次原始回执](../tmp/round1-n1.noindex/mixed-after-nemotron-ultra.json)保留四维、逐字引用表、工具能力检查及本机零额预算记录，最终解码器[离线复验3次](../tmp/round1-n1.noindex/mixed-final-offline.json)均接收。仅运行现有提示／schema／解码／真实 BYOK 传输与内存预算，不宣称经过真实鉴权 HTTP handler／数据库。
 - 同型号修前补跑1次为 **2／2／2／1，接收**，错误仍是要求认同词语优越性；[对照](../tmp/round1-n1.noindex/mixed-before-nemotron-ultra.json)保留，样本量不足以证明改动因果。Agnes 3.0 Flash 修后为 **2／2／2／1拒收、2／2／2／2接收、null／2／2／1拒收**；最终离线拒收分别定位语法/q1与任务完成/q1,q5，[失败回执](../tmp/round1-n1.noindex/mixed-final-agnes-offline.json)保留。GLM4.5/4.7严格JSON能力检查未过，Nemotron Super免费路由404，均停止；`.env` 的 iFlow 通道未调用。
@@ -50,6 +50,7 @@ open -n "tmp/round1-n1.noindex/Yozi AI.app"
 **判定：修复接受，N1 未通过，转第 2 轮。** 执行侧如实报告 N1 未完成；改动未放宽门禁，旧样本上的稳定性属实，但在没见过的题上不成立。
 
 亲自复核（不采信摘要）：
+
 - 提交 `3a45a55d` 共 29 个文件：批改链（`learning-writing-coach.js` 逐题作答形式、`learning-provider.ts` 拒收定位、`proxy-ai.ts` 白名单诊断元数据）、客户端恢复与守卫若干处、Agnes 本地标志（MIT），以及按现行合同修订的测试夹具。没有放宽断言或超时。
 - **封存留出复验**（两套五项摸底，换话题、换错误分布，执行侧未见过）：用同一复跑脚本与同一编译产物 `tmp/round1-n1.noindex/backend-after`，在免费路由上跑。
   - 留出 1：完成解码 4 次（Ultra 1 次、Agnes 3 次），**4 次全部被门禁拒收**。拒收原因分别为：一处搭配错误被重复归到语法并降档（2 次）；无登记错误就把表达降档（1 次）；弱项分类与证据不符（1 次）。语义上，Agnes 有 2 次把学生正确的主干分析登记成错误，1 次把填错的介词写成「没给理由，暂不判错」漏判；Ultra 把两处真实错误都找对了，只败在重复归因。
@@ -61,6 +62,7 @@ open -n "tmp/round1-n1.noindex/Yozi AI.app"
 - 总监复跑：13:16 在主工作树隔离全量跑完，6,338 项里 6,040 通过、261 失败、37 跳过。第 1 轮清单里的 178 项按测试 ID 全部复现；多出的 83 项有 73 项在 `learning-endpoints.spec.ts`、3 项在 `writing-coach-quality.spec.js`。复跑期间第 2 轮正在同一工作树改批改链，所以我在 `3a45a55d` 的干净检出（`.worktrees.noindex/yozi-r1-check`）上单独重跑了这三个文件：`learning-endpoints` 与 `writing-coach-quality` 全部通过，`learning-redesign` 的 8 项失败正是第 1 轮清单里的同 8 项。结论：第 1 轮提交的 178 项口径成立，多出的失败来自第 2 轮未完成的中间状态，留到第 2 轮验收时在静止的工作树上复核。
 
 第 2 轮裁定（随简报下发）：
+
 1. 作答形式按题型通用表述，不能写旧样本的具体内容。
 2. 一处错误只归一个维度：固定搭配里的介词与动词搭配归「搭配」，时态、主谓一致、从句结构归「语法」；确实同时违反两类规则时，分别登记两条错误。
 3. 拒收不能是死路：二选一，(a) 把拒收的维度、引用和违反的规则回给模型，有界返修一次；(b) 宿主按量规从已登记错误推出档位。门禁不放宽。
@@ -68,6 +70,7 @@ open -n "tmp/round1-n1.noindex/Yozi AI.app"
 5. 测试护栏：本轮不要求 178 项清零，但按第 1 轮失败清单逐条比对，不许出现新失败。仍按旧合同断言的测试，在第 3 轮集中处理（按现行合同改写，或附退役依据删除）。
 
 外壳差距盘点（只读，已完成）与四问裁定：
+
 - ① 导航 A17：对话→`learning/index`；搜索→现有全局学习记录搜索；目标→`archive?view=plan`，保留今日队列与复习入口；产物库→`view=materials`，收纳历史、句式与洞察、错题、收藏；Feed／Ideas 只留配置位，不显示；顶部用静态品牌加当前目标，动态头像只出现在消息里。
 - ② 可见与静默 A20：前台展示承接、真实准备步骤、整卡、学生决策、失败与下一步；配置刷新、布局保存、成功同步、索引、FSRS 派生在后台静默完成；影响继续学习的失败转到前台。
 - ③ 语音 A5：代码保留，未完成实机验收的入口隐藏。
@@ -92,30 +95,30 @@ open -n "tmp/round1-n1.noindex/Yozi AI.app"
 
 本轮统计参考暂用 **Agnes 3.0 Flash**，因为官方零价、能力往返可用且能返回评阅；**它未取得合格平台参考模型资格**。最终五套各尝试 3 次，4 次结构接收、1 次最终拒收、10 次限流；只有 1 次错误登记位置与开发预期一致，不能据此认定讲解正确。原文引用、每次登记错误、拒收规则和两个尝试分别保存在 [最终原始回执](../tmp/round2-n1.noindex/reference-agnes-final.json)；`—` 表示无完整可用反馈，拒收原值仍保留在 raw。下表的「接收」只指结构／证据门禁，不指教学质量。
 
-| 开发样本／次序 | 四维（语法／搭配／表达／任务） | 登记错误的引用／维度 | 终态／返修 | 延迟秒 |
-| --- | --- | --- | --- | --- |
-| library-correct #1 | — | 见原始回执 | rejected/COACH_INVALID／是 | 27.83 |
-| library-correct #2 | 2／2／2／2 | 无 | accepted／否 | 7.78 |
-| library-correct #3 | 2／1／2／1 | q3/搭配；q5/任务完成 | accepted／是 | 19.47 |
-| cycling-preposition #1 | — | 见原始回执 | failed/RATE_LIMITED／是 | 12.79 |
-| cycling-preposition #2 | — | 见原始回执 | failed/RATE_LIMITED／否 | 0.65 |
-| cycling-preposition #3 | — | 见原始回执 | failed/RATE_LIMITED／否 | 0.67 |
-| robotics-modifier #1 | — | 见原始回执 | failed/RATE_LIMITED／否 | 0.75 |
-| robotics-modifier #2 | — | 见原始回执 | failed/RATE_LIMITED／否 | 1.14 |
-| robotics-modifier #3 | — | 见原始回执 | failed/RATE_LIMITED／否 | 0.72 |
-| gardening-attribution-style #1 | — | 见原始回执 | failed/RATE_LIMITED／否 | 0.66 |
-| gardening-attribution-style #2 | — | 见原始回执 | failed/RATE_LIMITED／否 | 0.82 |
-| gardening-attribution-style #3 | — | 见原始回执 | failed/RATE_LIMITED／否 | 0.65 |
-| legacy_provide_give_analysis #1 | — | 见原始回执 | failed/RATE_LIMITED／否 | 0.79 |
-| legacy_provide_give_analysis #2 | null／1／2／2 | q1/任务完成；q2/搭配 | accepted／否 | 12.85 |
-| legacy_provide_give_analysis #3 | 2／2／2／1 | q1/任务完成；q2/任务完成 | accepted／否 | 10.98 |
+| 开发样本／次序                  | 四维（语法／搭配／表达／任务） | 登记错误的引用／维度     | 终态／返修                 | 延迟秒 |
+| ------------------------------- | ------------------------------ | ------------------------ | -------------------------- | ------ |
+| library-correct #1              | —                              | 见原始回执               | rejected/COACH_INVALID／是 | 27.83  |
+| library-correct #2              | 2／2／2／2                     | 无                       | accepted／否               | 7.78   |
+| library-correct #3              | 2／1／2／1                     | q3/搭配；q5/任务完成     | accepted／是               | 19.47  |
+| cycling-preposition #1          | —                              | 见原始回执               | failed/RATE_LIMITED／是    | 12.79  |
+| cycling-preposition #2          | —                              | 见原始回执               | failed/RATE_LIMITED／否    | 0.65   |
+| cycling-preposition #3          | —                              | 见原始回执               | failed/RATE_LIMITED／否    | 0.67   |
+| robotics-modifier #1            | —                              | 见原始回执               | failed/RATE_LIMITED／否    | 0.75   |
+| robotics-modifier #2            | —                              | 见原始回执               | failed/RATE_LIMITED／否    | 1.14   |
+| robotics-modifier #3            | —                              | 见原始回执               | failed/RATE_LIMITED／否    | 0.72   |
+| gardening-attribution-style #1  | —                              | 见原始回执               | failed/RATE_LIMITED／否    | 0.66   |
+| gardening-attribution-style #2  | —                              | 见原始回执               | failed/RATE_LIMITED／否    | 0.82   |
+| gardening-attribution-style #3  | —                              | 见原始回执               | failed/RATE_LIMITED／否    | 0.65   |
+| legacy_provide_give_analysis #1 | —                              | 见原始回执               | failed/RATE_LIMITED／否    | 0.79   |
+| legacy_provide_give_analysis #2 | null／1／2／2                  | q1/任务完成；q2/搭配     | accepted／否               | 12.85  |
+| legacy_provide_give_analysis #3 | 2／2／2／1                     | q1/任务完成；q2/任务完成 | accepted／否               | 10.98  |
 
-| 实测型号／价格依据 | 本轮尝试次数（含能力检查、失败与返修） | 单次调用耗时范围（含失败） | 结论 |
-| --- | --- | --- | --- |
-| [Agnes 3.0 Flash](https://wiki.agnes-ai.com/en/docs/pricing) | 43 | 0.60–22.33s | 误判正确分析／译文，且限流；不合格 |
-| [Dots3-Note :free](https://openrouter.ai/dots-studio/dots-3-note-preview:free) | 19 | 2.93–60.79s | 默认推理超时；关闭可选推理的失败试验产生漏判及结构拒收，已撤回该参数，不带入产品 |
-| [Gemma 4 26B :free](https://openrouter.ai/google/gemma-4-26b-a4b-it:free) | 1 | 0.51–0.51s | 能力检查限流，未进入教学评测 |
-| [Nemotron 3 Ultra :free](https://openrouter.ai/nvidia/nemotron-3-ultra-550b-a55b:free) | 3 | 2.55–51.65s | 异族裁判确认早期 Agnes 全对样本的两处误判；其余裁判覆盖未完成 |
+| 实测型号／价格依据                                                                     | 本轮尝试次数（含能力检查、失败与返修） | 单次调用耗时范围（含失败） | 结论                                                                             |
+| -------------------------------------------------------------------------------------- | -------------------------------------- | -------------------------- | -------------------------------------------------------------------------------- |
+| [Agnes 3.0 Flash](https://wiki.agnes-ai.com/en/docs/pricing)                           | 43                                     | 0.60–22.33s                | 误判正确分析／译文，且限流；不合格                                               |
+| [Dots3-Note :free](https://openrouter.ai/dots-studio/dots-3-note-preview:free)         | 19                                     | 2.93–60.79s                | 默认推理超时；关闭可选推理的失败试验产生漏判及结构拒收，已撤回该参数，不带入产品 |
+| [Gemma 4 26B :free](https://openrouter.ai/google/gemma-4-26b-a4b-it:free)              | 1                                      | 0.51–0.51s                 | 能力检查限流，未进入教学评测                                                     |
+| [Nemotron 3 Ultra :free](https://openrouter.ai/nvidia/nemotron-3-ultra-550b-a55b:free) | 3                                      | 2.55–51.65s                | 异族裁判确认早期 Agnes 全对样本的两处误判；其余裁判覆盖未完成                    |
 
 - 核价：OpenRouter 每次进程先核对[官方精确目录](https://openrouter.ai/api/v1/models)全零价格，不允许付费别名／切换；Agnes 以当日官方零价页及有效期配置为据。共 **66 次模型调用尝试**，不是供应商确认的实际接收次数；各进程结束保存调用账本及日计数。最后 OpenRouter 回执 **51／50，剩余 0**；后续裁判调用在发出前被拦，实际新增 0 次。[日限额与失败回执](../tmp/round2-n1.noindex/judge-ultra-cycling.json)保留。额度恢复前不再调用，不启用付费。
 - 完整失败试验也保留：[Agnes 前一轮 15 次](../tmp/round2-n1.noindex/reference-agnes.json)、[Dots 有界试验](../tmp/round2-n1.noindex/reference-dots.json)、[Ultra 异族裁判](../tmp/round2-n1.noindex/judge-ultra-library.json)。Dots 16 次预算用完，后续轮次未完成；没有把预算耗尽／空结果算接收。
@@ -143,6 +146,7 @@ rtk bypass node scripts/eval/writing-mixed-replay.mjs --runtime tmp/round2-n1.no
 **判定：作答形式通用化、单维归因规则、一次有界返修三项实现接受；N1 未通过，转第 3 轮。** 执行侧如实报告「N1 未通过」，提交 `d2ef4cf8`，14 个文件。
 
 亲自复核：
+
 - 代码：`learning-writing-coach.js:35` 的作答形式按题型（句法分析、填空、中译英、写作审题）通用表述，不再含旧样本的具体内容；单维归因规则写进量规与提示（`WRITING_ERROR_ATTRIBUTION`）；`learning-provider.ts:773` 拒收同一片段换维度重复登记；返修只做一次，把拒收维度、引用和规则回给模型，计入原预算。门禁没有放宽。
 - 封存题复验（Agnes 3.0 Flash，各 1 次，开启返修，共 6 次调用）：**两套最终都被拒收。**
   - H1：首次把正确的第 1 题判成错误，并把搭配错误同时拿去降语法档，被拒；返修后两处真实错误都找到了（填空介词归搭配，修饰对象判断错归表达，按量规应归任务完成），但返回的四维点评变成了 JSON 字符串，没过字段合同。
@@ -152,6 +156,7 @@ rtk bypass node scripts/eval/writing-mixed-replay.mjs --runtime tmp/round2-n1.no
 - 回归护栏：执行侧按测试 ID 比对新增失败 0。总监复跑正在 `d2ef4cf8` 的干净检出上进行，结果追加在下一条。
 
 第 3 轮裁定（随简报下发）：
+
 1. **档位和弱项证据由宿主从已登记错误确定性推出**（第 2 轮简报的 (b)），模型只登记错误、引用和讲解，不再自报档位和弱项分类。推档规则：本维有可评证据且没有错误为 2；1 处错误为 1；2 处及以上为 0；没有可评证据为 null。这样「无据降档」「弱项分类不符」「换维度重复降档」三类拒收在结构上不再发生，门禁照旧保留，作为兜底。
 2. **按题型限定可登记的维度**：句法分析题和写作审题题里的错误只能是任务完成（学生写的是中文分析，不是英文句子）；填空题只能是搭配或语法；中译英可以是语法、搭配、表达。超出范围的登记由宿主拒收并在返修里指明。
 3. **逐条复核错误，压住误报**：每条登记的错误再做一次有界的逐条核对：题干是否明确要求这一项？学生原答按规则是否真的错？核对不过的错误删掉，不降档，可以改成建议。复核调用计入预算，单套最多加 1 次调用（所有错误合在一次请求里核对）。
@@ -185,7 +190,7 @@ rtk bypass node scripts/eval/writing-mixed-replay.mjs --runtime tmp/round2-n1.no
 - **N1 判定**：计划 N1 要求「同一批混合样本连续复跑稳定」，现在还差两点：
   1. 填空题召回不足；
   2. 字段合同拒收没有归零。
-  因此未通过。
+     因此未通过。
 - **回归护栏**：
   - 主工作树 `a54f18c6` 全量 6349 项：6133 通过、37 跳过、179 失败。按测试 ID 与第 1 轮分诊对照：既有 178、新增 1。
   - 新增的这 1 项是 `seed-dev-test-models.spec.js` 把所有候选的零价到期点硬写成 2026-11-20，而智谱预设已续期到 11-29。改为最晚复核期之后的 11-30，仍然断言到期即失效（`c61dfd8f`），该文件与 `free-model-presets.spec.ts` 共 39 项通过。
@@ -366,6 +371,7 @@ rtk bypass node scripts/eval/writing-mixed-replay.mjs --runtime tmp/round2-n1.no
   - 手机原生 App 实操要等手机工具链。
 
   所以不派呈现第 5 批，G 线交出 N3 接口后再派。
+
 - **这条执行线改做基线测试债第 1 批**：工作树 `yozi-progress-1`，我先把主分支 G 第 4–6 轮合进去（`95d4db04`）。
   - 依据：Y-G1 要求基线测试的失败和未处理错误「清零或逐条有据」。第 1 轮裁定 5 要求旧合同用例改写或附依据退役，至今没做。最近全量都带着 176–178 项既有失败，新失败容易被淹没。
   - 范围：只改分诊清单上 38 个测试文件和夹具，不改产品源码，G 的测试文件不动。
@@ -513,12 +519,12 @@ rtk bypass node scripts/eval/writing-mixed-replay.mjs --runtime tmp/round2-n1.no
 
 **第 1 次回放（G10 运行时，每样例 3 次，共 12 次，模型调用 37 次）**：只通过 5 次。
 
-| 样例 | 通过 |
-|---|---|
-| 英一摸底 | 0/3 |
+| 样例     | 通过               |
+| -------- | ------------------ |
+| 英一摸底 | 0/3                |
 | 英二摸底 | 2/3（另 1 次超时） |
-| 英一日练 | 1/3 |
-| 英二日练 | 2/3 |
+| 英一日练 | 1/3                |
+| 英二日练 | 2/3                |
 
 - 被拒 14 次：11 次是「能填对的词超过两个」，2 次是返修后空格丢了，1 次超时。
 - 返修只救回 1/7。
@@ -546,7 +552,6 @@ rtk bypass node scripts/eval/writing-mixed-replay.mjs --runtime tmp/round2-n1.no
 - 「短语」从「复核失败」用例里移出，新增 3 例。恢复旧逻辑后 3 例都失败。
 
 **回归**：33 个引用文件 1,127 项，失败 1（升级项 D123）；对照基线新增 0，未处理错误 0。tsc 通过。
-
 
 ## 第 13、14 轮与 G14 回放、第 15 轮（模块 G，Claude）（2026-10-31）
 
@@ -695,12 +700,12 @@ open -n 'tmp/progress-1.noindex/cargo-target/release/bundle/macos/Yozi AI.app'
 - **测试事实**：定向 **39／39通过**；ESLint、Prettier、`git diff --check`通过。隔离全量 **6388项：6173通过、178失败、37跳过**，逐文件＋完整测试名＋重复次数比对 **新增0／既有178／消除0**；15个未处理错误按文件＋最近测试提示＋消息的多重集合也无新增，提示不作因果归因。[全量JSON](../tmp/progress-2.noindex/full-tests.json)、[日志](../tmp/progress-2.noindex/full-tests.log)、[逐ID比对](../tmp/progress-2.noindex/comparison.json)、[错误比对](../tmp/progress-2.noindex/unhandled-comparison.json)、[定向JSON](../tmp/progress-2.noindex/targeted-tests.json)。比较器拒绝跨工作树绝对基线路径（原始失败日志保留）；未改G脚本，改用与指定主树原件经 `cmp` 逐字一致的本树tmp副本。
 - **构建事实**：隔离桌面467模块、官网261模块及离线锁定原生候选构建通过；桌面公开产物检查、候选严格签名通过。候选为 `tmp/progress-2.noindex/Yozi AI.app`，独立bundle ID／WebKit UUID、合成账户与离线传输；临时宿主仅主crate opt-level=0，不作发布性能结论。
 
-| 桌面实际状态 | 观察结果 | 截图（同目录保留AX全文） |
-| --- | --- | --- |
-| 4次 | 比例与节点均数据不足；无薄弱点和导图高亮 | [指标](../tmp/progress-2.noindex/app-four-metrics.png)、[框架](../tmp/progress-2.noindex/app-four-framework.png)、[导图](../tmp/progress-2.noindex/app-four-mind.png) |
-| 5次 | 语法0／5；主谓一致为「可改进 · 薄弱点」，框架与导图一致 | [指标](../tmp/progress-2.noindex/app-five-metrics.png)、[框架](../tmp/progress-2.noindex/app-five-framework.png)、[导图](../tmp/progress-2.noindex/app-five-mind.png) |
-| 第3轮含复核删除 | 保留的主谓一致／冠词有高亮；已删时态节点无记录、无薄弱点；搭配5／5，表达因仅3条非null显示数据不足 | [指标](../tmp/progress-2.noindex/app-round3-metrics.png)、[框架与已删节点](../tmp/progress-2.noindex/app-round3-framework.png) |
-| 旧收据 | 缺rule／scorePolicy／coachVerification仍正常显示5条来源与等级 | [指标](../tmp/progress-2.noindex/app-legacy-metrics.png)、[框架](../tmp/progress-2.noindex/app-legacy-framework.png) |
+| 桌面实际状态    | 观察结果                                                                                          | 截图（同目录保留AX全文）                                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 4次             | 比例与节点均数据不足；无薄弱点和导图高亮                                                          | [指标](../tmp/progress-2.noindex/app-four-metrics.png)、[框架](../tmp/progress-2.noindex/app-four-framework.png)、[导图](../tmp/progress-2.noindex/app-four-mind.png) |
+| 5次             | 语法0／5；主谓一致为「可改进 · 薄弱点」，框架与导图一致                                           | [指标](../tmp/progress-2.noindex/app-five-metrics.png)、[框架](../tmp/progress-2.noindex/app-five-framework.png)、[导图](../tmp/progress-2.noindex/app-five-mind.png) |
+| 第3轮含复核删除 | 保留的主谓一致／冠词有高亮；已删时态节点无记录、无薄弱点；搭配5／5，表达因仅3条非null显示数据不足 | [指标](../tmp/progress-2.noindex/app-round3-metrics.png)、[框架与已删节点](../tmp/progress-2.noindex/app-round3-framework.png)                                        |
+| 旧收据          | 缺rule／scorePolicy／coachVerification仍正常显示5条来源与等级                                     | [指标](../tmp/progress-2.noindex/app-legacy-metrics.png)、[框架](../tmp/progress-2.noindex/app-legacy-framework.png)                                                  |
 
 - **官网390px**：四态均无横溢，来源条数为4／5／5／5，未显示原答／「查看原答」入口或掌握字样；第3轮表达维度显示数据不足。[4次](../tmp/progress-2.noindex/h5-390-four.png)、[5次](../tmp/progress-2.noindex/h5-390-five.png)、[第3轮](../tmp/progress-2.noindex/h5-390-round3.png)、[旧收据](../tmp/progress-2.noindex/h5-390-legacy.png)、[读回](../tmp/progress-2.noindex/h5-observed.json)。Playwright隔离上下文拦截回环URL并直接返回构建文件和合成只读接口，无监听服务器、无真实账户或模型请求；上下文已关闭，原about:blank保留。
 - **资源收尾**：复用已有npm依赖与主树Cargo缓存的APFS克隆；本轮App PID31812已Cmd+Q退出、完整路径注销成功，系统搜索只保留日常入口。界面锁已释放，`cargo clean`回收私有中间产物 **2,553,880,888逻辑字节**，不是实时磁盘释放量；主树缓存、既有依赖链接、第1批回滚候选、本批候选与证据保留。日常App可执行哈希仍为 `2e85d945…`。[归属记录](../tmp/progress-2.noindex/resources.json)。
@@ -741,12 +746,12 @@ rtk bypass node scripts/eval/compare-test-failures.mjs --baseline "tmp/progress-
 - **定向／全量**：定向 **194／194通过**，ESLint、Prettier、链接及diff检查通过。首次全量6458项：6241通过、180失败、37跳过，逐ID为178既有＋2条历史容量超时；原代码／原10秒与20秒时限单独复跑历史23项全部通过。构建结束后全量复跑 **6458项：6243通过、178失败、37跳过**，逐文件＋完整测试名＋重复次数比对 **新增0／既有178／消除0**；Vitest退出1；日志15个未处理错误按文件＋最近测试提示＋首条消息与上批作多重集合比较，新增0，不据提示作因果归因；原始报告均保留。[定向](../tmp/progress-4.noindex/targeted-tests.json)、[首次全量](../tmp/progress-4.noindex/full-tests.json)、[首次比对](../tmp/progress-4.noindex/comparison.json)、[历史复跑](../tmp/progress-4.noindex/history-retest.json)、[最终全量JSON](../tmp/progress-4.noindex/full-tests-retry.json)、[最终日志](../tmp/progress-4.noindex/full-tests-retry.log)、[最终逐ID比对](../tmp/progress-4.noindex/comparison-retry.json)。比较器使用与指定主树原件经 `cmp` 逐字一致的本树tmp基线副本。
 - **构建／实际界面**：隔离桌面与官网构建、桌面公开产物检查、离线锁定原生编译及候选严格签名均通过。候选 `tmp/progress-4.noindex/Yozi AI.app`，复用第3批宿主但使用独立bundle ID／WebKit UUID、合成账户及离线传输；宿主主crate沿用上批 `opt-level=0`，只用于界面验收。官网通过Playwright路由直接提供静态文件和同份合成事件，无监听服务器、真实账户或模型调用。共享浏览器配置占用时使用已安装Chrome的独立上下文，结束后已关闭。
 
-| 本批实际界面 | 事实／证据 |
-| --- | --- |
-| 知识框架页总览 | 只有考研英语写作区块，AX中完整框架名只作一级标题一次：[截图](../tmp/progress-4.noindex/app-writing-overview.png)、[AX](../tmp/progress-4.noindex/app-writing-overview.ax.txt) |
-| 官网工作区390px | 保留写作、数学两科，页面宽度及滚动宽度均390，无原答或内部ID泄露：[截图](../tmp/progress-4.noindex/h5-390-five.png)、[读回](../tmp/progress-4.noindex/h5-observed.json) |
-| 框架未选节点 | 可见组内关系绕开无关卡片：[截图](../tmp/progress-4.noindex/app-framework-unselected.png)、[AX](../tmp/progress-4.noindex/app-framework-unselected.ax.txt) |
-| 选中跨组节点 | 选择「明确交际目的」，指向结构组「组织写作提纲」的关系经外侧通道，可见连线不穿过无关卡片：[截图](../tmp/progress-4.noindex/app-framework-purpose.png)、[AX](../tmp/progress-4.noindex/app-framework-purpose.ax.txt) |
+| 本批实际界面    | 事实／证据                                                                                                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 知识框架页总览  | 只有考研英语写作区块，AX中完整框架名只作一级标题一次：[截图](../tmp/progress-4.noindex/app-writing-overview.png)、[AX](../tmp/progress-4.noindex/app-writing-overview.ax.txt)                                       |
+| 官网工作区390px | 保留写作、数学两科，页面宽度及滚动宽度均390，无原答或内部ID泄露：[截图](../tmp/progress-4.noindex/h5-390-five.png)、[读回](../tmp/progress-4.noindex/h5-observed.json)                                              |
+| 框架未选节点    | 可见组内关系绕开无关卡片：[截图](../tmp/progress-4.noindex/app-framework-unselected.png)、[AX](../tmp/progress-4.noindex/app-framework-unselected.ax.txt)                                                           |
+| 选中跨组节点    | 选择「明确交际目的」，指向结构组「组织写作提纲」的关系经外侧通道，可见连线不穿过无关卡片：[截图](../tmp/progress-4.noindex/app-framework-purpose.png)、[AX](../tmp/progress-4.noindex/app-framework-purpose.ax.txt) |
 
 - **资源／边界**：先取得共享UI锁并写owner，验完核对本线owner后释放。App PID20442已Cmd+Q退出并按完整路径注销，系统应用搜索只保留日常入口，其可执行文件哈希保持；自有构建、浏览器和测试进程均已取终态。私有Cargo APFS克隆无消费者后用cargo clean清理 **2,553,884,593逻辑字节**，不等于实际磁盘释放量；第3批首个候选（原仅等待最终绕线实屏）经无消费者、无注册及本批候选核验后，以正常废纸篓方式回收 **27,886,435字节**，仍位于 `.noindex` 目录内，可恢复；第3批最终候选、第2批回滚基线、本批候选、截图、原始测试报告及既有依赖保留。[归属记录](../tmp/progress-4.noindex/resources.json)。
 - **未验／待批**：本批指定四张界面已验；手机原生App和N3预测性准确率未验，小程序未构建。待批文案候选：**无**。新增依赖／许可公开范围：**无**；不写真实学习事实、不改G收据、不读私有模型目录、不启付费、不推送、不部署、不替换日常App。
@@ -800,22 +805,21 @@ rtk bypass node scripts/eval/compare-test-failures.mjs --baseline "tmp/progress-
 - 构建复跑：保留 `build-source/`、`release-source/`、`native-src/`、`build.mjs`、`native-config.json` 及构建日志。独立原生入口：在 `tmp/shell-2.noindex/native-src` 执行 `CARGO_TARGET_DIR="$PWD/../cargo-target" node ../../../node_modules/@tauri-apps/cli/tauri.js build --debug --bundles app --no-sign --ci --config ../native-config.json -- --offline --locked --jobs 2`；生成的候选须继续留在 `.noindex`，本机签名后核验。此候选只作功能验收，不作性能结论。
 - 收尾：候选PID按启动时间核对并正常退出；注销调用与Launch Services读回已核验，最终候选无注册条目，Spotlight仅 `/Users/blackdj/Applications/Yozi AI.app`。Cargo清理报告 **5527文件、2.1GiB**；3份被替代候选＋4份旧前端共 **166,873,775 bytes逻辑大小**已移入可恢复废纸篓；不是实时可用空间或RAM的结论。保留当前已验候选、源码镜像、失败原始证据与20＋15张截图，第1批已验回退原位保留；UI锁已释放，明细沿 `resources.json`。
 
-
 ## 外壳第 3 批 执行侧交付（2026-10-30）
 
 - 模块 **S**，归属 **Codex**；仅本工作树／`codex/yozi-shell-1-20261030`，起点 `8f7dc18f`。以主工作树0.1登记、A17／A20与第2批总监验收为边界；未修改 `laf-backend/**`、P 文件、Muse 2、主工作树或日常 App。
 - 落地位置与参照（下列 Muse 路径均相对 `/Users/blackdj/Desktop/Muse 2/Muse2/`；数值是 **Muse 2 实现参数**，不是原产品测量）：
 
-| 项目 | Yozi 文件:行 | Muse 源码位置／数值及 Yozi 差异 |
-| --- | --- | --- |
-| A1 空取消隐藏／部分保留 | `src/services/learning/shell-navigation.js:112`；`src/pages/learning/index.vue:2313`；`src/pages/learning/components/writing-coach.vue:697`；`src/stores/modules/conversation-learning.js:529` | `src/pages/ChatView.tsx:544–546`：中止时保留 acc／标 stopped；Yozi 不加停止文案，空回复直接不渲染，部分文字仍为临时呈现、不冒充已保存收据。 |
-| A2 提示完整置于输入上方 | `src/components/business/learning/learning-shell.vue:431`；`src/pages/learning/index.vue:2290,2408`；`src/pages/learning/components/writing-coach.vue:696`；`src/components/business/learning/learning-space.css:352` | Muse `src/styles/app.css:143` 的输入区前置附件结构作参考；8px间距、72px最大高、13／20字号、128px底部预留是 **Yozi 适配参数**，复用原取消文案。 |
-| A3 静态顶部与历史避让 | `src/components/business/learning/learning-shell.vue:387`；`src/components/business/learning/learning-space.css:209,285,333` | `src/styles/app.css:91,338,343,346–347`：滚动容器外116px、头像56px、胶囊5／12／6px／r18／上移4px、名字14／18、目标11／14；静态品牌按A20。 |
-| B1 设备侧栏 | `src/services/learning/shell-navigation.js:81`；`src/components/business/learning/learning-shell.vue:527,586,658,769,850` | `src/lib/sidebarPreferences.ts:5,8`、`src/components/Sidebar.tsx:18,53,77`：默认展开217、180–420钳制；`src/App.tsx:404` Cmd+B，Yozi另支持Ctrl+B；只在对话页展开会话栏，其他页不叠加。 |
-| B2／B3 导航与快照 | `src/services/learning/shell-navigation.js:6,30,62`；`src/components/business/learning/learning-shell.vue:799,985`；`src/components/business/learning/muse-workspace-pages.vue:78,272` | `src/components/Rail.tsx:47`、`src/lib/navigation.ts:11–18,26–36`、`src/lib/useNavigation.ts:11–19`：校验完整配置后替换，失败保留旧快照；补齐ID字符串边界，拒绝会触发对象转换的坏配置；按A17四入口，Feed／Ideas隐藏，设置底部。目标页沿原文案保留今日安排与分批复习，只定位／导航、不改队列事实。 |
-| B4 独立设置与焦点 | `src-tauri/src/workspace_windows.rs:71,76,92,107`；`src/services/desktop/windows.js:14,24,101`；`src/pages/profile/index.vue:6,384,972`；`src/components/business/learning/learning-space.css:1501` | `native/main.swift:1730,1759`：单窗、默认520×680；`src/pages/Settings.tsx`／`Settings.css:1,225`：窄桌面竖栏。Yozi最小尺寸也520×680、竖栏148px为中文适配；关闭聚焦主窗并恢复原输入元素。 |
-| B5 多连接／切号／重开 | `src/stores/modules/conversation-learning.js:385,483,1421,1433,3923`；`src/pages/learning/index.vue:3091`；`src/components/business/learning/muse-model-control.vue:22,45,77`；`src/components/business/learning/muse-ai-connectors.vue:210,394` | 沿用Yozi账号分域和BYOK接口；修复切号清理覆盖已恢复草稿，保存会话位置、接续原连接，失效型号显示已有错误并可手动换选；无新增Muse数值或模型权限。 |
-| 官网390px／B6语音 | `src/components/business/website/website-workspace.vue:26,116,316`；`tests/unit/muse-app-ui.spec.js:192` | 官网设置只放现有隐私／协议入口，仍为只读；语音实现保留，未验入口继续隐藏。无额外Muse数值。 |
+| 项目                    | Yozi 文件:行                                                                                                                                                                                                                                     | Muse 源码位置／数值及 Yozi 差异                                                                                                                                                                                                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1 空取消隐藏／部分保留 | `src/services/learning/shell-navigation.js:112`；`src/pages/learning/index.vue:2313`；`src/pages/learning/components/writing-coach.vue:697`；`src/stores/modules/conversation-learning.js:529`                                                   | `src/pages/ChatView.tsx:544–546`：中止时保留 acc／标 stopped；Yozi 不加停止文案，空回复直接不渲染，部分文字仍为临时呈现、不冒充已保存收据。                                                                                                                                                       |
+| A2 提示完整置于输入上方 | `src/components/business/learning/learning-shell.vue:431`；`src/pages/learning/index.vue:2290,2408`；`src/pages/learning/components/writing-coach.vue:696`；`src/components/business/learning/learning-space.css:352`                            | Muse `src/styles/app.css:143` 的输入区前置附件结构作参考；8px间距、72px最大高、13／20字号、128px底部预留是 **Yozi 适配参数**，复用原取消文案。                                                                                                                                                    |
+| A3 静态顶部与历史避让   | `src/components/business/learning/learning-shell.vue:387`；`src/components/business/learning/learning-space.css:209,285,333`                                                                                                                     | `src/styles/app.css:91,338,343,346–347`：滚动容器外116px、头像56px、胶囊5／12／6px／r18／上移4px、名字14／18、目标11／14；静态品牌按A20。                                                                                                                                                         |
+| B1 设备侧栏             | `src/services/learning/shell-navigation.js:81`；`src/components/business/learning/learning-shell.vue:527,586,658,769,850`                                                                                                                        | `src/lib/sidebarPreferences.ts:5,8`、`src/components/Sidebar.tsx:18,53,77`：默认展开217、180–420钳制；`src/App.tsx:404` Cmd+B，Yozi另支持Ctrl+B；只在对话页展开会话栏，其他页不叠加。                                                                                                             |
+| B2／B3 导航与快照       | `src/services/learning/shell-navigation.js:6,30,62`；`src/components/business/learning/learning-shell.vue:799,985`；`src/components/business/learning/muse-workspace-pages.vue:78,272`                                                           | `src/components/Rail.tsx:47`、`src/lib/navigation.ts:11–18,26–36`、`src/lib/useNavigation.ts:11–19`：校验完整配置后替换，失败保留旧快照；补齐ID字符串边界，拒绝会触发对象转换的坏配置；按A17四入口，Feed／Ideas隐藏，设置底部。目标页沿原文案保留今日安排与分批复习，只定位／导航、不改队列事实。 |
+| B4 独立设置与焦点       | `src-tauri/src/workspace_windows.rs:71,76,92,107`；`src/services/desktop/windows.js:14,24,101`；`src/pages/profile/index.vue:6,384,972`；`src/components/business/learning/learning-space.css:1501`                                              | `native/main.swift:1730,1759`：单窗、默认520×680；`src/pages/Settings.tsx`／`Settings.css:1,225`：窄桌面竖栏。Yozi最小尺寸也520×680、竖栏148px为中文适配；关闭聚焦主窗并恢复原输入元素。                                                                                                          |
+| B5 多连接／切号／重开   | `src/stores/modules/conversation-learning.js:385,483,1421,1433,3923`；`src/pages/learning/index.vue:3091`；`src/components/business/learning/muse-model-control.vue:22,45,77`；`src/components/business/learning/muse-ai-connectors.vue:210,394` | 沿用Yozi账号分域和BYOK接口；修复切号清理覆盖已恢复草稿，保存会话位置、接续原连接，失效型号显示已有错误并可手动换选；无新增Muse数值或模型权限。                                                                                                                                                    |
+| 官网390px／B6语音       | `src/components/business/website/website-workspace.vue:26,116,316`；`tests/unit/muse-app-ui.spec.js:192`                                                                                                                                         | 官网设置只放现有隐私／协议入口，仍为只读；语音实现保留，未验入口继续隐藏。无额外Muse数值。                                                                                                                                                                                                        |
 
 - 测试位置：新增 `tests/unit/shell-navigation.spec.js:1`、`tests/unit/desktop-settings-window.spec.js:1`、`tests/unit/profile-shell-settings.spec.js:1`、`tests/unit/shell-goal-navigation.spec.js:1`；扩展 `tests/unit/learning-shell-stream.spec.js:102,124,134,508,524`、`tests/unit/byok-store.spec.js:225,246,258`、`tests/unit/muse-app-ui.spec.js:192`、`tests/unit/website-workspace-ui.spec.js:135`。`tests/unit/learning-ui.spec.js:1024,2904,2997,3008,3040,3107`、`tests/unit/learning-journey-ui.spec.js:15`、`tests/unit/writing-coach-profile.spec.js:153` 按本批新默认展开、宽度和最后所选会话合同更新夹具／断言，未放宽超时或学习权限。
 - 最终全量与逐ID结果：完整 **6405项：6192通过、176既有失败、37跳过**；[逐ID比对](../tmp/shell-3.noindex/full-comparison-final-guard.json) **新增0、既有176、基线中2项不再失败**，[最终完整JSON](../tmp/shell-3.noindex/full-tests-final-guard.json)保留。收集301文件，相对第2批新增4文件、遗漏0；15条未处理错误按报告文件＋错误首行消息多重集与原基线一致，新增0（`runtime-comparison-final-guard.json`）。全量仍退出1，不记全绿。指定基线已逐字节复制到本树 `tmp/shell-3.noindex/round1-test-triage.json`；比较器未修改。原始中间失败均保留；`full-tests-accepted.json` 实为6176通过／192失败／37跳过，逐ID新增16（历史11、先修2、能量1、报告器及工具链子进程各1），不因文件名含accepted而记作通过；一次并发构建期间的定向停止超时也保留。原门槛复验：202项189通过／13失败，其中2个原有失败、新11；11项新增失败原文均为原20s／10s门槛或子进程ETIMEDOUT，导航5／5通过。末次完整运行仅将自身核验进程恢复默认I/O／普通调度，未改断言、时限或其他任务；最终历史23／23、工具链43／43、报告器50／50通过。末次ID类型边界补修后的回执单独列出。
@@ -835,39 +839,39 @@ rtk bypass node scripts/eval/compare-test-failures.mjs --baseline "tmp/progress-
 - A1：原 dock 离底 18px 且无全宽不透明衬底，消息可从下方露出。`learning-space.css:356` 改为贴底全宽底衬，内部保留桌面18px／窄屏12px、768px正文列；定向测试覆盖底衬与安全区。参考 Muse `ChatView.tsx:635`、`styles/app.css:116`、`tokens.css:42`，没有把新增底衬冒称上游已有实现。
 - A2：`10 / 30` 是 `chapter.day` 的学习日期缩写，兼任跳日入口，并非分页／加载进度／调试。`learning-shell.vue:283` 去掉可见数字，多训练日用既有 Lucide 日历按钮跳日；更早记录分页保留。`learning-journey-ui.spec.js:238` 改验无数字按钮及加载后可定位历史日。
 
-| 长成果盘点（原记录均在账号本地 `conversation_learning_v1`／历史页，经 learning-sync 存入 `learning_states.state`） | 来源字段 | 现有查看入口／本批处理 |
-| --- | --- | --- |
-| 学生作文原答 | `coach.days[].writingSubmissions[].text`；写作题 `attempts[].answer` | 对话原答卡／历史；本批以原答创建v1副本。旧无快照记录仅在已有全文评估且 rewrites 完整时接入 |
-| 逐段稿／带写成稿 | `days[].drafts[].text`、`days[].rewrites[].text` | 带练卡／产物库写作聚合；半成品仍留对话，不进编辑面板 |
-| 整篇改写任务稿 | `coach.rewriteTasks[].answer.text` | 带练改写任务／原稿回看；不接编辑副本 |
-| 长批改／反馈 | `days[].essay`、`days[].feedback`、`attempts[].grade`／纠正收据 | 对话反馈卡／学习洞察／历史；只读不改 |
-| 学习计划 | `state.plans[].tasks`、`coach.days[].pack` | 目标／今日训练／对话计划卡；不接编辑面板 |
-| 学习小结 | `coach.days[].summary` | 小结卡／产物库；不接编辑面板 |
-| 资料／长消息 | `materials[].segments[].content`、`messages[].content/contentBlocks` | 原始资料阅读器／对话／产物库；不接编辑面板 |
+| 长成果盘点（原记录均在账号本地 `conversation_learning_v1`／历史页，经 learning-sync 存入 `learning_states.state`） | 来源字段                                                             | 现有查看入口／本批处理                                                                     |
+| ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| 学生作文原答                                                                                                       | `coach.days[].writingSubmissions[].text`；写作题 `attempts[].answer` | 对话原答卡／历史；本批以原答创建v1副本。旧无快照记录仅在已有全文评估且 rewrites 完整时接入 |
+| 逐段稿／带写成稿                                                                                                   | `days[].drafts[].text`、`days[].rewrites[].text`                     | 带练卡／产物库写作聚合；半成品仍留对话，不进编辑面板                                       |
+| 整篇改写任务稿                                                                                                     | `coach.rewriteTasks[].answer.text`                                   | 带练改写任务／原稿回看；不接编辑副本                                                       |
+| 长批改／反馈                                                                                                       | `days[].essay`、`days[].feedback`、`attempts[].grade`／纠正收据      | 对话反馈卡／学习洞察／历史；只读不改                                                       |
+| 学习计划                                                                                                           | `state.plans[].tasks`、`coach.days[].pack`                           | 目标／今日训练／对话计划卡；不接编辑面板                                                   |
+| 学习小结                                                                                                           | `coach.days[].summary`                                               | 小结卡／产物库；不接编辑面板                                                               |
+| 资料／长消息                                                                                                       | `materials[].segments[].content`、`messages[].content/contentBlocks` | 原始资料阅读器／对话／产物库；不接编辑面板                                                 |
 
 - 存储：**新增 `learning-artifacts.ts/.yaml` 负责版本链，复用 learning-sync 的账号、同一主记录与删除机制，不改旧函数**。只写主记录顶层 `essayArtifacts`／`essayArtifactRevision`，不另加同 owner 行（既有读者按 owner 取首行），不碰 `state`／`revision`。旧同步更新保留新字段，既有按账号删行覆盖全部副本／版本；本地确认删除另清自己的 draft／pin 键。
 - 合同：v1只从已同步原答读取；未同步失败可重试。按文档 expectedVersion 拒绝旧版本，账号内独立计数器CAS避免并发覆盖；保存／恢复有持久化 requestId 及真实版本回执，重试不增版，恢复只追加。草稿／模式／双滚动位置／Pin按设备、账号和API保存并读回；限制单稿64k字符、每稿256版、账号副本字段2MiB、整行15MiB，超限拒绝写入、不裁历史。判断：已提交原答是稳定的第一类，没有更合适的替代类。
 
-| 落地 | 本树文件与行号 | Muse 2只读对应 |
-| --- | --- | --- |
-| 面板、动作、草稿／历史恢复、手机返回 | `muse-artifact-panel.vue:222,243,287,303,364,412,555` | `ArtifactPanel.tsx:58,63–145,158–176`；`ArtifactPanel.css:6,16,19,23–28`：clamp(340px,44%,520px)、进入180ms／30px、退出160ms，均标「Muse 2 实现参数」；手机≤760px依本项目全屏／安全区合同 |
-| 身份、设备状态、请求幂等、后端CAS | `learning-artifacts.js:20,85,171,203,227,275`；`learning.api.js:144`只追加；`learning-artifacts.ts:44,93,138,213,222` | `api.ts:490–554`：expectedVersion／requestId／versions／restore／既有冲突文案；`libraryPins.ts:8,33–56`：按账号/API及条目保存、写后读回 |
-| Library同成果／Pin／几何 | `muse-workspace-data.js:228`；`muse-library.vue:179,246,259,379,434,590,800` | `Library.tsx:203–205,393–396`、`Library.css:1–14`、`styles/app.css:498–517`：分类栏217px、标题34/40、3列／19px；窄屏2/1列 |
-| 对话／已保存作文入口 | `writing-coach.vue:246,496,758`；`learning/index.vue:547,719,2097,4340`；`muse-saved-library.vue:166,234` | `ArtifactPanel.tsx` 的同id工件入口；`ArtifactActions.tsx`已核对，仅发送／授权动作不在本批个人副本范围 |
-| 外壳装配／Esc／底衬／规范 | `learning-shell.vue:439,999`；`learning-space.css:25,356,782`；`docs/07:101` | `ArtifactPanel.css:23–28` 旁栏让位；Esc沿本项目第2批浮层→面板→停止顺序 |
+| 落地                                 | 本树文件与行号                                                                                                        | Muse 2只读对应                                                                                                                                                                            |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 面板、动作、草稿／历史恢复、手机返回 | `muse-artifact-panel.vue:222,243,287,303,364,412,555`                                                                 | `ArtifactPanel.tsx:58,63–145,158–176`；`ArtifactPanel.css:6,16,19,23–28`：clamp(340px,44%,520px)、进入180ms／30px、退出160ms，均标「Muse 2 实现参数」；手机≤760px依本项目全屏／安全区合同 |
+| 身份、设备状态、请求幂等、后端CAS    | `learning-artifacts.js:20,85,171,203,227,275`；`learning.api.js:144`只追加；`learning-artifacts.ts:44,93,138,213,222` | `api.ts:490–554`：expectedVersion／requestId／versions／restore／既有冲突文案；`libraryPins.ts:8,33–56`：按账号/API及条目保存、写后读回                                                   |
+| Library同成果／Pin／几何             | `muse-workspace-data.js:228`；`muse-library.vue:179,246,259,379,434,590,800`                                          | `Library.tsx:203–205,393–396`、`Library.css:1–14`、`styles/app.css:498–517`：分类栏217px、标题34/40、3列／19px；窄屏2/1列                                                                 |
+| 对话／已保存作文入口                 | `writing-coach.vue:246,496,758`；`learning/index.vue:547,719,2097,4340`；`muse-saved-library.vue:166,234`             | `ArtifactPanel.tsx` 的同id工件入口；`ArtifactActions.tsx`已核对，仅发送／授权动作不在本批个人副本范围                                                                                     |
+| 外壳装配／Esc／底衬／规范            | `learning-shell.vue:439,999`；`learning-space.css:25,356,782`；`docs/07:101`                                          | `ArtifactPanel.css:23–28` 旁栏让位；Esc沿本项目第2批浮层→面板→停止顺序                                                                                                                    |
 
 - 定向 **68/68通过**（新增服务11、后端8、面板9，加外壳／库／只读模型）；覆盖A1–A2、B1–B7，含丢回执后App重建继续保存／恢复、原答／收据／历史统计逐字读回不变。最终全量 **6436：6223通过／176既有失败／37跳过**；逐ID **新增0、既有176、基线2项通过**。15个未处理错误的来源＋消息多重集与基线完全一致，新增0。见[最终比对](../tmp/shell-4.noindex/full-comparison-final.json)及[原始全量](../tmp/shell-4.noindex/full-tests-retry-final.json)。首轮旧日期断言已按新入口调整；Onboarding计时器仅首轮失败，原断言未改，后续整文件及完整全量通过，原始轮次均保留。
 - 构建／静态：后端类型检查、App共享前端与产物校验、隔离桌面debug构建／签名通过；`src-tauri`未改，隔离原生源仅换测试身份／WebKit UUID，Rust **13/13通过**。ESLint 0错误（2处既有空箭头警告、2个TS文件按现行配置忽略）；无小程序构建。H5不代替手机原生验收。
 
-| 实际界面结果（隔离账号＋合成传输，真实模型0、HTTP服务器0） | 截图，均在 `tmp/shell-4.noindex/` |
-| --- | --- |
-| A1底部无漏消息；A2无多余日期数字 | `native-01-history-bottom.png`、`native-02-sidebar.png` |
-| 作文卡与Library同id／同版 | `native-03-card-panel.png`、`native-09-library-same-copy.png` |
-| 保存v2／旧v2拒绝覆盖远端v3／恢复v1追加v4／重试仅v5 | `native-04-saved-v2.png`、`native-05-stale-rejected.png`、`native-06-restored-v4.png`、`native-07-retry-v5.png` |
-| 关开草稿；同包重启草稿／Pin／正文位置1131px仍在 | `native-08-reopened-draft.png`、`native-10c-restart-reading-draft-pin.png`；[只读读回与断言](../tmp/shell-4.noindex/native-qa.json) |
-| Esc先关确认浮层，再面板，最后停止生成 | `native-11-escape-overlay.png`、`native-12-escape-panel.png`、`native-13-escape-generation.png` |
+| 实际界面结果（隔离账号＋合成传输，真实模型0、HTTP服务器0）                       | 截图，均在 `tmp/shell-4.noindex/`                                                                                                                                                               |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1底部无漏消息；A2无多余日期数字                                                 | `native-01-history-bottom.png`、`native-02-sidebar.png`                                                                                                                                         |
+| 作文卡与Library同id／同版                                                        | `native-03-card-panel.png`、`native-09-library-same-copy.png`                                                                                                                                   |
+| 保存v2／旧v2拒绝覆盖远端v3／恢复v1追加v4／重试仅v5                               | `native-04-saved-v2.png`、`native-05-stale-rejected.png`、`native-06-restored-v4.png`、`native-07-retry-v5.png`                                                                                 |
+| 关开草稿；同包重启草稿／Pin／正文位置1131px仍在                                  | `native-08-reopened-draft.png`、`native-10c-restart-reading-draft-pin.png`；[只读读回与断言](../tmp/shell-4.noindex/native-qa.json)                                                             |
+| Esc先关确认浮层，再面板，最后停止生成                                            | `native-11-escape-overlay.png`、`native-12-escape-panel.png`、`native-13-escape-generation.png`                                                                                                 |
 | 手机共享前端390×844全屏／返回原对话；官网390只读且产物库路由回落官网，无编辑入口 | `shared-14-mobile-fullscreen-final2.png`、`shared-15-mobile-return-final2.png`、`website-390-readonly-final2.png`；[浏览器完整回执](../tmp/shell-4.noindex/browser-qa-final2.json)，pageError 0 |
-| 恢复已提交v6后丢回执，退出重开再重试仍v6，无v7、requestId相同 | `native-14-restore-reply-lost.png`、`native-15-restore-retry-after-restart.png`；共享前端另有 `shared-16-restore-retry-restart-final2.png` |
+| 恢复已提交v6后丢回执，退出重开再重试仍v6，无v7、requestId相同                    | `native-14-restore-reply-lost.png`、`native-15-restore-retry-after-restart.png`；共享前端另有 `shared-16-restore-retry-restart-final2.png`                                                      |
 
 - G配合需求：**无需修改G**。总监后续发布时需部署新增 `learning-artifacts` 函数及yaml，并保留上述两个主记录顶层字段；本批不部署。未验：真实鉴权HTTP／云数据库／跨设备同步、手机原生包／实机（缺uni原生工具链），不冒充合成或H5已覆盖。真实学生数据未读取或写入。
 - 待批文案候选：**无**；面板／确认／冲突文案逐项复用Muse 2现有文案，存储／会话错误复用Yozi现有文案；没有新增面向学生的说明段落、emoji图标、依赖或许可公开范围。
@@ -1016,3 +1020,11 @@ rtk bypass node scripts/eval/compare-test-failures.mjs --baseline "tmp/progress-
 - 实屏核对真实连接检索与单层焦点、未保存外观丢弃、返回原对话及入口焦点；Library 64px 列对齐随本包确认，未写学习事实。
 - 日常入口更新前 4 文件逐一读回比对及签名核验，原子替换后实屏确认原记录／数据域与紧凑设置，Launch Services 只剩日常入口。
 - 前后图与 24 行差异表沿用 tmp/shell-diff-20261102.md；A／B／C 的 P1 已修，联系 P0 继续延期 Cloudflare；无新依赖，接续 N1，不将 UI 验收当教学质量通过。
+
+## N4：远端门禁与当前文档引用收口（20261102）
+
+- 远端 UI 提交停于格式与密钥扫描；密钥项实为 `task-…` 路径后缀误报，未发现真实密钥，修正前缀边界并保留带引号／等号／URL 的拦截与脱敏。
+- Node 22 JSON 导入属性按现行语法解析；本机启动器三个明确编译前置单列登记，其他源码导入、脚本与当前文档坏链仍严格失败。
+- 归档回执与定日历史报告只登记原有链接、不回写历史；正式根文档从客户投递原件逐字恢复，原件保留。
+- 2 文件 12 项回归、密钥扫描、全仓格式与严格引用检查通过；当前活动坏链及语法错误为零，3 条测试夹具／后端依赖引用仅登记，不称已安装。
+- 其余仅规范格式，无产品行为或依赖变化；日常 App 不重复打包，远端 CI 终态另核；G37 隔离运行时已编译，继续开发样本，不称 N1 通过。

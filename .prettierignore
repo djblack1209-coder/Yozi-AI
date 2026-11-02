@@ -12,6 +12,8 @@ coverage
 tmp/
 output/
 data/
+# Historical receipts are immutable; retain their original formatting.
+docs/archive/
 cdn-assets/
 **/node_modules/
 **/dist/

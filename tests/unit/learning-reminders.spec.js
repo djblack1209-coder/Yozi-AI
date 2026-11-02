@@ -81,11 +81,13 @@ describe('提醒日期、原任务、权限与回执', () => {
     host.native = vi.fn(async (command) =>
       command === 'learning_notification_permission' ? { permission: 'granted' } : { ok: true }
     );
-    const s = useConversationLearningStore(), before = JSON.stringify(s.state);
+    const s = useConversationLearningStore(),
+      before = JSON.stringify(s.state);
     controller = createLearningNotifications(s);
     await controller.test();
     expect(host.native.mock.calls.map(([command]) => command)).toEqual([
-      'learning_notification_permission', 'test_learning_notification'
+      'learning_notification_permission',
+      'test_learning_notification'
     ]);
     expect(JSON.stringify(s.state)).toBe(before);
     expect(storageService.get('learning_notification_consent_v1', null)).toBeNull();

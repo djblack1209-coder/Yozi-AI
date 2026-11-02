@@ -27,6 +27,9 @@ describe('仓库引用审计', () => {
       )
     ).toEqual(['./X.vue']);
     expect(literalImports('#!/usr/bin/env node\nimport "./cli.js";', 'cli.mjs')).toEqual(['./cli.js']);
+    expect(literalImports('import data from "./data.json" with { type: "json" };', 'node22.mjs')).toEqual([
+      './data.json'
+    ]);
   });
   it('Node16 .js导入解析到TS/声明，忽略外部包，正确标出不存在文件', () => {
     fixture = mkdtempSync(join(tmpdir(), 'exam-references-'));
@@ -71,6 +74,38 @@ describe('仓库引用审计', () => {
     expect(present.brokenLinks).toEqual(absent.brokenLinks);
     expect(hasRepositoryErrors(absent)).toBe(false);
     expect(hasRepositoryErrors(present)).toBe(false);
+  });
+  it('归档回执只登记历史链接，当前文档指向缺失归档仍失败', () => {
+    fixture = mkdtempSync(join(tmpdir(), 'yozi-history-links-'));
+    execFileSync('git', ['init', '-q'], { cwd: fixture });
+    mkdirSync(join(fixture, 'docs/archive'), { recursive: true });
+    mkdirSync(join(fixture, 'reports'));
+    writeFileSync(join(fixture, 'docs/archive/receipt.md'), '[old](old-path.md)');
+    writeFileSync(join(fixture, 'reports/2026-10-22-evidence.md'), '[old](old-receipt.json)');
+    let report = scanRepository(fixture);
+    expect(report.historicalLinks).toHaveLength(2);
+    expect(report.brokenLinks).toEqual([]);
+    expect(hasRepositoryErrors(report)).toBe(false);
+    writeFileSync(join(fixture, 'README.md'), '[contract](docs/archive/missing.md)');
+    report = scanRepository(fixture);
+    expect(report.brokenLinks).toEqual([{ file: 'README.md', link: 'docs/archive/missing.md' }]);
+    expect(hasRepositoryErrors(report)).toBe(true);
+  });
+  it('本机启动器只登记明确的三个编译前置，其余临时导入仍严格检查', () => {
+    fixture = mkdtempSync(join(tmpdir(), 'yozi-runtime-imports-'));
+    execFileSync('git', ['init', '-q'], { cwd: fixture });
+    mkdirSync(join(fixture, 'scripts/build'), { recursive: true });
+    const file = 'scripts/build/start-dev-test-backend.mjs';
+    const reference = '../../tmp/yozi-candidate-build/backend/standalone/server.js';
+    writeFileSync(join(fixture, file), `await import('${reference}');`);
+    let report = scanRepository(fixture);
+    expect(report.generatedRuntimeImports).toEqual([{ file, reference }]);
+    expect(report.missingImports).toEqual([]);
+    expect(hasRepositoryErrors(report)).toBe(false);
+    writeFileSync(join(fixture, file), `await import('${reference}'); await import('../../tmp/unknown.js');`);
+    report = scanRepository(fixture);
+    expect(report.missingImports).toEqual([{ file, reference: '../../tmp/unknown.js' }]);
+    expect(hasRepositoryErrors(report)).toBe(true);
   });
   it('被忽略目录中强制跟踪的文件缺失仍是严格失败，普通缺失链接同样失败', () => {
     fixture = mkdtempSync(join(tmpdir(), 'yozi-tracked-'));

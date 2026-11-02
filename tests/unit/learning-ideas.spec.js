@@ -43,15 +43,22 @@ it('keeps one to three suggestions that cite only refs from the summary and neve
   ).toHaveLength(2);
   // Extra root fields are dropped, never shown; the ideas themselves are still checked exactly.
   expect(
-    normalizeIdeasReply({ ideas: [idea({ basis: ['goal', 'today', 'w1', 'p1'] })], meta: { date: '2024-05-20' } }, IDEAS_CONTEXT)
+    normalizeIdeasReply(
+      { ideas: [idea({ basis: ['goal', 'today', 'w1', 'p1'] })], meta: { date: '2024-05-20' } },
+      IDEAS_CONTEXT
+    )
   ).toEqual([idea({ basis: ['goal', 'today', 'w1', 'p1'] })]);
   // Filled summary fields may be cited; empty ones may not.
-  expect(normalizeIdeasReply({ ideas: [idea({ basis: ['exam', 'deadline', 'minutes'] })] }, IDEAS_CONTEXT)).toHaveLength(1);
-  expect(() =>
-    normalizeIdeasReply({ ideas: [idea({ basis: ['goal'] })] }, { ...IDEAS_CONTEXT, goal: '' })
-  ).toThrow(expect.objectContaining({ path: 'reply.ideas.basis' }));
+  expect(
+    normalizeIdeasReply({ ideas: [idea({ basis: ['exam', 'deadline', 'minutes'] })] }, IDEAS_CONTEXT)
+  ).toHaveLength(1);
+  expect(() => normalizeIdeasReply({ ideas: [idea({ basis: ['goal'] })] }, { ...IDEAS_CONTEXT, goal: '' })).toThrow(
+    expect.objectContaining({ path: 'reply.ideas.basis' })
+  );
   // Phrase text the learner saved may still contain ordinary words next to digits.
-  expect(normalizeIdeasReply({ ideas: [idea({ draft: '我想仿写 in today\'s world 和 due to，写 2 句。' })] }, IDEAS_CONTEXT)).toHaveLength(1);
+  expect(
+    normalizeIdeasReply({ ideas: [idea({ draft: "我想仿写 in today's world 和 due to，写 2 句。" })] }, IDEAS_CONTEXT)
+  ).toHaveLength(1);
   for (const reply of [
     { ideas: [] },
     { ideas: [idea(), idea(), idea(), idea()] },
@@ -78,7 +85,9 @@ it('parses fenced JSON into a reply without tools and keeps every rule in the pr
   expect(parsed).toEqual({ message: '已生成灵感建议', ideas: [idea()], question: null, tools: [] });
   const block = '```json\n' + JSON.stringify({ ideas: [idea()] }) + '\n```';
   expect(parseIdeasOutput('以下是三个建议：\n\n' + block, IDEAS_CONTEXT).ideas).toEqual([idea()]);
-  expect(() => parseIdeasOutput(block + '\n' + block, IDEAS_CONTEXT)).toThrow(expect.objectContaining({ path: 'reply.json' }));
+  expect(() => parseIdeasOutput(block + '\n' + block, IDEAS_CONTEXT)).toThrow(
+    expect.objectContaining({ path: 'reply.json' })
+  );
   expect(() => parseIdeasOutput('不是 JSON', IDEAS_CONTEXT)).toThrow(expect.objectContaining({ path: 'reply.json' }));
   const prompt = ideasSystemPrompt();
   expect(prompt).toContain('只返回一个JSON对象');
