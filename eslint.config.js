@@ -301,6 +301,7 @@ export default [
   // ==================== 配置文件特殊规则 ====================
   {
     files: ['*.config.js', '*.config.ts', 'scripts/**/*.{js,mjs,cjs}', 'laf-backend/standalone/*.mjs'],
+    languageOptions: { ecmaVersion: 'latest' },
     rules: {
       'no-console': 'off'
     }

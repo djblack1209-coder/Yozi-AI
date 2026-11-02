@@ -543,3 +543,17 @@ it('Dots 免费路由只在核价期限和精确端点生效，不强制采用�
   expect(buildLearningRequest(model, [])).not.toHaveProperty('reasoning');
   expect(model.timeoutMs).toBe(60000);
 });
+
+it('Agnes 当前零价复核仍限定精确 Flash 路由且到期停用', () => {
+  const model = { model: 'agnes-3.0-flash', endpoint: 'https://apihub.agnes-ai.com/v1/chat/completions' };
+  expect(freeModelPricing(model, Date.parse('2026-11-02'))).toEqual({
+    inputPerMillion: 0,
+    outputPerMillion: 0,
+    priceVersion: 'agnes-3.0-flash-free-2026-11-02'
+  });
+  expect(freeModelPricing(model, Date.parse('2026-11-05'))).toBeNull();
+  expect(freeModelPricing({ ...model, model: 'agnes-3.0-pro' }, Date.parse('2026-11-02'))).toBeNull();
+  expect(
+    freeModelPricing({ ...model, endpoint: 'https://other.example/v1/chat/completions' }, Date.parse('2026-11-02'))
+  ).toBeNull();
+});

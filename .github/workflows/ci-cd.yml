@@ -73,7 +73,7 @@ jobs:
         run: |
           npm run format:check
           npm run audit:repository
-          npm run audit:subpkg-sync
+          # Mini-program validation is paused by the current App-only scope.
 
       - name: Verify scripts and tests
         run: npm run lint:tooling

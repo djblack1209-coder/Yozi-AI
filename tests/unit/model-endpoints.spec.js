@@ -222,7 +222,7 @@ describe('模型基础地址与实际请求地址', () => {
     expect(MODEL_CONNECTION_PRESETS.find((p) => p.model === 'agnes-3.0-flash')).toMatchObject({
       endpoint: 'https://apihub.agnes-ai.com/v1/chat/completions',
       pricing: 'official_free_model',
-      verifiedAt: '2026-10-30'
+      verifiedAt: '2026-11-02'
     });
   });
 });

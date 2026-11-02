@@ -253,9 +253,9 @@ export const MODEL_CONNECTION_PRESETS = [
     endpoint: endpointFor('agnes').endpoint,
     structured: false,
     pricing: 'official_free_model',
-    priceVersion: 'agnes-3.0-flash-free-2026-10-30',
-    verifiedAt: '2026-10-30',
-    expiresAt: '2026-11-02',
+    priceVersion: 'agnes-3.0-flash-free-2026-11-02',
+    verifiedAt: '2026-11-02',
+    expiresAt: '2026-11-05',
     terms: '仅此精确 Flash 文本型号按官方当前零价使用；复核到期即停用，不回退 Pro、付费别名或其他端点。',
     privacy: privacyFor('Agnes AI'),
     docs: 'https://wiki.agnes-ai.com/en/docs/pricing'
