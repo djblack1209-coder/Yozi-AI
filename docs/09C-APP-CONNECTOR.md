@@ -41,7 +41,7 @@ Android 适配器用 `invokeAndKeepAlive` 保留中间回调、终止用 `invoke
 
 当前锁定DCloud系列为 `3.0.0-alpha-5030120260930001`；已安装vite-plugin-uni的 `uni-app.compilerVersion` 与当前App产物manifest均为 **5.31**。下方10月2日的5.08只属于历史准备记录，不能继续作为当前SDK装配基线。11月2日官方[iOS下载/升级说明](https://nativesupport.dcloud.net.cn/AppDocs/download/ios.html)列稳定版5.34及alpha版5.33，尚无与5.31匹配的本机完整包或兼容验收；不能据“最新版”或单个头文件存在直接判定可装配。取得包后核对官方来源、许可、完整版本、依赖库与资源，再沿现有build-only入口编译；不同版本须有对应平台兼容依据和实际验收，不以关闭版本提示代替。
 
-客户11月2日已授权下载与当前编译器匹配的官方iOS离线SDK并本机装配测试，不做云打包或部署；此前暂缓安排由此接续。历史官方入口的浏览器安全拒绝保留，不换工具绕过。SDK取得、实际装配和设备业务验收尚未完成，不称App开发或设备验收闭环。
+客户11月2日已授权下载与当前编译器匹配的官方iOS离线SDK并本机装配测试，不做云打包或部署；此前暂缓安排由此接续。当前官方链接的历史包入口仍被浏览器策略禁止访问，未取得SDK，不换工具绕过。SDK取得、实际装配和设备业务验收尚未完成，不称App开发或设备验收闭环。
 
 源码/元数据在 `nativeplugins/Yozi-Connector/`，对应 [DCloud Android](https://nativesupport.dcloud.net.cn/NativePlugin/course/android.html)、[iOS 模块](https://nativesupport.dcloud.net.cn/NativePlugin/course/ios.html)和[打包规范](https://nativesupport.dcloud.net.cn/NativePlugin/course/package.html)。不以模拟 SDK 声明或空二进制替代编译。
 
