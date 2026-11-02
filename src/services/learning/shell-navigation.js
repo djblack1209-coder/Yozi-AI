@@ -77,9 +77,9 @@ export function shellNavigation() {
     }
   };
 }
-// Muse 2 实现参数 (sidebarPreferences.ts): device layout, 217 default,
-// 180–420 usability clamps; these are not measurements of the original product.
-export const SIDEBAR_DEFAULT = Object.freeze({ version: 1, collapsed: false, width: 217 });
+// Original Muse desktop capture: approximately 240px, including its search/options row.
+// Existing saved widths and the 180–420 usability clamps remain unchanged.
+export const SIDEBAR_DEFAULT = Object.freeze({ version: 1, collapsed: false, width: 240 });
 export const clampSidebarWidth = (width) => Math.max(180, Math.min(420, width));
 export function validSidebar(value) {
   return (

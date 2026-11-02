@@ -326,6 +326,7 @@
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--ink-3);
   font-size: 11px;
   line-height: 14px;
@@ -344,7 +345,7 @@
 .is-chat .space-content {
   /* Muse 2 app.css:91: reserve 116px outside the scrolling content. */
   margin-top: calc(116px + var(--space-status-top, 0px));
-  padding-top: 0;
+  padding-top: 16px;
 }
 .is-workspace .space-content {
   padding: 0;
@@ -1229,6 +1230,10 @@
   box-shadow: 0 24px 80px #0005;
   animation: muse-palette-in 180ms var(--ease) both;
 }
+.desktop-overlay .space-sidebar.search-palette {
+  /* 25vh is measured from the window top, including the native 28px strip. */
+  top: calc(25vh - 28px);
+}
 .search-palette .directory-surface {
   padding: 12px;
   height: auto;
@@ -1298,6 +1303,12 @@
 .search-palette .directory-scroll {
   max-height: 52vh;
 }
+.muse-space .space-sidebar.search-palette .recent-list .recent-item {
+  min-height: 52px;
+  height: auto;
+  padding: 8px 12px;
+  gap: 8px;
+}
 .muse-space .space-sidebar.search-palette .base-field__group {
   background: transparent;
   border-color: transparent;
@@ -1308,7 +1319,8 @@
   outline: none;
 }
 @media (max-width: 760px) {
-  .space-sidebar.search-palette {
+  .space-sidebar.search-palette,
+  .desktop-overlay .space-sidebar.search-palette {
     top: calc(24px + var(--space-status-top, 0px));
   }
 }
@@ -1404,6 +1416,18 @@
   padding: 0;
   border-radius: 50%;
   color: var(--ink-3);
+}
+@media (min-width: 761px) {
+  .muse-space .space-sidebar .directory-top .sidebar-options {
+    min-width: 32px;
+    width: 32px;
+  }
+}
+@media (pointer: coarse) {
+  .muse-space .space-sidebar .directory-top .sidebar-options {
+    min-width: 44px;
+    width: 44px;
+  }
 }
 .directory-options-menu {
   position: absolute;

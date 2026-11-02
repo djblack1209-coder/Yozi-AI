@@ -131,6 +131,7 @@
                   :label="t('learning.ki6')"
               /></view>
               <BaseButton
+                v-if="directoryModal"
                 class="sidebar-close"
                 icon-only
                 icon="close"
@@ -452,6 +453,7 @@ import {
   shellNavigation,
   SHELL_MODULES,
   SHELL_ROUTES,
+  SIDEBAR_DEFAULT,
   readSidebar,
   saveSidebar,
   clampSidebarWidth
@@ -627,7 +629,7 @@ function persistSidebar() {
     saveSidebar({ version: 1, collapsed: !menuOpen.value, width: panelWidth.value });
 }
 function resetPanelWidth() {
-  panelWidth.value = 217;
+  panelWidth.value = SIDEBAR_DEFAULT.width;
   persistSidebar();
 }
 const panelResizing = ref(false);

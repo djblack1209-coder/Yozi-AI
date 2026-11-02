@@ -68,8 +68,10 @@ it('a corrupt startup cache leaves bootstrap navigation usable', () => {
   uni.setStorageSync(NAVIGATION_KEY, '{broken');
   expect(shellNavigation().snapshot()).toEqual(parseShellNavigation(DEFAULT_NAVIGATION));
 });
-it('Muse 2 device layout defaults to 217/open, clamps 180–420 and survives reopening', () => {
-  expect(readSidebar()).toEqual({ version: 1, width: 217, collapsed: false });
+it('original Muse device layout defaults to 240/open, preserves saved widths and clamps 180–420', () => {
+  expect(readSidebar()).toEqual({ version: 1, width: 240, collapsed: false });
+  uni.setStorageSync(SIDEBAR_KEY, { version: 1, width: 217, collapsed: false });
+  expect(readSidebar().width).toBe(217);
   expect(clampSidebarWidth(90)).toBe(180);
   expect(clampSidebarWidth(999)).toBe(420);
   expect(saveSidebar({ version: 1, width: 180, collapsed: true })).toBe(true);
@@ -78,7 +80,7 @@ it('Muse 2 device layout defaults to 217/open, clamps 180–420 and survives reo
   expect(readSidebar().width).toBe(420);
   expect(saveSidebar({ version: 1, width: NaN, collapsed: false })).toBe(false);
   uni.setStorageSync(SIDEBAR_KEY, { version: 8, width: 999 });
-  expect(readSidebar().width).toBe(217);
+  expect(readSidebar().width).toBe(240);
 });
 it('restores only existing conversation identities, including an explicitly empty workspace', () => {
   const state = { conversations: [{ id: 'first' }, { id: 'latest' }] };

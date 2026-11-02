@@ -166,7 +166,7 @@ describe('S2 continuous reply', () => {
     const wrapper = render(LearningShell, { LearningShell: false });
     expect(wrapper.find('.muse-chat-identity animated-avatar-stub.brand-mark').exists()).toBe(true);
     const css = readFileSync('src/components/business/learning/learning-space.css', 'utf8');
-    expect(css).toMatch(/\.is-chat \.space-content \{[^}]*margin-top: calc\(116px[^}]*padding-top: 0/s);
+    expect(css).toMatch(/\.is-chat \.space-content \{[^}]*margin-top: calc\(116px[^}]*padding-top: 16px/s);
   });
 
   it('prepares before the first byte, grows one message, completes in the same DOM node, and returns the cat to idle', async () => {
@@ -605,13 +605,24 @@ describe('S3 sidebar and navigation', () => {
     }
   );
 
-  it('defaults to 217/open, toggles with Cmd/Ctrl B once, and restores the device layout', async () => {
+  it('defaults to 240/open, keeps a close action for modal search and restores the device layout', async () => {
     let wrapper = render(LearningShell, { LearningShell: false });
     vi.spyOn(wrapper.element, 'getClientRects').mockReturnValue([{}]);
-    expect(wrapper.get('.directory-resize').attributes('aria-valuenow')).toBe('217');
+    expect(wrapper.get('.directory-resize').attributes('aria-valuenow')).toBe('240');
+    expect(wrapper.find('.sidebar-close').exists()).toBe(false);
+    expect(wrapper.get('.sidebar-options').attributes('aria-label')).toBe('会话选项');
+    const facts = store.exportData();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
+    await nextTick();
+    expect(wrapper.get('.space-sidebar').attributes('aria-modal')).toBe('true');
+    expect(wrapper.get('.sidebar-close').attributes('aria-label')).toBeTruthy();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await nextTick();
+    expect(wrapper.find('.sidebar-close').exists()).toBe(false);
+    expect(store.exportData()).toBe(facts);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', metaKey: true, bubbles: true }));
     await nextTick();
-    expect(uni.getStorageSync('yozi_shell_sidebar_v1')).toMatchObject({ collapsed: true, width: 217 });
+    expect(uni.getStorageSync('yozi_shell_sidebar_v1')).toMatchObject({ collapsed: true, width: 240 });
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, repeat: true, bubbles: true }));
     expect(uni.getStorageSync('yozi_shell_sidebar_v1').collapsed).toBe(true);
     wrapper.unmount();
@@ -624,6 +635,9 @@ describe('S3 sidebar and navigation', () => {
     expect(uni.getStorageSync('yozi_shell_sidebar_v1').width).toBe(180);
     await wrapper.get('.directory-resize').trigger('keydown', { key: 'End' });
     expect(uni.getStorageSync('yozi_shell_sidebar_v1').width).toBe(420);
+    await wrapper.get('.directory-resize').trigger('dblclick');
+    expect(wrapper.get('.directory-resize').attributes('aria-valuenow')).toBe('240');
+    expect(uni.getStorageSync('yozi_shell_sidebar_v1').width).toBe(240);
   });
   it('reorders/hides rail entries and rejects a corrupt config without touching the conversation', async () => {
     const wrapper = render(LearningShell, { LearningShell: false });
