@@ -39,6 +39,9 @@ beforeEach(async () => {
   harness.store = reactive({
     state,
     busy: false,
+    syncBusy: false,
+    syncRecords: vi.fn(),
+    cancelSync: vi.fn(),
     calendarTime: 1793361600000,
     locateConversation: vi.fn(),
     focus: vi.fn(),
@@ -89,6 +92,139 @@ async function ready() {
 }
 
 describe('S4 artifact panel and library', () => {
+  function unsyncSource() {
+    const row = [...fixture.rows.values()][0];
+    row.state.conversations = [];
+    return row;
+  }
+  it('shows the owned local original when its cloud source is missing, and uploads only after explicit consent', async () => {
+    const row = unsyncSource();
+    harness.store.syncRecords.mockImplementation(async () => {
+      row.state = structuredClone(JSON.parse(JSON.stringify(harness.store.state)));
+      return harness.store.state;
+    });
+    const w = render();
+    await ready();
+    expect(w.text()).toContain('这份原文尚未同步');
+    expect(w.text()).toContain('本机原稿');
+    expect(w.get('.artifact-panel-content').text()).toBe(item.content);
+    expect(w.find('[data-artifact-save]').exists()).toBe(false);
+    expect(w.find('[data-version]').exists()).toBe(false);
+    expect(harness.store.syncRecords).not.toHaveBeenCalled();
+    await w.get('[data-artifact-sync]').trigger('tap');
+    expect(w.getComponent(CustomModal).props('content')).toContain('私人资料片段、页图与学习记录');
+    w.getComponent(CustomModal).vm.$emit('cancel');
+    await ready();
+    expect(harness.store.syncRecords).not.toHaveBeenCalled();
+    expect(row.state.conversations).toEqual([]);
+    await w.get('[data-artifact-sync]').trigger('tap');
+    w.getComponent(CustomModal).vm.$emit('confirm');
+    await ready();
+    expect(harness.store.syncRecords).toHaveBeenCalledExactlyOnceWith(true);
+    expect(w.get('.artifact-panel-content').text()).toBe(item.content);
+    expect(w.get('.artifact-panel-version').text()).toContain('版本 1');
+    expect(requestLearningArtifact.mock.calls.map(([body]) => body.action)).toEqual(['open', 'open']);
+    expect(JSON.stringify(harness.store.state)).toBe(original);
+  });
+  it.each(['ARTIFACT_UNAVAILABLE', 'UNAUTHORIZED'])(
+    'does not offer source synchronization or expose a local preview for unrelated failure %s',
+    async (errorCode) => {
+      requestLearningArtifact.mockResolvedValueOnce({ success: false, errorCode });
+      const w = render();
+      await ready();
+      expect(w.find('[data-artifact-sync]').exists()).toBe(false);
+      expect(w.find('.artifact-panel-content').exists()).toBe(false);
+      expect(harness.store.syncRecords).not.toHaveBeenCalled();
+    }
+  );
+  it('does not match a different training day merely because its artifact id is the same', async () => {
+    unsyncSource();
+    target.source.day = '2026-10-29';
+    const w = render();
+    await ready();
+    expect(w.find('[data-artifact-sync]').exists()).toBe(false);
+    expect(w.text()).not.toContain(item.content);
+  });
+  it('keeps the local original and allows retry after a failed or cancelled synchronization', async () => {
+    const row = unsyncSource();
+    harness.store.syncRecords.mockRejectedValue(
+      Object.assign(new Error('同步已取消，本机记录保留'), { code: 'CANCELLED' })
+    );
+    const w = render();
+    await ready();
+    await w.get('[data-artifact-sync]').trigger('tap');
+    w.getComponent(CustomModal).vm.$emit('confirm');
+    await ready();
+    expect(w.get('[role="alert"]').text()).toContain('同步已取消');
+    expect(w.get('.artifact-panel-content').text()).toBe(item.content);
+    expect(w.get('[data-artifact-sync]').attributes('disabled')).toBeUndefined();
+    expect(row.state.conversations).toEqual([]);
+    expect(requestLearningArtifact).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(harness.store.state)).toBe(original);
+  });
+  it('does not upload when the account changes while the synchronization confirmation is open', async () => {
+    unsyncSource();
+    const w = render();
+    await ready();
+    await w.get('[data-artifact-sync]').trigger('tap');
+    harness.store.state = artifactFixtureState('another-student');
+    w.getComponent(CustomModal).vm.$emit('confirm');
+    await ready();
+    expect(harness.store.syncRecords).not.toHaveBeenCalled();
+    expect(w.text()).not.toContain(item.content);
+  });
+  it('does not reopen an old target after successful sync advances the lifecycle', async () => {
+    unsyncSource();
+    let finish;
+    harness.store.syncRecords.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const w = render();
+    await ready();
+    await w.get('[data-artifact-sync]').trigger('tap');
+    w.getComponent(CustomModal).vm.$emit('confirm');
+    await ready();
+    expect(w.text()).toContain('正在同步学习记录');
+    await tap(w, '取消同步');
+    expect(harness.store.cancelSync).toHaveBeenCalledOnce();
+    harness.store.recordContext = () => 'artifact-student:after-sync';
+    finish(harness.store.state);
+    await ready();
+    expect(requestLearningArtifact).toHaveBeenCalledTimes(1);
+    expect(w.text()).not.toContain(item.content);
+    expect(w.findAll('button').some((button) => button.text() === '取消同步')).toBe(false);
+  });
+  it('keeps a pending document mutation separate from missing-source recovery', async () => {
+    unsyncSource();
+    const client = createLearningArtifacts();
+    const pending = {
+      signature: JSON.stringify({
+        action: 'save',
+        id: item.id,
+        expectedVersion: 1,
+        title: item.title,
+        content: 'Pending edit'
+      }),
+      requestId: 'pending-original-request'
+    };
+    client.writeDraft(item.id, {
+      version: 1,
+      title: item.title,
+      content: 'Pending edit',
+      mode: 'edit',
+      scrollTop: 0,
+      pending
+    });
+    const w = render();
+    await ready();
+    expect(w.find('[data-artifact-sync]').exists()).toBe(false);
+    expect(w.get('textarea').element.value).toBe('Pending edit');
+    expect(client.readDraft(item.id).pending).toEqual(pending);
+    expect(harness.store.syncRecords).not.toHaveBeenCalled();
+  });
   it('confirmed local deletion clears the real WebKit compatibility-storage namespace', () => {
     vi.stubGlobal('uni', undefined);
     vi.stubGlobal('wx', undefined);

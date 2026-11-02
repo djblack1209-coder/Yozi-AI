@@ -13,7 +13,7 @@
       <view
         ><text class="artifact-panel-kind">Document</text>
         <text class="artifact-panel-title" role="heading" aria-level="2">{{
-          doc?.artifact.title || draft?.title || '文档'
+          doc?.artifact.title || draft?.title || (needsSync && localSource?.title) || '文档'
         }}</text></view
       >
       <BaseButton class="artifact-back" variant="quiet" icon="arrow-left" icon-only label="返回" @tap="close" />
@@ -22,11 +22,29 @@
     <view v-if="error" class="artifact-panel-error" role="alert">
       <text>{{ error }}</text
       ><BaseButton variant="quiet" :disabled="busy || loading" @tap="retry">重试</BaseButton>
+      <BaseButton
+        v-if="needsSync && localSource"
+        data-artifact-sync
+        variant="quiet"
+        :disabled="busy || loading || learning.syncBusy || learning.busy"
+        @tap="confirmAction = 'sync'"
+        >同步学习记录</BaseButton
+      >
       <BaseButton v-if="doc" variant="quiet" :disabled="busy || loading" @tap="confirmAction = 'reload'"
         >重新载入</BaseButton
       >
     </view>
     <text v-if="loading" role="status">正在载入文档…</text>
+    <view v-if="needsSync && localSource && !draft" class="artifact-panel-body">
+      <text class="artifact-panel-version">本机原稿</text>
+      <text class="artifact-panel-content" selectable>{{ localSource.content }}</text>
+    </view>
+    <text v-if="syncingSource && current()" role="status">{{
+      learning.syncProgress?.phase || '正在同步学习记录…'
+    }}</text>
+    <BaseButton v-if="syncingSource && current()" variant="quiet" @tap="current() && learning.cancelSync()"
+      >取消同步</BaseButton
+    >
     <template v-if="draft">
       <view class="artifact-panel-toolbar" role="group" aria-label="文档操作">
         <BaseButton
@@ -135,13 +153,21 @@
     </template>
     <CustomModal
       :visible="!!confirmAction"
-      :title="confirmAction === 'restore' ? `恢复到版本 ${historical?.version}？` : '重新载入文档？'"
-      :content="
-        confirmAction === 'restore'
-          ? '将该版本保存为一个新版本，现有历史保留。未保存修改将被替换。'
-          : '这会丢弃此面板的未保存修改，载入已保存的最新版本。'
+      :title="
+        confirmAction === 'sync'
+          ? '同步学习记录？'
+          : confirmAction === 'restore'
+            ? `恢复到版本 ${historical?.version}？`
+            : '重新载入文档？'
       "
-      :confirm-text="confirmAction === 'restore' ? '恢复为新版本' : '重新载入'"
+      :content="
+        confirmAction === 'sync'
+          ? '会把当前账号的对话、私人资料片段、页图与学习记录发送至本Yozi AI 服务。同步完成后，请重新打开文档。本机原稿保留。'
+          : confirmAction === 'restore'
+            ? '将该版本保存为一个新版本，现有历史保留。未保存修改将被替换。'
+            : '这会丢弃此面板的未保存修改，载入已保存的最新版本。'
+      "
+      :confirm-text="confirmAction === 'sync' ? '同步' : confirmAction === 'restore' ? '恢复为新版本' : '重新载入'"
       @cancel="confirmAction = ''"
       @confirm="confirm"
     />
@@ -151,7 +177,11 @@
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { onBackPress } from '@dcloudio/uni-app';
 import { assertSession } from '@/services/auth-storage.js';
-import { createLearningArtifacts, ARTIFACT_CONFLICT } from '@/services/learning/learning-artifacts.js';
+import {
+  createLearningArtifacts,
+  studentEssaySources,
+  ARTIFACT_CONFLICT
+} from '@/services/learning/learning-artifacts.js';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { safeNavigateTo } from '@/utils/safe-navigate.js';
 import BaseButton from '@/components/base/base-button/base-button.vue';
@@ -174,6 +204,8 @@ const loading = ref(false),
   busy = ref(false),
   saved = ref(false),
   error = ref(''),
+  needsSync = ref(false),
+  syncingSource = ref(false),
   closing = ref(false),
   confirmAction = ref('');
 const retryAction = ref('');
@@ -197,6 +229,15 @@ const dirty = computed(
 );
 const current = () =>
   alive && props.target.owner === learning.state.owner && props.target.context === learning.recordContext();
+const localSource = computed(() =>
+  current()
+    ? studentEssaySources(learning.state).find(
+        (item) =>
+          item.id === props.target.id &&
+          ['conversationId', 'kind', 'sourceId', 'day'].every((key) => item.source[key] === props.target.source?.[key])
+      )
+    : null
+);
 function persist() {
   if (!client || !draft.value || !current()) return false;
   try {
@@ -246,6 +287,7 @@ async function load(discard = false) {
   loading.value = true;
   retryAction.value = '';
   error.value = '';
+  needsSync.value = false;
   historical.value = null;
   history.value = null;
   try {
@@ -268,9 +310,36 @@ async function load(discard = false) {
     persist();
     await position();
   } catch (e) {
-    if (current() && ticket === sequence) error.value = e.message;
+    if (current() && ticket === sequence) {
+      needsSync.value =
+        !doc.value &&
+        !draft.value?.pending &&
+        !!localSource.value &&
+        ['ARTIFACT_SOURCE_UNSYNCED', 'ARTIFACT_NOT_FOUND'].includes(e.code);
+      error.value = needsSync.value ? '这份原文尚未同步。同步后请重新打开文档。' : e.message;
+    }
   } finally {
     if (current() && ticket === sequence) loading.value = false;
+  }
+}
+async function syncSource() {
+  if (!needsSync.value || !localSource.value || busy.value || loading.value || learning.syncBusy || learning.busy)
+    return;
+  const ticket = ++sequence;
+  busy.value = syncingSource.value = true;
+  error.value = '';
+  try {
+    await learning.syncRecords(true);
+    // Successful sync advances the repository lifecycle. The shell closes this
+    // stale target; reopening binds the source to the new, checked context.
+    if (current() && ticket === sequence) {
+      busy.value = false;
+      await load();
+    }
+  } catch (e) {
+    if (current() && ticket === sequence) error.value = e.message || '同步未完成，本机原稿已保留。';
+  } finally {
+    if (current()) busy.value = syncingSource.value = false;
   }
 }
 function change(patch) {
@@ -358,7 +427,8 @@ async function showVersion(version) {
 function confirm() {
   const action = confirmAction.value;
   confirmAction.value = '';
-  if (action === 'restore') save(true);
+  if (action === 'sync') syncSource();
+  else if (action === 'restore') save(true);
   else load(true);
 }
 function close() {
