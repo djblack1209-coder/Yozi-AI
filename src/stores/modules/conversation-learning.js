@@ -1962,7 +1962,15 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       );
       commit(
         'coach.result',
-        { conversationId, explicit: true, requestId: request.id, output: result.data.coach },
+        {
+          conversationId,
+          explicit: true,
+          requestId: request.id,
+          output: result.data.coach,
+          ...(request.request.knowledgeContract && result.data.modelOrigin
+            ? { modelOrigin: result.data.modelOrigin }
+            : {})
+        },
         `${request.id}:result`
       );
       reply.value.content = safeLearningMessage(result.data.message || '');

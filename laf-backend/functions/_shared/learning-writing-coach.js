@@ -4,6 +4,7 @@ import { phraseReviewRating } from './learning-runtime-policy.js';
 import { reviewFacts } from './learning-adherence.js';
 import { coachErrorReviews } from './learning-coach-review.js';
 import { WRITING_KNOWLEDGE_CONTRACT, writingKnowledgeBinding } from './learning-writing-knowledge.js';
+import { normalizeLearningModelOrigin } from './learning-model-origin.js';
 import {
   writingAnswerHash,
   writingBandRubric,
@@ -1986,6 +1987,13 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
       ? boundWritingBandResult(coach, resultDay, req, output.bandCandidate)
       : null;
     delete output.bandCandidate;
+    const modelOrigin =
+      req.request.knowledgeContract &&
+      normalizeLearningModelOrigin(d.modelOrigin, {
+        requestId: req.id,
+        modelId: req.modelId,
+        binding: req.binding
+      });
     if (['feedback', 'essay'].includes(output.kind))
       (coach.learningRecords ||= []).push({
         id: op.id,
@@ -1996,6 +2004,7 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
         source: 'host_validated',
         evaluation: 'AI评估',
         dimensions: (output.dimensions || []).map(({ name, score }) => ({ name, score: score ?? null })),
+        ...(modelOrigin ? { model: modelOrigin } : {}),
         ...(req.request.knowledgeContract
           ? { knowledge: writingKnowledgeBinding(output, coachAssessmentTask(req.request)) }
           : {})

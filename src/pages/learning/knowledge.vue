@@ -8,7 +8,13 @@
       <text role="heading" aria-level="1">{{ graph.title }}</text>
       <text class="knowledge-subtitle">成人考研 · 英语一／英语二</text>
     </view>
-    <ProgressOverview v-if="overview" class="knowledge-progress" :model="overview" @open="openEvidence" />
+    <ProgressOverview
+      v-if="overview"
+      class="knowledge-progress"
+      :model="overview"
+      @open="openEvidence"
+      @source="selectSource"
+    />
     <view class="knowledge-views" role="group" aria-label="知识框架">
       <BaseButton variant="quiet" :selected="mapView === 'framework'" @tap="mapView = 'framework'">知识框架</BaseButton>
       <BaseButton variant="quiet" :selected="mapView === 'mind'" @tap="mapView = 'mind'">思维导图</BaseButton>
@@ -124,6 +130,7 @@ import { useThemeStore } from '@/stores/modules/theme.js';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { learningProgressReadModel } from '@/services/learning/learning-progress-read-model.js';
 import { learningRecordTarget } from '../../../laf-backend/functions/_shared/learning-record-search.js';
+import { learningModelSourceKey } from '../../../laf-backend/functions/_shared/learning-model-origin.js';
 import { safeNavigateTo } from '@/utils/safe-navigate.js';
 import { knowledgeGraphSeed } from '@/services/learning/knowledge-graph-seed.js';
 import {
@@ -136,14 +143,29 @@ const learning = useConversationLearningStore();
 const windowWidth = ref(390),
   selectedId = ref(''),
   mapView = ref('framework'),
-  recordId = ref('');
-const progress = computed(() =>
+  recordId = ref(''),
+  sourceKey = ref('');
+const allProgress = computed(() =>
   learningProgressReadModel(learning.recordReadState === 'ready' ? learning.state : { owner: learning.state.owner })
 );
+const progress = computed(() => {
+  const model = allProgress.value;
+  const selected =
+    sourceKey.value && model.sources.find((source) => learningModelSourceKey(source) === sourceKey.value);
+  if (!selected) return model;
+  const ids = new Set(selected.evidenceIds);
+  return {
+    ...model,
+    subjects: selected.subjects,
+    nodes: selected.nodes,
+    weaknesses: selected.nodes.filter((node) => node.isWeakness),
+    evidence: model.evidence.filter((event) => ids.has(event.id))
+  };
+});
 const overview = computed(() => {
   const subject = typeof knowledgeGraphSeed.subject === 'string' ? knowledgeGraphSeed.subject.trim() : '';
   if (!subject || !knowledgeGraphSeed.subjectLabel?.trim()) return null;
-  const model = progress.value;
+  const model = allProgress.value;
   const evidence = model.evidence.filter((event) => event.subject === subject);
   const ids = new Set(evidence.map((event) => event.id));
   return {
@@ -181,11 +203,16 @@ const record = computed(() => {
 function openEvidence(event) {
   recordId.value = event.recordId || '';
 }
+function selectSource(key) {
+  sourceKey.value = key;
+  recordId.value = '';
+}
 watch(
   () => learning.recordContext(),
   () => {
     selectedId.value = '';
     recordId.value = '';
+    sourceKey.value = '';
   }
 );
 onShow(() => {

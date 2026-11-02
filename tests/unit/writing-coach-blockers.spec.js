@@ -114,7 +114,32 @@ it('routes an explicitly saved error-review answer through the real store reques
       });
     return {
       success: true,
-      data: { requestId: body.requestId, requestBinding: body.requestBinding, modelId: body.modelId, coach: output }
+      data: {
+        requestId: body.requestId,
+        requestBinding: body.requestBinding,
+        modelId: body.modelId,
+        coach: output,
+        ...(request.knowledgeContract
+          ? {
+              modelOrigin: {
+                contract: 'learning-model-origin-v1',
+                callId: body.requestId,
+                modelId: body.modelId,
+                requestBinding: body.requestBinding,
+                source: 'byok',
+                provider: 'Synthetic provider',
+                actualModel: 'synthetic-actual-model',
+                configurationVersion: 'a'.repeat(64),
+                upstreamVersion: null,
+                inferencePolicy: 'native-coach-tools-v1',
+                outputContract: request.contract,
+                schemaDigest: 'b'.repeat(64),
+                sentParameters: { max_tokens: 8192 },
+                verificationModels: []
+              }
+            }
+          : {})
+      }
     };
   });
   try {
@@ -137,6 +162,11 @@ it('routes an explicitly saved error-review answer through the real store reques
     const records = store.active.coach.learningRecords;
     expect(records).toHaveLength(2);
     expect(records.every((record) => record.knowledge?.contract === 'writing-knowledge-binding-v1')).toBe(true);
+    expect(
+      records.every(
+        (record) => record.model?.source === 'byok' && record.model.actualModel === 'synthetic-actual-model'
+      )
+    ).toBe(true);
     expect(records[1].knowledge).toMatchObject({
       graphVersion: 'yozi-writing-diagnosis-v0.1',
       mappingVersion: 'writing-knowledge-map-v1',

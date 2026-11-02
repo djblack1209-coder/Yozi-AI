@@ -9,7 +9,9 @@
       <text class="event-conclusion">{{ event.conclusion }}</text>
       <text class="event-source"
         >{{ event.model.source === 'byok' ? 'BYOK' : event.model.source === 'unknown' ? '待核对' : '核对'
-        }}<template v-if="event.model.modelId"> · {{ event.model.modelId }}</template></text
+        }}<template v-if="event.model.actualModel || event.model.modelId">
+          · {{ event.model.actualModel || event.model.modelId }}</template
+        ></text
       >
       <BaseButton v-if="openable && event.recordId" variant="quiet" icon="arrow-right" @tap="emit('open', event)"
         >查看原答</BaseButton

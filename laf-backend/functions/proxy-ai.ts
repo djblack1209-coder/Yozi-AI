@@ -5,6 +5,11 @@ import {
   normalizeLearningSnapshot
 } from './_shared/learning-runtime-policy.js';
 import { readModelCredential } from './_shared/model-connections.js';
+import {
+  LEARNING_MODEL_ORIGIN_CONTRACT,
+  learningSentParameters,
+  normalizeLearningModelOrigin
+} from './_shared/learning-model-origin.js';
 import { classifyModelFailure, modelErrorPresentation } from './_shared/model-errors.js';
 import { mapContentBlocks } from './_shared/learning-content-blocks.js';
 import cloud from '@lafjs/cloud';
@@ -869,6 +874,35 @@ export async function runLearningModelTask(
           }
         : response.usage;
     if (dailyReservation) await settlePlatformDay(db, dailyReservation, actualCost);
+    const modelOrigin =
+      coach?.knowledgeContract === 'writing-knowledge-binding-v1'
+        ? normalizeLearningModelOrigin(
+            redactModelValue(
+              {
+                contract: LEARNING_MODEL_ORIGIN_CONTRACT,
+                callId: body.requestId,
+                modelId: reservation.call.modelId || model.id,
+                requestBinding: body.requestBinding,
+                source: model.source,
+                provider: model.provider,
+                actualModel: response.actualModel,
+                configurationVersion: connectionVersion,
+                upstreamVersion: null,
+                inferencePolicy: model.writingOutput?.inferencePolicy,
+                outputContract: model.writingOutput?.contract,
+                schemaDigest: model.writingOutput?.schemaDigest,
+                sentParameters: learningSentParameters(buildLearningRequest(model, [], Boolean(options.stream))),
+                verificationModels: verificationSources.map(({ provider, model, paidFallback }) => ({
+                  provider,
+                  model,
+                  paidFallback
+                }))
+              },
+              model.apiKey
+            ),
+            { requestId: body.requestId, modelId: reservation.call.modelId || model.id, binding: body.requestBinding }
+          )
+        : null;
     const data = {
       ...output,
       message: safeLearningMessage(output.message),
@@ -881,6 +915,7 @@ export async function runLearningModelTask(
       modelId: reservation.call.modelId || model.id,
       requestBinding: body.requestBinding || null,
       transport: options.stream ? 'sse-v1' : 'json-v1',
+      ...(modelOrigin ? { modelOrigin } : {}),
       ...(coachVerification ? { coachVerification } : {}),
       ...(exerciseCalibration ? { exerciseCalibration } : {})
     };

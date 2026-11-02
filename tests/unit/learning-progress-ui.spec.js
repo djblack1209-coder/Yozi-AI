@@ -163,6 +163,51 @@ describe('progress presentation shares one read model without writing learning f
     expect(wrapper.findAll('.progress-heading').map((heading) => heading.text())).toEqual(['考研英语写作']);
     wrapper.unmount();
   });
+  it('applies one source scope to overview, framework, mind map and original evidence without writing facts', async () => {
+    const state = progressBoundaryFixture(6, 0);
+    state.conversations[0].coach.requests[5].modelId = 'unknown-external-model';
+    harness.learning = reactive({
+      state,
+      recordReadState: 'ready',
+      recordContext() {
+        return this.state.owner;
+      },
+      refresh: vi.fn()
+    });
+    const before = JSON.stringify(state);
+    const wrapper = mount(Knowledge, { global });
+    expect(wrapper.get('[data-node-id="agreement"]').text()).toContain('可改进');
+    const sourceButtons = wrapper.findAll('.progress-sources button');
+    await sourceButtons.find((button) => button.text().includes('unknown-external-model')).trigger('click');
+    expect(wrapper.get('[data-metric="语法"]').text()).toContain('数据不足');
+    expect(wrapper.get('[data-node-id="agreement"]').text()).toContain('数据不足');
+    await wrapper.get('[data-node-id="agreement"]').trigger('click');
+    expect(wrapper.findAll('#knowledge-detail .progress-event')).toHaveLength(1);
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '思维导图')
+      .trigger('click');
+    expect(wrapper.get('[data-mind-node="agreement"]').text()).toContain('数据不足');
+    await sourceButtons[0].trigger('click');
+    expect(wrapper.get('[data-mind-node="agreement"]').text()).toContain('可改进');
+    expect(JSON.stringify(state)).toBe(before);
+    wrapper.unmount();
+  });
+  it('selects the actual model group when one connection name has two returned models', async () => {
+    const model = learningProgressReadModel(progressFixture(6, 0));
+    model.sources = [
+      { ...learningProgressReadModel(progressFixture(5, 0)).sources[0], actualModel: 'model-A' },
+      { ...learningProgressReadModel(progressFixture(1, 0)).sources[0], actualModel: 'model-B' }
+    ];
+    const wrapper = mount(ProgressOverview, { props: { model }, global });
+    const buttons = wrapper.findAll('.progress-sources button');
+    expect(buttons.map((button) => button.text())).toEqual(['全部', 'BYOK · model-A', 'BYOK · model-B']);
+    await buttons[2].trigger('click');
+    expect(wrapper.get('[data-metric="语法"]').text()).toContain('数据不足');
+    await buttons[1].trigger('click');
+    expect(wrapper.get('[data-metric="语法"]').text()).toContain('80%');
+    wrapper.unmount();
+  });
   it('renders only the framework subject and its sources while the website renders both subjects from the same events', async () => {
     const state = progressBoundaryFixture(5),
       before = JSON.stringify(state),

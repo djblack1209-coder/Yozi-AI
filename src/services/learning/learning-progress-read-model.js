@@ -9,6 +9,7 @@ import {
 export { PROGRESS_NODE_RULES, progressNodeIds };
 import { dayKey, effectiveGrade, questionKey } from './learning-domain.js';
 import { knowledgeGraphSeed } from './knowledge-graph-seed.js';
+import { normalizeLearningModelOrigin } from '../../../laf-backend/functions/_shared/learning-model-origin.js';
 
 // Display floor only. N3 must calibrate it with unseen, unprompted first answers.
 export const MIN_PROGRESS_EVENTS = 5;
@@ -29,7 +30,8 @@ const questionTypes = Object.freeze({
 });
 const subjectId = (subject) => (['考研英语写作', writingSubject].includes(subject) ? writingSubject : subject);
 
-function modelOrigin(modelId = '') {
+function modelOrigin(modelId = '', origin) {
+  if (origin) return { source: origin.source, modelId, provider: origin.provider, actualModel: origin.actualModel };
   // muse-ai-connectors creates byok_ IDs; the persisted request keeps that ID.
   // A historical arbitrary ID has no saved source/version: do not guess platform.
   return { source: modelId.startsWith('byok_') ? 'byok' : modelId ? 'unknown' : 'local', modelId: modelId || null };
@@ -216,9 +218,17 @@ export function learningProgressReadModel(state = {}) {
           list(dimension.evidence).some((quote) => typeof quote === 'string' && quote.trim())
       );
       if (!dimensions.length) return;
-      const stored = list(coach.learningRecords).find(
+      const record = list(coach.learningRecords).find(
         (record) => record.id === receipt.id && record.requestId === request.id
-      )?.knowledge;
+      );
+      const stored = record?.knowledge;
+      const origin =
+        request.request.knowledgeContract &&
+        normalizeLearningModelOrigin(record?.model, {
+          requestId: request.id,
+          modelId: request.modelId,
+          binding: request.binding
+        });
       const bound = request.request.knowledgeContract === WRITING_KNOWLEDGE_CONTRACT;
       const validBinding =
         bound &&
@@ -258,7 +268,8 @@ export function learningProgressReadModel(state = {}) {
         conclusion: dimensions
           .map((dimension) => `${dimension.name} · ${PROGRESS_RUBRIC_LABELS[dimension.score]}`)
           .join('；'),
-        model: modelOrigin(request.modelId),
+        model: modelOrigin(request.modelId, origin),
+        ...(origin ? { modelOrigin: origin } : {}),
         binding: {
           mode: bound ? (validBinding ? 'saved' : 'unavailable') : 'read-time',
           graphVersion: bound ? stored?.graphVersion || null : WRITING_KNOWLEDGE_GRAPH,

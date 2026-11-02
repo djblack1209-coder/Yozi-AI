@@ -2049,6 +2049,7 @@ it('局部批改只发送当前题干原答，不把整篇目标、建档与旧�
     task: '将活动将在周五下午举行译成英文',
     sources: [],
     foundation: 'PROFILE_WHOLE_EMAIL',
+    knowledgeContract: 'writing-knowledge-binding-v1',
     dimensionContract: 'writing-dimensions-v1',
     feedbackVersion: 2
   };
@@ -2090,6 +2091,24 @@ it('局部批改只发送当前题干原答，不把整篇目标、建档与旧�
   expect(messages[0].content).not.toContain(request.input);
   const config = vi.mocked(callLearningProvider).mock.calls[0][0];
   const wire = buildLearningRequest(config, messages);
+  expect(result.data.modelOrigin).toMatchObject({
+    contract: 'learning-model-origin-v1',
+    callId: body.requestId,
+    modelId: body.modelId,
+    requestBinding: body.requestBinding,
+    source: 'byok',
+    provider: config.provider,
+    actualModel: config.model,
+    configurationVersion: expect.stringMatching(/^[a-f0-9]{64}$/),
+    upstreamVersion: null,
+    inferencePolicy: config.writingOutput.inferencePolicy,
+    schemaDigest: config.writingOutput.schemaDigest,
+    sentParameters: { max_tokens: config.maxOutput }
+  });
+  const originText = JSON.stringify(result.data.modelOrigin);
+  for (const forbidden of [request.input, config.apiKey, 'apiKey', 'endpoint', 'messages'])
+    expect(originText).not.toContain(forbidden);
+  expect((await ai(context(body))).data.modelOrigin).toEqual(result.data.modelOrigin);
   expect(wire.tools[0].function.parameters.description).toContain(request.input);
   expect(messages[0].content).not.toContain(JSON.stringify(config.writingOutput.schema));
   const serialized = JSON.stringify(messages);

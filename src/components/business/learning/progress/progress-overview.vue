@@ -9,7 +9,9 @@
         :selected="sourceKey === keyFor(source)"
         @tap="selectSource(keyFor(source))"
         >{{ source.source === 'byok' ? 'BYOK' : source.source === 'unknown' ? '待核对' : '核对'
-        }}<template v-if="source.modelId"> · {{ source.modelId }}</template></BaseButton
+        }}<template v-if="source.actualModel || source.modelId">
+          · {{ source.actualModel || source.modelId }}</template
+        ></BaseButton
       >
     </view>
     <view v-for="subject in subjects" :key="subject.id" class="progress-subject">
@@ -90,11 +92,11 @@
 import { computed, ref, watch } from 'vue';
 import BaseButton from '@/components/base/base-button/base-button.vue';
 import ProgressEvidence from './progress-evidence.vue';
+import { learningModelSourceKey as keyFor } from '../../../../../laf-backend/functions/_shared/learning-model-origin.js';
 const props = defineProps({ model: { type: Object, required: true }, openable: { type: Boolean, default: true } });
-const emit = defineEmits(['open']);
+const emit = defineEmits(['open', 'source']);
 const expanded = ref(null),
   sourceKey = ref('');
-const keyFor = (source) => JSON.stringify([source.source, source.modelId]);
 const subjects = computed(
   () => props.model.sources.find((source) => keyFor(source) === sourceKey.value)?.subjects || props.model.subjects
 );
@@ -106,12 +108,18 @@ const show = (label, metric) => {
 function selectSource(key) {
   sourceKey.value = key;
   expanded.value = null;
+  emit('source', key);
 }
 watch(
   () => props.model.owner,
   () => {
-    expanded.value = null;
-    sourceKey.value = '';
+    selectSource('');
+  }
+);
+watch(
+  () => props.model.sources,
+  (sources) => {
+    if (sourceKey.value && !sources.some((source) => keyFor(source) === sourceKey.value)) selectSource('');
   }
 );
 </script>
