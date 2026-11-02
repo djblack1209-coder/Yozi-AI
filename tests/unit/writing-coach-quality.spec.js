@@ -526,6 +526,41 @@ describe('按任务的真实答题形式送评', () => {
     expect(unsure.表达).toEqual([null, []]);
     expect(unsure.语法).toEqual([2, ['at']]);
   });
+  it('维度说明不混入其他题型或维度，真实错因与逐题讲解仍保留', () => {
+    const prepared = prepareCoachFeedbackModel(
+      config,
+      coachInferenceContext(mixedDiagnosticRequest()),
+      false,
+      false,
+      false,
+      true
+    );
+    const wire = mixedDiagnosticReply(prepared);
+    wire.dimensionReviews.grammar.comment = '第1、第4题的中文句法分析准确，英语语法优秀。';
+    wire.dimensionReviews.collocation.comment = '中文提纲写得好，所有搭配都正确。';
+    wire.dimensionReviews.task.comment = '填空at正确，所以任务全部完成。';
+    const out = JSON.parse(decodeCoachResponse(prepared, JSON.stringify(wire))).coach;
+    expect(out.dimensions.map((d) => [d.name, d.score])).toEqual([
+      ['语法', 2],
+      ['搭配', 1],
+      ['表达', 2],
+      ['任务完成', 2]
+    ]);
+    expect(out.dimensions[0].evidence).toEqual(['at', 'Welcome to the science fair.']);
+    expect(out.dimensions[0].comment).not.toMatch(/中文|第1|第4|优秀/u);
+    expect(out.dimensions[1].comment).toBe(wire.errors[0].rule);
+    expect(out.dimensions[3].comment).not.toContain('at');
+    expect(out.lines.find((line) => line.original === 'at').advice).toBe(
+      wire.lines.find((line) => line.quoteId === 'q2').advice
+    );
+    expect(wire.dimensionReviews.grammar.comment).toContain('中文句法');
+
+    wire.errors = [];
+    wire.uncertainties = [{ label: '译意待核对', quoteId: 'q3' }];
+    const uncertain = JSON.parse(decodeCoachResponse(prepared, JSON.stringify(wire))).coach.dimensions[2];
+    expect(uncertain).toMatchObject({ name: '表达', score: null, evidence: [] });
+    expect(uncertain.comment).toContain('缺少本维可评证据');
+  });
   it('每条已登记错误都有讲解行，模型没选到的由宿主用规则补齐并按题序排列', () => {
     const prepared = prepareCoachFeedbackModel(
       config,
@@ -1171,7 +1206,7 @@ describe('摸底错误合并复核一次：讲解题只删不加，单词填空�
       ['表达', 2],
       ['任务完成', 2]
     ]);
-    expect(coach.dimensions[3].comment).toBe('给同学写邮件，介绍科学展并邀请参加，约100词');
+    expect(coach.dimensions[3].comment).toBe('本维未发现已核实的错误。');
     expect(coach.lines.find((line) => line.original.startsWith('写给同学')).advice).toBe(
       '给同学写邮件，介绍科学展并邀请参加，约100词'
     );

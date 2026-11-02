@@ -850,6 +850,13 @@ export function decodeCoachResponse(config: ModelConfig, content: string): strin
           .map((role: any) => role.quoteId);
         return {
           ...d,
+          // 模型自由点评不能跨用别题或别维度；说明与宿主已采用的错误、证据保持同一范围。
+          // 具体逐题讲解保留在lines，旧收据不回写。
+          comment: errors.length
+            ? [...new Set(errors.map((e: any) => e.rule))].join('；').slice(0, 500)
+            : assessed.length
+              ? '本维未发现已核实的错误。'
+              : '本次作答缺少本维可评证据。',
           score: errors.length ? Math.max(0, 2 - errors.length) : assessed.length ? 2 : null,
           evidenceIds: [...new Set(errors.length ? errors.map((e: any) => e.quoteId) : assessed)].slice(0, 3)
         };
