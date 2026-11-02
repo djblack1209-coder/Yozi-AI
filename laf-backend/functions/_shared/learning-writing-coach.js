@@ -707,7 +707,10 @@ ${r.phase === 'daily' ? '恰好8张，id为c1至c8，kind依次collocation,collo
     const assessment = coachAssessmentTask(r);
     const scope =
       assessment?.kind === 'cloze'
-        ? '本题为填空。当前任务已给出每个候选填入后的完整句，逐个判断语法和语义，再判断所选项；不沿用讲解的预设答案。不定式由to和动词原形组成；介词for后不能直接接动词原形及其宾语。引文仍只选学生所填标签，不把宿主代入句冒充学生原文。只解释空格前后所需结构，不展开题目没问的不定式句法名称。'
+        ? '本题为填空。当前任务已给出每个候选填入后的完整句，逐个判断语法和语义，再判断所选项；不沿用讲解的预设答案。不定式由to和动词原形组成；介词for后不能直接接动词原形及其宾语。引文仍只选学生所填标签，不把宿主代入句冒充学生原文。只解释空格前后所需结构，不展开题目没问的不定式句法名称。' +
+          (assessment.category === 'collocation'
+            ? '本次只评单张搭配填空。原答是独立标签，不是学生写出的整句；标签大小写或首尾标点不当成句子书写错误，不评表达或任务完成。判断词能否填入原句，错词仍登记规则，不提供替换答案。'
+            : '')
         : assessment?.kind === 'translate_zh'
           ? '本题为英译中，学生原答是中文。只用表达核对译意，用任务完成核对本句翻译是否完成；不评英语语法或搭配，不把中文用词和句式当作英语语言能力证据，不要求额外句法分析或英文改写。'
           : assessment?.kind === 'syntax_analysis'
@@ -1380,7 +1383,14 @@ export function coachEssayType(coach, day) {
   const first = coach.startedDay;
   return Math.floor((Date.parse(day) - Date.parse(first)) / (7 * 86400000)) % 2 ? 'large' : 'small';
 }
-// Dev context gained the answer format; the original prompt remains valid for saved requests.
+function coachCardTask(card) {
+  return typeof __YOZI_DEV_TEST__ !== 'undefined' && __YOZI_DEV_TEST__ === true
+    ? card.options?.length
+      ? `${card.prompt}\n答题方式：选择题。原答是所选项标签，不要求写成完整句子或补齐题干已有内容。按题干判断所选项；若存在多解须指出歧义。选项：${JSON.stringify(card.options)}`
+      : `${card.prompt}${card.example ? `\n题目提供的原句或示例（内容待核对）：${card.example}` : ''}`
+    : card.prompt;
+}
+// New requests bind a structured card kind; saved requests keep their exact legacy task valid.
 function coachTaskMatches(request, bound, day) {
   const card = day?.pack.cards.find((item) => `card-${item.id}` === request.target);
   const patterns = /^paragraph-[0-2]$/.test(request.target)
@@ -1388,6 +1398,7 @@ function coachTaskMatches(request, bound, day) {
     : null;
   return (
     request.task === bound.task ||
+    (card && request.phase === 'feedback' && request.task === coachCardTask(card)) ||
     (typeof __YOZI_DEV_TEST__ !== 'undefined' &&
       __YOZI_DEV_TEST__ === true &&
       request.phase === 'feedback' &&
@@ -1441,14 +1452,12 @@ export function coachInputFor(coach, day, phase, target) {
     const card = day.pack.cards.find((c) => `card-${c.id}` === target),
       answer = day.answers.find((a) => a.cardId === card?.id);
     fail(answer && !day.feedback[target], '请先提交本卡原答');
+    const task = coachCardTask(card);
+    const assessment =
+      card.kind === 'collocation' ? coachAssessmentTask({ phase, target, task, input: answer.answer }) : null;
     return {
       input: answer.answer,
-      task:
-        typeof __YOZI_DEV_TEST__ !== 'undefined' && __YOZI_DEV_TEST__ === true
-          ? card.options?.length
-            ? `${card.prompt}\n答题方式：选择题。原答是所选项标签，不要求写成完整句子或补齐题干已有内容。按题干判断所选项；若存在多解须指出歧义。选项：${JSON.stringify(card.options)}`
-            : `${card.prompt}${card.example ? `\n题目提供的原句或示例（内容待核对）：${card.example}` : ''}`
-          : card.prompt,
+      task: assessment?.kind === 'cloze' ? JSON.stringify({ ...assessment, category: 'collocation' }) : task,
       sourceId: card.source?.kind === 'private_material' ? card.source.id : null,
       ...(card.source?.materialUncovered ? { sourceKind: 'model_generated' } : {})
     };

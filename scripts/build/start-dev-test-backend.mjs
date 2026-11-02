@@ -66,6 +66,11 @@ process.env.LEARNING_ALLOWED_ORIGINS = [
 const paidFallbackFile = resolve(homedir(), '.config/deepseek-lazy-yozi.env');
 if (!process.env.YOZI_DEV_PAID_FALLBACK_FILE && existsSync(paidFallbackFile))
   process.env.YOZI_DEV_PAID_FALLBACK_FILE = paidFallbackFile;
+// The existing authorized reference can also be explicitly selected as BYOK in this isolated QA account.
+if (process.env.YOZI_DEV_PAID_FALLBACK_FILE)
+  process.env.LEARNING_ALLOWED_ORIGINS = [
+    ...new Set([...(process.env.LEARNING_ALLOWED_ORIGINS || '').split(',').filter(Boolean), 'https://api.deepseek.com'])
+  ].join(',');
 console.info(
   enablePlatform ? '[qa] Explicit free platform mode enabled.' : '[qa] BYOK default; platform calls disabled.'
 );

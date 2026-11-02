@@ -12,6 +12,7 @@ import { coachFixture } from '../fixtures/writing-coach.js';
 import WritingCoach from '@/pages/learning/components/writing-coach.vue';
 import MuseFeedbackCard from '@/components/business/learning/muse-feedback-card.vue';
 import MuseModelControl from '@/components/business/learning/muse-model-control.vue';
+import MuseModelFeedback from '@/components/business/learning/muse-model-feedback.vue';
 import BaseInput from '@/components/base/base-input/base-input.vue';
 import { coachSavedRecords } from '../../laf-backend/functions/_shared/learning-coach-records.js';
 import { applyLearningOperation, emptyLearningState } from '@/services/learning/learning-domain.js';
@@ -469,6 +470,65 @@ it('带练失败留在当前带练中；连接器入口不改学习事实，回�
   }
 });
 
+it.each([
+  ['带练确认失败', 'requestCoach', 'failed', 'TIMEOUT', '重新评估', 'retry'],
+  ['普通对话仍只回读', 'recoverModelResult', 'failed', 'TIMEOUT', '查询原请求', 'query_result'],
+  ['带练尚在执行', 'requestCoach', 'reserved', 'TIMEOUT', '查询原请求', 'query_result'],
+  ['费用尚未确认', 'requestCoach', 'failed', 'COST_PENDING', '查询原请求', 'query_result']
+])('%s只派发对应动作，不把未知执行或费用状态改成新请求', async (_name, operation, status, error, label, type) => {
+  const wrapper = mount(MuseModelFeedback, {
+    props: { failure: { status, error }, state: { phase: 'failed', operation, status, errorCode: error }, busy: false },
+    global: { stubs: { BaseIcon: true } }
+  });
+  try {
+    expect(wrapper.emitted('action')).toBeUndefined();
+    expect(wrapper.get('button').text()).toBe(label);
+    await wrapper.get('button').trigger('tap');
+    expect(wrapper.emitted('action')).toEqual([[{ type }]]);
+  } finally {
+    wrapper.unmount();
+  }
+});
+
+it('服务端未授权模型地址时引导检查连接；已终止的请求不再提供无效查询或自动重发', async () => {
+  vi.stubEnv('VITE_ENABLE_WRITING_COACH', 'true');
+  const previousGenerate = generateLearningTurn.getMockImplementation();
+  vi.mocked(generateLearningTurn).mockClear().mockResolvedValueOnce({
+    success: false,
+    code: 403,
+    status: 'failed',
+    error: 'ENDPOINT_FORBIDDEN'
+  });
+  vi.mocked(fetchLearningResult).mockClear();
+  const store = freshStore();
+  store.coachSave('profile', { profile: { exam: 'english2', minutes: 25, deadline: null } });
+  let wrapper;
+  try {
+    await store.requestCoach('diagnostic');
+    expect(store.active.coach.requests.at(-1).status).toBe('closed');
+    wrapper = mount(LearningPage, { global: { stubs: { BaseIcon: true, PrivacyPopup: true } } });
+    await flushPromises();
+    const alert = wrapper.get('[role="alert"]');
+    expect(alert.text()).toContain('API 地址不合法或未获允许，请检查连接');
+    expect(alert.text()).not.toContain('查询原请求');
+    const before = store.exportData();
+    await alert.get('button').trigger('tap');
+    await flushPromises();
+    expect(uni.navigateTo).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/pages/profile/index?panel=connectors' })
+    );
+    expect(store.exportData()).toBe(before);
+    expect(generateLearningTurn).toHaveBeenCalledTimes(1);
+    expect(fetchLearningResult).not.toHaveBeenCalled();
+  } finally {
+    wrapper?.unmount();
+    store.$dispose();
+    learningWriteLease.release();
+    vi.mocked(generateLearningTurn).mockReset().mockImplementation(previousGenerate);
+    vi.unstubAllEnvs();
+  }
+});
+
 it('评估未知时仅查询，确认失败后次日点击重新评估才调用新模型，沿用已保存原答', async () => {
   const store = freshStore();
   const previousGenerate = generateLearningTurn.getMockImplementation();
@@ -497,7 +557,12 @@ it('评估未知时仅查询，确认失败后次日点击重新评估才调用�
     vi.mocked(fetchLearningResult).mockResolvedValueOnce({ success: false, code: 409, status: 'reserved' });
     await store.requestCoach('feedback', 'diagnostic', original.id);
     expect(store.active.coach.requests.at(-1).status).toBe('pending');
-    vi.mocked(fetchLearningResult).mockResolvedValueOnce({ success: false, code: 503, status: 'failed' });
+    vi.mocked(fetchLearningResult).mockResolvedValueOnce({
+      success: false,
+      code: 503,
+      status: 'failed',
+      error: 'TIMEOUT'
+    });
     await store.requestCoach('feedback', 'diagnostic', original.id);
     expect(store.active.coach.requests.at(-1).status).toBe('closed');
     expect(generateLearningTurn).toHaveBeenCalledTimes(2);
@@ -522,6 +587,8 @@ it('评估未知时仅查询，确认失败后次日点击重新评估才调用�
     const retryAction = vi.spyOn(store, 'requestCoach');
     wrapper = mount(WritingCoach, { global: { stubs: { BaseIcon: true, PrivacyPopup: true } } });
     await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toContain('原请求已失败，原答已保留，可重新评估');
+    expect(wrapper.findAll('button').some((button) => button.text().trim() === '查询原请求')).toBe(false);
     await wrapper
       .findAll('button')
       .find((b) => b.text() === '重新评估')

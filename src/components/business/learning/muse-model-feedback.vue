@@ -41,11 +41,13 @@ const labels = {
   manual_model: '手填型号'
 };
 const visible = computed(() => props.failure || ['running', 'succeeded', 'failed'].includes(props.state.phase));
-const presentation = computed(() =>
-  modelErrorPresentation(
-    typeof props.failure === 'string' ? { error: props.failure } : props.failure || { error: props.state.errorCode }
-  )
-);
+const presentation = computed(() => {
+  const failure =
+    typeof props.failure === 'string'
+      ? { error: props.failure }
+      : props.failure || { error: props.state.errorCode, status: props.state.status };
+  return modelErrorPresentation({ ...failure, retryAllowed: props.state.operation === 'requestCoach' });
+});
 </script>
 <style scoped>
 .model-feedback {

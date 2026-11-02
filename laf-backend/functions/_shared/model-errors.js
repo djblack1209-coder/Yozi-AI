@@ -13,7 +13,8 @@ export function classifyModelFailure(input = {}) {
   if (['RATE_LIMITED', 'USER_DAILY_LIMIT', 'GLOBAL_DAILY_LIMIT'].includes(code) || status === 429 || code === 429)
     return 'RATE_LIMITED';
   if (['TIMEOUT', 'METADATA_TIMEOUT'].includes(code)) return 'TIMEOUT';
-  if (['INVALID_ENDPOINT', 'ENDPOINT_NOT_ALLOWED', 'SSRF_BLOCKED'].includes(code)) return 'ADDRESS_INVALID';
+  if (['INVALID_ENDPOINT', 'ENDPOINT_NOT_ALLOWED', 'ENDPOINT_FORBIDDEN', 'SSRF_BLOCKED'].includes(code))
+    return 'ADDRESS_INVALID';
   if (['TLS_FAILED', 'NETWORK_FAILED', 'UPSTREAM_FAILED', 'METADATA_UNAVAILABLE'].includes(code))
     return 'NETWORK_OR_TLS';
   return typeof code === 'string' && /^[A-Z0-9_]{1,60}$/.test(code) ? code : 'MODEL_FAILED';
@@ -40,8 +41,18 @@ export function modelErrorPresentation(input = {}) {
     UNSUPPORTED_DISCOVERY: ['供应商不支持读取型号，请手填型号', { type: 'manual_model' }]
   };
   const pending = typeof input === 'object' && ['reserved', 'pending'].includes(input.status);
-  const [message, action] = pending
+  let [message, action] = pending
     ? ['原请求仍在处理，请查询结果', { type: 'query_result' }]
     : messages[code] || ['请求未完成，原答已保留，请先查询原请求', { type: 'query_result' }];
+  if (
+    typeof input === 'object' &&
+    input.retryAllowed === true &&
+    ['failed', 'cancelled'].includes(input.status) &&
+    action?.type === 'query_result' &&
+    code !== 'COST_PENDING'
+  ) {
+    message = `原请求已${input.status === 'cancelled' ? '取消' : '失败'}，原答已保留，可重新评估`;
+    action = { type: 'retry' };
+  }
   return { code, message, action };
 }

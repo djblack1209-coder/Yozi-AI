@@ -2191,7 +2191,7 @@ it('Agnes 3.0 exact reviewed route costs zero only with supported, consistent us
       expect(costFromUsage(bad, model)).toBeNull();
     expect(costFromUsage(usage, { ...model, model: 'agnes-3.0-pro' })).toBeNull();
     expect(costFromUsage(usage, { ...model, endpoint: 'https://example.test/v1/chat/completions' })).toBeNull();
-    clock.mockReturnValue(Date.parse('2026-11-02T00:00:00Z'));
+    clock.mockReturnValue(Date.parse('2026-11-05T00:00:00Z'));
     expect(costFromUsage(usage, model)).toBeNull();
   } finally {
     clock.mockRestore();
@@ -2550,6 +2550,57 @@ it.each(['completed', 'timeout', 'bad-json', 'unfinished', 'groq-verified'])(
     }
   }
 );
+
+it.each([70000, 109000, 113000])('混合摸底初评可借用总额度，但复核不能越过120秒：%s', async (elapsed) => {
+  vi.stubEnv('LEARNING_ALLOWED_ORIGINS', 'https://provider.example,https://api.deepseek.com');
+  await streamProfile(false, 'u1', 'fixture-only-stream-key', {
+    model: 'deepseek-v4-pro',
+    endpoint: 'https://api.deepseek.com/chat/completions'
+  });
+  const started = Date.now();
+  let offset = 0;
+  const clock = vi.spyOn(Date, 'now').mockImplementation(() => started + offset);
+  try {
+    vi.mocked(callLearningProvider).mockImplementation(async (config: any) => {
+      if (config.writingOutput?.contract === 'writing-error-verification-v2') {
+        expect(config.timeoutMs).toBe(120000 - elapsed);
+        return {
+          ...streamCompleted,
+          actualModel: config.model,
+          content: JSON.stringify(mixedDiagnosticVerification())
+        };
+      }
+      expect(config.timeoutMs).toBe(110000);
+      offset = elapsed;
+      return {
+        ...streamCompleted,
+        actualModel: config.model,
+        finishReason: 'stop',
+        content: JSON.stringify(mixedDiagnosticReply(config))
+      };
+    });
+    const body = {
+      ...streamBody('mixed-shared-deadline-' + elapsed),
+      learningContext: { owner: 'u1', coach: mixedDiagnosticRequest() }
+    };
+    const result = await ai(context(body));
+    expect(callLearningProvider).toHaveBeenCalledTimes(elapsed <= 112000 ? 2 : 1);
+    if (elapsed <= 112000) expect(result).toMatchObject({ success: true });
+    else {
+      expect(result.success).toBe(false);
+      expect(result).not.toHaveProperty('data.coach');
+      const ledger = [...mock.rows.values()].find((row: any) => row.user_id === 'u1' && row.calls);
+      expect(ledger.calls[0]).toMatchObject({
+        status: 'failed',
+        result: null,
+        actualCost: null,
+        costStatus: 'pending'
+      });
+    }
+  } finally {
+    clock.mockRestore();
+  }
+});
 
 describe('灵感建议只用自带 API、独立小额度，回复先校验再显示', () => {
   const ideasContext = {

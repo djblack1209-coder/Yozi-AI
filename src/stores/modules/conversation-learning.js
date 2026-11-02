@@ -1941,8 +1941,9 @@ export const useConversationLearningStore = defineStore('conversation-learning',
         retryState.value = {
           phase: 'failed',
           requestId: request.id,
+          status: result.status,
           errorCode: result.error || result.errorCode || String(result.code),
-          message: modelErrorPresentation(result).message
+          message: modelErrorPresentation({ ...result, retryAllowed: true }).message
         };
         coachError.value =
           (result.message || '请求未完成，原答已保存；可查询原请求结果') +

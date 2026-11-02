@@ -29,11 +29,13 @@ export function phaseCallLimit(limit, phase) {
   return Math.max(1, Math.floor(limit * (shares[phase] || shares.practice)));
 }
 export function learningTimeout(context = {}) {
+  // 初评可借用混合摸底的剩余额度，独立复核仍受同一个120秒总截止限制。
+  if (coachVerificationBudget(context) > 65000) return 110000;
   return ['writing', 'diagnostic'].includes(learningBudgetPhase(context)) || context.coach ? 60000 : 30000;
 }
 export function coachVerificationBudget(context = {}) {
   const request = context.coach;
-  // 五题混合初评与独立复核分别有界；不通过减弱模型思考或评分来挤进单次调用时限。
+  // 五题混合初评与独立复核共用总额；不通过减弱模型思考或评分来挤进时限。
   return request?.phase === 'feedback' && request.target === 'diagnostic' && request.feedbackVersion === 2
     ? 120000
     : 65000;

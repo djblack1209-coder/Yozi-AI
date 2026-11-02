@@ -103,6 +103,7 @@ describe('宿主教学权限与隐私', () => {
     expect(LEARNING_TOOLS.progress.timeoutMs).toBe(2000);
     expect(LEARNING_TOOLS.assess.timeoutMs).toBe(60000);
     expect(learningTimeout({ coach: { phase: 'essay' } })).toBe(60000);
+    expect(learningTimeout({ coach: { phase: 'feedback', target: 'diagnostic', feedbackVersion: 2 } })).toBe(110000);
     expect(coachVerificationBudget({ coach: { phase: 'feedback', target: 'diagnostic', feedbackVersion: 2 } })).toBe(
       120000
     );
@@ -110,8 +111,10 @@ describe('宿主教学权限与隐私', () => {
       { phase: 'diagnostic', target: 'diagnostic', feedbackVersion: 2 },
       { phase: 'feedback', target: 'card-c1', feedbackVersion: 2 },
       { phase: 'feedback', target: 'diagnostic', feedbackVersion: 1 }
-    ])
+    ]) {
       expect(coachVerificationBudget({ coach })).toBe(65000);
+      expect(learningTimeout({ coach })).toBe(60000);
+    }
   });
   it('只装最近六条当前消息，旧日原文仍保留本机', () => {
     const repo = repository(),

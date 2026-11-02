@@ -294,6 +294,8 @@ describe('考研写作方法与完整已保存事实路径', () => {
         day: '2026-10-18',
         ...coachInputFor(s.coach(), day, 'feedback', 'card-c0')
       });
+      // 旧快照保留当时的纯文本任务，新代码不得因增加题型绑定而拒绝回看。
+      request.task = day.pack.cards.find((card) => card.id === 'c0').prompt;
       vi.stubGlobal('__YOZI_DEV_TEST__', true);
       s.apply('coach.request', {
         requestId: 'legacy-card',

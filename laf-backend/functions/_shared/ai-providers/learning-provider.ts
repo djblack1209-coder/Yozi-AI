@@ -1,4 +1,4 @@
-import { MODEL_TOOL_NAMES } from '../learning-runtime-policy.js';
+import { MODEL_TOOL_NAMES, learningTimeout } from '../learning-runtime-policy.js';
 import { ENTRY_TOOL_NAMES, validateEntryCall, validateEntrySchema } from '../learning-entries.js';
 import { normalizeContentBlocks } from '../learning-content-blocks.js';
 import https from 'node:https';
@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import { modelInferenceParameters } from './free-model-presets.js';
 import { DEV_TEST } from '../build-channel.js';
 import {
+  WRITING_COACH_CONTRACT,
   WRITING_METHOD,
   COACH_FEEDBACK_VERSION,
   COACH_FEEDBACK_CLASSES,
@@ -400,6 +401,26 @@ export function prepareCoachFeedbackModel(
       ? coachQuoteOptions(request.input, true).map((quote, index) => ({ id: `q${index + 1}`, quote }))
       : [],
     quoteId = { type: 'string', enum: references.map((reference) => reference.id) };
+  const assessment = native ? coachAssessmentTask(request) : null;
+  const quoteRoles =
+    assessment?.kind === 'diagnostic_set'
+      ? assessment.items
+      : anchoredEdits &&
+          assessment?.kind === 'cloze' &&
+          assessment.category === 'collocation' &&
+          references.length === 1 &&
+          /^[A-Za-z]+$/.test(request.input.trim().replace(/^[\p{P}\s]+|[\p{P}\s]+$/gu, ''))
+        ? [
+            {
+              quoteId: references[0].id,
+              kind: 'cloze',
+              task: `固定搭配：${assessment.source}`,
+              answerFormat: '独立填写的单词标签，不是英文整句；大小写和首尾标点不另计为句子书写错误',
+              allowedDimensions: ['语法', '搭配'],
+              allowReplacement: false
+            }
+          ]
+        : null;
   const coach: Record<string, any> =
     request.phase === 'summary'
       ? request.summaryContract
@@ -573,12 +594,22 @@ export function prepareCoachFeedbackModel(
             assessment?.kind === 'syntax_analysis'
               ? { type: 'null' }
               : assessment?.kind === 'cloze' && request.input.length <= 80
-                ? { type: ['string', 'null'], enum: [request.input, null] }
+                ? {
+                    type: ['string', 'null'],
+                    enum: [
+                      ...new Set([
+                        request.input,
+                        ...(quoteRoles ? [request.input.trim().replace(/^[\p{P}\s]+|[\p{P}\s]+$/gu, '')] : []),
+                        null
+                      ])
+                    ]
+                  }
                 : { type: ['string', 'null'], minLength: 1, maxLength: 80 },
-          replacement: ['syntax_analysis', 'diagnostic_set'].includes(assessment?.kind)
-            ? { type: 'null' }
-            : { type: ['string', 'null'], minLength: 1, maxLength: 120 },
-          ...(assessment?.kind === 'diagnostic_set' ? { rule: { ...string, minLength: 1, maxLength: 180 } } : {})
+          replacement:
+            quoteRoles || assessment?.kind === 'syntax_analysis'
+              ? { type: 'null' }
+              : { type: ['string', 'null'], minLength: 1, maxLength: 120 },
+          ...(quoteRoles ? { rule: { ...string, minLength: 1, maxLength: 180 } } : {})
         })
       };
       for (const field of ['strengths', 'uncertainties'])
@@ -597,14 +628,10 @@ export function prepareCoachFeedbackModel(
       };
     }
   }
-  if (
-    native &&
-    anchoredEdits &&
-    (request.phase === 'essay' || coachAssessmentTask(request)?.kind === 'diagnostic_set')
-  ) {
+  if (native && anchoredEdits && (request.phase === 'essay' || quoteRoles)) {
     const { name: _name, ...review } = feedbackFields.dimensions.items.properties;
     // 摸底的档位与证据由宿主从核对后的错误推出，模型只写本维点评。
-    const fields = coachAssessmentTask(request)?.kind === 'diagnostic_set' ? { comment: review.comment } : review;
+    const fields = quoteRoles ? { comment: review.comment } : review;
     feedbackFields.dimensionReviews = closed(
       Object.fromEntries(
         ['grammar', 'collocation', 'expression', 'task'].map((key) => [key, closed(structuredClone(fields))])
@@ -643,9 +670,7 @@ export function prepareCoachFeedbackModel(
       ...(native
         ? {
             quoteReferences: references,
-            ...(coachAssessmentTask(request)?.kind === 'diagnostic_set'
-              ? { quoteRoles: coachAssessmentTask(request).items, scorePolicy: 'host-derived-v1' as const }
-              : {}),
+            ...(quoteRoles ? { quoteRoles, scorePolicy: 'host-derived-v1' as const } : {}),
             responseBinding: { kind: request.phase, target: request.target },
             ...(anchoredEdits
               ? {
@@ -1261,11 +1286,18 @@ export async function verifyCoachErrors(
   call: (verifier: ModelConfig, messages: LearningMessage[]) => Promise<string>
 ): Promise<{ content: string; receipt: any }> {
   const output = config.writingOutput;
+  const singleBlank =
+    output?.quoteRoles?.length === 1 &&
+    output.quoteRoles[0].kind === 'cloze' &&
+    output.responseBinding?.target?.startsWith('card-');
   let value: any;
   try {
     if (output?.scorePolicy !== 'host-derived-v1') return { content, receipt: null };
     value = JSON.parse(content);
-    decodeCoachResponse(config, content);
+    // 单张搭配标签先过完整字段合同；盲填只决定这一空，再由调用方执行原业务校验。
+    // 避免初评把标签大写错归表达维度，导致已存在的盲填核对根本没有机会运行。
+    if (singleBlank) validateCoachSchema(output.schema, value);
+    else decodeCoachResponse(config, content);
   } catch {
     return { content, receipt: null };
   }
@@ -1705,6 +1737,24 @@ export async function verifyCoachErrors(
   }
   if (removed.length || added.length || correctedDimensions.size)
     value.message = value.errors.length ? '已核对这次作答，来看需要调整的地方。' : '已核对这次作答，来看具体反馈。';
+  if (singleBlank && results.length === 1 && results[0].correct !== null) {
+    const result = results[0];
+    value.uncertainties = [];
+    value.lines = [
+      {
+        quoteId: result.role.quoteId,
+        advice: result.correct ? '所填单词符合本句结构与搭配，这一空不需要修改。' : result.rule
+      }
+    ];
+    for (const key of ['grammar', 'collocation'])
+      value.dimensionReviews[key].comment = value.errors.some(
+        (e: any) => e.dimension === (key === 'grammar' ? '语法' : '搭配')
+      )
+        ? result.rule
+        : '本维未发现已核实的错误。';
+    value.dimensionReviews.expression.comment = '本题只核对填空，不评价英文表达。';
+    value.dimensionReviews.task.comment = '本题只核对填空，不评价成文任务完成。';
+  }
   const clearedOutlines = coverage.filter(
     (outline: any) =>
       outline.valid && outline.agreed && value.uncertainties.some((item: any) => item.quoteId === outline.quoteId)
@@ -2264,9 +2314,17 @@ export async function callLearningProvider(
   )
     delete wire.response_format;
   const body = JSON.stringify(wire);
-  // 反馈复核接受宿主分配的剩余时间；一般调用和双轮校准仍最多30秒。
-  const ceiling =
-    config.timeoutMs === 60000 || config.writingOutput?.contract === 'writing-error-verification-v2' ? 60000 : 30000;
+  // 只有宿主绑定的五题混合初评使用共享策略；复核仍受同一个总截止限制。
+  const mixedInitial =
+    config.writingOutput?.contract === WRITING_COACH_CONTRACT &&
+    config.writingOutput.feedbackVersion === 2 &&
+    config.writingOutput.responseBinding?.kind === 'feedback' &&
+    config.writingOutput.responseBinding.target === 'diagnostic';
+  const ceiling = mixedInitial
+    ? learningTimeout({ coach: { phase: 'feedback', target: 'diagnostic', feedbackVersion: 2 } })
+    : config.timeoutMs === 60000 || config.writingOutput?.contract === 'writing-error-verification-v2'
+      ? 60000
+      : 30000;
   const timeoutMs = Math.min(ceiling, Math.max(5000, config.timeoutMs || 30000));
   const traceSafeModel =
     DEV_TEST &&

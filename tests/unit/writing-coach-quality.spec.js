@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   coachAssessmentTask,
   coachInferenceContext,
+  coachInputFor,
   coachSystemPrompt,
   normalizeCoachOutput,
   parseCoachModelOutput,
@@ -761,6 +762,115 @@ describe('按任务的真实答题形式送评', () => {
     }
   });
 });
+describe('单张日练搭配填空沿用盲填与宿主推档', () => {
+  function single(answer) {
+    const card = {
+      id: 'c1',
+      kind: 'collocation',
+      prompt: '请补全句子：Many exchange students look forward ___ receiving their host-family assignments.',
+      options: [],
+      example: '',
+      source: { kind: 'model_generated', verified: false }
+    };
+    const day = { completed: false, pack: { cards: [card] }, answers: [{ cardId: card.id, answer }], feedback: {} };
+    const request = {
+      ...base,
+      ...coachInputFor({}, day, 'feedback', 'card-c1')
+    };
+    const prepared = prepareCoachFeedbackModel(config, coachInferenceContext(request), false, false, false, true);
+    const wire = {
+      quoteVersion: prepared.writingOutput.schema.properties.quoteVersion.enum[0],
+      message: '需要调整大小写。',
+      lines: [{ quoteId: 'q1', advice: '句中填词首字母应小写。' }],
+      phrases: [],
+      errors: [
+        {
+          quoteId: 'q1',
+          label: '句中填词首字母大写',
+          dimension: '表达',
+          errorText: answer,
+          replacement: null,
+          rule: '句中普通介词不应大写。'
+        }
+      ],
+      strengths: [],
+      uncertainties: [],
+      dimensionReviews: Object.fromEntries(
+        ['grammar', 'collocation', 'expression', 'task'].map((key) => [key, { comment: '初评认为需要调整。' }])
+      )
+    };
+    return { prepared, wire, request };
+  }
+  const fill = () =>
+    JSON.stringify({
+      blanks: [{ id: 'b1', accepted: ['to'], label: 'look forward to', rule: 'look forward to后接名词或动名词。' }]
+    });
+  it.each(['to', 'To', 'TO', 'To.'])('独立标签%s不推成句子大写错误，原答保持且不虚构表达档', async (answer) => {
+    const { prepared, wire, request } = single(answer);
+    expect(JSON.parse(request.task)).toMatchObject({ kind: 'cloze', category: 'collocation' });
+    const asked = [];
+    const checked = await verifyCoachErrors(prepared, JSON.stringify(wire), async (_config, messages) => {
+      asked.push(JSON.parse(messages[1].content));
+      return fill();
+    });
+    expect(asked).toEqual([
+      {
+        errors: [],
+        blanks: [
+          {
+            id: 'b1',
+            task: '固定搭配：Many exchange students look forward ___ receiving their host-family assignments.'
+          }
+        ]
+      }
+    ]);
+    expect(checked.receipt).toMatchObject({ status: 'completed', removed: 1, checked: 1 });
+    const coach = JSON.parse(decodeCoachResponse(prepared, checked.content)).coach;
+    expect(coach.weaknesses).toEqual([]);
+    expect(coach.lines[0]).toMatchObject({ original: answer, rewrite: answer });
+    expect(coach.lines[0].advice).not.toContain('大写');
+    expect(coach.dimensions.map(({ name, score }) => [name, score])).toEqual([
+      ['语法', 2],
+      ['搭配', 2],
+      ['表达', null],
+      ['任务完成', null]
+    ]);
+  });
+  it.each(['In', 'In.'])('错词%s仍由盲填补登一处搭配错，不因撤掉大写误报而放过', async (answer) => {
+    const { prepared, wire } = single(answer);
+    wire.errors = [];
+    wire.strengths = [{ quoteId: 'q1', label: '填词正确' }];
+    const checked = await verifyCoachErrors(prepared, JSON.stringify(wire), async () => fill());
+    expect(checked.receipt).toMatchObject({ status: 'completed', added: 1, checked: 1 });
+    const coach = JSON.parse(decodeCoachResponse(prepared, checked.content)).coach;
+    expect(coach.weaknesses).toEqual(['look forward to']);
+    expect(coach.strengths).toEqual([]);
+    expect(coach.dimensions.map(({ name, score }) => [name, score])).toEqual([
+      ['语法', 2],
+      ['搭配', 1],
+      ['表达', null],
+      ['任务完成', null]
+    ]);
+    expect(JSON.parse(checked.content).errors).toEqual([
+      expect.objectContaining({ errorText: 'In', replacement: null, dimension: '搭配' })
+    ]);
+  });
+  it('复核超时保持失败候选、仅一次调用；坏字段不绕过原校验', async () => {
+    const { prepared, wire } = single('To');
+    const raw = JSON.stringify(wire);
+    let calls = 0;
+    const checked = await verifyCoachErrors(prepared, raw, async () => {
+      calls++;
+      throw Object.assign(new Error('timeout'), { code: 'TIMEOUT' });
+    });
+    expect(calls).toBe(1);
+    expect(checked).toMatchObject({ content: raw, receipt: { status: 'failed', failure: 'TIMEOUT' } });
+    const invalid = JSON.stringify({ ...wire, extra: 'untrusted' });
+    expect((await verifyCoachErrors(prepared, invalid, async () => fill())).receipt).toBeNull();
+    expect(() => decodeCoachResponse(prepared, invalid)).toThrow(expect.objectContaining({ code: 'COACH_INVALID' }));
+  });
+});
+
 describe('摸底错误合并复核一次：讲解题只删不加，单词填空盲填比对', () => {
   const preparedFor = (r) => prepareCoachFeedbackModel(config, coachInferenceContext(r), false, false, false, true);
   // 填空／审题用不含定语从句的独立夹具；完整混合句法覆盖在下方，不给无关复核补默认答案。

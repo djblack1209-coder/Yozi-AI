@@ -585,7 +585,12 @@
         :id="DEV_TEST ? 'coach-action-error' : undefined"
         :role="modelFailure?.error === 'NEEDS_CONNECTION' ? 'status' : 'alert'"
         ><text>{{
-          message || modelErrorPresentation({ error: learning.retryState?.errorCode }).message
+          message ||
+          modelErrorPresentation({
+            error: learning.retryState?.errorCode,
+            status: learning.retryState?.status,
+            retryAllowed: true
+          }).message
         }}</text></BaseCard
       >
     </view>

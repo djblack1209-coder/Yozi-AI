@@ -412,18 +412,25 @@ it('received nonstream failures keep shape, usage and duration without reply or 
     responseText = invalidEnvelope;
     const timers = vi.spyOn(globalThis, 'setTimeout');
     try {
-      for (const [contract, expectedTimeout] of [
-        ['writing-error-verification-v2', 45000],
-        ['writing-exercise-calibration-v3', 30000],
-        ['ordinary-call', 30000]
+      for (const [contract, requestedTimeout, binding, feedbackVersion, expectedTimeout] of [
+        ['writing-error-verification-v2', 45000, null, null, 45000],
+        ['writing-exercise-calibration-v3', 45000, null, null, 30000],
+        ['ordinary-call', 45000, null, null, 30000],
+        ['writing-error-verification-v2', 90000, { kind: 'feedback', target: 'diagnostic' }, 2, 60000],
+        ['kaoyan-writing-coach-v1', 90000, { kind: 'feedback', target: 'diagnostic' }, 2, 90000],
+        ['kaoyan-writing-coach-v1', 110000, { kind: 'feedback', target: 'diagnostic' }, 2, 110000],
+        ['kaoyan-writing-coach-v1', 90000, { kind: 'feedback', target: 'card-c1' }, 2, 30000],
+        ['kaoyan-writing-coach-v1', 90000, { kind: 'feedback', target: 'diagnostic' }, 1, 30000]
       ] as const) {
         timers.mockClear();
         await callLearningProvider(
           {
             ...config,
-            timeoutMs: 45000,
+            timeoutMs: requestedTimeout,
             writingOutput: {
               contract,
+              ...(binding ? { responseBinding: binding } : {}),
+              ...(feedbackVersion ? { feedbackVersion } : {}),
               inferencePolicy: 'native-coach-tools-v1',
               schema: { type: 'object' },
               schemaDigest: 'fixture'
