@@ -2,7 +2,7 @@
   <view class="ai-connectors">
     <text v-if="!getToken()" class="connect-status">登录后保存和管理自己的 API 连接。</text>
     <text v-else-if="learning.modelListState?.phase === 'loading'" role="status">正在读取已保存的连接…</text>
-    <view v-else-if="learning.modelListState?.phase === 'error'" role="alert"
+    <view v-else-if="learning.modelListState?.phase === 'error'" class="connect-read-error" role="alert"
       ><text>连接暂时未读出</text><BaseButton variant="quiet" @tap="reload">重新读取连接</BaseButton></view
     >
     <text v-if="learning.needsConnection" class="connect-status">{{
@@ -37,22 +37,24 @@
         </view></view
       >
     </view>
-    <text class="connect-group-title">添加连接</text>
-    <view class="connect-list"
-      ><view v-for="provider in providers" :key="provider.id" class="connect-row" :data-provider-id="provider.id">
-        <image
-          v-if="provider.logo"
-          :src="provider.logo"
-          class="connect-logo"
-          :class="{ 'brand-mono': provider.mono }"
-          mode="aspectFit"
-          alt=""
-        />
-        <view class="connect-name"
-          ><text>{{ provider.provider }}</text></view
-        ><BaseButton variant="quiet" :disabled="locked" @tap="open(provider)">添加</BaseButton>
-      </view></view
-    >
+    <view class="connect-group">
+      <text class="connect-group-title">添加连接</text>
+      <view class="connect-list"
+        ><view v-for="provider in providers" :key="provider.id" class="connect-row" :data-provider-id="provider.id">
+          <image
+            v-if="provider.logo"
+            :src="provider.logo"
+            class="connect-logo"
+            :class="{ 'brand-mono': provider.mono }"
+            mode="aspectFit"
+            alt=""
+          />
+          <view class="connect-name"
+            ><text>{{ provider.provider }}</text></view
+          ><BaseButton variant="quiet" :disabled="locked" @tap="open(provider)">添加</BaseButton>
+        </view></view
+      >
+    </view>
     <text v-if="message" class="connect-status" role="status">{{ message }}</text>
     <CustomModal
       :visible="Boolean(current)"
@@ -405,7 +407,7 @@ onUnmounted(close);
   max-width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
   padding-bottom: 32px;
 }
 .connect-search {
@@ -459,29 +461,38 @@ onUnmounted(close);
 .connect-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .connect-group-title {
-  font-size: 14px;
+  font-size: 12px;
+  line-height: 18px;
   color: var(--ink-3);
   font-weight: 600;
   margin: 4px 4px 0;
 }
 .connect-list {
-  border-radius: 16px;
+  border-radius: 12px;
   background: var(--muse-raised);
-  padding: 6px 16px;
+  padding: 4px 12px;
 }
 .connect-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 52px;
-  padding: 8px 0;
+  min-height: 48px;
+  padding: 4px 0;
   border-bottom: 1px solid var(--line);
 }
 .connect-row:last-child {
   border: 0;
+}
+.connect-read-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 13px;
+  line-height: 20px;
 }
 /* Like Muse's connector tiles, each official mark sits whole on a light rounded tile, so black
    and colored marks stay legible on dark surfaces without recoloring or the global image dimming. */

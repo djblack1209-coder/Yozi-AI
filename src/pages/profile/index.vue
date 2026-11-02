@@ -1080,20 +1080,18 @@ export default {
 .native-settings-page .settings-sidebar {
   flex-direction: column;
   align-items: stretch;
-  padding: 8px;
+  padding: 0 8px 8px;
   border-right: 1px solid var(--line);
   border-bottom: 0;
   overflow-x: hidden;
   overflow-y: auto;
 }
 .native-settings-page .settings-sidebar-title {
-  display: flex;
-  min-height: 44px;
-  padding: 0 8px;
+  display: none;
 }
 .native-settings-page .settings-sidebar .settings-nav {
   white-space: normal;
-  padding: 8px;
+  padding: 0 8px;
   font-size: 13px;
 }
 .native-settings-page .settings-sidebar .settings-nav :deep(.base-icon) {
@@ -1105,11 +1103,45 @@ export default {
 .native-settings-page .settings-main {
   padding: 16px;
 }
+.native-settings-page .settings-heading {
+  margin-bottom: 12px;
+}
+.native-settings-page .settings-title {
+  font-size: 18px;
+  line-height: 24px;
+}
+.native-settings-page .settings-group {
+  margin-bottom: 16px;
+  padding: 0 14px;
+  border-radius: 12px;
+}
+.native-settings-page .settings-label {
+  margin-top: 16px;
+}
+.native-settings-page .profile-top {
+  min-height: 60px;
+  padding: 10px 0;
+}
+.native-settings-page .language-row,
+.native-settings-page .appearance-row,
+.native-settings-page .settings-group :deep(.base-list-row) {
+  min-height: 48px;
+}
 .native-settings-page .appearance-row {
   flex-wrap: wrap;
   gap: 8px;
 }
 .native-settings-page .user-section {
   flex-wrap: wrap;
+}
+@media (pointer: fine) {
+  .native-settings-page .settings-sidebar .settings-nav {
+    min-height: 32px;
+    height: 32px;
+  }
+  .native-settings-page .settings-sidebar .settings-nav :deep(.base-icon) {
+    width: 16px !important;
+    height: 16px !important;
+  }
 }
 </style>

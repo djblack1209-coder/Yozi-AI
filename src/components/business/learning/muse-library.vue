@@ -696,7 +696,7 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-  padding: 20px 60px 16px;
+  padding: 20px 64px 16px;
   flex-wrap: wrap;
 }
 .library-context {
@@ -775,7 +775,7 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 0 60px 36px;
+  padding: 0 64px 36px;
   scrollbar-width: none;
 }
 .library-scroll::-webkit-scrollbar {
