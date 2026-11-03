@@ -1017,7 +1017,7 @@ export function normalizeCoachOutput(value, request) {
     fail(
       w &&
         Array.isArray(w.patterns) &&
-        w.patterns.length >= 2 &&
+        w.patterns.length >= (subjectMethod?.paragraphsFromTask ? 1 : 2) &&
         (subjectMethod?.paragraphsFromTask || w.patterns.length <= 3),
       subjectMethod?.paragraphsFromTask ? '请按本题职责提供完整写作结构' : '写作结构需二至三段',
       w ? 'writing.patterns' : 'writing'

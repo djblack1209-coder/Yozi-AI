@@ -238,6 +238,16 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
     expect(coachSystemPrompt(next)).toContain('数组长度由本题实际职责决定');
     expect(coachSystemPrompt(legacy)).toContain('适合二至三段带写的中文短稿');
   });
+  it('accepts a single complete task only for the task-driven method and rejects empty structures', () => {
+    const r = request('daily', { methodContract: METHOD_V2 }),
+      raw = generation(r);
+    raw.writing.prompt = '请在一段内概括材料中的当前困难，80至120字，不提出对策。';
+    raw.writing.patterns = [['在一段内分项概括题目要求的当前困难']];
+    expect(parse(raw, r).writing.patterns).toHaveLength(1);
+    expect(() => normalizeCoachOutput(raw, request())).toThrow('二至三段');
+    raw.writing.patterns = [];
+    expect(() => parse(raw, r)).toThrow('完整写作结构');
+  });
   it.each(['paragraph--1', 'paragraph-01', 'paragraph-9007199254740992'])(
     'rejects ambiguous or unsafe paragraph indexes: %s',
     (target) => {
@@ -378,6 +388,7 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
   });
   it.each([
     { contract: METHOD, paragraphs: 2 },
+    { contract: METHOD_V2, paragraphs: 1 },
     { contract: METHOD_V2, paragraphs: 5 },
     { contract: METHOD_V2, paragraphs: 12 }
   ])('reuses full submission and event replay: $contract / $paragraphs paragraphs', ({ contract, paragraphs }) => {

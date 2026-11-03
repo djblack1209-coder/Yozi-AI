@@ -477,9 +477,11 @@
                     >第 {{ paragraphIndex + 1 }} 段 ·
                     {{
                       subjectMethod
-                        ? subjectMethod.paragraphLabels[
-                            paragraphIndex === 0 ? 0 : paragraphIndex === day.pack.writing.patterns.length - 1 ? 2 : 1
-                          ]
+                        ? subjectMethod.paragraphsFromTask && day.pack.writing.patterns.length === 1
+                          ? '完成本题'
+                          : subjectMethod.paragraphLabels[
+                              paragraphIndex === 0 ? 0 : paragraphIndex === day.pack.writing.patterns.length - 1 ? 2 : 1
+                            ]
                         : paragraphIndex === 0
                           ? '交代目的或描述'
                           : paragraphIndex === day.pack.writing.patterns.length - 1

@@ -119,7 +119,13 @@ export function shenlunCoachPrompt(request, { quotes = [] } = {}) {
       : {
           kind: r.phase,
           target: r.target,
-          lines: [{ original: evidenceQuotes[0] || '', advice: '具体判断及材料依据', rewrite: '最小修改建议' }],
+          lines: [
+            {
+              original: evidenceQuotes[0] || '',
+              advice: '具体判断及材料依据',
+              rewrite: method.classifiedObservations ? evidenceQuotes[0] || '' : '最小修改建议'
+            }
+          ],
           weaknesses: [],
           weaknessEvidence: [],
           strengths: [],
@@ -138,6 +144,7 @@ ${paragraph ? `当前明确为第${Number(paragraph[1]) + 1}段，只按task末�
 ${method.paragraphsFromTask ? '每日写作优先完整保留材料中给定的本题：体裁、身份、对象、目的、必要内容、字数和段落要求均不能换成另一份短稿。题目要求申发论述或较长文章时，按本题论证职责组织开篇、若干主体段和结尾，不强行缩为二至三段；patterns数组长度由本题实际职责决定，JSON中的三段仅为形状示例，不是数量要求。若材料确实没有写作题目，才可明确另设基础训练任务，并写明情境和训练字数，不能冒充真题。' : '每日另给一项适合二至三段带写的中文短稿任务，例如情况说明或建议稿；这是本次训练，不冒充真题或固定官方字数。'}writing.prompt写明本题的体裁、对象、目的、必要内容和以“字”为单位的字数；patterns每段只列一至两个职责／组织方法，结合当前材料但不提供可直接提交的完整稿或照抄句式。段数只适用于本题，不强加给所有申论题型；全文字数以本题为准。
 评阅只比较当前task、input和提供的材料，不沿用历史批评。lines的original必须逐字出现在input，每次最多三条，一条一个要点，advice说明具体理由，rewrite给最小修改或提示。已经准确的表述应保留，不为润色捏造错误；归纳题允许同义概括，不强制抄关键词。weaknesses和strengths须各有{label,quote}逐字原答证据，无证据留空；不会、猜测和泛泛态度不作优点。dimensions只用定义中的四项和comment，不给score、考试分数、档位、正确率或掌握结论。phrases为空；不把申论表述自动变成英语搭配复习。小结只描述实际练习，不宣称已经掌握、完成官方考试要求或发送提醒。
 改写不能把学生提出的建议变成材料中已经确认的社区计划或承诺；不能为统一口吻而新增措施、主体或后续通知。没有必要修改时，rewrite保留原句，在advice说明为何成立。
+${method.paragraphsFromTask ? '题干要求一段概括、解释或建议时，patterns只给一个元素，完整组织本题要点；不能为了三段示例硬加开头、结尾或称呼。段内分项不等于必须另起段，概括题不能擅改为议论文或建议稿；分析题只分析题干对象与材料能支持的关系，对策题按现有问题与身份安排可行建议，不强加所有题型相同的模块。rewrite须给可阅读的原句或修改后句子，不能只写“保留原句”“无需修改”等操作提示；可选建议放在advice。' : ''}
 ${method.classifiedObservations ? 'weaknessEvidence复用{label,quote,classification}，classification只用error、suggestion、uncertain。error必须有明确材料矛盾、语义错误或题目实质要求缺失；仅仅更醒目、更贴原文、更顺畅、是否另起一段等呈现偏好，均为suggestion，不能进入weaknesses。有据质疑题干前提不记错误；概括与核对说明在同段或同一句，本身不构成逻辑错误。不能从另一主体、另一措施的状态推断当前建议已经实施或尚未实施；出题若无法确认，应问材料能否确认，而不能要求学生肯定无据的前提。weaknesses只列error标签，没有确定错误就留空；suggestion与uncertain可以保留证据，但不成为薄弱点。' : ''}
 本轮可引用的原答片段：${JSON.stringify(evidenceQuotes)}。original优先从中原样选取，不翻译、补写或拼接。审题的genre、recipient、purpose、points、words只是宿主保存的体裁、对象、目的、要点、字数字段名，不是学生作文，不点评这些英文键名；五项合起来核对题干，信息在任一字段表达过就算覆盖。体裁栏只需判断体裁，不要求再次展开对象或范围；对象、目的与要点已经表达清楚时，不以“未在体裁判断中展开”“没有重复题干”记缺项。可选润色只在advice注明“可选”，不得写入weaknesses或要求补入材料外事实。审题虽有五个字段，仍只选一至三处重点反馈，不逐字段凑五条。评阅paragraph-N只核对该段职责，不以全文字数、其他段落或尚未要求的内容判该段缺项；全文要求留到essay。
 只返回一个JSON对象：${JSON.stringify({ message: '继续这一小步。', question: null, tools: [], coach: shape })}。示例中的说明文字均替换成真实教学内容。question始终null，tools始终[]；不输出其他问题、代码或执行动作。`;

@@ -14,10 +14,11 @@ import { parseCoachModelOutput } from '../../laf-backend/functions/_shared/learn
 import {
   SHENLUN_METHOD,
   SHENLUN_METHOD_CONTRACT as METHOD,
+  SHENLUN_METHOD_V2_CONTRACT as METHOD_V2,
   COACH_SHENLUN_TRACK
 } from '../../laf-backend/functions/_shared/learning-shenlun-method.js';
 
-let store, wrapper, calls, advertised;
+let store, wrapper, calls, advertised, methodContract, paragraphCount;
 const copy = (value) => JSON.parse(JSON.stringify(value));
 const material =
   '合成社区材料：服务窗口仅在工作日白天开放，部分居民办理不便。社区拟新增周六预约时段，并在月底收集意见；措施尚未实施，没有成效数据。';
@@ -43,8 +44,14 @@ const coachReply = (r) => {
         ...(r.phase === 'daily'
           ? {
               writing: {
-                prompt: '面向社区负责人写一份120—180字的服务调整建议稿，区分当前困难、拟议措施与反馈安排。',
-                patterns: [['交代材料情况与任务'], ['说明建议与反馈安排']],
+                prompt:
+                  paragraphCount === 1
+                    ? '概括当前服务存在的问题，80至120字，只写一段，不提出对策。'
+                    : '面向社区负责人写一份120—180字的服务调整建议稿，区分当前困难、拟议措施与反馈安排。',
+                patterns:
+                  paragraphCount === 1
+                    ? [['在一段内完成本题所需的概括']]
+                    : [['交代材料情况与任务'], ['说明建议与反馈安排']],
                 ...reference
               }
             }
@@ -77,6 +84,8 @@ beforeEach(() => {
   store = useConversationLearningStore();
   calls = [];
   advertised = true;
+  methodContract = METHOD;
+  paragraphCount = 2;
   vi.spyOn(uni, 'request').mockImplementation((options) => {
     const data = copy(options.data);
     calls.push(data);
@@ -130,7 +139,7 @@ beforeEach(() => {
                 ],
                 intakeContract: 'model-intake-v1',
                 intakeContracts: ['model-intake-v1', 'model-intake-v2'],
-                ...(advertised ? { coachMethods: [METHOD] } : {})
+                ...(advertised ? { coachMethods: [methodContract] } : {})
               }
             }
           : {
@@ -210,79 +219,90 @@ describe('Shenlun intake, source consent and Chinese writing UI', () => {
     expect(store.active.coach).toBeUndefined();
     expect(store.state.events.at(-1).data.coachMethod).toBeUndefined();
   });
-  it('requires consent and material, transmits only the new method contract, and renders Chinese paragraph input', async () => {
-    await proposal();
-    store.acceptModelIntake();
-    const added = store.commit('material.add', { material: parsePastedMaterial(material, 'synthetic-material') });
-    expect(added).toBeDefined();
-    store.coachSave('material', { materialId: 'synthetic-material' });
-    store.sharingAllowed = false;
-    await expect(store.requestCoach('diagnostic')).rejects.toMatchObject({ code: 'CONSENT_REQUIRED' });
-    expect(modelCalls()).toHaveLength(0);
-    store.sharingAllowed = true;
-    expect((await store.requestCoach('diagnostic')).success).toBe(true);
-    expect(modelCalls()).toHaveLength(1);
-    const asked = modelCalls()[0].learningContext.coach;
-    expect(asked).toMatchObject({ exam: 'shenlun', methodContract: METHOD });
-    for (const key of [
-      'feedbackVersion',
-      'dimensionContract',
-      'exerciseContract',
-      'knowledgeContract',
-      'predictionContract'
-    ])
-      expect(asked[key]).toBeUndefined();
-    for (let i = 1; i <= 5; i++)
-      store.coachSave('answer', {
-        target: 'diagnostic',
-        cardId: `d${i}`,
-        answer: '工作日白天开放使部分居民办理不便。'
-      });
-    await store.requestCoach('feedback', 'diagnostic');
-    await store.requestCoach('daily');
-    for (let i = 1; i <= 4; i++) {
-      store.coachSave('answer', { cardId: `c${i}`, answer: '建议增加周六预约时段并收集意见。' });
-      await store.requestCoach('feedback', `card-c${i}`);
-    }
-    store.coachSave('analysis', {
-      fields: {
-        genre: '建议稿',
-        recipient: '社区负责人',
-        purpose: '改善服务',
-        points: '问题、措施、反馈',
-        words: '120—180字'
+  it.each([
+    { contract: METHOD, paragraphs: 2 },
+    { contract: METHOD_V2, paragraphs: 1 }
+  ])(
+    'requires consent and explicit submission: $contract / $paragraphs paragraphs',
+    async ({ contract, paragraphs }) => {
+      methodContract = contract;
+      paragraphCount = paragraphs;
+      await proposal();
+      store.acceptModelIntake();
+      const added = store.commit('material.add', { material: parsePastedMaterial(material, 'synthetic-material') });
+      expect(added).toBeDefined();
+      store.coachSave('material', { materialId: 'synthetic-material' });
+      store.sharingAllowed = false;
+      await expect(store.requestCoach('diagnostic')).rejects.toMatchObject({ code: 'CONSENT_REQUIRED' });
+      expect(modelCalls()).toHaveLength(0);
+      store.sharingAllowed = true;
+      expect((await store.requestCoach('diagnostic')).success).toBe(true);
+      expect(modelCalls()).toHaveLength(1);
+      const asked = modelCalls()[0].learningContext.coach;
+      expect(asked).toMatchObject({ exam: 'shenlun', methodContract: contract });
+      for (const key of [
+        'feedbackVersion',
+        'dimensionContract',
+        'exerciseContract',
+        'knowledgeContract',
+        'predictionContract'
+      ])
+        expect(asked[key]).toBeUndefined();
+      for (let i = 1; i <= 5; i++)
+        store.coachSave('answer', {
+          target: 'diagnostic',
+          cardId: `d${i}`,
+          answer: '工作日白天开放使部分居民办理不便。'
+        });
+      await store.requestCoach('feedback', 'diagnostic');
+      await store.requestCoach('daily');
+      for (let i = 1; i <= 4; i++) {
+        store.coachSave('answer', { cardId: `c${i}`, answer: '建议增加周六预约时段并收集意见。' });
+        await store.requestCoach('feedback', `card-c${i}`);
       }
-    });
-    await store.requestCoach('feedback', 'analysis');
-    renderCoach();
-    await flushPromises();
-    const input = wrapper.findComponent(MuseWritingCard);
-    expect(input.exists()).toBe(true);
-    expect(input.props('english')).toBe(false);
-    expect(wrapper.text()).toContain('交代任务与情况');
-    expect(wrapper.text()).toContain('依据材料组织本段');
-    expect(store.active.coach.days[0].writingSubmissions || []).toEqual([]);
-    for (let index = 0; index < 2; index++) {
-      store.coachSave('paragraph', {
-        index,
-        text: '社区拟增加周六预约时段，尚无实施效果数据。',
-        authorship: 'user_typed'
+      store.coachSave('analysis', {
+        fields: {
+          genre: '建议稿',
+          recipient: '社区负责人',
+          purpose: '改善服务',
+          points: '问题、措施、反馈',
+          words: '120—180字'
+        }
       });
-      await store.requestCoach('feedback', `paragraph-${index}`);
-      store.coachSave('paragraph', {
-        index,
-        rewrite: true,
-        text: '建议增加周六预约时段，并于月底收集意见。',
-        authorship: 'user_typed'
-      });
+      await store.requestCoach('feedback', 'analysis');
+      renderCoach();
+      await flushPromises();
+      const input = wrapper.findComponent(MuseWritingCard);
+      expect(input.exists()).toBe(true);
+      expect(input.props('english')).toBe(false);
+      expect(wrapper.text()).toContain(paragraphs === 1 ? '完成本题' : '交代任务与情况');
+      expect(wrapper.text()).toContain('依据材料组织本段');
+      expect(store.active.coach.days[0].writingSubmissions || []).toEqual([]);
+      for (let index = 0; index < paragraphs; index++) {
+        store.coachSave('paragraph', {
+          index,
+          text: '社区拟增加周六预约时段，尚无实施效果数据。',
+          authorship: 'user_typed'
+        });
+        await store.requestCoach('feedback', `paragraph-${index}`);
+        store.coachSave('paragraph', {
+          index,
+          rewrite: true,
+          text: '建议增加周六预约时段，并于月底收集意见。',
+          authorship: 'user_typed'
+        });
+      }
+      await flushPromises();
+      expect(wrapper.text()).toContain('交卷');
+      if (paragraphs === 1) expect(wrapper.text()).not.toContain('第 2 段');
+      expect(store.active.coach.days[0].writingSubmissions || []).toEqual([]);
+      store.coachSave('essaySubmit');
+      await store.requestCoach('essay');
+      await flushPromises();
+      expect(store.active.coach.days[0].writingSubmissions).toHaveLength(1);
+      expect(wrapper.text()).toContain('成文反馈 · AI 评估');
+      expect(wrapper.text()).toContain('流程来源：带写成文');
+      expect(wrapper.text()).not.toContain('流程来源：未知');
     }
-    expect(store.active.coach.days[0].writingSubmissions || []).toEqual([]);
-    store.coachSave('essaySubmit');
-    await store.requestCoach('essay');
-    await flushPromises();
-    expect(store.active.coach.days[0].writingSubmissions).toHaveLength(1);
-    expect(wrapper.text()).toContain('成文反馈 · AI 评估');
-    expect(wrapper.text()).toContain('流程来源：带写成文');
-    expect(wrapper.text()).not.toContain('流程来源：未知');
-  });
+  );
 });
