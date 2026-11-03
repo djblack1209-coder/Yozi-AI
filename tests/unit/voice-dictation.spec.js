@@ -1,3 +1,7 @@
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, nextTick, reactive } from 'vue';
 import { mount } from '@vue/test-utils';
@@ -155,3 +159,42 @@ describe('听写内存预览和草稿隔离（模拟事件，不是语音验收�
     expect(voice.error).toBe('input_changed');
   });
 });
+
+it.runIf(process.platform === 'darwin')(
+  'native cancellation retains its receiver through cleanup without opening audio',
+  () => {
+    const scratch = mkdtempSync(join(tmpdir(), 'yozi-voice-lifecycle-'));
+    const binary = join(scratch, 'voice-lifecycle');
+    const source = resolve('tests/native/voice-lifecycle.m');
+    const env = { PATH: process.env.PATH, NSZombieEnabled: 'YES' };
+    if (process.env.DEVELOPER_DIR) env.DEVELOPER_DIR = process.env.DEVELOPER_DIR;
+    try {
+      execFileSync(
+        'xcrun',
+        [
+          '--sdk',
+          'macosx',
+          'clang',
+          '-O2',
+          '-fobjc-arc',
+          '-fblocks',
+          '-framework',
+          'Foundation',
+          '-framework',
+          'Speech',
+          '-framework',
+          'AVFoundation',
+          source,
+          '-o',
+          binary
+        ],
+        { env, encoding: 'utf8', timeout: 20000 }
+      );
+      const output = execFileSync(binary, [], { env, encoding: 'utf8', timeout: 5000 });
+      expect(JSON.parse(output)).toEqual({ checks: 6, audioCapture: false, permissionRequests: false });
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
+  },
+  30000
+);

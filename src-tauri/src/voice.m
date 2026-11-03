@@ -76,12 +76,14 @@ static YoziVoiceSession *ActiveVoice;
     [self.engine stop];
 }
 - (void)cancel {
-    self.finishing = YES;
-    if (ActiveVoice == self) ActiveVoice = nil;
-    [self stopAudio];
-    [self.task cancel];
-    self.task = nil; self.request = nil; self.engine = nil; self.recognizer = nil;
-    self.text = @"";
+    // Detach callbacks immediately, but keep the receiver alive through teardown.
+    __attribute__((objc_precise_lifetime)) YoziVoiceSession *session = self;
+    session.finishing = YES;
+    if (ActiveVoice == session) ActiveVoice = nil;
+    [session stopAudio];
+    [session.task cancel];
+    session.task = nil; session.request = nil; session.engine = nil; session.recognizer = nil;
+    session.text = @"";
 }
 - (void)fail:(NSString *)reason {
     if (ActiveVoice != self) return;

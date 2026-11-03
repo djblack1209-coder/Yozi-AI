@@ -84,6 +84,7 @@
 <script setup>
 import { ref, computed, getCurrentInstance, onMounted, onUpdated, onBeforeUnmount } from 'vue';
 import { useVoiceDictation } from '@/composables/useVoiceDictation.js';
+import { DEV_TEST } from '@/config/build-channel.js';
 import '@/i18n/muse.js';
 import { t } from '@/i18n/index.js';
 import BaseButton from '@/components/base/base-button/base-button.vue';
@@ -105,8 +106,8 @@ const props = defineProps({
 });
 const emit = defineEmits(['update:modelValue', 'submit', 'attach', 'stop', 'height']);
 const root = ref(null);
-// Retain implementation; expose only after native voice acceptance (director A5).
-const voiceEntryEnabled = false;
+// Native acceptance stays opt-in and cannot expose unverified dictation in production.
+const voiceEntryEnabled = DEV_TEST && import.meta.env.VITE_YOZI_VOICE_ACCEPTANCE === '1';
 const voice = useVoiceDictation(
   props,
   emit,

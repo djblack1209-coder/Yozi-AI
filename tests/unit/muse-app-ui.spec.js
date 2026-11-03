@@ -1,6 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-beforeEach(() => setActivePinia(createPinia()));
+const voiceStart = vi.hoisted(() => vi.fn());
+const voiceBuild = vi.hoisted(() => ({ devTest: false }));
+vi.mock('@/config/build-channel.js', () => ({
+  get DEV_TEST() {
+    return voiceBuild.devTest;
+  }
+}));
+beforeEach(() => {
+  setActivePinia(createPinia());
+  voiceStart.mockClear();
+  voiceBuild.devTest = false;
+});
 import { mount } from '@vue/test-utils';
 import MuseComposer from '@/components/business/learning/muse-composer.vue';
 vi.mock('@/composables/useVoiceDictation.js', () => ({
@@ -9,7 +20,7 @@ vi.mock('@/composables/useVoiceDictation.js', () => ({
     phase: 'idle',
     error: '',
     capability: { platform: 'macos', available: true },
-    start: vi.fn(),
+    start: voiceStart,
     stop: vi.fn(),
     cancel: vi.fn()
   })
@@ -17,7 +28,10 @@ vi.mock('@/composables/useVoiceDictation.js', () => ({
 import { workspaceDrafts } from '@/services/learning/workspace-drafts.js';
 
 let wrapper;
-afterEach(() => wrapper?.unmount());
+afterEach(() => {
+  wrapper?.unmount();
+  vi.unstubAllEnvs();
+});
 describe('Muse App input behavior', () => {
   it('IME confirmation and Shift Enter preserve the draft; plain Enter submits once', async () => {
     wrapper = mount(MuseComposer, { props: { modelValue: '自己的原答' } });
@@ -186,8 +200,30 @@ it('review keeps the draft local until explicit submission and lets the host der
   }
 });
 
-it('S3 A5 keeps unverified voice entry hidden while preserving the composer implementation', () => {
+it('S3 A5 keeps unverified voice entry hidden by default in a QA build', () => {
+  voiceBuild.devTest = true;
   wrapper = mount(MuseComposer, { props: { modelValue: '原答' } });
   expect(wrapper.findAll('button')).toHaveLength(2);
   expect(wrapper.findAll('button').some((button) => button.attributes('icon') === 'microphone')).toBe(false);
+});
+
+it('S19 isolated voice acceptance requires an explicit start and leaves the draft unsubmitted', async () => {
+  vi.stubEnv('VITE_YOZI_VOICE_ACCEPTANCE', '1');
+  voiceBuild.devTest = true;
+  wrapper = mount(MuseComposer, { props: { modelValue: '自己的原答' } });
+  const microphone = wrapper.get('button[aria-label="普通话听写"]');
+  expect(voiceStart).not.toHaveBeenCalled();
+  expect(wrapper.emitted('submit')).toBeUndefined();
+  await microphone.trigger('tap');
+  expect(voiceStart).toHaveBeenCalledTimes(1);
+  expect(wrapper.props('modelValue')).toBe('自己的原答');
+  expect(wrapper.emitted('submit')).toBeUndefined();
+});
+
+it('S19 voice acceptance flag cannot expose the microphone in a production build', () => {
+  vi.stubEnv('VITE_YOZI_VOICE_ACCEPTANCE', '1');
+  voiceBuild.devTest = false;
+  wrapper = mount(MuseComposer, { props: { modelValue: '自己的原答' } });
+  expect(wrapper.find('button[aria-label="普通话听写"]').exists()).toBe(false);
+  expect(voiceStart).not.toHaveBeenCalled();
 });
