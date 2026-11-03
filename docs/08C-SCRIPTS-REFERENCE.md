@@ -1,6 +1,6 @@
 # 脚本与依赖维护
 
-## 当前 App 验收范围（2026-10-27 裁定）
+## 当前 App 验收范围（2026-11-02 裁定）
 
 研发主线只做桌面与手机 App。小程序功能、界面适配、构建和验证全部暂停；保留既有小程序代码、依赖、脚本及构建产物，禁止以清理或构建前置准备为由删除／覆盖它们。下方历史微信步骤和大小回执只作历史记录，不构成当前工单。
 
@@ -8,11 +8,11 @@
 - 不执行 `dev:mp-weixin`、`build:mp-weixin`、`audit:mp-main-usage`、`audit:wechat:artifacts`、`smoke:wechat:devtools`，不启动微信开发者工具，不做390px小程序适配。
 - `release:gate`／`release:gate:report` 是含微信步骤的旧聚合脚本，本阶段整条不运行；保留原脚本，App工单分别执行需要的现有检查。
 - 不使用默认会扫描微信目录的裸 `audit:public-build`／`ui-quality-gate.js --public-build`；App共享前端检查须显式传入本轮App输出目录。CI当前构建H5、桌面脚本已指定桌面目录，无需为了小程序追加验证。H5结果仍不替代App目标端验收。
-- 手机App的窄屏与键盘检查依App任务继续；本裁定停止的是小程序适配与验收，不停止App侧权限、批改契约、写作主链或桌面构建。
+- 所有测试在本机完成，不安排手机连接／解锁、外部物理设备或跨设备实测。窄屏与键盘检查限本机窗口及已有原生／模拟器，App权限、批改契约、写作主链和桌面构建按实际覆盖报告；不把共享前端或构建当作未覆盖原生能力通过。
 
 ## dev/test 渠道本机验收
 
-沿用 `YOZI_BUILD_CHANNEL=dev/test`；未指定渠道的生产构建默认 release。测试包构建：`YOZI_BUILD_CHANNEL=test YOZI_ISOLATED_BUILD=1 npm run build:desktop -- --config '{"identifier":"cn.wangshiliang.wenli.qa.journey"}' --bundles app --no-sign -- --offline --locked --jobs 1`；核验签名后放入 `tmp/dev-test.noindex/Yozi AI.app`，立即删除被替代的测试包，不替换日常 App。
+沿用 `YOZI_BUILD_CHANNEL=dev/test`；未指定渠道的生产构建默认 release。测试包构建：`YOZI_BUILD_CHANNEL=test YOZI_ISOLATED_BUILD=1 npm run build:desktop -- --config '{"identifier":"cn.wangshiliang.wenli.qa.journey"}' --bundles app --no-sign -- --offline --locked --jobs 1`；核验签名后放入 `tmp/dev-test.noindex/Yozi AI.app`，不替换日常 App。批次收尾仅将确认已被覆盖、无消费者且无独有恢复用途的旧测试包正常移入废纸篓；当前候选、未完成验收和必要回退继续保留。
 测试客户端固定连接 `http://127.0.0.1:4382`，无生产备用地址。配套服务使用现有 standalone：`node --env-file=tmp/dev-test.noindex/runtime.env scripts/build/start-dev-test-backend.mjs`；该本机私有环境文件权限 0600，不入 Git，服务已运行时直接复用。启动器仅接受既有回环地址4382与yozi_dev_test库；按客户2026-11-03裁定，剩余开发主用已配置付费DeepSeek Flash／V4 Pro，停止免费台账轮换与旧兜底自动装载，旧免费平台参数直接拒绝。付费错误保留结果／失败收据，不回退免费通道；不另设开发费用上限，既有防循环、时限、返修次数、SSRF、鉴权、用户隔离、幂等和待结算保护保持，平台教学仍关闭。客户端无需取密钥或导入私有目录；正式收费与短信开关不变。
 H5验收复用该QA已批准的浏览器来源（2026-10-24实跑为`http://127.0.0.1:42153`，启动前查占用）；随机临时端口不自动符合CORS，不能据此判API失败或修改放行规则。用`desktop.mjs web`单独更新前端不封装／启动App，完整原生包仍在功能收尾后构建。 原生QA验收还须在该隔离服务的`ALLOWED_ORIGINS`保留精确来源`tauri://localhost`；2026-10-25当前服务另有既有HMR来源`http://127.0.0.1:5173`，不使用通配符，不改正式服务。
 后端测试放行须同时设置 `YOZI_BUILD_CHANNEL=dev/test`、`NODE_ENV=test/development`、`HOST=127.0.0.1`、`DB_NAME=yozi_dev_test`、`MONGODB_URI=mongodb://127.0.0.1:<端口>/yozi_dev_test`；缺任一项不启用固定码。注册自动带 `000000`，发送接口不发邮件、不等待冷却；正式环境不接受固定测试码。
