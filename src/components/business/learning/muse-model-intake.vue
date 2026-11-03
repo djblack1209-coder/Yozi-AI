@@ -36,6 +36,7 @@
           <view class="intake-profile">
             <text>{{ proposal.goal }}</text>
             <text v-if="proposal.subjects.length">{{ proposal.subjects.join(' · ') }}</text>
+            <text v-if="proposal.examScope">{{ examScopeLabel(proposal.examScope) }}</text>
             <text v-if="proposal.minutes">每天 {{ proposal.minutes }} 分钟</text>
             <text v-if="proposal.deadline">{{ proposal.deadline }}</text>
             <text v-if="proposal.foundation">{{ proposal.foundation }}</text>
@@ -122,6 +123,7 @@ import { modelErrorPresentation } from '../../../../laf-backend/functions/_share
 import { safeNavigateTo } from '@/utils/safe-navigate.js';
 import { studentAvatar } from '@/services/learning/shell-navigation.js';
 import { intakeFinished, MODEL_INTAKE_V2_CONTRACT } from '../../../../laf-backend/functions/_shared/learning-intake.js';
+import { examScopeLabel } from '../../../../laf-backend/functions/_shared/learning-exam-scope.js';
 const props = defineProps({
   sharedInput: Boolean,
   emptyGreeting: Boolean,

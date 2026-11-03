@@ -1248,8 +1248,15 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
           'CONTEXT_CHANGED',
           '请沿原建档合同回答或明确重新开始'
         );
+      if (data.answer !== undefined && data.scopeContract !== undefined)
+        assert(data.scopeContract === previous?.scopeContract, 'CONTEXT_CHANGED', '考试范围合同已变化，请重新开始');
       const context = normalizeIntakeContext({
         turns,
+        ...(data.scopeContract !== undefined
+          ? { scopeContract: data.scopeContract }
+          : !data.reset && !previous?.acceptedConversationId && previous?.scopeContract
+            ? { scopeContract: previous.scopeContract }
+            : {}),
         ...(data.contract !== undefined
           ? { contract: data.contract }
           : !data.reset && previous?.contract

@@ -6,6 +6,8 @@ import { coachErrorReviews } from './learning-coach-review.js';
 import { WRITING_KNOWLEDGE_CONTRACT, writingKnowledgeBinding } from './learning-writing-knowledge.js';
 import { normalizeLearningModelOrigin } from './learning-model-origin.js';
 import { subjectCoachMethod, subjectCoachMethodByContract } from './learning-coach-methods.js';
+import { normalizeExamScope } from './learning-exam-scope.js';
+import { shenlunScopeBinding } from './learning-shenlun-method.js';
 import {
   WRITING_PREDICTION_CONTRACT,
   writingPredictionSnapshot,
@@ -179,6 +181,15 @@ export function normalizeCoachRequest(value) {
   if (subjectMethod?.sourceRequired && value.phase !== 'summary')
     fail(sources.length > 0, `请先添加${subjectMethod.subject}材料`);
   const target = text(value.target || value.phase, 160);
+  let examScope;
+  if (value.examScope !== undefined) {
+    fail(subjectMethod?.paragraphsFromTask, '考试范围仅用于当前申论教学方法', 'examScope');
+    try {
+      examScope = normalizeExamScope(value.examScope);
+    } catch {
+      fail(false, '考试范围不合法', 'examScope');
+    }
+  }
   fail(
     /^(diagnostic|daily|essay|rewrite|error-review|summary|analysis|card-[a-zA-Z0-9_-]{1,80})$/.test(target) ||
       coachParagraphIndex(target, subjectMethod) !== null,
@@ -189,6 +200,7 @@ export function normalizeCoachRequest(value) {
     phase: value.phase,
     exam: value.exam,
     ...(subjectMethod ? { methodContract: subjectMethod.contract } : {}),
+    ...(examScope ? { examScope } : {}),
     day: date(value.day),
     target,
     minutes: subjectMethod
@@ -1858,9 +1870,16 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
       'INVALID_INPUT',
       '教学方法版本不支持'
     );
+    const scope =
+      p.examScope === undefined && coach.profile?.exam === p.exam && coach.profile?.methodContract === p.methodContract
+        ? coach.profile.examScope
+        : p.examScope;
+    const savedScope = scope == null ? null : normalizeExamScope(scope);
+    assert(!savedScope || subjectMethod?.paragraphsFromTask, 'INVALID_INPUT', '考试范围与教学方向不符');
     coach.profile = {
       exam: p.exam,
       ...(subjectMethod ? { methodContract: subjectMethod.contract } : {}),
+      ...(savedScope ? { examScope: savedScope } : {}),
       deadline,
       ...(p.deadlineBucket ? { deadlineBucket: p.deadlineBucket } : {}),
       minutes,
@@ -2003,6 +2022,11 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
       '请求的学习日期或考试已变化'
     );
     assert(
+      JSON.stringify(request.examScope || null) === JSON.stringify(coach.profile.examScope || null),
+      'PRECONDITION',
+      '考试年度、地区或职位类别已变化'
+    );
+    assert(
       request.input === bound.input &&
         coachTaskMatches(request, bound, day) &&
         request.sourceKind === bound.sourceKind &&
@@ -2114,6 +2138,11 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
       'PRECONDITION',
       '学习日期或考试已变化，原请求仍保留'
     );
+    assert(
+      JSON.stringify(req.request.examScope || null) === JSON.stringify(coach.profile.examScope || null),
+      'PRECONDITION',
+      '考试年度、地区或职位类别已变化，原请求仍保留'
+    );
     const output = normalizeCoachOutput(d.output, req.request);
     const bound = coachInputFor(coach, resultDay, req.request.phase, req.request.target);
     assert(
@@ -2147,6 +2176,7 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
         ...(subjectCoachMethodByContract(req.request.methodContract)
           ? { methodContract: req.request.methodContract }
           : {}),
+        ...(req.request.examScope ? { syllabus: shenlunScopeBinding(req.request.examScope) } : {}),
         dimensions: (output.dimensions || []).map(({ name, score }) => ({ name, score: score ?? null })),
         ...(modelOrigin ? { model: modelOrigin } : {}),
         ...(req.request.knowledgeContract

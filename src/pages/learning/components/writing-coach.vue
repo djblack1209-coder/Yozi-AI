@@ -217,6 +217,7 @@
       <template v-else>
         <view class="coach-session-state">
           <text class="coach-muted" role="status">建档已保存：{{ profileDescription(coach.profile) }}</text>
+          <text v-if="coach.profile.examScope" class="coach-muted">{{ examScopeLabel(coach.profile.examScope) }}</text>
 
           <BaseButton v-if="!loggedIn" variant="primary" @tap="login">登录后开始带练</BaseButton>
           <text v-if="yesterday" class="coach-muted">{{ reentryText }}</text>
@@ -424,6 +425,13 @@
               </BaseCard>
               <template v-else>
                 <BaseCard v-if="trainingCard">
+                  <text
+                    v-if="subjectMethod?.paragraphsFromTask"
+                    class="coach-muted"
+                    selectable
+                    data-test="training-writing-task"
+                    >本题：{{ day.pack.writing.prompt }}</text
+                  >
                   <MusePracticeSheet
                     v-model="answer"
                     shared-input
@@ -635,6 +643,7 @@ import { modelErrorPresentation } from '../../../../laf-backend/functions/_share
 import MuseModelIntake from '@/components/business/learning/muse-model-intake.vue';
 import { DEV_TEST } from '@/config/build-channel.js';
 import { MODEL_INTAKE_V2_CONTRACT } from '../../../../laf-backend/functions/_shared/learning-intake.js';
+import { examScopeLabel } from '../../../../laf-backend/functions/_shared/learning-exam-scope.js';
 import MuseRichText from '@/components/business/learning/muse-rich-text.vue';
 import MuseWritingCard from '@/components/business/learning/muse-writing-card.vue';
 import MusePracticeSheet from '@/pages/learning/components/muse-practice-sheet.vue';

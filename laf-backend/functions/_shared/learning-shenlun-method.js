@@ -1,5 +1,6 @@
 // Subject definition consumed by the existing coach lifecycle and validators.
 // No persistence, provider, queue, diagnosis or tool execution lives here.
+import { normalizeExamScope, examScopeLabel } from './learning-exam-scope.js';
 export const SHENLUN_METHOD_CONTRACT = 'shenlun-writing-method-v1';
 export const SHENLUN_METHOD_V2_CONTRACT = 'shenlun-writing-method-v2';
 export const COACH_SHENLUN_TRACK = 'gongkao-shenlun-writing';
@@ -52,6 +53,48 @@ export const SHENLUN_METHOD_V2 = Object.freeze({
   dailyIntro: '先读材料和归纳要点，再按本题要求组织中文稿'
 });
 
+// A matching source is evidence of its scope, not completed teaching alignment.
+export function shenlunScopeBinding(value) {
+  const examScope = normalizeExamScope(value);
+  let source = null;
+  const categories = {
+    A: ['阅读理解', '综合分析', '贯彻执行', '提出和解决问题', '文字表达'],
+    B: ['阅读理解', '依法办事', '公共服务', '文字表达'],
+    C: ['阅读理解', '贯彻执行', '群众工作', '应用写作']
+  };
+  if (
+    examScope.year === 2027 &&
+    examScope.examLevel === 'provincial' &&
+    examScope.region === 'CN-JS' &&
+    categories[examScope.positionCategory]
+  )
+    source = {
+      id: 'js-civil-2027-shenlun-v1',
+      ...SHENLUN_METHOD.reference,
+      section: `二（二）申论 / ${examScope.positionCategory}类`,
+      capabilities: [...categories[examScope.positionCategory]],
+      kind: 'syllabus_body'
+    };
+  else if (examScope.year === 2027 && examScope.examLevel === 'national' && examScope.positionCategory)
+    source = {
+      id: 'national-civil-2027-announcement-v1',
+      title: '中央机关及其直属机构2027年度考试录用公务员公告',
+      publisher: '国家公务员局（税务机关公开转载）',
+      published: '2026-10-15',
+      url: 'https://shanghai.chinatax.gov.cn/tax/xxgk/rsxx/202610/t481763.html',
+      section: '三（一）笔试 / 公共科目类别',
+      capabilities: [],
+      kind: 'announcement_only'
+    };
+  return {
+    contract: 'shenlun-syllabus-scope-v1',
+    examScope,
+    source,
+    sourceStatus: source?.kind === 'syllabus_body' ? 'body_available' : source ? 'announcement_only' : 'missing',
+    alignmentStatus: 'pending_verification'
+  };
+}
+
 export function shenlunIntakeEligible(intake) {
   const profile = intake?.reply?.intake?.profile;
   return (
@@ -67,7 +110,16 @@ export function shenlunIntakeEligible(intake) {
 export function shenlunCoachPrompt(request, { quotes = [] } = {}) {
   const r = request,
     source = r.sources[0],
-    method = r.methodContract === SHENLUN_METHOD_V2_CONTRACT ? SHENLUN_METHOD_V2 : SHENLUN_METHOD;
+    definition = r.methodContract === SHENLUN_METHOD_V2_CONTRACT ? SHENLUN_METHOD_V2 : SHENLUN_METHOD,
+    scopeBinding = definition.paragraphsFromTask && r.examScope ? shenlunScopeBinding(r.examScope) : null,
+    method = scopeBinding
+      ? {
+          ...definition,
+          scope: `已明确保存目标：${examScopeLabel(r.examScope)}；仅按本题和授权材料训练，不宣称完整大纲对齐`,
+          reference: scopeBinding.source,
+          syllabusBinding: scopeBinding
+        }
+      : definition;
   const evidenceQuotes =
     r.target === 'analysis'
       ? quotes.map((line) => line.replace(/^(?:genre|recipient|purpose|points|words):\s*/u, ''))
@@ -142,6 +194,7 @@ export function shenlunCoachPrompt(request, { quotes = [] } = {}) {
         };
   return `你是申论材料与中文写作教练，教学方法定义：${JSON.stringify(method)}。本次仅执行${r.phase}，目标${r.target}。
 当前评阅范围：${JSON.stringify(feedbackScope)}。
+${scopeBinding ? '目标范围来自用户明确回答，不能推算缺失年度、地区或职位类别。大纲能力名称只说明目标范围，不是本题新增评分项；仍以原题和本次授权材料为准，不自行补充法条、政策条件或岗位事实。未匹配来源或只有公告时，不能借用其他省份、年份或类别的大纲；来源可读不等于内容已完整对齐或已掌握。' : ''}
 ${method.paragraphsFromTask && r.phase === 'essay' ? '覆盖核对：逐项对照原稿，区分“完全未提”“已提及但带有越界评价”“事实与材料不符”。一句中存在错误结论，不会抹去同句已写出的、可由材料支持的事实；不能因整体比较不合格，就把已提及的差异写成完全缺失。仍须指出未覆盖的要求、无据评价、编造数据和越题对策，不以部分事实存在撤销其他有据错误。' : ''}
 ${writingCharacters === null ? '' : r.phase === 'summary' ? `小结事实核对：本轮input是已明确交卷的正文，非空白字符数为${writingCharacters}，含标点与数字，不计空格和换行；不是官方计字口径。小结若提正文长度，只能沿用这个计数，不能自行估算，也不能把训练卡、审题或自查说明的篇幅混入已交卷正文；不需要提长度时可省略数字。只描述实际保存的作答，不以字数符合推断掌握、评分或措施已实施。` : `宿主核对：当前全文非空白字符数为${writingCharacters}，含标点和数字，空格与换行不计；这是开发侧计数，不冒充官方计字或评分口径。仅与task明确给出的字数上下限比较，把当前字数及是否符合要求写入已有“要点覆盖”维度；即使同时存在材料事实错误，也不能漏掉字数核对，不为此增加点评条数或代写凑字。题干只有“不超过”或“以内”等上限时，不能倒推最低字数；没有明确下限时不凭空判过短。符合字数不代表内容质量达标，明显超出或不足则如实指出。`}
 ${paragraph ? `当前明确为第${Number(paragraph[1]) + 1}段，${method.paragraphsFromTask ? '本次task只含当前原题，不含训练结构参考。本段职责与必答项只以该原题要求为准，不能追加原题没有的必答动作或细节，也不能把组织建议说成“题干点明”；原题未指定逐段分工时，不凭当前段落序号强加开头、结尾或额外内容。' : '只按task末尾的本段职责核对。'}本段是同一篇文章的一部分，其他段落没有提供；“上述”“这些”等衔接前文的指代本身不是错误，不要求本段独立重复首段背景、称呼、对象或整篇结构。当前不是第一段时，禁止将其评为“第一段应交代……”；不以未提供的前文推断文章缺项。${method.paragraphsFromTask ? '题干给定的逐段分工优先于泛化的开头、主体、结尾称谓；advice和rewrite也不得把其他段的职责调换或合并到某一段，不能借可选建议改变题干分工。原题允许提出行动或建议时，与材料问题对应、明确表为倡议或拟议的合理措施可以成立，不要求每个动作已在材料逐字出现；未照抄某个组织参考动作不等于缺项。仍拒绝编造已经实施的事实、成效数字或强制承诺。' : ''}` : ''}

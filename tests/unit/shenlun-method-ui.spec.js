@@ -256,6 +256,13 @@ describe('Shenlun intake, source consent and Chinese writing UI', () => {
         });
       await store.requestCoach('feedback', 'diagnostic');
       await store.requestCoach('daily');
+      renderCoach();
+      await flushPromises();
+      const task = wrapper.find('[data-test="training-writing-task"]');
+      if (contract === METHOD_V2) expect(task.text()).toContain(store.active.coach.days[0].pack.writing.prompt);
+      else expect(task.exists()).toBe(false);
+      wrapper.unmount();
+      wrapper = undefined;
       for (let i = 1; i <= 4; i++) {
         store.coachSave('answer', { cardId: `c${i}`, answer: '建议增加周六预约时段并收集意见。' });
         await store.requestCoach('feedback', `card-c${i}`);

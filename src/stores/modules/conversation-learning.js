@@ -1,4 +1,5 @@
 import { LOCATION_KEY, restoredConversation } from '@/services/learning/shell-navigation.js';
+import { EXAM_SCOPE_CONTRACT } from '../../../laf-backend/functions/_shared/learning-exam-scope.js';
 import {
   MODEL_TOOL_NAMES,
   compactLearningProgress,
@@ -411,6 +412,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   let modelIntakeAvailable = false;
   let modelCoachMethods = [];
   const modelIntakeContract = shallowRef(null);
+  let modelIntakeScopeContract = null;
   const coachError = ref('');
   const coachProfileDraft = computed(() => explicitIntakeFacts(active.value?.goal || ''));
   const models = ref([]);
@@ -676,6 +678,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     modelIntakeAvailable = false;
     modelCoachMethods = [];
     modelIntakeContract.value = null;
+    modelIntakeScopeContract = null;
     models.value = [];
     modelPresets.value = [];
     usage.value = null;
@@ -1381,6 +1384,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     modelIntakeAvailable = false;
     modelCoachMethods = [];
     modelIntakeContract.value = null;
+    modelIntakeScopeContract = null;
     models.value = [];
     modelPresets.value = [];
     usage.value = null;
@@ -1853,6 +1857,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
         ...(subjectMethod ? { methodContract: subjectMethod.contract } : {}),
         minutes: coach.profile.minutes,
         ...(coach.profile.foundation ? { foundation: coach.profile.foundation } : {}),
+        ...(coach.profile.examScope ? { examScope: coach.profile.examScope } : {}),
         essayType: coachEssayType(coach, requestDay),
         ...(['feedback', 'essay'].includes(phase) && coach.profile.exam !== 'cs408' && !subjectMethod
           ? { feedbackVersion: COACH_FEEDBACK_VERSION }
@@ -4008,6 +4013,10 @@ export const useConversationLearningStore = defineStore('conversation-learning',
               ? 'model-intake-v1'
               : null;
         modelIntakeAvailable = Boolean(modelIntakeContract.value);
+        modelIntakeScopeContract =
+          result.success && result.data.intakeScopeContracts?.includes(EXAM_SCOPE_CONTRACT)
+            ? EXAM_SCOPE_CONTRACT
+            : null;
         modelCoachMethods =
           result.success && Array.isArray(result.data.coachMethods)
             ? result.data.coachMethods.filter((method) => subjectCoachMethodByContract(method))
@@ -4243,6 +4252,10 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           reset || !state.value.intake || state.value.intake.acceptedConversationId
             ? modelIntakeContract.value
             : state.value.intake.contract;
+        const scopeContract =
+          reset || !state.value.intake || state.value.intake.acceptedConversationId
+            ? modelIntakeScopeContract
+            : state.value.intake.scopeContract;
         assert(
           sharingAllowed.value || (answer === undefined && (reset || !state.value.intake?.turns.length)),
           'CONSENT_REQUIRED',
@@ -4254,6 +4267,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           requestId,
           explicit: true,
           ...(contract === MODEL_INTAKE_V2_CONTRACT ? { contract } : {}),
+          ...(contract === MODEL_INTAKE_V2_CONTRACT && scopeContract ? { scopeContract } : {}),
           ...(contract === MODEL_INTAKE_V2_CONTRACT ? { binding: learningId('intake-binding') } : {}),
           ...(reset ? { reset: true } : {}),
           ...(answer !== undefined ? { answer } : {})
@@ -4267,6 +4281,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       const intakeOwner = state.value.owner;
       const intakeContext = {
         turns,
+        ...(state.value.intake.scopeContract ? { scopeContract: state.value.intake.scopeContract } : {}),
         ...(state.value.intake.contract ? { contract: state.value.intake.contract } : {})
       };
       const result = await modelAction((options) => {

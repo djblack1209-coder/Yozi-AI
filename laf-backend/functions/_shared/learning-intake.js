@@ -1,4 +1,5 @@
 // Model-authored onboarding; a proposed profile takes effect only on confirmation.
+import { EXAM_SCOPE_CONTRACT, explicitShenlunScope, normalizeExamScope } from './learning-exam-scope.js';
 export const INTAKE_CHOICES = Object.freeze([
   { value: 'cet', label: '四六级' },
   { value: 'kaoyan', label: '考研' },
@@ -56,8 +57,11 @@ const short = (v, n) => typeof v === 'string' && v.trim().length > 0 && v.trim()
 export function normalizeIntakeContext(value) {
   if (!value || !Array.isArray(value.turns) || value.turns.length > 5) return fail('context.turns');
   if (value.contract !== undefined && !MODEL_INTAKE_CONTRACTS.includes(value.contract)) return fail('context.contract');
+  if (value.scopeContract !== undefined && (!v2(value) || value.scopeContract !== EXAM_SCOPE_CONTRACT))
+    return fail('context.scopeContract');
   return {
     ...(v2(value) ? { contract: MODEL_INTAKE_V2_CONTRACT } : {}),
+    ...(value.scopeContract ? { scopeContract: value.scopeContract } : {}),
     turns: value.turns.map((item) => {
       if (!item || !short(item.question, 180) || !short(item.answer, 500)) return fail('context.turns.item');
       return { question: item.question.trim(), answer: item.answer.trim() };
@@ -92,6 +96,16 @@ export function normalizeStudyProfile(value) {
   )
     return fail('profile.deadline');
   if (value.foundation !== null && !short(value.foundation, 300)) return fail('profile.foundation');
+  let examScope;
+  if (value.examScope !== undefined && value.examScope !== null) {
+    if (value.category !== 'civil' || !value.subjects.some((subject) => subject.includes('申论')))
+      return fail('profile.examScope');
+    try {
+      examScope = normalizeExamScope(value.examScope);
+    } catch {
+      return fail('profile.examScope');
+    }
+  }
   return {
     goal: value.goal.trim(),
     category: value.category,
@@ -99,7 +113,8 @@ export function normalizeStudyProfile(value) {
     subjects: [...new Set(value.subjects.map((s) => s.trim()))],
     minutes: value.minutes,
     deadline: value.deadline,
-    foundation: value.foundation
+    foundation: value.foundation,
+    ...(examScope ? { examScope } : {})
   };
 }
 // Draft facts use only literal, unambiguous statements; confirmation still owns persistence.
@@ -158,7 +173,21 @@ export function normalizeIntakeReply(value, first = false, context) {
               : null
         }
       : draft.profile;
-  const profile = draft.profile === null ? null : normalizeStudyProfile({ ...proposed, ...facts });
+  const profile =
+    draft.profile === null
+      ? null
+      : normalizeStudyProfile({
+          ...proposed,
+          ...facts,
+          // The model cannot invent scope facts or a syllabus source. Existing v1 is unchanged.
+          examScope:
+            context?.scopeContract === EXAM_SCOPE_CONTRACT &&
+            proposed?.category === 'civil' &&
+            Array.isArray(proposed.subjects) &&
+            proposed.subjects.some((subject) => typeof subject === 'string' && subject.includes('申论'))
+              ? explicitShenlunScope(context.turns)
+              : undefined
+        });
   if (!first) {
     const finished = intakeFinished(context);
     if (!profile && !(finished && !options.length && draft.input === false)) {
