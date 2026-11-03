@@ -4522,11 +4522,11 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     intakeController = null;
     intakeBusy.value = false;
   }
-  function restartModelIntake() {
+  function restartModelIntake({ newGoal = false } = {}) {
     const intake = state.value.intake;
     const finished = intake?.status === 'ready' && intakeFinished(intake);
     assert(intake?.finalFailure === true || finished, 'PRECONDITION', '请先查询原请求状态');
-    return runModelIntake(intake.modelId, undefined, false, finished);
+    return runModelIntake(intake.modelId, undefined, false, finished || newGoal === true);
   }
   async function beginModelIntake(id, { newGoal = false } = {}) {
     if (reply.value?.pending) return { success: false, message: '请等待当前请求完成' };

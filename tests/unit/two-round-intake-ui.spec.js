@@ -206,6 +206,7 @@ describe('two-round native/shared intake component and real store integration', 
     expect(modelCalls()).toHaveLength(1);
     expect(store.state.intake.requestId).toBe(requestId);
     expect(wrapper.text()).toContain('查询原请求');
+    expect(wrapper.text()).not.toContain('重新选择方向');
     expect(store.state.conversations).toHaveLength(0);
     reserved = false;
     expect((await store.recoverModelIntake()).success).toBe(true);
@@ -227,5 +228,64 @@ describe('two-round native/shared intake component and real store integration', 
     expect(store.state.intake.acceptedConversationId).toBeUndefined();
     expect(JSON.stringify(store.state.conversations.find((item) => item.id === first.id))).toBe(before);
     expect(modelCalls()).toHaveLength(4);
+  });
+  it('S26 explicitly starts a fresh direction after a terminal failure while retaining prior answers and events', async () => {
+    const original = store.commit('conversation.start', { goal: 'Synthetic existing goal' });
+    store.selectedConversationId = null;
+    scopeContracts = ['learning-exam-scope-v1'];
+    await prepare();
+    await store.beginModelIntake('synthetic-model', { newGoal: true });
+    await store.answerModelIntake('考研');
+    store.commit('intake.failed', { requestId: store.state.intake.requestId, final: true });
+    const previousEvents = copy(store.state.events),
+      previousConversation = copy(original);
+    scopeContracts.push('learning-exam-scope-v2');
+    await store.loadModels();
+    wrapper = mount(MuseModelIntake, { props: { newGoal: true, autoOpen: true } });
+    await flushPromises();
+    expect(modelCalls()).toHaveLength(2);
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '重新选择方向')
+      .trigger('tap');
+    await flushPromises();
+    expect(modelCalls()).toHaveLength(3);
+    expect(modelCalls().at(-1).learningContext.intake).toMatchObject({
+      turns: [],
+      contract: CONTRACT,
+      scopeContract: 'learning-exam-scope-v2'
+    });
+    expect(modelCalls().at(-1).messages).toEqual([{ role: 'user', content: '请发出学习建档的第一问。' }]);
+    expect(store.state.events.slice(0, previousEvents.length)).toEqual(previousEvents);
+    expect(
+      store.state.events.find((event) => event.type === 'intake.request' && event.data.answer === '考研')
+    ).toBeTruthy();
+    expect(store.state.conversations).toEqual([previousConversation]);
+    expect(store.state.intake.turns).toEqual([]);
+    expect(store.state.intake.acceptedConversationId).toBeUndefined();
+  });
+  it('S26 ordinary retry keeps the failed answers and their pinned scope', async () => {
+    scopeContracts = ['learning-exam-scope-v1'];
+    await prepare();
+    await store.beginModelIntake('synthetic-model', { newGoal: true });
+    await store.answerModelIntake('考研');
+    store.commit('intake.failed', { requestId: store.state.intake.requestId, final: true });
+    const previousTurns = copy(store.state.intake.turns),
+      previousEvents = copy(store.state.events);
+    scopeContracts.push('learning-exam-scope-v2');
+    await store.loadModels();
+    wrapper = mount(MuseModelIntake, { props: { newGoal: true, autoOpen: true } });
+    await flushPromises();
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '重新建档')
+      .trigger('tap');
+    await flushPromises();
+    expect(modelCalls()).toHaveLength(3);
+    expect(modelCalls().at(-1).learningContext.intake.turns).toEqual(previousTurns);
+    expect(store.state.intake.turns).toEqual(previousTurns);
+    expect(store.state.intake.scopeContract).toBe('learning-exam-scope-v1');
+    expect(store.state.events.slice(0, previousEvents.length)).toEqual(previousEvents);
+    expect(store.state.conversations).toEqual([]);
   });
 });

@@ -102,9 +102,12 @@
         }).message
       }}</text>
       <text selectable>请求编号：{{ intake.requestId }}</text>
-      <BaseButton v-if="intake.finalFailure" variant="quiet" @tap="act(() => learning.restartModelIntake())"
-        >重新建档</BaseButton
-      >
+      <template v-if="intake.finalFailure">
+        <BaseButton variant="quiet" @tap="act(() => learning.restartModelIntake())">重新建档</BaseButton>
+        <BaseButton variant="quiet" @tap="act(() => learning.restartModelIntake({ newGoal: true }))"
+          >重新选择方向</BaseButton
+        >
+      </template>
       <BaseButton v-else variant="quiet" @tap="recover">查询原请求</BaseButton>
     </view>
     <MuseModelFeedback :failure="failure" :busy="learning.intakeBusy" @action="handleAction" />
