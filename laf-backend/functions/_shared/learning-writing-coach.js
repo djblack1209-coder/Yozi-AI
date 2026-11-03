@@ -1571,19 +1571,28 @@ function coachCardTask(card) {
       : `${card.prompt}${card.example ? `\n题目提供的原句或示例（内容待核对）：${card.example}` : ''}`
     : card.prompt;
 }
+function legacyCoachParagraphTask(day, index) {
+  return `${day.pack.writing.prompt}\n第${index + 1}段：${index === 0 ? '交代目的或描述' : index === day.pack.writing.patterns.length - 1 ? '回应目的与建议' : '展开要点与理由'}。本次仅评阅本段职责；其他段落和全文要求留到成文阶段。句式参考：\n${day.pack.writing.patterns[index].join('\n')}`;
+}
 // New requests bind a structured card kind; saved requests keep their exact legacy task valid.
 function coachTaskMatches(request, bound, day) {
   const card = day?.pack.cards.find((item) => `card-${item.id}` === request.target);
-  const paragraph = coachParagraphIndex(request.target, subjectCoachMethod(request.exam, request.methodContract));
+  const method = subjectCoachMethod(request.exam, request.methodContract);
+  const paragraph = coachParagraphIndex(request.target, method);
   const patterns = paragraph !== null ? day?.pack.writing.patterns[paragraph] : null;
   return (
     request.task === bound.task ||
     (card && request.phase === 'feedback' && request.task === coachCardTask(card)) ||
+    (method?.paragraphsFromTask &&
+      patterns &&
+      request.phase === 'feedback' &&
+      request.task === `${day.pack.writing.prompt}\n${patterns.join('\n')}`) ||
     (typeof __YOZI_DEV_TEST__ !== 'undefined' &&
       __YOZI_DEV_TEST__ === true &&
       request.phase === 'feedback' &&
       (request.task === (card ? card.prompt : patterns ? `${day.pack.writing.prompt}\n${patterns.join('\n')}` : null) ||
-        (patterns && bound.task === `${day.pack.writing.prompt}\n${request.task}`)))
+        (patterns && bound.task === `${day.pack.writing.prompt}\n${request.task}`) ||
+        (method?.paragraphsFromTask && patterns && request.task === legacyCoachParagraphTask(day, paragraph))))
   );
 }
 // 反馈只能读取已经保存的原答；请求中的任务说明也由这些事实构造。
@@ -1673,15 +1682,18 @@ export function coachInputFor(coach, day, phase, target) {
       ...(day.pack.writing.source?.materialUncovered ? { sourceKind: 'model_generated' } : {})
     };
   }
-  const paragraph = coachParagraphIndex(target, subjectCoachMethod(coach.profile?.exam, coach.profile?.methodContract));
+  const method = subjectCoachMethod(coach.profile?.exam, coach.profile?.methodContract);
+  const paragraph = coachParagraphIndex(target, method);
   if (phase === 'feedback' && paragraph !== null) {
     const index = paragraph;
     fail(index < day.pack.writing.patterns.length && day.drafts[index] && !day.feedback[target], '请先提交本段原答');
     return {
       input: day.drafts[index].text,
-      task:
-        typeof __YOZI_DEV_TEST__ !== 'undefined' && __YOZI_DEV_TEST__ === true
-          ? `${day.pack.writing.prompt}\n第${index + 1}段：${index === 0 ? '交代目的或描述' : index === day.pack.writing.patterns.length - 1 ? '回应目的与建议' : '展开要点与理由'}。本次仅评阅本段职责；其他段落和全文要求留到成文阶段。句式参考：\n${day.pack.writing.patterns[index].join('\n')}`
+      // Generated drafting patterns are help, never additional grading requirements.
+      task: method?.paragraphsFromTask
+        ? day.pack.writing.prompt
+        : typeof __YOZI_DEV_TEST__ !== 'undefined' && __YOZI_DEV_TEST__ === true
+          ? legacyCoachParagraphTask(day, index)
           : day.pack.writing.prompt + '\n' + day.pack.writing.patterns[index].join('\n'),
       ...(day.pack.writing.source?.materialUncovered ? { sourceKind: 'model_generated' } : {})
     };

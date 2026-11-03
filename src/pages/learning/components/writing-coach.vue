@@ -492,6 +492,7 @@
                   <text>{{ day.pack.writing.prompt }}</text
                   ><text v-if="subjectMethod" class="coach-muted">{{ subjectMethod.writingHint }}</text>
                   <text v-else class="coach-muted">全文字数以题干为准；先借助句式写，再按反馈改写。</text>
+                  <text v-if="subjectMethod?.paragraphsFromTask" class="coach-muted">组织参考</text>
                   <text
                     v-for="pattern in day.pack.writing.patterns[paragraphIndex]"
                     :key="pattern"

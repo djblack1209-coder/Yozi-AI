@@ -17,6 +17,7 @@ import {
   parseCoachModelOutput,
   coachSystemPrompt,
   coachInputFor,
+  coachInferenceContext,
   coachEssayType
 } from '../../laf-backend/functions/_shared/learning-writing-coach.js';
 import {
@@ -238,6 +239,44 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
     expect(coachSystemPrompt(next)).toContain('数组长度由本题实际职责决定');
     expect(coachSystemPrompt(legacy)).toContain('适合二至三段带写的中文短稿');
   });
+  it.each([false, true])('binds the actual task roles without generic English roles, dev=%s', (dev) => {
+    vi.stubGlobal('__YOZI_DEV_TEST__', dev);
+    const coach = { profile: { exam: 'shenlun', methodContract: METHOD_V2 } };
+    const day = {
+      pack: {
+        cards: [],
+        writing: {
+          prompt: '写倡议书，三段依次说明缘由、具体行动、参与方式。',
+          patterns: [['说明缘由'], ['额外参考：必须发放积分奖品，并补记全部旧记录'], ['说明登记方式与自愿边界']]
+        }
+      },
+      drafts: [{ text: '原稿缘由' }, { text: '原稿行动' }, { text: '原稿参与方式' }],
+      feedback: {}
+    };
+    const before = JSON.stringify(day);
+    for (let index = 0; index < 3; index++) {
+      const bound = coachInputFor(coach, day, 'feedback', `paragraph-${index}`);
+      expect(bound.input).toBe(day.drafts[index].text);
+      expect(bound.task).toBe(day.pack.writing.prompt);
+      expect(bound.task).not.toMatch(/交代目的或描述|展开要点与理由|回应目的与建议/u);
+      const inference = coachInferenceContext(
+        request('feedback', {
+          methodContract: METHOD_V2,
+          ...bound,
+          target: `paragraph-${index}`
+        })
+      );
+      expect(inference.task).toBe(day.pack.writing.prompt);
+      expect(JSON.stringify(inference)).not.toMatch(/积分奖品|补记全部旧记录/u);
+    }
+    expect(JSON.stringify(day)).toBe(before);
+    const english = coachInputFor({ profile: { exam: 'english2' } }, day, 'feedback', 'paragraph-2');
+    expect(english.task).toBe(
+      dev
+        ? `${day.pack.writing.prompt}\n第3段：回应目的与建议。本次仅评阅本段职责；其他段落和全文要求留到成文阶段。句式参考：\n说明登记方式与自愿边界`
+        : `${day.pack.writing.prompt}\n说明登记方式与自愿边界`
+    );
+  });
   it('accepts a single complete task only for the task-driven method and rejects empty structures', () => {
     const r = request('daily', { methodContract: METHOD_V2 }),
       raw = generation(r);
@@ -428,9 +467,11 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
     { contract: METHOD, paragraphs: 2 },
     { contract: METHOD_V2, paragraphs: 1 },
     { contract: METHOD_V2, paragraphs: 5 },
-    { contract: METHOD_V2, paragraphs: 12 }
-  ])('reuses full submission and event replay: $contract / $paragraphs paragraphs', ({ contract, paragraphs }) => {
-    if (paragraphs > 10) vi.stubGlobal('__YOZI_DEV_TEST__', true);
+    { contract: METHOD_V2, paragraphs: 12 },
+    { contract: METHOD_V2, paragraphs: 3, legacyTask: 'plain' },
+    { contract: METHOD_V2, paragraphs: 3, legacyTask: 'generic-dev' }
+  ])('replays $contract/$paragraphs/$legacyTask', ({ contract, paragraphs, legacyTask }) => {
+    if (paragraphs > 10 || legacyTask === 'generic-dev') vi.stubGlobal('__YOZI_DEV_TEST__', true);
     let state = emptyLearningState('synthetic-shenlun', 'Asia/Shanghai'),
       serial = 0;
     const commit = (type, data = {}, id = `op-${++serial}`) => {
@@ -466,6 +507,23 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
         sources: coachMaterialContext(state, state.conversations[0], bound),
         essayType: coachEssayType(coach(), '2026-11-02')
       });
+      const paragraph = /^paragraph-(\d+)$/u.exec(target);
+      if (legacyTask && phase === 'feedback' && paragraph) {
+        const index = Number(paragraph[1]),
+          writing = day.pack.writing;
+        r.task =
+          legacyTask === 'plain'
+            ? writing.prompt + '\n' + writing.patterns[index].join('\n')
+            : `${writing.prompt}\n第${index + 1}段：${index === 0 ? '交代目的或描述' : index === writing.patterns.length - 1 ? '回应目的与建议' : '展开要点与理由'}。本次仅评阅本段职责；其他段落和全文要求留到成文阶段。句式参考：\n${writing.patterns[index].join('\n')}`;
+        expect(() =>
+          commit('coach.request', {
+            requestId: `forged-${serial}`,
+            request: { ...r, task: r.task + '\n改成其他段落职责' },
+            modelId: 'synthetic',
+            binding: 'synthetic-binding'
+          })
+        ).toThrow('教学任务已变化');
+      }
       const requestId = `request-${++serial}`;
       commit('coach.request', { requestId, request: r, modelId: 'synthetic', binding: 'synthetic-binding' });
       const output = ['diagnostic', 'daily'].includes(phase)
