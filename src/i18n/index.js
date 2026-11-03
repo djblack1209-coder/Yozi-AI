@@ -105,6 +105,8 @@ export function publicError(error, fallback = t('ui.operationFailed')) {
     '本机暂不可写，请保留原文后重试': 'ui.originalStorageBusy',
     '复习安排更新未确认，请核对当前记录': 'ui.reviewUnconfirmed',
     '服务连接不可用，学习记录已保存': 'ui.serviceUnavailable',
+    '云端记录已更新，请重新同步预览；本机与冲突副本保留': 'ui.syncPreviewChanged',
+    '已有另一份冲突副本；请先导出并明确移除该副本，再重新同步': 'ui.syncArchiveExists',
     '登录后可连接云模型；本地学习无需登录': 'ui.signInRequired',
     '学习天数必须在 1 到 365 之间': 'ui.invalidDuration',
     计划周期须为1至365天: 'ui.invalidPlanDuration',

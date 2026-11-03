@@ -1103,6 +1103,53 @@ describe('同步等待与冲突确认', () => {
     const stop = observeLearningDialogs(wrapper, (dialog) => dialogs.push(dialog));
     return { store, wrapper, button, dialogs, stop };
   }
+  it.each(['local', 'remote'])('legacy关闭时实际导出%s冲突文件，不只写入隐藏的恢复输入', async (side) => {
+    vi.stubEnv('VITE_ENABLE_LEGACY_LEARNING', 'false');
+    const p = page();
+    const remote = JSON.parse(p.store.exportData());
+    remote.conversations[0].goal = '保留的云端合成目标';
+    remote.events.find((event) => event.id === remote.conversations[0].id).data.goal = '保留的云端合成目标';
+    learningRepository.captureSyncConflict(remote, []);
+    p.store.refresh();
+    const expected = learningRepository.exportSyncConflict(side);
+    const before = p.store.exportData();
+    const originalCreate = URL.createObjectURL,
+      originalRevoke = URL.revokeObjectURL;
+    let blob, filename;
+    URL.createObjectURL = vi.fn((value) => {
+      blob = value;
+      return 'blob:isolated-conflict-export';
+    });
+    URL.revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+      filename = this.download;
+    });
+    try {
+      for (const load of loadHooks.callbacks) load({ panel: 'data' });
+      await flushPromises();
+      await p.button(side === 'local' ? '导出本机冲突副本' : '导出云端冲突副本').trigger('tap');
+      await flushPromises();
+      expect(filename).toBe(`learning-conflict-${side}.json`);
+      const content = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsText(blob);
+      });
+      expect(content).toBe(expected);
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:isolated-conflict-export');
+      expect(p.store.exportData()).toBe(before);
+      expect(learningRepository.exportSyncConflict(side)).toBe(expected);
+    } finally {
+      click.mockRestore();
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+      p.stop();
+      p.wrapper.unmount();
+      p.store.$dispose();
+      vi.unstubAllEnvs();
+    }
+  });
   it.each([
     ['移除已保存的冲突副本', 'clearSyncConflict'],
     ['恢复本机冲突副本', 'restoreConflictLocal'],

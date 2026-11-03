@@ -4250,36 +4250,38 @@ function savePlan() {
   );
 }
 function exportRecords() {
-  return run(async () => {
-    const content = learning.exportData();
-    // 文件下载受浏览器宿主限制时，仍能查看并手动保存同一份备份。
-    backupText.value = content;
-    showRestore.value = true;
-    restorePreview.value = null;
-    // #ifdef H5
-    if (desktopHost) {
-      const context = learning.recordContext();
-      const result = await saveDesktopLearningFile('records', content, {
-        isCurrent: () => appPageAlive && learning.recordContext() === context
-      });
-      feedback.value = result.saved
-        ? '个人记录备份已保存；包含私人学习内容，不含模型配置密钥。'
-        : '已取消保存，仍可在下方面板查看备份。';
-      return;
-    }
+  return run(() => exportRecordFile(learning.exportData(), 'learning-records.json'));
+}
+async function exportRecordFile(content, filename) {
+  backupText.value = content;
+  showRestore.value = true;
+  restorePreview.value = null;
+  // #ifdef H5
+  if (desktopHost) {
+    const context = learning.recordContext();
+    const result = await saveDesktopLearningFile('records', content, {
+      isCurrent: () => appPageAlive && learning.recordContext() === context
+    });
+    feedback.value = result.saved
+      ? '个人记录备份已保存；包含私人学习内容，不含模型配置密钥。'
+      : t('ui.recordExportCancelled');
+    return;
+  }
+  if (typeof document !== 'undefined') {
     const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'learning-records.json';
+    link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
-    feedback.value = '已生成个人记录备份，也可在下方面板查看和保存；包含私人学习内容，不含模型配置密钥。';
-    // #endif
-    // #ifndef H5
-    uni.setClipboardData({ data: content });
-    feedback.value = '个人记录已复制，请在可信位置保存。';
-    // #endif
-  });
+    feedback.value = t('ui.recordExportGenerated');
+    return;
+  }
+  // #endif
+  // #ifndef H5
+  uni.setClipboardData({ data: content });
+  feedback.value = '个人记录已复制，请在可信位置保存。';
+  // #endif
 }
 function chooseBackupFile() {
   // #ifdef H5
@@ -4479,12 +4481,7 @@ function migrateGuestRecords() {
   });
 }
 function exportConflict(side) {
-  return run(() => {
-    backupText.value = learning.exportSyncConflict(side);
-    showRestore.value = true;
-    restorePreview.value = null;
-    feedback.value = '冲突副本已在下方面板生成，请保存到可信位置；普通恢复仍会校验冲突并重新判分。';
-  });
+  return run(() => exportRecordFile(learning.exportSyncConflict(side), `learning-conflict-${side}.json`));
 }
 function resolveConflict(side) {
   if (recordActionsBusy.value) return;

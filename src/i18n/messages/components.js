@@ -42,6 +42,10 @@ export default {
     'ui.modelAddressBlocked': '模型地址未通过网络安全检查。请稍后重试，也可以继续本机学习；输入和记录保留。',
     'ui.invalidBackup': '备份格式无效，请重新选择 JSON 文件。',
     'ui.operationFailed': '操作未完成，请重试。',
+    'ui.syncPreviewChanged': '云端记录已更新，本次未采用。请先导出并移除旧冲突副本，再重新读取和确认。',
+    'ui.syncArchiveExists': '已有保留的冲突副本。请先导出并明确移除，再重新读取。',
+    'ui.recordExportGenerated': '已生成个人记录备份；包含私人学习内容，不含模型配置密钥。',
+    'ui.recordExportCancelled': '已取消保存，当前记录及已有副本仍保留。',
     'ui.contextChanged': '学习内容或共享授权已变化，请重新操作。',
     'ui.methodLocked': '将保留你明确指定的教法，请重新提问。',
     'ui.actionForbidden': '此操作未获授权，未执行。',
@@ -142,6 +146,13 @@ export default {
       'The model address did not pass the network safety check. Retry later or continue learning locally. Your input and records are kept.',
     'ui.invalidBackup': 'Invalid backup format. Choose a JSON backup again.',
     'ui.operationFailed': 'This did not finish. Please try again.',
+    'ui.syncPreviewChanged':
+      'Cloud records changed and were not adopted. Export and remove the old conflict copy, then read and confirm again.',
+    'ui.syncArchiveExists':
+      'A conflict copy is already retained. Export and explicitly remove it before reading again.',
+    'ui.recordExportGenerated':
+      'Your record backup was generated. It contains private learning content, without model keys.',
+    'ui.recordExportCancelled': 'Saving was cancelled. Current records and retained copies are unchanged.',
     'ui.contextChanged': 'The learning context or sharing permission changed. Please try again.',
     'ui.methodLocked': 'Your chosen teaching method is unchanged. Please ask again.',
     'ui.actionForbidden': 'This action was not authorized or performed.',

@@ -10,7 +10,8 @@ import {
   normalizeLanguage,
   LANGUAGE_KEY,
   installI18n,
-  registerMessages
+  registerMessages,
+  publicError
 } from '@/i18n/index.js';
 import { formatDate, formatTime, formatNumber } from '@/i18n/format.js';
 import shell, { PAGE_TITLE_KEYS } from '@/i18n/messages/shell.js';
@@ -31,6 +32,19 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('lightweight i18n', () => {
+  it('shows safe recovery steps for known sync preview and archive failures in both languages', () => {
+    const cases = [
+      ['CONFLICT', '云端记录已更新，请重新同步预览；本机与冲突副本保留', 'ui.syncPreviewChanged'],
+      ['ARCHIVE_EXISTS', '已有另一份冲突副本；请先导出并明确移除该副本，再重新同步', 'ui.syncArchiveExists']
+    ];
+    for (const language of ['zh-CN', 'en']) {
+      setLanguage(language);
+      for (const [code, message, key] of cases) expect(publicError({ code, message })).toBe(t(key));
+      expect(publicError({ code: 'CONFLICT', message: 'private provider response or original answer' })).toBe(
+        t('ui.operationFailed')
+      );
+    }
+  });
   it('has shared record-search labels before a learning page registers its feature dictionary', () => {
     for (const language of ['zh-CN', 'en']) {
       setLanguage(language);
