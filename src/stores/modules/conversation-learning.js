@@ -1,5 +1,5 @@
 import { LOCATION_KEY, restoredConversation } from '@/services/learning/shell-navigation.js';
-import { EXAM_SCOPE_CONTRACT } from '../../../laf-backend/functions/_shared/learning-exam-scope.js';
+import { EXAM_SCOPE_CONTRACTS } from '../../../laf-backend/functions/_shared/learning-exam-scope.js';
 import {
   MODEL_TOOL_NAMES,
   compactLearningProgress,
@@ -4013,10 +4013,11 @@ export const useConversationLearningStore = defineStore('conversation-learning',
               ? 'model-intake-v1'
               : null;
         modelIntakeAvailable = Boolean(modelIntakeContract.value);
-        modelIntakeScopeContract =
-          result.success && result.data.intakeScopeContracts?.includes(EXAM_SCOPE_CONTRACT)
-            ? EXAM_SCOPE_CONTRACT
-            : null;
+        modelIntakeScopeContract = result.success
+          ? [...EXAM_SCOPE_CONTRACTS]
+              .reverse()
+              .find((contract) => result.data.intakeScopeContracts?.includes(contract)) || null
+          : null;
         modelCoachMethods =
           result.success && Array.isArray(result.data.coachMethods)
             ? result.data.coachMethods.filter((method) => subjectCoachMethodByContract(method))

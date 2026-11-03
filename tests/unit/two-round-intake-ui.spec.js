@@ -12,7 +12,7 @@ import {
   intakeChoicesFor
 } from '../../laf-backend/functions/_shared/learning-intake.js';
 
-let store, wrapper, calls, reserved, results;
+let store, wrapper, calls, reserved, results, scopeContracts;
 const copy = (value) => JSON.parse(JSON.stringify(value));
 const envelope = (context) =>
   context.turns.length < 2
@@ -49,6 +49,7 @@ beforeEach(() => {
   calls = [];
   reserved = false;
   results = new Map();
+  scopeContracts = [];
   vi.spyOn(uni, 'request').mockImplementation((options) => {
     const data = copy(options.data);
     calls.push(data);
@@ -78,7 +79,8 @@ beforeEach(() => {
                   }
                 ],
                 intakeContract: 'model-intake-v1',
-                intakeContracts: ['model-intake-v1', CONTRACT]
+                intakeContracts: ['model-intake-v1', CONTRACT],
+                intakeScopeContracts: scopeContracts
               }
             }
           : intake
@@ -114,6 +116,22 @@ async function send() {
 }
 
 describe('two-round native/shared intake component and real store integration', () => {
+  it('prefers the newest supported scope only for a new draft and pins an in-progress v1 draft across a catalogue refresh', async () => {
+    scopeContracts = ['learning-exam-scope-v1'];
+    await prepare();
+    await store.beginModelIntake('synthetic-model', { newGoal: true });
+    expect(store.state.intake.scopeContract).toBe('learning-exam-scope-v1');
+    scopeContracts = ['learning-exam-scope-v1', 'learning-exam-scope-v2'];
+    await store.loadModels();
+    await store.answerModelIntake('考研');
+    expect(store.state.intake.scopeContract).toBe('learning-exam-scope-v1');
+    expect(modelCalls().at(-1).learningContext.intake.scopeContract).toBe('learning-exam-scope-v1');
+    await store.answerModelIntake('英语二写作');
+    store.acceptModelIntake();
+    await store.beginModelIntake('synthetic-model', { newGoal: true });
+    expect(store.state.intake.scopeContract).toBe('learning-exam-scope-v2');
+    expect(modelCalls().at(-1).learningContext.intake.scopeContract).toBe('learning-exam-scope-v2');
+  });
   it('opens once after consent, keeps capsule selection as draft, and creates a new goal only on confirmation', async () => {
     const original = store.commit('conversation.start', { goal: 'Synthetic original goal' });
     store.commit('coach.begin', { conversationId: original.id, explicit: true });

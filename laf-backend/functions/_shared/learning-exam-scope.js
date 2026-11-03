@@ -1,5 +1,7 @@
 // Explicit student intent, not a syllabus-alignment or mastery assertion.
 export const EXAM_SCOPE_CONTRACT = 'learning-exam-scope-v1';
+export const EXAM_SCOPE_V2_CONTRACT = 'learning-exam-scope-v2';
+export const EXAM_SCOPE_CONTRACTS = Object.freeze([EXAM_SCOPE_CONTRACT, EXAM_SCOPE_V2_CONTRACT]);
 const regions = [
   ['BJ', '北京'],
   ['TJ', '天津'],
@@ -38,6 +40,12 @@ const nationalCategories = {
   'city-local': '市地及以下综合管理',
   'law-enforcement': '行政执法'
 };
+const guangdongCategories = {
+  'gd-shenlun-1': '申论一',
+  'gd-shenlun-2': '申论二',
+  'gd-law-enforcement': '行政执法专业和申论（申论部分）',
+  'gd-police': '公安专业和申论（申论部分）'
+};
 const scopeKeys = ['contract', 'year', 'examLevel', 'region', 'positionCategory'];
 export function normalizeExamScope(value) {
   const invalid = () => {
@@ -45,7 +53,11 @@ export function normalizeExamScope(value) {
     error.code = 'EXAM_SCOPE_INVALID';
     throw error;
   };
-  if (!value || value.contract !== EXAM_SCOPE_CONTRACT || Object.keys(value).some((key) => !scopeKeys.includes(key)))
+  if (
+    !value ||
+    !EXAM_SCOPE_CONTRACTS.includes(value.contract) ||
+    Object.keys(value).some((key) => !scopeKeys.includes(key))
+  )
     return invalid();
   if (value.year !== null && (!Number.isInteger(value.year) || value.year < 2000 || value.year > 2099))
     return invalid();
@@ -54,12 +66,26 @@ export function normalizeExamScope(value) {
     return invalid();
   if (
     value.positionCategory !== null &&
-    !['A', 'B', 'C', ...Object.keys(nationalCategories)].includes(value.positionCategory)
+    ![
+      'A',
+      'B',
+      'C',
+      ...Object.keys(nationalCategories),
+      ...(value.contract === EXAM_SCOPE_V2_CONTRACT ? Object.keys(guangdongCategories) : [])
+    ].includes(value.positionCategory)
   )
     return invalid();
   if (value.examLevel === 'national' && (value.region !== 'CN' || ['A', 'B', 'C'].includes(value.positionCategory)))
     return invalid();
   if (value.examLevel === 'provincial' && (value.region === 'CN' || value.positionCategory in nationalCategories))
+    return invalid();
+  if (value.positionCategory in guangdongCategories && (value.examLevel !== 'provincial' || value.region !== 'CN-GD'))
+    return invalid();
+  if (
+    value.contract === EXAM_SCOPE_V2_CONTRACT &&
+    value.region === 'CN-GD' &&
+    ['A', 'B', 'C'].includes(value.positionCategory)
+  )
     return invalid();
   return Object.fromEntries(scopeKeys.map((key) => [key, value[key]]));
 }
@@ -104,7 +130,8 @@ function scopeFacts(raw) {
   return result;
 }
 
-export function explicitShenlunScope(turns) {
+export function explicitShenlunScope(turns, contract = EXAM_SCOPE_CONTRACT) {
+  if (contract === EXAM_SCOPE_V2_CONTRACT) return explicitShenlunScopeV2(turns);
   const answers = (turns || []).map((turn) => (typeof turn === 'string' ? turn : turn.answer || ''));
   if (!answers.some((answer) => answer.includes('申论'))) return null;
   const facts = Object.assign({}, ...answers.map(scopeFacts));
@@ -125,6 +152,54 @@ export function explicitShenlunScope(turns) {
   });
 }
 
+// Keep v1 extraction and binding immutable. New regional classes require an
+// explicit v2 context; a residence, generic police job or "general position"
+// does not identify Guangdong's two different general-management papers.
+function explicitShenlunScopeV2(turns) {
+  const answers = (turns || []).map((turn) => (typeof turn === 'string' ? turn : turn.answer || ''));
+  if (!answers.some((answer) => answer.includes('申论'))) return null;
+  const facts = {};
+  for (const raw of answers) {
+    const next = scopeFacts(raw);
+    const text = raw
+      .split(/[，。；\n]/u)
+      .filter((part) => !/不(?:参加|准备|报考|考)|并非|不是/u.test(part))
+      .join('，');
+    if (['examLevel', 'region'].some((key) => key in next && next[key] !== facts[key])) facts.positionCategory = null;
+    const { positionCategory, ...common } = next;
+    Object.assign(facts, common);
+    const gd = facts.examLevel === 'provincial' && facts.region === 'CN-GD';
+    if (gd) {
+      const categories = unique([
+        ...(/申论\s*(?:一|1|Ⅰ)/u.test(text) ? ['gd-shenlun-1'] : []),
+        ...(/申论\s*(?:二|2|Ⅱ)/u.test(text) ? ['gd-shenlun-2'] : []),
+        ...(/行政执法/u.test(text) ? ['gd-law-enforcement'] : []),
+        ...(/公安专业(?:和|与|及)申论|公安机关执法勤务/u.test(text) ? ['gd-police'] : [])
+      ]);
+      if (categories.length) facts.positionCategory = categories.length === 1 ? categories[0] : null;
+      else if (positionCategory !== undefined || /一般职位|综合管理类职位|公安.*申论/u.test(text))
+        facts.positionCategory = null;
+    } else if (positionCategory !== undefined) {
+      facts.positionCategory =
+        facts.examLevel === 'national' && positionCategory in nationalCategories
+          ? positionCategory
+          : facts.examLevel !== 'national' && ['A', 'B', 'C'].includes(positionCategory)
+            ? positionCategory
+            : null;
+    }
+    if (/类别(?:未定|不确定)|职位类别尚未确定/u.test(raw)) facts.positionCategory = null;
+  }
+  if (!Object.keys(facts).length) return null;
+  return normalizeExamScope({
+    contract: EXAM_SCOPE_V2_CONTRACT,
+    year: null,
+    examLevel: null,
+    region: null,
+    positionCategory: null,
+    ...facts
+  });
+}
+
 export function examScopeLabel(scope) {
   if (!scope) return '';
   const region = regions.find(([id]) => scope.region === `CN-${id}`)?.[1];
@@ -137,7 +212,11 @@ export function examScopeLabel(scope) {
         : scope.examLevel === 'provincial'
           ? '省考'
           : '',
-    scope.positionCategory ? nationalCategories[scope.positionCategory] || `${scope.positionCategory}类` : ''
+    scope.positionCategory
+      ? nationalCategories[scope.positionCategory] ||
+        guangdongCategories[scope.positionCategory] ||
+        `${scope.positionCategory}类`
+      : ''
   ]
     .filter(Boolean)
     .join(' · ');

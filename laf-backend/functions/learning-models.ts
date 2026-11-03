@@ -1,7 +1,7 @@
 import { ProviderError } from './_shared/ai-providers/learning-provider.js';
 import cloud from '@lafjs/cloud';
 import { normalizeIntakeContext, MODEL_INTAKE_CONTRACT, MODEL_INTAKE_CONTRACTS } from './_shared/learning-intake.js';
-import { EXAM_SCOPE_CONTRACT } from './_shared/learning-exam-scope.js';
+import { EXAM_SCOPE_CONTRACTS } from './_shared/learning-exam-scope.js';
 import { SUBJECT_COACH_METHODS } from './_shared/learning-coach-methods.js';
 import crypto from 'node:crypto';
 import { requireAuth, isAuthError } from './_shared/auth-middleware.js';
@@ -351,7 +351,7 @@ export default async function (ctx: any) {
           ),
           intakeContract: MODEL_INTAKE_CONTRACT,
           intakeContracts: MODEL_INTAKE_CONTRACTS,
-          intakeScopeContracts: [EXAM_SCOPE_CONTRACT],
+          intakeScopeContracts: [...EXAM_SCOPE_CONTRACTS],
           coachMethods: SUBJECT_COACH_METHODS,
           platformEnabled: process.env.LEARNING_PLATFORM_CALLS_ENABLED === 'true',
           coreLearningFree: true,

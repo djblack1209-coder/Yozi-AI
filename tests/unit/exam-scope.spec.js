@@ -2,9 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   explicitShenlunScope,
   normalizeExamScope,
-  examScopeLabel
+  examScopeLabel,
+  EXAM_SCOPE_V2_CONTRACT
 } from '../../laf-backend/functions/_shared/learning-exam-scope.js';
-import { normalizeIntakeReply, normalizeStudyProfile } from '../../laf-backend/functions/_shared/learning-intake.js';
+import {
+  normalizeIntakeContext,
+  normalizeIntakeReply,
+  normalizeStudyProfile
+} from '../../laf-backend/functions/_shared/learning-intake.js';
 import { shenlunScopeBinding } from '../../laf-backend/functions/_shared/learning-shenlun-method.js';
 import {
   normalizeCoachRequest,
@@ -61,6 +66,107 @@ const request = (examScope = scope(), phase = 'daily') => ({
 });
 
 describe('explicit exam scope and bounded syllabus sources', () => {
+  const gdScope = (positionCategory = 'gd-shenlun-2', patch = {}) =>
+    scope({ contract: EXAM_SCOPE_V2_CONTRACT, region: 'CN-GD', positionCategory, ...patch });
+  const extractV2 = (answers) => explicitShenlunScope(answers, EXAM_SCOPE_V2_CONTRACT);
+  it('uses student-facing character-count instructions only for the new source contract', () => {
+    const essay = (saved) => ({
+      ...request(saved, 'essay'),
+      task: '一段改进建议，160至220字',
+      input: '建议根据材料提出办法。'
+    });
+    expect(coachSystemPrompt(essay(gdScope()))).toContain('这是本次正文的字符统计');
+    expect(coachSystemPrompt(essay(gdScope()))).not.toContain('这是开发侧计数');
+    expect(coachSystemPrompt(essay(scope()))).toContain('这是开发侧计数');
+  });
+  it.each([
+    ['申论一', 'gd-shenlun-1', ['阅读理解', '综合分析', '提出和解决问题', '文字表达']],
+    ['申论二', 'gd-shenlun-2', ['阅读理解', '贯彻执行', '解决问题', '文字表达']],
+    ['行政执法专业和申论', 'gd-law-enforcement', ['阅读理解', '依法办事', '公共服务', '文字表达']],
+    ['公安专业和申论', 'gd-police', ['阅读理解', '行政管理', '依法处置', '文字表达']]
+  ])(
+    'binds the explicit Guangdong paper %s to its own 2027 body section without claiming alignment',
+    (paper, category, capabilities) => {
+      const saved = extractV2([`准备2027年广东省考${paper}。`]);
+      expect(saved).toEqual(gdScope(category));
+      const binding = shenlunScopeBinding(saved);
+      expect(binding).toMatchObject({
+        contract: 'shenlun-syllabus-scope-v2',
+        sourceStatus: 'body_available',
+        alignmentStatus: 'pending_verification',
+        source: {
+          id: 'gd-civil-2027-shenlun-v1',
+          capabilities,
+          bodySha256: '431002a7e26db33535244a637b541f4534562de19aa9a56ac195f800958570b9'
+        }
+      });
+      expect(binding.source.section).toContain(paper.startsWith('申论') ? `《${paper}》` : '2.申论部分');
+      expect(coachSystemPrompt(request(saved))).toContain(JSON.stringify(binding));
+    }
+  );
+  it('corrects an explicitly named paper but never infers the two general papers from residence, job name or an ambiguous answer', () => {
+    expect(extractV2(['准备2027年广东省考申论一。', '改为申论二，其他不变。'])).toEqual(gdScope());
+    for (const paper of ['一般职位申论', '公安职位申论', '申论一或申论二', 'A类申论'])
+      expect(extractV2([`准备2027年广东省考${paper}。`])).toEqual(gdScope(null));
+    expect(extractV2(['我是广东人，准备2027年国考行政执法类申论。'])).toEqual(
+      scope({
+        contract: EXAM_SCOPE_V2_CONTRACT,
+        examLevel: 'national',
+        region: 'CN',
+        positionCategory: 'law-enforcement'
+      })
+    );
+    expect(extractV2(['准备2027年广东省考申论二。', '改为2027年江苏省考B类申论。'])).toEqual(
+      scope({ contract: EXAM_SCOPE_V2_CONTRACT })
+    );
+    expect(extractV2(['2027-12-20之前学申论。'])).toBeNull();
+    expect(extractV2(['准备2027年广东省考申论一。', '职位类别尚未确定。'])).toEqual(gdScope(null));
+  });
+  it('pins source catalogues and rejects Guangdong classes in v1, another province, another exam or an English profile', () => {
+    expect(explicitShenlunScope(['准备2027年广东省考申论二。'])).toEqual(
+      scope({ region: 'CN-GD', positionCategory: null })
+    );
+    expect(shenlunScopeBinding(scope({ region: 'CN-GD', positionCategory: null }))).toMatchObject({
+      contract: 'shenlun-syllabus-scope-v1',
+      sourceStatus: 'missing',
+      source: null
+    });
+    for (const patch of [
+      { contract: 'learning-exam-scope-v1' },
+      { region: 'CN-JS' },
+      { examLevel: 'national', region: 'CN' }
+    ])
+      expect(() => normalizeExamScope(gdScope('gd-shenlun-2', patch))).toThrow();
+    expect(() => normalizeExamScope(gdScope('A'))).toThrow();
+    expect(shenlunScopeBinding(gdScope('gd-shenlun-2', { year: 2028 })).sourceStatus).toBe('missing');
+    expect(() =>
+      normalizeStudyProfile({ ...profile, category: 'kaoyan', subjects: ['英语二'], examScope: gdScope() })
+    ).toThrow();
+    expect(() => normalizeIntakeContext({ ...context([]), scopeContract: 'learning-exam-scope-v3' })).toThrow();
+  });
+  it('derives the new profile from answers, requires confirmation, and saves the version in the existing request', () => {
+    const ctx = {
+      ...context(['准备2027年广东省考申论一。', '改为申论二，其他不变。']),
+      scopeContract: EXAM_SCOPE_V2_CONTRACT
+    };
+    const reply = proposal(ctx, { examScope: scope() });
+    expect(reply.intake.profile.examScope).toEqual(gdScope());
+    let state = emptyLearningState('gd-synthetic', 'America/Los_Angeles');
+    state.intake = { ...ctx, requestId: 'gd-intake', modelId: 'synthetic', status: 'ready', reply };
+    expect(state.conversations).toHaveLength(0);
+    state = applyLearningOperation(state, {
+      id: 'gd-confirm',
+      type: 'intake.accept',
+      at,
+      data: { explicit: true, coachMethod: 'shenlun-writing-method-v2' }
+    }).state;
+    const coach = state.conversations[0].coach;
+    expect(coach.profile.examScope).toEqual(gdScope());
+    const input = coachInputFor(coach, null, 'diagnostic', 'diagnostic');
+    expect(normalizeCoachRequest({ ...request(coach.profile.examScope, 'diagnostic'), ...input }).examScope).toEqual(
+      gdScope()
+    );
+  });
   it('keeps the explicit year and region while a later answer corrects the category', () => {
     const turns = context(['准备2027年江苏省考C类申论。', '改为江苏省2027年度省考B类申论，其他不变。']).turns;
     const before = JSON.stringify(turns);

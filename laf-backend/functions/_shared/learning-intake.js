@@ -1,5 +1,5 @@
 // Model-authored onboarding; a proposed profile takes effect only on confirmation.
-import { EXAM_SCOPE_CONTRACT, explicitShenlunScope, normalizeExamScope } from './learning-exam-scope.js';
+import { EXAM_SCOPE_CONTRACTS, explicitShenlunScope, normalizeExamScope } from './learning-exam-scope.js';
 export const INTAKE_CHOICES = Object.freeze([
   { value: 'cet', label: '四六级' },
   { value: 'kaoyan', label: '考研' },
@@ -57,7 +57,7 @@ const short = (v, n) => typeof v === 'string' && v.trim().length > 0 && v.trim()
 export function normalizeIntakeContext(value) {
   if (!value || !Array.isArray(value.turns) || value.turns.length > 5) return fail('context.turns');
   if (value.contract !== undefined && !MODEL_INTAKE_CONTRACTS.includes(value.contract)) return fail('context.contract');
-  if (value.scopeContract !== undefined && (!v2(value) || value.scopeContract !== EXAM_SCOPE_CONTRACT))
+  if (value.scopeContract !== undefined && (!v2(value) || !EXAM_SCOPE_CONTRACTS.includes(value.scopeContract)))
     return fail('context.scopeContract');
   return {
     ...(v2(value) ? { contract: MODEL_INTAKE_V2_CONTRACT } : {}),
@@ -181,11 +181,11 @@ export function normalizeIntakeReply(value, first = false, context) {
           ...facts,
           // The model cannot invent scope facts or a syllabus source. Existing v1 is unchanged.
           examScope:
-            context?.scopeContract === EXAM_SCOPE_CONTRACT &&
+            EXAM_SCOPE_CONTRACTS.includes(context?.scopeContract) &&
             proposed?.category === 'civil' &&
             Array.isArray(proposed.subjects) &&
             proposed.subjects.some((subject) => typeof subject === 'string' && subject.includes('申论'))
-              ? explicitShenlunScope(context.turns)
+              ? explicitShenlunScope(context.turns, context.scopeContract)
               : undefined
         });
   if (!first) {
