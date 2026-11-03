@@ -114,7 +114,8 @@ pub async fn open_desktop_settings(app: AppHandle, window: WebviewWindow, state:
             }
         }
     });
-    Ok(())
+    settings.show().map_err(|_| "设置窗口暂不可用")?;
+    settings.set_focus().map_err(|_| "无法打开设置窗口".into())
 }
 
 #[tauri::command]

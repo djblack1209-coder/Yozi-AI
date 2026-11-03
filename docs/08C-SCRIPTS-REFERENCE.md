@@ -13,7 +13,7 @@
 ## dev/test 渠道本机验收
 
 沿用 `YOZI_BUILD_CHANNEL=dev/test`；未指定渠道的生产构建默认 release。测试包构建：`YOZI_BUILD_CHANNEL=test YOZI_ISOLATED_BUILD=1 npm run build:desktop -- --config '{"identifier":"cn.wangshiliang.wenli.qa.journey"}' --bundles app --no-sign -- --offline --locked --jobs 1`；核验签名后放入 `tmp/dev-test.noindex/Yozi AI.app`，立即删除被替代的测试包，不替换日常 App。
-测试客户端固定连接 `http://127.0.0.1:4382`，无生产备用地址。配套服务使用现有 standalone：`node --env-file=tmp/dev-test.noindex/runtime.env scripts/build/start-dev-test-backend.mjs`；该本机私有环境文件权限 0600，不入 Git，服务已运行时直接复用。 启动器仅接受既有回环地址4382与yozi_dev_test库，通过已有私有目录读取器在内存配置精确免费型号；平台费用预算固定0、周权益使用既有免费试用分支，SSRF／鉴权／用户隔离与待结算保护保留。客户端无需取密钥或导入私有目录；正式构建与服务开关不变。
+测试客户端固定连接 `http://127.0.0.1:4382`，无生产备用地址。配套服务使用现有 standalone：`node --env-file=tmp/dev-test.noindex/runtime.env scripts/build/start-dev-test-backend.mjs`；该本机私有环境文件权限 0600，不入 Git，服务已运行时直接复用。启动器仅接受既有回环地址4382与yozi_dev_test库；按客户2026-11-03裁定，剩余开发主用已配置付费DeepSeek Flash／V4 Pro，停止免费台账轮换与旧兜底自动装载，旧免费平台参数直接拒绝。付费错误保留结果／失败收据，不回退免费通道；不另设开发费用上限，既有防循环、时限、返修次数、SSRF、鉴权、用户隔离、幂等和待结算保护保持，平台教学仍关闭。客户端无需取密钥或导入私有目录；正式收费与短信开关不变。
 H5验收复用该QA已批准的浏览器来源（2026-10-24实跑为`http://127.0.0.1:42153`，启动前查占用）；随机临时端口不自动符合CORS，不能据此判API失败或修改放行规则。用`desktop.mjs web`单独更新前端不封装／启动App，完整原生包仍在功能收尾后构建。 原生QA验收还须在该隔离服务的`ALLOWED_ORIGINS`保留精确来源`tauri://localhost`；2026-10-25当前服务另有既有HMR来源`http://127.0.0.1:5173`，不使用通配符，不改正式服务。
 后端测试放行须同时设置 `YOZI_BUILD_CHANNEL=dev/test`、`NODE_ENV=test/development`、`HOST=127.0.0.1`、`DB_NAME=yozi_dev_test`、`MONGODB_URI=mongodb://127.0.0.1:<端口>/yozi_dev_test`；缺任一项不启用固定码。注册自动带 `000000`，发送接口不发邮件、不等待冷却；正式环境不接受固定测试码。
 登录、模型操作与 BYOK 请求次数放宽到百万级；测试跳过旧累计账本条数、模型连接数、平台周权益和每日次数门槛，费用预算、待结算保护、存储容量、SSRF、TLS、鉴权、用户隔离与破坏性操作确认继续有效。测试服务独立使用现有 `LEARNING_DNS_SERVERS` 配置，不改系统或正式服务 DNS。
