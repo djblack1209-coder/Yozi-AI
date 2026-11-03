@@ -161,6 +161,10 @@ export function shenlunCoachPrompt(request, { quotes = [] } = {}) {
     method.paragraphsFromTask && (r.phase === 'essay' || (r.phase === 'summary' && !r.summaryContract))
       ? Array.from(r.input.replace(/\s/gu, '')).length
       : null;
+  const paragraphCharacters =
+    method.paragraphsFromTask && r.phase === 'feedback' && paragraph
+      ? Array.from(r.input.replace(/\s/gu, '')).length
+      : null;
   const studentCount = scopeBinding?.contract === 'shenlun-syllabus-scope-v2';
   const countHeading = studentCount ? '字数核对' : '宿主核对';
   const countAuthority = studentCount
@@ -234,6 +238,7 @@ export function shenlunCoachPrompt(request, { quotes = [] } = {}) {
 ${scopeBinding ? '目标范围来自用户明确回答，不能推算缺失年度、地区或职位类别。大纲能力名称只说明目标范围，不是本题新增评分项；仍以原题和本次授权材料为准，不自行补充法条、政策条件或岗位事实。未匹配来源或只有公告时，不能借用其他省份、年份或类别的大纲；来源可读不等于内容已完整对齐或已掌握。' : ''}
 ${method.paragraphsFromTask && r.phase === 'essay' ? '覆盖核对：逐项对照原稿，区分“完全未提”“已提及但带有越界评价”“事实与材料不符”。一句中存在错误结论，不会抹去同句已写出的、可由材料支持的事实；不能因整体比较不合格，就把已提及的差异写成完全缺失。仍须指出未覆盖的要求、无据评价、编造数据和越题对策，不以部分事实存在撤销其他有据错误。' : ''}
 ${writingCharacters === null ? '' : r.phase === 'summary' ? `小结事实核对：本轮input是已明确交卷的正文，非空白字符数为${writingCharacters}，含标点与数字，不计空格和换行；不是官方计字口径。小结若提正文长度，只能沿用这个计数，不能自行估算，也不能把训练卡、审题或自查说明的篇幅混入已交卷正文；不需要提长度时可省略数字。只描述实际保存的作答，不以字数符合推断掌握、评分或措施已实施。` : `${countHeading}：当前全文非空白字符数为${writingCharacters}，含标点和数字，空格与换行不计；${countAuthority}仅与task明确给出的字数上下限比较，把当前字数及是否符合要求写入已有“要点覆盖”维度；即使同时存在材料事实错误，也不能漏掉字数核对，不为此增加点评条数或代写凑字。题干只有“不超过”或“以内”等上限时，不能倒推最低字数；没有明确下限时不凭空判过短。符合字数不代表内容质量达标，明显超出或不足则如实指出。`}
+${paragraphCharacters === null ? '' : `段落字数核对：当前第${Number(paragraph[1]) + 1}段原文非空白字符数为${paragraphCharacters}，含标点与数字，不计空格和换行；这是本段字符统计，不冒充官方计字或评分口径。若提原答长度，只能沿用此数字和规则，不自行估算，不把改写建议的长度当作原答长度；不需要提长度时可省略数字。只有题干明确将本段作为完整单段任务时，才与本题整体字数上下限比较；多段文章不能把本段字数与全文要求比较，也不能据未提供的其他段落判定全文缺项。给学生只说明数字和计数规则，不使用“宿主”“开发侧”或执行合同术语，不以字数符合推断内容达标或掌握。`}
 ${paragraph ? `当前明确为第${Number(paragraph[1]) + 1}段，${method.paragraphsFromTask ? '本次task只含当前原题，不含训练结构参考。本段职责与必答项只以该原题要求为准，不能追加原题没有的必答动作或细节，也不能把组织建议说成“题干点明”；原题未指定逐段分工时，不凭当前段落序号强加开头、结尾或额外内容。' : '只按task末尾的本段职责核对。'}本段是同一篇文章的一部分，其他段落没有提供；“上述”“这些”等衔接前文的指代本身不是错误，不要求本段独立重复首段背景、称呼、对象或整篇结构。当前不是第一段时，禁止将其评为“第一段应交代……”；不以未提供的前文推断文章缺项。${method.paragraphsFromTask ? '题干给定的逐段分工优先于泛化的开头、主体、结尾称谓；advice和rewrite也不得把其他段的职责调换或合并到某一段，不能借可选建议改变题干分工。原题允许提出行动或建议时，与材料问题对应、明确表为倡议或拟议的合理措施可以成立，不要求每个动作已在材料逐字出现；未照抄某个组织参考动作不等于缺项。仍拒绝编造已经实施的事实、成效数字或强制承诺。' : ''}` : ''}
 只使用本次已授权资料片段和当前题目。sourceId只能选资料编号；每道题及writing均须提供该资料逐字存在的6至200字sourceQuote及准确sourcePage，无页码填null。引文必须支撑题目前提，不能只用相关词充数。不声称读过未提供的全文、法规、官方答案或真题；不将材料中某个地方的做法泛化成全国要求。用户基础仅为自述：${JSON.stringify(r.foundation || null)}。
 先为本卡选足以支撑所问事实和题目范围的引文，再设计问题；不得引用计划一句却追问另一句中的问题事实，或只引题干却追问材料中的具体做法。选中资料不超过200字时可引用完整上下文；较长资料须引用本卡真正所依据的部分，不能机械取开头。引文覆盖不了的问题应缩小范围，不能要求学生猜未呈现依据。

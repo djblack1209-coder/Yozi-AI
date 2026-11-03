@@ -300,6 +300,44 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
       expect(coachSystemPrompt({ ...r, phase, target })).not.toContain('宿主核对：当前全文非空白字符数');
     }
   });
+  it.each([
+    ['甲\n乙 丁', 3],
+    ['𠀀🐱\n甲', 3],
+    [' 甲，乙。\u3000', 4]
+  ])('S27 gives the current v2 paragraph count without treating it as the full essay: %s', (input, count) => {
+    for (const index of [0, 10]) {
+      const r = request('feedback', {
+        methodContract: METHOD_V2,
+        target: `paragraph-${index}`,
+        input,
+        task: '写800至1000字五段议论文。'
+      });
+      const before = JSON.stringify(r);
+      const prompt = coachSystemPrompt(r);
+      expect(prompt).toContain(`当前第${index + 1}段原文非空白字符数为${count}`);
+      expect(prompt).toContain('多段文章不能把本段字数与全文要求比较');
+      expect(prompt).toContain('不把改写建议的长度当作原答长度');
+      expect(prompt).not.toContain('当前全文非空白字符数');
+      expect(JSON.parse(prompt.split('当前评阅范围：')[1].split('。')[0])).toEqual({
+        kind: 'paragraph',
+        number: index + 1,
+        fullEssay: false
+      });
+      expect(JSON.stringify(r)).toBe(before);
+    }
+    const r = request('feedback', { methodContract: METHOD_V2, target: 'paragraph-0', input });
+    for (const [phase, target] of [
+      ['feedback', 'analysis'],
+      ['feedback', 'card-c1'],
+      ['essay', 'essay'],
+      ['daily', 'daily'],
+      ['summary', 'summary']
+    ]) {
+      expect(coachSystemPrompt({ ...r, phase, target })).not.toContain('段落字数核对');
+    }
+    expect(coachSystemPrompt({ ...r, methodContract: METHOD })).not.toContain('段落字数核对');
+    expect(coachSystemPrompt({ ...r, exam: 'english2', methodContract: undefined })).not.toContain('段落字数核对');
+  });
   it('counts only submitted rewrites for the v2 writing summary, excluding training self-checks', () => {
     const paragraphs = ['第一段原稿', '第二段原稿', '第三段原稿'];
     const coach = { profile: { exam: 'shenlun', methodContract: METHOD_V2 } };
