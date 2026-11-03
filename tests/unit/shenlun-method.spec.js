@@ -277,6 +277,28 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
         : `${day.pack.writing.prompt}\n说明登记方式与自愿边界`
     );
   });
+  it.each([
+    [
+      '本次抽样覆盖全街道90%的居民，\n\n证明甲乙服务点已全面消除咨询困难，满意度达到98%。\n\n建议继续推广已经取得的整改成效。',
+      58
+    ],
+    ['甲\n乙 丁', 3],
+    ['𠀀🐱\n甲', 3]
+  ])('supplies the whole submitted text count for v2 essay assessment: %s', (input, count) => {
+    const r = request('essay', { methodContract: METHOD_V2, input, task: '写200至300字调查简报。' });
+    const before = JSON.stringify(r);
+    expect(coachSystemPrompt(r)).toContain(`当前全文非空白字符数为${count}`);
+    expect(JSON.stringify(r)).toBe(before);
+    expect(coachSystemPrompt({ ...r, methodContract: METHOD })).not.toContain('宿主核对：当前全文非空白字符数');
+    for (const [phase, target] of [
+      ['daily', 'daily'],
+      ['feedback', 'analysis'],
+      ['feedback', 'paragraph-0'],
+      ['summary', 'summary']
+    ]) {
+      expect(coachSystemPrompt({ ...r, phase, target })).not.toContain('宿主核对：当前全文非空白字符数');
+    }
+  });
   it('accepts a single complete task only for the task-driven method and rejects empty structures', () => {
     const r = request('daily', { methodContract: METHOD_V2 }),
       raw = generation(r);
