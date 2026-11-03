@@ -12,6 +12,7 @@ import {
 } from '../../laf-backend/functions/_shared/learning-coach-methods.js';
 import {
   WRITING_COACH_CONTRACT,
+  COACH_SUMMARY_CONTRACT,
   normalizeCoachRequest,
   normalizeCoachOutput,
   parseCoachModelOutput,
@@ -298,6 +299,29 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
     ]) {
       expect(coachSystemPrompt({ ...r, phase, target })).not.toContain('宿主核对：当前全文非空白字符数');
     }
+  });
+  it('counts only submitted rewrites for the v2 writing summary, excluding training self-checks', () => {
+    const paragraphs = ['第一段原稿', '第二段原稿', '第三段原稿'];
+    const coach = { profile: { exam: 'shenlun', methodContract: METHOD_V2 } };
+    const day = {
+      completed: false,
+      pack: { cards: [{ title: '完成任务与自查' }], writing: { patterns: paragraphs.map((p) => [p]) } },
+      answers: [{ answer: paragraphs.join('\n') + '\n自查说明不属于已交卷正文。' }],
+      rewrites: paragraphs.map((text) => ({ text })),
+      essay: { id: 'saved-essay' }
+    };
+    const before = JSON.stringify(day);
+    const bound = coachInputFor(coach, day, 'summary', 'summary');
+    expect(bound.input).toBe(paragraphs.join('\n\n'));
+    const r = request('summary', { ...bound, methodContract: METHOD_V2 });
+    const prompt = coachSystemPrompt(r);
+    expect(prompt).toContain('已明确交卷的正文，非空白字符数为15');
+    expect(prompt).not.toContain('自查说明不属于已交卷正文。');
+    expect(JSON.stringify(day)).toBe(before);
+    expect(coachSystemPrompt({ ...r, methodContract: METHOD })).not.toContain('小结事实核对');
+    expect(() => coachSystemPrompt({ ...r, summaryContract: COACH_SUMMARY_CONTRACT })).toThrow(
+      '本教学定义不使用英语教学合同'
+    );
   });
   it('accepts a single complete task only for the task-driven method and rejects empty structures', () => {
     const r = request('daily', { methodContract: METHOD_V2 }),
