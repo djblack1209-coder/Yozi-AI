@@ -71,7 +71,8 @@ describe('bounded teaching cards', () => {
     expect(restored.attempts).toHaveLength(0);
   });
   it.each([
-    { ...cards, version: 3 },
+    { ...cards, version: 4 },
+    { version: 2, items: [{ kind: 'checklist', items: [{ id: 'a', label: 'Read' }] }] },
     { version: 1, items: [{ kind: 'knowledge', title: 'Score', body: 'Read', score: 100 }] },
     { version: 1, items: [{ kind: 'knowledge', title: 'Action', body: 'Read', tools: [{ name: 'submit' }] }] },
     { version: 1, items: [{ kind: 'progress', title: 'Progress', body: '100%' }] },

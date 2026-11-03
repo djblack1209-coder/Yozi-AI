@@ -9,7 +9,10 @@ import { modelErrorPresentation } from '../../../laf-backend/functions/_shared/m
 import { DEV_TEST } from '@/config/build-channel.js';
 import { activeEntryMemories } from '../../../laf-backend/functions/_shared/learning-entries.js';
 import { extractConversationEntries } from '../../../laf-backend/functions/_shared/learning-entry-extractor.js';
-import { mapContentBlocks } from '../../../laf-backend/functions/_shared/learning-content-blocks.js';
+import {
+  mapContentBlocks,
+  PRESENTATION_CONTRACT
+} from '../../../laf-backend/functions/_shared/learning-content-blocks.js';
 import {
   normalizeIntakeReply,
   explicitIntakeFacts,
@@ -411,6 +414,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   let intakeController = null;
   let modelIntakeAvailable = false;
   let modelCoachMethods = [];
+  let modelPresentationAvailable = false;
   const modelIntakeContract = shallowRef(null);
   let modelIntakeScopeContract = null;
   const coachError = ref('');
@@ -677,6 +681,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     cancelModelReads(undefined, 'CONTEXT_CHANGED');
     modelIntakeAvailable = false;
     modelCoachMethods = [];
+    modelPresentationAvailable = false;
     modelIntakeContract.value = null;
     modelIntakeScopeContract = null;
     models.value = [];
@@ -1383,6 +1388,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     materialConnection.value = null;
     modelIntakeAvailable = false;
     modelCoachMethods = [];
+    modelPresentationAvailable = false;
     modelIntakeContract.value = null;
     modelIntakeScopeContract = null;
     models.value = [];
@@ -3364,6 +3370,14 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           ? previousRequest.feedbackOutputContract
           : WRITING_FEEDBACK_OUTPUT_CONTRACT
         : undefined;
+    const presentationContract =
+      mode === 'cloud' && !options.visual && !options.feedbackAttemptId
+        ? previousRequest
+          ? previousRequest.presentationContract
+          : modelPresentationAvailable
+            ? PRESENTATION_CONTRACT
+            : undefined
+        : undefined;
     const request = {
       id,
       owner,
@@ -3376,6 +3390,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       lifecycle,
       ...(options.feedbackAttemptId ? { feedbackAttemptId: options.feedbackAttemptId } : {}),
       ...(feedbackOutputContract ? { feedbackOutputContract } : {}),
+      ...(presentationContract ? { presentationContract } : {}),
       lockedMethod:
         directive?.type === 'strategy.set'
           ? directive.data.method
@@ -3411,6 +3426,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       requestBinding: binding,
       modelId: modelId.value,
       shareConsent: sharingAllowed.value,
+      ...(request.presentationContract ? { presentationContract: request.presentationContract } : {}),
       ...(request.feedbackOutputContract
         ? {
             feedbackAttemptId: request.feedbackAttemptId,
@@ -3524,6 +3540,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
             lockedMethod: request.lockedMethod,
             ...(request.feedbackAttemptId ? { feedbackAttemptId: request.feedbackAttemptId } : {}),
             ...(request.feedbackOutputContract ? { feedbackOutputContract: request.feedbackOutputContract } : {}),
+            ...(request.presentationContract ? { presentationContract: request.presentationContract } : {}),
             ...(request.visualSource ? { visualSource: request.visualSource } : {})
           },
           `${id}:request`
@@ -3579,6 +3596,13 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   function applyModelResult(data, request, signal) {
     const assertSession = () => ensureSessionCurrent(request.session, signal);
     assertSession();
+    assert(
+      request.presentationContract === PRESENTATION_CONTRACT
+        ? data.contentBlocks?.version === 3
+        : data.contentBlocks?.version !== 3,
+      'INVALID_RESPONSE',
+      '展示结果与本次请求不匹配，未保存'
+    );
     if (data.contentBlocks !== undefined)
       data = { ...data, contentBlocks: mapContentBlocks(data.contentBlocks, safeLearningMessage) };
     const { id, conversationId, questionKey: requestedQuestionKey } = request;
@@ -4005,6 +4029,10 @@ export const useConversationLearningStore = defineStore('conversation-learning',
         return result;
       }
       if (kind === 'models') {
+        modelPresentationAvailable =
+          result.success &&
+          Array.isArray(result.data.presentationContracts) &&
+          result.data.presentationContracts.includes(PRESENTATION_CONTRACT);
         modelIntakeAvailable = result.success && result.data.intakeContract === 'model-intake-v1';
         modelIntakeContract.value =
           result.success && result.data.intakeContracts?.includes(MODEL_INTAKE_V2_CONTRACT)

@@ -9,7 +9,7 @@
     <view v-if="pending" class="learning-card-placeholder" :aria-label="t('learning.replying')" aria-busy="true"
       ><view /><view /><view
     /></view>
-    <LearningContentCards v-if="validatedBlocks" :content="validatedBlocks" />
+    <LearningContentCards v-if="validatedBlocks" :content="validatedBlocks" :presentation="presentation" />
   </view>
 </template>
 <script setup>
@@ -22,7 +22,8 @@ const props = defineProps({
   pendingLabel: { type: String, default: '' },
   pending: Boolean,
   content: { type: String, default: '' },
-  contentBlocks: { type: Object, default: null }
+  contentBlocks: { type: Object, default: null },
+  presentation: { type: String, default: 'auto' }
 });
 const validatedBlocks = computed(() => {
   try {

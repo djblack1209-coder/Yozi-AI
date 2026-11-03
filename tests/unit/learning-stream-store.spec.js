@@ -8,10 +8,13 @@ import { useConversationLearningStore } from '@/stores/modules/conversation-lear
 import { learningRepository } from '@/services/learning/learning-repository.js';
 import LearningPage from '@/pages/learning/index.vue';
 import { createLearningRepository } from '@/services/learning/learning-repository.js';
-import { emptyLearningState } from '@/services/learning/learning-domain.js';
+import { emptyLearningState, applyLearningOperation } from '@/services/learning/learning-domain.js';
+import MuseComposer from '@/components/business/learning/muse-composer.vue';
+import MusePresentationControl from '@/components/business/learning/muse-presentation-control.vue';
 import config from '@/config/index.js';
 import { onHide } from '@dcloudio/uni-app';
 import { coachFixture } from '../fixtures/writing-coach.js';
+import { PRESENTATION_CONTRACT } from '../../laf-backend/functions/_shared/learning-content-blocks.js';
 vi.mock('@dcloudio/uni-app', () => ({ onShow: vi.fn(), onLoad: vi.fn(), onBackPress: vi.fn(), onHide: vi.fn() }));
 let previousBaseUrl;
 const stores = [];
@@ -213,6 +216,63 @@ function setup(platform = 'h5') {
     }
   };
 }
+it('S22 binds advertised presentation to a new request and saves only the validated final descriptors', async () => {
+  const harness = setup(),
+    { store } = harness;
+  vi.spyOn(uni, 'request').mockImplementation((options) => {
+    if (acknowledgePreferences(options)) return { abort: vi.fn() };
+    options.success({
+      data: {
+        code: 0,
+        success: true,
+        data: { models: [...store.models], presentationContracts: [PRESENTATION_CONTRACT] }
+      }
+    });
+    return { abort: vi.fn() };
+  });
+  expect((await store.loadModels()).success).toBe(true);
+  const pending = store.send('比较两个表达的语气。');
+  await flushPromises();
+  expect(harness.request.presentationContract).toBe(PRESENTATION_CONTRACT);
+  const request = store.state.events.find((event) => event.type === 'model.request');
+  expect(request.data.presentationContract).toBe(PRESENTATION_CONTRACT);
+  const beforePreview = store.exportData();
+  harness.preview();
+  await flushPromises();
+  expect(store.exportData()).toBe(beforePreview);
+  const contentBlocks = { version: 3, items: [{ kind: 'checklist', items: [{ id: 'reader', label: '核对读者' }] }] };
+  harness.complete({ tools: [], contentBlocks });
+  await pending;
+  expect(store.error).toBe('');
+  expect(store.active.messages.at(-1).contentBlocks).toEqual(contentBlocks);
+  expect(store.state.attempts).toHaveLength(0);
+  let restored = emptyLearningState(store.state.owner, store.state.timezone);
+  for (const event of JSON.parse(JSON.stringify(store.state.events)))
+    restored = applyLearningOperation(restored, event).state;
+  expect(restored).toEqual(store.state);
+});
+
+it('S22 explicit display input changes only the account view preference and never sends or saves a learning turn', async () => {
+  const harness = setup(),
+    { store } = harness;
+  const wrapper = mount(LearningPage, {
+    global: { stubs: { BaseIcon: true, AnimatedAvatar: true, YoziMascot: true } }
+  });
+  wrappers.push(wrapper);
+  await flushPromises();
+  const before = store.exportData();
+  const composer = wrapper.findComponent(MuseComposer);
+  expect(composer.exists()).toBe(true);
+  composer.vm.$emit('update:modelValue', '显示方式：文字');
+  await flushPromises();
+  composer.vm.$emit('submit');
+  await flushPromises();
+  expect(wrapper.findComponent(MusePresentationControl).props('presentation').mode).toBe('text');
+  expect(composer.props('modelValue')).toBe('');
+  expect(store.exportData()).toBe(before);
+  expect(harness.fetch).not.toHaveBeenCalled();
+});
+
 it('带练复用流式片段，预览不写学习事实，最终校验后保存当前会话', async () => {
   const harness = setup(),
     { store } = harness;

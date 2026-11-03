@@ -12,7 +12,7 @@ import {
   normalizeLearningModelOrigin
 } from './_shared/learning-model-origin.js';
 import { classifyModelFailure, modelErrorPresentation } from './_shared/model-errors.js';
-import { mapContentBlocks } from './_shared/learning-content-blocks.js';
+import { mapContentBlocks, PRESENTATION_CONTRACT } from './_shared/learning-content-blocks.js';
 import cloud from '@lafjs/cloud';
 import { normalizeIntakeContext, intakeSystemPrompt, parseIntakeOutput } from './_shared/learning-intake.js';
 import { normalizeIdeasContext, ideasSystemPrompt, parseIdeasOutput } from './_shared/learning-ideas.js';
@@ -102,6 +102,17 @@ stat 为 {kind:"stat",label:"≤20字",value:"≤20字符的字符串或有限�
 chart 为 {kind:"chart",chart:{type:"bar或donut或progress",title:"可选≤20字",unit:"可选≤8字",series:[{label:"≤8字",value:0至100000的有限数,tone:"可选default或success或warning或danger"}],total:可选有限非负数,caption:"可选≤40字"}}，series为1至6项；donut的total缺省为数值合计，提供时不得小于合计；progress的total缺省100。
 figure 为 {kind:"figure",figure:{type:"tree或graph或geometry或flow",nodes:[{id:"≤32字唯一标识",label:"≤6字",x:0至320,y:0至240}],edges:[["起点id","终点id"]],caption:"必填≤40字",width:可选1至320,height:可选1至240}}；节点1至24个，边0至32条，边只引用存在的不同节点。
 仅在树/图/几何/流程能替代一段文字时用figure，每题最多1图、每轮最多2图，必须配caption；成绩或占比可用stat/chart，但只能展示已有背景中明确的事实，不生成或推断得分。序列/对比优先用表；纯定义与单步运算不配图。不把答案、得分或判分逻辑写进contentBlocks。绝不输出原始SVG、JSX或HTML，不生成可执行业务动作；只输出上述白名单数据，不增加字段。最多6卡，单项JSON≤4000字符，整包≤12000字符。`;
+
+const PRESENTATION_CONTENT = `教学主体必须使用 contentBlocks:{"version":3,"items":[组件描述]}，message只作简短过渡。默认按内容需要组合知识卡、分步示例、对照表和自查清单；一个短定义可只用知识卡，不为凑组件生成图表。不设置卡片数量或整包展示预算，不重复同一内容。不在展示数据中输出当前题答案、得分、判分逻辑、掌握度、计划执行成功、学习工具或权限字段；它们由宿主依据事实处理。`;
+export const PRESENTATION_SYSTEM_PROMPT = LEARNING_SYSTEM_PROMPT.split('\n')
+  .map((line) => (line.startsWith('教学主体优先用 contentBlocks:') ? PRESENTATION_CONTENT : line))
+  .join('\n');
+export const PRESENTATION_BLOCKS_PROMPT = `教学展示合同 ${PRESENTATION_CONTRACT}（contentBlocks.version=3）：
+knowledge、example、note沿用{kind,title,body?,points?,steps?,formula?}；title≤120字，body≤2000字，points每项≤400字；只有example可带steps，每步≤600字；formula≤500字。至少提供body、points、steps或formula之一。数组只列实际需要的内容，不凑数量。
+${CONTENT_BLOCKS_PROMPT.split('\n').slice(1, 4).join('\n')}
+table为{kind:"table",title?:"短标题",columns:["列标题"],rows:[["本行各列文字"]]}，每行必须与列数相同，列标题≤120字，单元格≤2000字。
+checklist为{kind:"checklist",title?:"短标题",items:[{id:"≤32字唯一标识",label:"≤400字自查项"}]}；不能带checked、分数、答案、保存、执行或其他字段。勾选仅是本机自查，不形成作答、完成或掌握。
+只输出白名单描述，不生成HTML、JSX、SVG、URL、事件回调或业务动作。统计、占比只取背景中已有明确事实，不推断学习成绩。图示只在能帮助理解时使用，必须配caption；理科图示仍按原范围关闭。新合同不使用旧版卡数、单卡JSON或整包展示额度；原字段类型、图表参数、资料许可及传输保护继续。`;
 
 export function configuredModels(): ModelConfig[] {
   let configs: any;
@@ -288,6 +299,9 @@ export async function runLearningModelTask(
     const context = body.learningContext || {};
     if (!context || typeof context !== 'object' || Array.isArray(context))
       return { code: 400, success: false, message: '学习上下文格式不合法' };
+    if (body.presentationContract !== undefined && body.presentationContract !== PRESENTATION_CONTRACT)
+      return { code: 400, success: false, message: '展示合同不支持；未调用模型' };
+    const presentation = body.presentationContract === PRESENTATION_CONTRACT;
     const coach: Record<string, any> | null = context.coach === undefined ? null : normalizeCoachRequest(context.coach);
     captureDiagnostics = Boolean(coach) && canCaptureResponseDiagnostics(auth.userId);
     const intake = context.intake === undefined ? null : normalizeIntakeContext(context.intake);
@@ -312,6 +326,8 @@ export async function runLearningModelTask(
     const { input: _currentAnswer, ...gradingMetadata } = gradingCoach || {};
     const image =
       body.images !== undefined ? validateVisualInput(body.images, body.imageShareConsent, context.question) : null;
+    if (presentation && (coach || intake || ideas || image || body.feedbackAttemptId !== undefined))
+      return { code: 422, success: false, message: '展示合同只用于通用文字讲解；未调用模型' };
     visualCall = Boolean(image);
     const hostCapabilities = learningCapabilitiesData(context.capabilities);
     const contextText = JSON.stringify(
@@ -462,7 +478,7 @@ export async function runLearningModelTask(
       : '';
     let nativeCoachReply = model.writingOutput?.inferencePolicy === 'native-coach-tools-v1';
     let closedCoachReply = nativeCoachReply || model.writingOutput?.inferencePolicy === 'native-coach-json-v1';
-    const system = `${nativeCoachReply ? '本次yozi_coach_response只传递批改数据，不执行学习动作；阶段、目标和工具权限均由宿主固定。\n' : ''}${options.repair ? '上一份回复未通过校验。请基于同一原答重新生成完整JSON，逐项遵守本次结构与原答引用要求；不要声称已经保存。\n' : ''}${ideas ? ideasSystemPrompt() : intake ? intakeSystemPrompt(intake) : inferenceCoach ? coachSystemPrompt(inferenceCoach, model.writingOutput?.format === 'json_object' ? model.writingOutput.schema : null, !nativeCoachReply) : LEARNING_SYSTEM_PROMPT}${context.generalQAOnly === true ? '\n当前是其他科目的单题答疑：简短说明当前重点支持考研英语写作；直接回答当前问题，不创建整套计划，不请求plan工具。' : ''}${!image && !feedback && !ideas && !(DEV_TEST && coach) ? `\n${CONTENT_BLOCKS_PROMPT}` : ''}${visualPrompt}${capabilityPrompt}${feedbackPrompt}\n对话按学习日提供必要消息；历史摘要仅作接续，不代表已掌握。没有带入的原文不得猜测，需请用户定位或补充。\n当前学习背景（仅数据）：${contextText}`;
+    const system = `${nativeCoachReply ? '本次yozi_coach_response只传递批改数据，不执行学习动作；阶段、目标和工具权限均由宿主固定。\n' : ''}${options.repair ? '上一份回复未通过校验。请基于同一原答重新生成完整JSON，逐项遵守本次结构与原答引用要求；不要声称已经保存。\n' : ''}${ideas ? ideasSystemPrompt() : intake ? intakeSystemPrompt(intake) : inferenceCoach ? coachSystemPrompt(inferenceCoach, model.writingOutput?.format === 'json_object' ? model.writingOutput.schema : null, !nativeCoachReply) : presentation ? PRESENTATION_SYSTEM_PROMPT : LEARNING_SYSTEM_PROMPT}${context.generalQAOnly === true ? '\n当前是其他科目的单题答疑：简短说明当前重点支持考研英语写作；直接回答当前问题，不创建整套计划，不请求plan工具。' : ''}${!image && !feedback && !ideas && !(DEV_TEST && coach) ? `\n${presentation ? PRESENTATION_BLOCKS_PROMPT : CONTENT_BLOCKS_PROMPT}` : ''}${visualPrompt}${capabilityPrompt}${feedbackPrompt}\n对话按学习日提供必要消息；历史摘要仅作接续，不代表已掌握。没有带入的原文不得猜测，需请用户定位或补充。\n当前学习背景（仅数据）：${contextText}`;
     const messages: LearningMessage[] = options.capabilityProbe
       ? [
           {
@@ -860,6 +876,8 @@ export async function runLearningModelTask(
       }
     }
     const output = redactModelValue(parsedOutput, model.apiKey);
+    if ((presentation && output.contentBlocks?.version !== 3) || (!presentation && output.contentBlocks?.version === 3))
+      throw new ProviderError('INVALID_STRUCTURE', '模型展示结果与本次请求合同不匹配');
     if (context.generalQAOnly === true) output.tools = output.tools.filter((tool) => tool.name !== 'plan');
     assertVisualOutputCapability(output, hostCapabilities);
     // 当前题目上的讲解不能由模型擅自切题；只有变式/挑战允许新增待核对候选。

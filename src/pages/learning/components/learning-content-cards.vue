@@ -1,5 +1,5 @@
 <template>
-  <view class="content-cards" data-test="teaching-cards">
+  <view class="content-cards" :class="`content-cards--${mode}`" data-test="teaching-cards">
     <BaseCard
       v-for="(card, index) in visible"
       :key="index"
@@ -9,7 +9,10 @@
     >
       <view class="card-eyebrow"
         ><BaseIcon :name="icons[card.kind]" tone="ink-3" /><text
-          >{{ t(`tutor.card.${card.kind}`) }} · {{ index + 1 }}/{{ normalized.items.length }}</text
+          >{{
+            t(['table', 'checklist'].includes(card.kind) ? `presentation.${card.kind}` : `tutor.card.${card.kind}`)
+          }}
+          · {{ index + 1 }}/{{ normalized.items.length }}</text
         ></view
       >
       <view v-if="card.formula" class="card-formula-block"
@@ -20,11 +23,41 @@
       <MuseFigure v-else-if="card.kind === 'figure'" :figure="card.figure" />
       <text v-if="card.title" class="card-title" role="heading" aria-level="3">{{ card.title }}</text>
       <text v-if="card.body" class="card-copy" selectable>{{ card.body }}</text>
+      <view v-if="card.kind === 'table'" class="content-table-scroll">
+        <view role="table" :aria-label="card.title || t('presentation.table')" class="content-table">
+          <view role="row" class="content-table-row" :style="{ '--columns': card.columns.length }">
+            <text v-for="(column, columnIndex) in card.columns" :key="columnIndex" role="columnheader" selectable>{{
+              column
+            }}</text>
+          </view>
+          <view
+            v-for="(row, rowIndex) in card.rows"
+            :key="rowIndex"
+            role="row"
+            class="content-table-row"
+            :style="{ '--columns': card.columns.length }"
+          >
+            <text v-for="(cell, cellIndex) in row" :key="cellIndex" role="cell" selectable>{{ cell }}</text>
+          </view>
+        </view>
+      </view>
+      <view v-if="card.kind === 'checklist'" class="content-checklist">
+        <text class="self-check-note">{{ t('presentation.selfCheck') }}</text>
+        <template v-for="item in card.items" :key="item.id">
+          <text v-if="mode === 'text'" class="card-copy" selectable>{{ item.label }}</text>
+          <BaseCheckbox
+            v-else
+            :model-value="checked[index]?.[item.id] === true"
+            @update:model-value="toggleCheck(index, item.id, $event)"
+            >{{ item.label }}</BaseCheckbox
+          >
+        </template>
+      </view>
       <view v-for="(point, pointIndex) in card.points || []" :key="pointIndex" class="card-point"
         ><BaseIcon name="check" tone="violet-ink" /><text selectable>{{ point }}</text></view
       >
       <view
-        v-for="(step, stepIndex) in (card.steps || []).slice(0, steps[index] || 1)"
+        v-for="(step, stepIndex) in (card.steps || []).slice(0, mode === 'text' ? undefined : steps[index] || 1)"
         :key="stepIndex"
         class="example-step"
         ><text class="step-number">{{ stepIndex + 1 }}</text
@@ -32,13 +65,13 @@
       >
       <view class="card-actions">
         <BaseButton
-          v-if="card.steps && (steps[index] || 1) < card.steps.length"
+          v-if="mode !== 'text' && card.steps && (steps[index] || 1) < card.steps.length"
           variant="primary"
           @tap="steps[index] = (steps[index] || 1) + 1"
           >{{ t('tutor.card.nextStep') }}</BaseButton
         >
         <BaseButton
-          v-else-if="index === count - 1 && count < normalized.items.length"
+          v-else-if="mode === 'guided' && index === count - 1 && count < normalized.items.length"
           variant="primary"
           @tap="count++"
           >{{ t(card.kind === 'example' ? 'tutor.card.try' : 'tutor.card.continue') }}</BaseButton
@@ -49,6 +82,7 @@
 </template>
 <script setup>
 import '@/i18n/tutor.js';
+import '@/i18n/presentation.js';
 import { computed, ref, watch } from 'vue';
 import { normalizeContentBlocks } from '../../../../laf-backend/functions/_shared/learning-content-blocks.js';
 import { t } from '@/i18n/index.js';
@@ -58,17 +92,44 @@ import MuseFigure from './muse-figure.vue';
 import BaseCard from '@/components/base/base-card/base-card.vue';
 import BaseButton from '@/components/base/base-button/base-button.vue';
 import BaseIcon from '@/components/base/base-icon/base-icon.vue';
-const props = defineProps({ content: { type: Object, required: true } });
+import BaseCheckbox from '@/components/base/base-checkbox/base-checkbox.vue';
+const props = defineProps({
+  content: { type: Object, required: true },
+  presentation: { type: String, default: 'auto' }
+});
 const normalized = computed(() => normalizeContentBlocks(props.content));
+const mode = computed(() =>
+  ['interactive', 'text', 'guided'].includes(props.presentation)
+    ? props.presentation
+    : normalized.value.version === 3
+      ? 'interactive'
+      : 'guided'
+);
 const count = ref(1),
-  steps = ref({});
-const visible = computed(() => normalized.value.items.slice(0, count.value));
-const icons = { knowledge: 'book-open', example: 'pen', note: 'note', stat: 'chart', chart: 'chart', figure: 'shapes' };
+  steps = ref({}),
+  checked = ref({});
+const visible = computed(() =>
+  mode.value === 'guided' ? normalized.value.items.slice(0, count.value) : normalized.value.items
+);
+const icons = {
+  knowledge: 'book-open',
+  example: 'pen',
+  note: 'note',
+  stat: 'chart',
+  chart: 'chart',
+  figure: 'shapes',
+  table: 'shapes',
+  checklist: 'check'
+};
+function toggleCheck(index, id, value) {
+  checked.value = { ...checked.value, [index]: { ...checked.value[index], [id]: value === true } };
+}
 watch(
   () => props.content,
   () => {
     count.value = 1;
     steps.value = {};
+    checked.value = {};
   }
 );
 </script>
@@ -138,5 +199,41 @@ watch(
 }
 .card-actions:empty {
   display: none;
+}
+.content-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.content-table-row {
+  display: grid;
+  grid-template-columns: repeat(var(--columns), minmax(120px, 1fr));
+}
+.content-table-row > text {
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.content-table-row > [role='columnheader'] {
+  font-weight: var(--weight-ui-emphasis);
+}
+.content-checklist {
+  display: grid;
+  gap: var(--s-3);
+}
+.self-check-note {
+  color: var(--ink-3);
+  font-size: var(--size-caption);
+}
+.content-cards--text .teaching-card {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.content-cards--text .card-eyebrow {
+  display: none;
+}
+.content-cards--text :deep(.base-card__body) {
+  padding: 0;
 }
 </style>

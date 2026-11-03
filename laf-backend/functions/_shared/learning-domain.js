@@ -1,7 +1,7 @@
 import { ENTRY_EVENTS, applyEntryOperation, normalizeEntrySchedule } from './learning-entries.js';
 import { applyAdherenceOperation, ADHERENCE_EVENTS, reviewFacts } from './learning-adherence.js';
 import { normalizeLearningProposal, assertLearningProposalAcceptance } from './learning-proposals.js';
-import { normalizeContentBlocks } from './learning-content-blocks.js';
+import { normalizeContentBlocks, PRESENTATION_CONTRACT } from './learning-content-blocks.js';
 import {
   normalizeIntakeContext,
   normalizeIntakeReply,
@@ -1478,6 +1478,7 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
             'lockedMethod',
             'feedbackAttemptId',
             'feedbackOutputContract',
+            'presentationContract',
             'visualSource'
           ].includes(k)
         ),
@@ -1501,6 +1502,12 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
           '反馈请求需绑定当前已保存原答'
         );
       }
+      assert(
+        data.presentationContract === undefined ||
+          (data.presentationContract === PRESENTATION_CONTRACT && !data.feedbackAttemptId && !data.visualSource),
+        'INVALID_INPUT',
+        '展示合同不能混入评分或图片请求'
+      );
       assert(
         data.feedbackOutputContract === undefined ||
           (data.feedbackOutputContract === WRITING_FEEDBACK_OUTPUT_CONTRACT && data.feedbackAttemptId),

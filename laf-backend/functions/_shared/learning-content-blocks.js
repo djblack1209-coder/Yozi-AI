@@ -1,5 +1,7 @@
-export const CONTENT_BLOCKS_VERSION = 2;
+export const CONTENT_BLOCKS_VERSION = 3;
+export const PRESENTATION_CONTRACT = 'learning-presentation-v1';
 const KINDS = ['knowledge', 'example', 'note', 'stat', 'chart', 'figure'];
+const PRESENTATION_KINDS = [...KINDS, 'table', 'checklist'];
 const TONES = ['default', 'success', 'warning', 'danger'];
 function check(condition) {
   if (!condition) throw Object.assign(new Error('教学卡片结构不合法'), { code: 'CONTENT_BLOCKS_INVALID' });
@@ -17,7 +19,7 @@ function number(value, max) {
   return value;
 }
 function list(value, count, length) {
-  check(Array.isArray(value) && value.length > 0 && value.length <= count);
+  check(Array.isArray(value) && value.length > 0 && (count === null || value.length <= count));
   return value.map((item) => text(item, length));
 }
 function optionalText(input, output, limits) {
@@ -80,15 +82,47 @@ function figure(input) {
   return output;
 }
 
+function table(input) {
+  object(input, ['kind', 'title', 'columns', 'rows']);
+  check(Array.isArray(input.columns) && input.columns.length > 0);
+  check(Array.isArray(input.rows) && input.rows.length > 0);
+  const output = {
+    kind: 'table',
+    columns: input.columns.map((value) => text(value, 120)),
+    rows: input.rows.map((row) => {
+      check(Array.isArray(row) && row.length === input.columns.length);
+      return row.map((value) => text(value, 2000));
+    })
+  };
+  optionalText(input, output, { title: 120 });
+  return output;
+}
+
+function checklist(input) {
+  object(input, ['kind', 'title', 'items']);
+  check(Array.isArray(input.items) && input.items.length > 0);
+  const items = input.items.map((item) => {
+    object(item, ['id', 'label']);
+    return { id: text(item.id, 32), label: text(item.label, 400) };
+  });
+  check(new Set(items.map((item) => item.id)).size === items.length);
+  const output = { kind: 'checklist', items };
+  optionalText(input, output, { title: 120 });
+  return output;
+}
+
 // Presentation-only contract. Answers, scores, plans and executable actions belong to host facts/tools.
 export function normalizeContentBlocks(value) {
   object(value, ['version', 'items']);
-  check([1, CONTENT_BLOCKS_VERSION].includes(value.version) && Array.isArray(value.items));
-  check(value.items.length > 0 && value.items.length <= 6);
+  check([1, 2, CONTENT_BLOCKS_VERSION].includes(value.version) && Array.isArray(value.items));
+  const current = value.version === CONTENT_BLOCKS_VERSION;
+  check(value.items.length > 0 && (current || value.items.length <= 6));
   const items = value.items.map((item) => {
-    check(item && KINDS.includes(item.kind));
+    check(item && (current ? PRESENTATION_KINDS : KINDS).includes(item.kind));
     let output;
-    if (item.kind === 'stat') {
+    if (item.kind === 'table') output = table(item);
+    else if (item.kind === 'checklist') output = checklist(item);
+    else if (item.kind === 'stat') {
       object(item, ['kind', 'label', 'value', 'denominator', 'unit', 'caption']);
       output = { kind: 'stat', label: text(item.label, 20), value: statValue(item.value) };
       if (item.denominator !== undefined) output.denominator = statValue(item.denominator);
@@ -100,18 +134,18 @@ export function normalizeContentBlocks(value) {
       object(item, ['kind', 'title', 'body', 'points', 'steps', 'formula']);
       output = { kind: item.kind, title: text(item.title, 120) };
       optionalText(item, output, { body: 2000, formula: 500 });
-      if (item.points !== undefined) output.points = list(item.points, 4, 400);
+      if (item.points !== undefined) output.points = list(item.points, current ? null : 4, 400);
       if (item.steps !== undefined) {
         check(item.kind === 'example');
-        output.steps = list(item.steps, 6, 600);
+        output.steps = list(item.steps, current ? null : 6, 600);
       }
       check(output.body || output.points || output.steps || output.formula);
     }
-    check(JSON.stringify(output).length <= 4000);
+    if (!current) check(JSON.stringify(output).length <= 4000);
     return output;
   });
-  const output = { version: CONTENT_BLOCKS_VERSION, items };
-  check(JSON.stringify(output).length <= 12000);
+  const output = { version: current ? CONTENT_BLOCKS_VERSION : 2, items };
+  if (!current) check(JSON.stringify(output).length <= 12000);
   return output;
 }
 
@@ -122,6 +156,12 @@ export function mapContentBlocks(value, transform) {
     for (const key of ['title', 'body', 'formula', 'label', 'caption', 'unit', 'value', 'denominator'])
       if (typeof output[key] === 'string') output[key] = transform(output[key]);
     for (const key of ['points', 'steps']) if (output[key]) output[key] = output[key].map(transform);
+    if (output.kind === 'table') {
+      output.columns = output.columns.map(transform);
+      output.rows = output.rows.map((row) => row.map(transform));
+    }
+    if (output.kind === 'checklist')
+      output.items = output.items.map((item) => ({ ...item, label: transform(item.label) }));
     if (output.chart) output.chart = { ...map(output.chart), series: output.chart.series.map(map) };
     if (output.figure)
       output.figure = {

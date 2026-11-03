@@ -105,7 +105,15 @@ async function models(ctx: any) {
 }
 import { newAccount, reserveCall, decryptModelKey } from '../../laf-backend/functions/_shared/learning-account';
 import { MODEL_API_KEY_MAX_LENGTH } from '../../laf-backend/functions/_shared/ai-providers/model-endpoints.js';
-import ai, { costFromUsage, runLearningModelTask } from '../../laf-backend/functions/proxy-ai';
+import ai, {
+  costFromUsage,
+  runLearningModelTask,
+  LEARNING_SYSTEM_PROMPT,
+  CONTENT_BLOCKS_PROMPT,
+  PRESENTATION_SYSTEM_PROMPT,
+  PRESENTATION_BLOCKS_PROMPT
+} from '../../laf-backend/functions/proxy-ai';
+import { PRESENTATION_CONTRACT } from '../../laf-backend/functions/_shared/learning-content-blocks.js';
 import stream from '../../laf-backend/functions/proxy-ai-stream';
 import sync from '../../laf-backend/functions/learning-sync';
 import subscription from '../../laf-backend/functions/learning-subscriptions';
@@ -181,6 +189,99 @@ it('登录身份与学习上下文不一致时，拒绝向模型发送旧用户�
   expect(mock.rows.size).toBe(0);
 });
 afterEach(() => vi.unstubAllEnvs());
+
+it('S22 freezes unmarked prompts and advertises the opt-in presentation contract', async () => {
+  const digest = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
+  expect(digest(LEARNING_SYSTEM_PROMPT)).toBe('028dfc1d9ee0a85fcf2817af5668fab1b4e1e49ea20b52638f84ef8128c61f6a');
+  expect(digest(CONTENT_BLOCKS_PROMPT)).toBe('0f6067cfd69c567a3a8502e251e408083719624ef29cfc80fdf47f497d10720c');
+  expect(PRESENTATION_SYSTEM_PROMPT).toContain('"version":3');
+  expect(PRESENTATION_SYSTEM_PROMPT).not.toContain('最多6卡');
+  expect(PRESENTATION_BLOCKS_PROMPT).toContain('checklist');
+  expect(PRESENTATION_BLOCKS_PROMPT).not.toContain('最多6卡');
+  const catalog = await models(context({ action: 'list' }));
+  expect(catalog.data.presentationContracts).toEqual([PRESENTATION_CONTRACT]);
+  expect(callLearningProvider).not.toHaveBeenCalled();
+});
+
+it('S22 accepts versioned descriptors once and refuses to change the contract under the same request id', async () => {
+  await streamProfile(false);
+  const contentBlocks = {
+    version: 3,
+    items: [{ kind: 'checklist', title: '自查', items: [{ id: 'one', label: '核对目的' }] }]
+  };
+  vi.mocked(callLearningProvider).mockResolvedValueOnce({
+    ...streamCompleted,
+    content: JSON.stringify({ message: '核对本次表达。', tools: [], contentBlocks })
+  });
+  const body = { ...streamBody('presentation-versioned'), presentationContract: PRESENTATION_CONTRACT };
+  const first = await ai(context(body));
+  expect(first.success).toBe(true);
+  expect(first.data.contentBlocks).toEqual(contentBlocks);
+  expect((await ai(context(body))).data.contentBlocks).toEqual(contentBlocks);
+  expect((await ai(context({ ...body, presentationContract: undefined }))).success).toBe(false);
+  expect(callLearningProvider).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(callLearningProvider).mock.calls[0][1][0].content).toContain(PRESENTATION_CONTRACT);
+});
+
+it.each([undefined, 2])(
+  'S22 refuses a missing or old presentation envelope under the new contract (%s)',
+  async (version) => {
+    await streamProfile(false);
+    const reply = {
+      message: '示例',
+      tools: [],
+      ...(version ? { contentBlocks: { version, items: [{ kind: 'knowledge', title: '知识', body: '说明' }] } } : {})
+    };
+    vi.mocked(callLearningProvider).mockResolvedValueOnce({ ...streamCompleted, content: JSON.stringify(reply) });
+    const result = await ai(
+      context({ ...streamBody('presentation-mismatch'), presentationContract: PRESENTATION_CONTRACT })
+    );
+    expect(result.success).toBe(false);
+    expect(callLearningProvider).toHaveBeenCalledTimes(1);
+    const account = [...mock.rows.values()].find((row: any) => row.user_id === 'u1' && Array.isArray(row.calls));
+    expect(account.calls.find((call: any) => call.id === 'presentation-mismatch').status).toBe('failed');
+  }
+);
+
+it('S22 rejects unrequested version3 output, unknown contracts and mixed grading or coaching requests', async () => {
+  expect((await ai(context({ ...streamBody('unknown-presentation'), presentationContract: 'unknown' }))).code).toBe(
+    400
+  );
+  expect(
+    (
+      await ai(
+        context({
+          ...streamBody('mixed-presentation'),
+          presentationContract: PRESENTATION_CONTRACT,
+          feedbackAttemptId: 'not-an-attempt'
+        })
+      )
+    ).code
+  ).toBe(422);
+  expect(
+    (
+      await ai(
+        context({
+          ...streamBody('coach-presentation'),
+          presentationContract: PRESENTATION_CONTRACT,
+          learningContext: { owner: 'u1', coach: mixedDiagnosticRequest() }
+        })
+      )
+    ).code
+  ).toBe(422);
+  expect(callLearningProvider).not.toHaveBeenCalled();
+  await streamProfile(false);
+  vi.mocked(callLearningProvider).mockResolvedValueOnce({
+    ...streamCompleted,
+    content: JSON.stringify({
+      message: '说明',
+      tools: [],
+      contentBlocks: { version: 3, items: [{ kind: 'knowledge', title: '知识', body: '内容' }] }
+    })
+  });
+  expect((await ai(context(streamBody('unrequested-version')))).success).toBe(false);
+  expect(callLearningProvider).toHaveBeenCalledTimes(1);
+});
 
 it('平台免费试用仍按服务端每日上限拦截，跨用户共享全局额度，幂等读取不重复调用', async () => {
   const receiptClock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-25T12:00:00Z'));

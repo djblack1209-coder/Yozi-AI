@@ -45,6 +45,7 @@
         @height="composerHeight = $event"
       >
         <template v-if="coach" #actions>
+          <MusePresentationControl :presentation="presentation" />
           <BaseButton
             v-if="coach"
             variant="quiet"
@@ -77,7 +78,7 @@
       :busy="learning.busy || learning.intakeBusy"
       @action="handleModelAction"
     />
-    <view class="coach-workspace">
+    <view class="coach-workspace" :class="{ 'coach-workspace--text': presentation.mode === 'text' }">
       <BaseBubble v-if="coach" author="user" avatar :avatar-src="userAvatar" class="coach-user-turn"
         ><text selectable>{{ learning.active.goal }}</text></BaseBubble
       >
@@ -636,6 +637,9 @@ import '@/i18n/muse.js';
 import { t } from '@/i18n/index.js';
 import { safeNavigateTo } from '@/utils/safe-navigate.js';
 import MuseComposer from '@/components/business/learning/muse-composer.vue';
+import MusePresentationControl from '@/components/business/learning/muse-presentation-control.vue';
+import { useLearningPresentation } from '@/composables/useLearningPresentation.js';
+import { toast } from '@/utils/toast.js';
 import MuseChatEmpty from '@/components/business/learning/muse-chat-empty.vue';
 import MuseModelControl from '@/components/business/learning/muse-model-control.vue';
 import MuseModelFeedback from '@/components/business/learning/muse-model-feedback.vue';
@@ -674,10 +678,12 @@ const props = defineProps({
   materialsOpen: Boolean,
   connectionLabel: { type: String, default: '' },
   connectionAction: { type: String, default: '' },
-  connectionTone: { type: String, default: 'neutral' }
+  connectionTone: { type: String, default: 'neutral' },
+  presentation: { type: Object, default: null }
 });
 const emit = defineEmits(['advanced', 'general']);
 const learning = useConversationLearningStore();
+const presentation = props.presentation || useLearningPresentation(() => learning.recordContext());
 const modelFailure = ref(null);
 const theme = useThemeStore(),
   materialSelection = ref([]);
@@ -921,6 +927,13 @@ const composerDraft = computed({
   }
 });
 async function submitComposer() {
+  const input = composerDraft.value.trim();
+  const display = presentation.command(input, { answering: Boolean(answerTarget.value) });
+  if (display) {
+    if (display.success && composerDraft.value.trim() === input) composerDraft.value = '';
+    toast.info(t(display.success ? 'presentation.saved' : 'presentation.failed'));
+    return;
+  }
   if (learning.busy || learning.intakeBusy) return;
   if (!coach.value) {
     const input = goal.value.trim();
@@ -1281,6 +1294,11 @@ function login() {
   gap: 16px;
   min-width: 0;
   padding: 0 24px 20px;
+}
+.coach-workspace--text :deep(.base-card) {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 .coach-session-state {
   display: flex;

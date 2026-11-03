@@ -5,6 +5,7 @@
     :connection-label="emptyConnectionLabel"
     :connection-action="emptyConnectionAction"
     :connection-tone="connectionTone"
+    :presentation="presentation"
     @advanced="openAIConnectors"
     @general="beginGeneralQuestion"
   />
@@ -71,6 +72,7 @@
         @height="composerHeight = $event"
       >
         <template v-if="learning.active" #actions>
+          <MusePresentationControl :presentation="presentation" />
           <BaseButton
             v-if="learning.active"
             variant="quiet"
@@ -506,6 +508,7 @@
             <LearningMessage
               v-else-if="message.role !== 'user'"
               :content-blocks="message.contentBlocks"
+              :presentation="presentation.mode"
               :pending="!!message.pending"
               :content="message.role === 'notice' ? learningText(message.content) : message.content"
             />
@@ -2047,6 +2050,9 @@ import {
   createLearningArtifacts
 } from '@/services/learning/learning-artifacts.js';
 import MuseComposer from '@/components/business/learning/muse-composer.vue';
+import MusePresentationControl from '@/components/business/learning/muse-presentation-control.vue';
+import { useLearningPresentation } from '@/composables/useLearningPresentation.js';
+import { toast } from '@/utils/toast.js';
 import { groupLearningMessages } from '@/services/learning/message-groups.js';
 import CustomModal from '@/components/common/CustomModal.vue';
 import { createLearningDialog } from '@/services/learning/learning-dialog.js';
@@ -2103,6 +2109,7 @@ import { getUserId, getToken } from '@/services/auth-storage.js';
 import { storageService } from '@/services/storageService.js';
 import { safeNavigateTo } from '@/utils/safe-navigate.js';
 const learning = useConversationLearningStore();
+const presentation = useLearningPresentation(() => learning.recordContext());
 const essayArtifacts = computed(() => studentEssaySources(learning.state));
 const essayForAttempt = (id) =>
   essayArtifacts.value.find((item) => item.source.kind === 'writing-attempt' && item.source.sourceId === id);
@@ -3293,6 +3300,12 @@ function finishSubmission(ticket) {
 }
 async function send() {
   const input = draft.value.trim();
+  const display = presentation.command(input, { answering: Boolean(learning.activeQuestion) });
+  if (display) {
+    if (display.success && draft.value.trim() === input) draft.value = '';
+    toast.info(t(display.success ? 'presentation.saved' : 'presentation.failed'));
+    return;
+  }
   if (!input || learning.active?.stopped) return;
   const ticket = prepareSubmission('send', input);
   const previousQuestion = learning.active?.activeQuestionKey;
