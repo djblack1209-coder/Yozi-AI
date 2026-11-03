@@ -1367,10 +1367,24 @@ export function parseCoachModelOutput(raw, request, captureDiagnostics = false, 
           typeof item.quote === 'string'
       )
     ) {
+      const explicitEvidence = output.coach[evidenceField];
+      const keepClassification =
+        field === 'weaknesses' &&
+        subjectCoachMethodByContract(request.methodContract)?.classifiedObservations &&
+        explicitEvidence !== undefined;
+      if (keepClassification)
+        fail(
+          Array.isArray(explicitEvidence) &&
+            observations.every((item) =>
+              explicitEvidence.some((evidence) => evidence?.label === item.label && evidence.quote === item.quote)
+            ),
+          '合并标签与分类证据不一致',
+          evidenceField
+        );
       output.coach = {
         ...output.coach,
         [field]: observations.map((item) => item.label),
-        [evidenceField]: observations
+        [evidenceField]: keepClassification ? explicitEvidence : observations
       };
     }
   }

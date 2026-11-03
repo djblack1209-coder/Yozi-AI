@@ -345,6 +345,44 @@ describe('versioned Shenlun teaching definition on the existing coach', () => {
     expect(() => parse(raw, r)).toThrow('区分错误');
     expect(normalizeCoachOutput(raw, { ...r, methodContract: METHOD }).weaknesses).toEqual(raw.weaknesses);
   });
+  it.each(['error', 'suggestion', 'uncertain'])(
+    'preserves explicit v2 classification when a provider combines labels and quotes: %s',
+    (classification) => {
+      const r = request('feedback', { methodContract: METHOD_V2, target: 'card-c1', input: '本次只走访两个服务点。' });
+      const raw = feedback(r),
+        label = '走访范围观察';
+      raw.weaknesses = [{ label, quote: r.input }];
+      raw.weaknessEvidence = [{ label, quote: r.input, classification }];
+      const parsed = parse(raw, r);
+      expect(parsed.weaknessEvidence).toEqual(raw.weaknessEvidence);
+      expect(parsed.weaknesses).toEqual(classification === 'error' ? [label] : []);
+      expect(parsed).not.toHaveProperty('feedbackVersion');
+    }
+  );
+  it('does not infer classification or ignore contradictory combined evidence', () => {
+    const r = request('feedback', { methodContract: METHOD_V2, target: 'card-c1', input: '本次只走访两个服务点。' });
+    const raw = feedback(r),
+      label = '走访范围观察';
+    raw.weaknesses = [{ label, quote: r.input }];
+    raw.weaknessEvidence = [{ label, quote: r.input }];
+    expect(() => parse(raw, r)).toThrow('区分错误');
+    raw.weaknessEvidence = [{ label, quote: r.input.slice(0, -1), classification: 'error' }];
+    expect(() => parse(raw, r)).toThrow('分类证据不一致');
+    raw.weaknessEvidence = [{ label, quote: r.input, classification: 'mastered' }];
+    expect(() => parse(raw, r)).toThrow('分类');
+    delete raw.weaknessEvidence;
+    expect(() => parse(raw, r)).toThrow('区分错误');
+    expect(parse(raw, { ...r, methodContract: METHOD }).weaknesses).toEqual([label]);
+  });
+  it('uses task self-check for new daily cards while retaining the v1 suggestion card', () => {
+    const r = request('daily', { methodContract: METHOD_V2 });
+    expect(subjectCoachMethodByContract(METHOD_V2).dailyCards[3].title).toBe('完成任务与自查');
+    expect(subjectCoachMethodByContract(METHOD).dailyCards[3].title).toBe('提出可执行建议');
+    const prompt = coachSystemPrompt(r);
+    expect(prompt).toContain('不要求另提治理对策');
+    expect(prompt).toContain('weaknesses和strengths只放简短标签');
+    expect(prompt).toContain('每条quote必须逐字包含在同一条lines.original中');
+  });
   it('rejects invented observation classes rather than converting them into errors', () => {
     const r = request('feedback', { methodContract: METHOD_V2, target: 'card-c1', input: '这是待核对的原答。' });
     const raw = feedback(r);
