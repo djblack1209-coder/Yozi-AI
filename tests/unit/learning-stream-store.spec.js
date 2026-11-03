@@ -15,6 +15,8 @@ import config from '@/config/index.js';
 import { onHide } from '@dcloudio/uni-app';
 import { coachFixture } from '../fixtures/writing-coach.js';
 import { PRESENTATION_CONTRACT } from '../../laf-backend/functions/_shared/learning-content-blocks.js';
+import { SINGLE_QUESTION_CONTRACT } from '../../laf-backend/functions/_shared/learning-intake.js';
+import BaseSegmented from '@/components/base/base-segmented/base-segmented.vue';
 vi.mock('@dcloudio/uni-app', () => ({ onShow: vi.fn(), onLoad: vi.fn(), onBackPress: vi.fn(), onHide: vi.fn() }));
 let previousBaseUrl;
 const stores = [];
@@ -175,6 +177,10 @@ function setup(platform = 'h5') {
     push,
     end,
     frame,
+    prepareNextReply() {
+      closed = false;
+      queue.length = 0;
+    },
     get request() {
       return request;
     },
@@ -272,6 +278,236 @@ it('S22 explicit display input changes only the account view preference and neve
   expect(store.exportData()).toBe(before);
   expect(harness.fetch).not.toHaveBeenCalled();
 });
+
+it('S23 requires an explicit versioned question entry and replays it without a fabricated profile or local quiz', () => {
+  const state = emptyLearningState('question-entry-owner');
+  for (const data of [{ entryContract: SINGLE_QUESTION_CONTRACT }, { entryContract: 'unknown', explicit: true }])
+    expect(() =>
+      applyLearningOperation(state, {
+        id: 'entry',
+        type: 'conversation.start',
+        at: 123,
+        data: { goal: '12 + 8', ...data }
+      })
+    ).toThrow();
+  const operation = {
+    id: 'entry',
+    type: 'conversation.start',
+    at: 123,
+    data: { goal: '12 + 8', entryContract: SINGLE_QUESTION_CONTRACT, explicit: true }
+  };
+  const next = applyLearningOperation(state, operation).state;
+  expect(next.conversations[0]).toMatchObject({ goal: '12 + 8', entryContract: SINGLE_QUESTION_CONTRACT });
+  expect(next.conversations[0]).not.toHaveProperty('studyProfile');
+  expect(next.questions).toEqual([]);
+  expect(next.profile).toEqual([]);
+  expect(applyLearningOperation(emptyLearningState(state.owner), operation).state).toEqual(next);
+  expect(
+    applyLearningOperation(state, { id: 'legacy', type: 'conversation.start', at: 123, data: { goal: '12 + 8' } }).state
+      .conversations[0]
+  ).not.toHaveProperty('entryContract');
+});
+
+async function singleQuestionHarness(resultState = 'failed') {
+  const harness = setup(),
+    { store } = harness;
+  store.commit('intake.request', {
+    explicit: true,
+    requestId: 'previous-intake',
+    modelId: 'fixture',
+    contract: 'model-intake-v2',
+    binding: 'fixture_binding_previous'
+  });
+  store.commit('intake.failed', { requestId: 'previous-intake', final: true });
+  vi.spyOn(uni, 'request').mockImplementation((options) => {
+    if (acknowledgePreferences(options)) return { abort: vi.fn() };
+    if (options.data.action === 'result') {
+      const pending = store.recoverableRequest;
+      options.success({
+        data:
+          resultState === 'completed'
+            ? {
+                success: true,
+                data: {
+                  requestId: pending.requestId,
+                  requestBinding: pending.binding,
+                  modelId: pending.modelId,
+                  model: pending.model,
+                  message: '恢复原讲解。',
+                  tools: [],
+                  question: null,
+                  contentBlocks: {
+                    version: 3,
+                    items: [{ kind: 'knowledge', title: '原结果', body: '原请求已经完成。' }]
+                  }
+                }
+              }
+            : {
+                success: false,
+                status: resultState,
+                error: resultState === 'failed' ? 'INVALID_STRUCTURE' : 'RESERVED'
+              }
+      });
+      return { abort: vi.fn() };
+    }
+    options.success({
+      data: {
+        code: 0,
+        success: true,
+        data: {
+          models: [...store.models],
+          presentationContracts: [PRESENTATION_CONTRACT],
+          questionEntryContracts: [SINGLE_QUESTION_CONTRACT]
+        }
+      }
+    });
+    return { abort: vi.fn() };
+  });
+  expect((await store.loadModels()).success).toBe(true);
+  return harness;
+}
+
+it('S23 question selection and restart stay local drafts; explicit send skips intake and invokes one bound general request', async () => {
+  const harness = await singleQuestionHarness(),
+    { store } = harness;
+  store.selectedConversationId = null;
+  const before = JSON.parse(JSON.stringify(store.state)),
+    oldIntake = JSON.parse(JSON.stringify(store.state.intake));
+  let wrapper = mount(LearningPage, { global: { stubs: { BaseIcon: true, AnimatedAvatar: true, YoziMascot: true } } });
+  wrappers.push(wrapper);
+  await flushPromises();
+  wrapper
+    .findAllComponents(BaseSegmented)
+    .find((item) => item.props('label') === '开始方式')
+    .vm.$emit('update:modelValue', 'question');
+  wrapper.findComponent(MuseComposer).vm.$emit('update:modelValue', '怎样区分事实、推测和建议？');
+  await flushPromises();
+  expect(store.state).toEqual(before);
+  expect(harness.fetch).not.toHaveBeenCalled();
+  wrapper.unmount();
+  wrappers.pop();
+  wrapper = mount(LearningPage, { global: { stubs: { BaseIcon: true, AnimatedAvatar: true, YoziMascot: true } } });
+  wrappers.push(wrapper);
+  await flushPromises();
+  expect(
+    wrapper
+      .findAllComponents(BaseSegmented)
+      .find((item) => item.props('label') === '开始方式')
+      .props('modelValue')
+  ).toBe('question');
+  expect(wrapper.findComponent(MuseComposer).props('modelValue')).toBe('怎样区分事实、推测和建议？');
+  wrapper.findComponent(MuseComposer).vm.$emit('submit');
+  await flushPromises();
+  expect(harness.fetch).toHaveBeenCalledTimes(1);
+  expect(harness.request.learningContext).toMatchObject({
+    generalQAOnly: true,
+    questionEntryContract: SINGLE_QUESTION_CONTRACT
+  });
+  expect(harness.request.learningContext).not.toHaveProperty('intake');
+  expect(harness.request.presentationContract).toBe(PRESENTATION_CONTRACT);
+  harness.preview();
+  harness.complete({
+    tools: [],
+    contentBlocks: { version: 3, items: [{ kind: 'knowledge', title: '区分', body: '分别写明证据、推断与拟议动作。' }] }
+  });
+  await flushPromises();
+  expect(store.active.entryContract).toBe(SINGLE_QUESTION_CONTRACT);
+  expect(store.active.messages.filter((item) => item.role === 'user').map((item) => item.content)).toEqual([
+    '怎样区分事实、推测和建议？'
+  ]);
+  expect(store.active).not.toHaveProperty('studyProfile');
+  expect(store.state.intake).toEqual(oldIntake);
+  for (const key of ['questions', 'attempts', 'profile', 'plans']) expect(store.state[key]).toEqual(before[key]);
+  let replayed = emptyLearningState(store.state.owner, store.state.timezone);
+  for (const operation of store.state.events) replayed = applyLearningOperation(replayed, operation).state;
+  expect(replayed).toEqual(store.state);
+});
+
+it('S23 refuses unadvertised or unconsented entries before saving and blocks unexpected learning tools at the host', async () => {
+  const harness = setup(),
+    { store } = harness;
+  const before = store.exportData();
+  expect(() => store.startSingleQuestion('只问一句')).toThrow();
+  expect(store.exportData()).toBe(before);
+  store.$dispose();
+  stores.pop();
+  const next = await singleQuestionHarness(),
+    owner = next.store;
+  owner.sharingAllowed = false;
+  const notSent = owner.exportData();
+  expect(() => owner.startSingleQuestion('只问一句')).toThrow();
+  expect(owner.exportData()).toBe(notSent);
+  owner.sharingAllowed = true;
+  owner.startSingleQuestion('12 + 8');
+  expect(owner.activeQuestion).toBeUndefined();
+  const pending = owner.send('12 + 8');
+  await flushPromises();
+  next.preview();
+  next.complete({ contentBlocks: { version: 3, items: [{ kind: 'knowledge', title: '计算', body: '20。' }] } });
+  await pending;
+  expect(owner.error).toBeTruthy();
+  expect(owner.state.plans).toEqual([]);
+  expect(owner.state.attempts).toEqual([]);
+  expect(owner.active.messages.some((message) => message.role === 'assistant')).toBe(false);
+});
+
+async function lostSingleQuestion(harness) {
+  const { store } = harness;
+  store.startSingleQuestion('怎样区分事实、推测和建议？');
+  const send = store.send('怎样区分事实、推测和建议？');
+  await flushPromises();
+  harness.preview();
+  harness.end();
+  await send;
+  expect(store.recoverableRequest).not.toBeNull();
+}
+it('S23 explicit retry queries the failed original, preserves its text and deduplicates a double click under a new request id', async () => {
+  const harness = await singleQuestionHarness(),
+    { store } = harness;
+  await lostSingleQuestion(harness);
+  const original = { ...store.recoverableRequest },
+    prefix = JSON.parse(JSON.stringify(store.state.events));
+  harness.prepareNextReply();
+  const first = store.retrySingleQuestion(),
+    second = store.retrySingleQuestion();
+  await flushPromises();
+  expect(harness.fetch).toHaveBeenCalledTimes(2);
+  expect(harness.request.requestId).not.toBe(original.requestId);
+  expect(vi.mocked(uni.request).mock.calls.filter(([options]) => options.data.action === 'result')).toHaveLength(1);
+  harness.preview();
+  harness.complete({
+    tools: [],
+    contentBlocks: { version: 3, items: [{ kind: 'knowledge', title: '说明', body: '事实有可追溯依据，推测需注明。' }] }
+  });
+  expect((await first).success).toBe(true);
+  expect((await second).success).toBe(true);
+  expect(store.state.events.slice(0, prefix.length)).toEqual(prefix);
+  expect(store.active.messages.find((item) => item.id === original.messageId).content).toBe(
+    '怎样区分事实、推测和建议？'
+  );
+  expect(store.active.messages.filter((item) => item.role === 'user')).toHaveLength(2);
+  expect(store.recoverableRequest).toBeNull();
+  expect(store.state.plans).toEqual([]);
+  expect(store.state.attempts).toEqual([]);
+});
+it.each(['reserved', 'completed'])(
+  'S23 retry of a %s original only reads or restores it, without another inference',
+  async (status) => {
+    const harness = await singleQuestionHarness(status),
+      { store } = harness;
+    await lostSingleQuestion(harness);
+    const result = await store.retrySingleQuestion();
+    expect(harness.fetch).toHaveBeenCalledTimes(1);
+    expect(store.active.messages.filter((item) => item.role === 'user')).toHaveLength(1);
+    if (status === 'completed') {
+      expect(result).toMatchObject({ success: true, restored: true });
+      expect(store.recoverableRequest).toBeNull();
+    } else {
+      expect(result).toMatchObject({ success: false, status: 'reserved' });
+      expect(store.recoverableRequest).not.toBeNull();
+    }
+  }
+);
 
 it('带练复用流式片段，预览不写学习事实，最终校验后保存当前会话', async () => {
   const harness = setup(),

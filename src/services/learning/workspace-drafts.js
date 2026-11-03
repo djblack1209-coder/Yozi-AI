@@ -9,6 +9,7 @@ function copy(value) {
 function inputFields(value) {
   const result = {};
   for (const key of ['draft', 'answer', 'goal', 'text']) if (typeof value?.[key] === 'string') result[key] = value[key];
+  if (['study', 'question'].includes(value?.entryMode)) result.entryMode = value.entryMode;
   if (value?.profile && typeof value.profile === 'object') {
     result.profile = {};
     for (const key of ['subject', 'exam', 'deadline', 'deadlineBucket', 'foundation', 'minutes'])
@@ -22,9 +23,11 @@ function inputFields(value) {
 }
 function hasInput(value) {
   return Object.entries(value).some(([key, field]) =>
-    key === 'profile'
-      ? Object.values(field).some((item) => (Array.isArray(item) ? item.length : Boolean(item)))
-      : Boolean(field)
+    key === 'entryMode'
+      ? field === 'question'
+      : key === 'profile'
+        ? Object.values(field).some((item) => (Array.isArray(item) ? item.length : Boolean(item)))
+        : Boolean(field)
   );
 }
 export function workspaceDrafts(store) {

@@ -148,6 +148,22 @@ describe('versioned host presentation data', () => {
     expect(wrapper.emitted()).toEqual({});
     expect(JSON.stringify(content)).toBe(before);
   });
+  it('S23 keeps local checks and revealed steps when the host refreshes an identical descriptor copy, and resets only changed content', async () => {
+    const content = data();
+    wrapper = mount(LearningContentCards, { props: { content }, global: { stubs: { BaseIcon: true } } });
+    wrapper.findAllComponents(BaseCheckbox)[0].vm.$emit('update:modelValue', true);
+    await wrapper.find('button').trigger('tap');
+    expect(wrapper.text()).toContain('说明目的。');
+    await wrapper.setProps({ content: structuredClone(content) });
+    expect(wrapper.findAllComponents(BaseCheckbox)[0].props('modelValue')).toBe(true);
+    expect(wrapper.text()).toContain('说明目的。');
+    const changed = structuredClone(content);
+    changed.items[3].steps[1] = '核对实际条件。';
+    await wrapper.setProps({ content: changed });
+    expect(wrapper.findAllComponents(BaseCheckbox)[0].props('modelValue')).toBe(false);
+    expect(wrapper.text()).not.toContain('核对实际条件。');
+    expect(wrapper.emitted()).toEqual({});
+  });
 });
 
 describe('local display intent and account isolation', () => {

@@ -9,6 +9,7 @@ export const INTAKE_CHOICES = Object.freeze([
   { value: 'other', label: '其他' }
 ]);
 export const MODEL_INTAKE_V2_CONTRACT = 'model-intake-v2';
+export const SINGLE_QUESTION_CONTRACT = 'single-question-v1';
 export const MODEL_INTAKE_CONTRACTS = Object.freeze(['model-intake-v1', MODEL_INTAKE_V2_CONTRACT]);
 const choices = (items) => Object.freeze(items.map(([value, label]) => Object.freeze({ value, label })));
 const V2_DIRECTIONS = choices([

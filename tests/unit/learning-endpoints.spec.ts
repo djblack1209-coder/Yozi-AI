@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { intakeChoicesFor } from '../../laf-backend/functions/_shared/learning-intake.js';
+import { intakeChoicesFor, SINGLE_QUESTION_CONTRACT } from '../../laf-backend/functions/_shared/learning-intake.js';
 import {
   mixedDiagnosticRequest,
   mixedDiagnosticReply,
@@ -202,6 +202,109 @@ it('S22 freezes unmarked prompts and advertises the opt-in presentation contract
   expect(catalog.data.presentationContracts).toEqual([PRESENTATION_CONTRACT]);
   expect(callLearningProvider).not.toHaveBeenCalled();
 });
+
+it('S23 advertises an explicit question entry and rejects mismatched entry contracts before calling the provider', async () => {
+  const catalog = await models(context({ action: 'list' }));
+  expect(catalog.data.questionEntryContracts).toEqual([SINGLE_QUESTION_CONTRACT]);
+  for (const patch of [
+    { questionEntryContract: 'unknown', generalQAOnly: true },
+    { questionEntryContract: SINGLE_QUESTION_CONTRACT, generalQAOnly: false }
+  ])
+    expect(
+      (
+        await ai(
+          context({
+            ...streamBody('entry-unsupported'),
+            presentationContract: PRESENTATION_CONTRACT,
+            learningContext: { owner: 'u1', ...patch }
+          })
+        )
+      ).code
+    ).toBe(400);
+  expect(
+    (
+      await ai(
+        context({
+          ...streamBody('entry-no-presentation'),
+          learningContext: { owner: 'u1', questionEntryContract: SINGLE_QUESTION_CONTRACT, generalQAOnly: true }
+        })
+      )
+    ).code
+  ).toBe(400);
+  expect(callLearningProvider).not.toHaveBeenCalled();
+});
+
+it('S23 answers an explicit single question through the versioned whitelist once and recovers without calling again', async () => {
+  await streamProfile(false);
+  const contentBlocks = {
+    version: 3,
+    items: [{ kind: 'knowledge', title: '事实与推测', body: '说明事实依据，并将推测标为推测。' }]
+  };
+  vi.mocked(callLearningProvider).mockResolvedValueOnce({
+    ...streamCompleted,
+    content: JSON.stringify({ message: '先看依据。', question: null, tools: [], contentBlocks })
+  });
+  const body = {
+    ...streamBody('single-question-answer'),
+    presentationContract: PRESENTATION_CONTRACT,
+    learningContext: { owner: 'u1', generalQAOnly: true, questionEntryContract: SINGLE_QUESTION_CONTRACT }
+  };
+  expect(await ai(context(body))).toMatchObject({ success: true, data: { contentBlocks, tools: [] } });
+  expect(await models(context({ action: 'result', requestId: body.requestId }))).toMatchObject({
+    success: true,
+    data: { contentBlocks }
+  });
+  expect(callLearningProvider).toHaveBeenCalledTimes(1);
+  const system = String(vi.mocked(callLearningProvider).mock.calls[0][1][0].content);
+  expect(system).toContain('单题答疑不需要考试档案');
+  expect(system).not.toContain('空白时先澄清');
+});
+
+it.each(['tool', 'malformed', 'unfinished'])(
+  'S23 retains a billed %s failure without learning output or a recovery inference',
+  async (kind) => {
+    await streamProfile(false);
+    const reply = {
+      message: '说明',
+      question: null,
+      tools:
+        kind === 'tool'
+          ? [{ name: 'plan', arguments: { reason: '不应执行', tasks: [{ title: '不应建计划', condition: 'manual' }] } }]
+          : [],
+      contentBlocks: { version: 3, items: [{ kind: 'knowledge', title: '知识', body: '待核对。' }] }
+    };
+    const content = JSON.stringify(reply);
+    vi.mocked(callLearningProvider).mockResolvedValueOnce({
+      ...streamCompleted,
+      content: kind === 'malformed' ? content.slice(0, -1) : content,
+      finishReason: kind === 'unfinished' ? 'length' : 'stop'
+    });
+    const requestId = 'single-question-failure';
+    expect(
+      await ai(
+        context({
+          ...streamBody(requestId),
+          presentationContract: PRESENTATION_CONTRACT,
+          learningContext: { owner: 'u1', generalQAOnly: true, questionEntryContract: SINGLE_QUESTION_CONTRACT }
+        })
+      )
+    ).toMatchObject({ success: false, error: 'INVALID_STRUCTURE' });
+    expect(await models(context({ action: 'result', requestId }))).toMatchObject({
+      success: false,
+      status: 'failed',
+      error: 'INVALID_STRUCTURE',
+      validationPath: { tool: 'tools', malformed: 'raw', unfinished: 'finish_reason' }[kind]
+    });
+    const row = [...mock.rows.values()].find((row: any) => row.user_id === 'u1' && Array.isArray(row.calls));
+    expect(row.calls.find((call: any) => call.id === requestId)).toMatchObject({
+      status: 'failed',
+      result: null,
+      usage: { prompt_tokens: 4, completion_tokens: 8 },
+      costStatus: 'pending'
+    });
+    expect(callLearningProvider).toHaveBeenCalledTimes(1);
+  }
+);
 
 it('S22 accepts versioned descriptors once and refuses to change the contract under the same request id', async () => {
   await streamProfile(false);
@@ -1225,7 +1328,8 @@ const streamCompleted = {
   actualModel: 'explicit-test-id',
   usage: { prompt_tokens: 4, completion_tokens: 8 },
   usageComplete: true,
-  durationMs: 2
+  durationMs: 2,
+  finishReason: 'stop'
 };
 it('原请求查询将中断的过期预留收敛到终态，保留未知费用和幂等，不触发供应商', async () => {
   const now = Date.now();

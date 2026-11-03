@@ -42,6 +42,22 @@ function renderCoach(props = { connectionTone: 'mint' }) {
 }
 
 describe('device-only student drafts', () => {
+  it('S23 restores question entry with its unsent text, isolates it by owner and does not keep an empty default draft', () => {
+    const owner = student(),
+      drafts = workspaceDrafts(owner),
+      before = JSON.stringify(owner.state);
+    drafts.save(owner.context, 'coach:new:day', { entryMode: 'study' });
+    expect(uni.getStorageSync(key('student-a'))).toBeFalsy();
+    drafts.save(owner.context, 'coach:new:day', { entryMode: 'question', goal: '我的一次提问' });
+    expect(workspaceDrafts(student()).read('session-a', 'coach:new:day')).toEqual({
+      entryMode: 'question',
+      goal: '我的一次提问'
+    });
+    expect(workspaceDrafts(student('student-b')).read('session-a', 'coach:new:day')).toEqual({});
+    expect(JSON.stringify(owner.state)).toBe(before);
+    drafts.save(owner.context, 'coach:new:day', { entryMode: 'unknown' });
+    expect(workspaceDrafts(student()).read('session-a', 'coach:new:day')).toEqual({});
+  });
   it('restores the owning conversation after a fresh store/runtime, without exporting learning facts', () => {
     const store = student();
     const drafts = workspaceDrafts(store);

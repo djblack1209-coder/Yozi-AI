@@ -3,7 +3,15 @@
     active="learning"
     :waiting-for-answer="Boolean(answerTarget)"
     :notice="cancellationNotice"
-    :title="subjectMethod ? subjectMethod.subject : materialTrack ? '计算机专业课' : '考研英语写作'"
+    :title="
+      !coach && entryMode === 'question'
+        ? '单题答疑'
+        : subjectMethod
+          ? subjectMethod.subject
+          : materialTrack
+            ? '计算机专业课'
+            : '考研英语写作'
+    "
     :style="{ '--muse-composer-height': `${composerHeight}px`, '--learning-composer-height': `${composerHeight}px` }"
     @new="newSession"
     @connections="openConnections"
@@ -44,8 +52,18 @@
         "
         @height="composerHeight = $event"
       >
-        <template v-if="coach" #actions>
-          <MusePresentationControl :presentation="presentation" />
+        <template v-if="coach || learning.singleQuestionAvailable || entryMode === 'question'" #actions>
+          <BaseSegmented
+            v-if="!coach"
+            v-model="entryMode"
+            label="开始方式"
+            :options="[
+              { value: 'study', label: '建档学习' },
+              { value: 'question', label: '单题答疑' }
+            ]"
+            :disabled="learning.busy || learning.intakeBusy || !!learning.reply?.pending"
+          />
+          <MusePresentationControl v-if="coach" :presentation="presentation" />
           <BaseButton
             v-if="coach"
             variant="quiet"
@@ -142,7 +160,7 @@
       >
 
       <template v-if="!coach">
-        <MuseChatEmpty v-if="showChatEmpty" connected @draft="goal = $event" />
+        <MuseChatEmpty v-if="showChatEmpty && entryMode === 'study'" connected @draft="goal = $event" />
         <MuseModelIntake
           v-if="usesModelIntake"
           ref="intakePanel"
@@ -693,6 +711,7 @@ const intakePanel = ref(null);
 const userAvatar = computed(() => studentAvatar(learning.state.owner));
 const showChatEmpty = computed(() => props.connectionTone === 'mint' && !learning.state.intake && !learning.intakeBusy);
 const goal = ref(''),
+  entryMode = ref('study'),
   answer = ref(''),
   materialText = ref(''),
   message = ref('');
@@ -903,9 +922,11 @@ const composerLabel = computed(() =>
 );
 const composerPlaceholder = computed(() => {
   if (!coach.value)
-    return usesModelIntake.value && learning.state.intake && !learning.state.intake.acceptedConversationId
-      ? '写下你的回答'
-      : '写下你的学习目标';
+    return entryMode.value === 'question'
+      ? '写下这次的问题'
+      : usesModelIntake.value && learning.state.intake && !learning.state.intake.acceptedConversationId
+        ? '写下你的回答'
+        : '写下你的学习目标';
   if (learning.active.stopped) return '带练已暂停，可在上方继续';
   if (!coach.value.profile && profileStep.value < 3) return '请先完成上方选择';
   if (!answerTarget.value) return '请先完成上方当前步骤';
@@ -914,6 +935,7 @@ const composerPlaceholder = computed(() => {
 const usesModelIntake = computed(
   () =>
     !learning.active &&
+    entryMode.value !== 'question' &&
     (!DEV_TEST ||
       learning.modelIntakeContract === MODEL_INTAKE_V2_CONTRACT ||
       learning.state.intake?.contract === MODEL_INTAKE_V2_CONTRACT)
@@ -940,6 +962,24 @@ async function submitComposer() {
     if (!input) return;
     const submittedDraft = draftBinding;
     const previousConversation = learning.selectedConversationId;
+    if (entryMode.value === 'question') {
+      if (!learning.singleQuestionAvailable) {
+        modelFailure.value = { error: 'UNSUPPORTED' };
+        return;
+      }
+      if (!learning.modelId) {
+        modelFailure.value = { error: 'NEEDS_CONNECTION' };
+        return;
+      }
+      if (!learning.sharingAllowed) {
+        modelFailure.value = { error: 'CONSENT_REQUIRED' };
+        return;
+      }
+      emit('general', { questionOnly: true, input });
+      if (learning.selectedConversationId && learning.selectedConversationId !== previousConversation)
+        drafts.remove(submittedDraft.context, submittedDraft.key);
+      return;
+    }
     if (usesModelIntake.value) {
       const result = await intakePanel.value?.submitDraft();
       if (
@@ -988,6 +1028,7 @@ function saveDraft() {
     drafts.save(draftBinding.context, draftBinding.key, {
       answer: answer.value,
       goal: goal.value,
+      entryMode: entryMode.value,
       profile: { ...profile, subjects: [...profile.subjects] },
       step: profileStep.value
     });
@@ -1001,6 +1042,7 @@ watch(
     const saved = drafts.read(context, draftBinding.key);
     answer.value = saved.answer || '';
     goal.value = saved.goal || '';
+    entryMode.value = saved.entryMode === 'question' ? 'question' : 'study';
     message.value = '';
     resetProfileDraft();
     if (saved.profile) Object.assign(profile, saved.profile, { subjects: [...saved.profile.subjects] });
@@ -1044,7 +1086,7 @@ watch(
   },
   { immediate: true, flush: 'sync' }
 );
-watch([answer, goal, profile, profileStep], saveDraft, { deep: true, flush: 'sync' });
+watch([answer, goal, entryMode, profile, profileStep], saveDraft, { deep: true, flush: 'sync' });
 onBeforeUnmount(() => {
   saveDraft();
   draftAlive = false;

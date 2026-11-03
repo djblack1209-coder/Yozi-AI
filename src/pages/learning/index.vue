@@ -996,6 +996,13 @@
           <BaseButton variant="quiet" @tap="run(() => learning.recoverModelResult())">{{
             t('learning.khs')
           }}</BaseButton>
+          <BaseButton
+            v-if="learning.active?.entryContract === SINGLE_QUESTION_CONTRACT"
+            variant="quiet"
+            :disabled="!learning.sharingAllowed"
+            @tap="retryQuestion"
+            >重新生成讲解</BaseButton
+          >
         </view>
         <view v-if="learning.error && !cancellationNotice" id="learning-request-error" tabindex="-1">
           <BaseEmpty v-if="publicError(learning.error, null)" state="error" :title="publicError(learning.error)" />
@@ -2052,6 +2059,7 @@ import {
 import MuseComposer from '@/components/business/learning/muse-composer.vue';
 import MusePresentationControl from '@/components/business/learning/muse-presentation-control.vue';
 import { useLearningPresentation } from '@/composables/useLearningPresentation.js';
+import { SINGLE_QUESTION_CONTRACT } from '../../../laf-backend/functions/_shared/learning-intake.js';
 import { toast } from '@/utils/toast.js';
 import { groupLearningMessages } from '@/services/learning/message-groups.js';
 import CustomModal from '@/components/common/CustomModal.vue';
@@ -3202,6 +3210,16 @@ function handleModelAction(action) {
   if (action.type === 'query_result' && learning.recoverableRequest) return run(() => learning.recoverModelResult());
   if (action.type === 'retry' && learning.recoverableRequest) return run(() => learning.recoverModelResult());
 }
+async function retryQuestion() {
+  const context = learning.recordContext(),
+    pending = learning.recoverableRequest;
+  const original = learning.active?.messages.find((message) => message.id === pending?.messageId)?.content;
+  const result = await run(() => learning.retrySingleQuestion());
+  if (appPageAlive && learning.recordContext() === context && result?.success) {
+    if (draft.value.trim() === original?.trim()) draft.value = '';
+    pendingSubmission = null;
+  }
+}
 async function runMaterial(action, { connectionCheck = false } = {}) {
   const sequence = ++materialFeedbackSequence;
   const context = learning.recordContext();
@@ -3233,6 +3251,36 @@ function newConversation() {
 }
 function beginGeneralQuestion(input) {
   if (learning.accountRecordState !== 'ready') return;
+  if (input?.questionOnly === true && typeof input.input === 'string') {
+    const text = input.input.trim(),
+      context = learning.recordContext(),
+      selectedModel = learning.modelId;
+    if (!text) return;
+    try {
+      const conversation = learning.startSingleQuestion(text);
+      showIntake.value = false;
+      draft.value = text;
+      void nextTick().then(async () => {
+        try {
+          if (
+            appPageAlive &&
+            learning.recordContext() === context &&
+            learning.selectedConversationId === conversation.id &&
+            learning.modelId === selectedModel &&
+            learning.selectedMode === 'cloud' &&
+            learning.sharingAllowed &&
+            draft.value === text
+          )
+            await send();
+        } catch (failure) {
+          if (appPageAlive) toast.error(publicError(failure));
+        }
+      });
+    } catch (failure) {
+      toast.error(publicError(failure));
+    }
+    return;
+  }
   const acceptedId = typeof input === 'object' ? input?.conversationId : null;
   if (acceptedId) {
     learning.selectedConversationId = acceptedId;
@@ -3332,6 +3380,7 @@ async function send() {
     !feedback.value &&
     !learning.error &&
     learning.active &&
+    learning.active.entryContract !== SINGLE_QUESTION_CONTRACT &&
     !learning.state.profile.some((entry) => entry.scope === learning.active.goal && entry.source === 'self_report')
   )
     showIntake.value = true;

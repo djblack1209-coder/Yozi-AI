@@ -125,7 +125,7 @@ function toggleCheck(index, id, value) {
   checked.value = { ...checked.value, [index]: { ...checked.value[index], [id]: value === true } };
 }
 watch(
-  () => props.content,
+  () => JSON.stringify(normalized.value),
   () => {
     count.value = 1;
     steps.value = {};

@@ -24,12 +24,17 @@ const requireValue = (condition: any, code: string, message: string) => {
 };
 // Diagnostics keep schema coordinates, never arbitrary model-provided field names or reply text.
 const VALIDATION_FIELDS = new Set(
-  'context turns item profile goal-category-subjects exam-minutes exam minutes deadline foundation reply first json raw option options profile-evidence root turn-limit cards id kind title prompt example sourceId sourceQuote sourcePage source writing patterns learned tomorrow target lines original advice rewrite dimensions dimension dimensionContract dimensionReviews grammar collocation expression task name comment score evidence quoteVersion quoteId evidenceIds rewriteMode weaknesses phrases strengths strengthEvidence weaknessEvidence classification feedbackVersion finish_reason bandResult bandCandidate contract binding submissionId answerHash taskId taskVersion rubricId rubricVersion requestId status nullReason band bandRange scoreEstimate maxScore taskCoverage observations key evidenceSpans start end note integrityFlags label quote coach message tools question exercise edits before after errors errorText replacement uncertainties activityIds nextActions'.split(
+  'context turns item profile goal-category-subjects exam-minutes exam minutes deadline foundation reply first json raw option options profile-evidence root turn-limit cards id kind title prompt example sourceId sourceQuote sourcePage source writing patterns learned tomorrow target lines original advice rewrite dimensions dimension dimensionContract dimensionReviews grammar collocation expression task name comment score evidence quoteVersion quoteId evidenceIds rewriteMode weaknesses phrases strengths strengthEvidence weaknessEvidence classification feedbackVersion finish_reason bandResult bandCandidate contract binding submissionId answerHash taskId taskVersion rubricId rubricVersion requestId status nullReason band bandRange scoreEstimate maxScore taskCoverage observations key evidenceSpans start end note integrityFlags label quote coach message tools question exercise edits before after errors errorText replacement uncertainties activityIds nextActions contentBlocks version'.split(
     ' '
   )
 );
 export function modelValidationPath(code: unknown, path: unknown) {
-  if ((code !== 'COACH_INVALID' && code !== 'INTAKE_INVALID') || typeof path !== 'string' || !path || path.length > 160)
+  if (
+    (code !== 'COACH_INVALID' && code !== 'INTAKE_INVALID' && code !== 'INVALID_STRUCTURE') ||
+    typeof path !== 'string' ||
+    !path ||
+    path.length > 160
+  )
     return null;
   return path
     .split('.')

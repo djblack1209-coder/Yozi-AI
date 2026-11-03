@@ -17,7 +17,8 @@ import {
   normalizeIntakeReply,
   explicitIntakeFacts,
   intakeFinished,
-  MODEL_INTAKE_V2_CONTRACT
+  MODEL_INTAKE_V2_CONTRACT,
+  SINGLE_QUESTION_CONTRACT
 } from '../../../laf-backend/functions/_shared/learning-intake.js';
 import { coachMaterialContext } from '@/services/learning/coach-material-context.js';
 import { WRITING_KNOWLEDGE_CONTRACT } from '../../../laf-backend/functions/_shared/learning-writing-knowledge.js';
@@ -306,11 +307,13 @@ export const CONVERSATION_ACTION_EFFECTS = Object.freeze({
   checkLocalConnection: 'send',
   checkMaterialConnection: 'send',
   recoverModelResult: 'send',
+  retrySingleQuestion: 'send',
   recordContext: 'read',
   prepareMaterialAction: 'write',
   materialContext: 'read',
   refresh: 'read',
   start: 'write',
+  startSingleQuestion: 'write',
   setRhythm: 'write',
   send: 'send',
   submit: 'send',
@@ -415,6 +418,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   let modelIntakeAvailable = false;
   let modelCoachMethods = [];
   let modelPresentationAvailable = false;
+  const singleQuestionAvailable = ref(false);
   const modelIntakeContract = shallowRef(null);
   let modelIntakeScopeContract = null;
   const coachError = ref('');
@@ -682,6 +686,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     modelIntakeAvailable = false;
     modelCoachMethods = [];
     modelPresentationAvailable = false;
+    singleQuestionAvailable.value = false;
     modelIntakeContract.value = null;
     modelIntakeScopeContract = null;
     models.value = [];
@@ -1736,6 +1741,32 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     selectedConversationId.value = conversation.id;
     commit('coach.begin', { conversationId: conversation.id, explicit: true });
     selectedMode.value = 'cloud';
+    return conversation;
+  }
+  function startSingleQuestion(goal) {
+    idleRecords();
+    assert(!intakeBusy.value && !reply.value?.pending, 'BUSY', '请等待或取消当前请求');
+    assert(singleQuestionAvailable.value, 'UNSUPPORTED', '当前服务尚未支持单题答疑');
+    assert(
+      getToken() &&
+        models.value.some(
+          (model) =>
+            model.id === modelId.value && model.source === 'byok' && model.configured && !model.requiresModelSelection
+        ),
+      'NEEDS_CONNECTION',
+      '请先选择自己的 AI 连接'
+    );
+    assert(sharingAllowed.value, 'CONSENT_REQUIRED', '请先授权本次问题发送');
+    assert(typeof goal === 'string' && goal.trim() && goal.length <= 1000, 'INVALID_INPUT', '请写下本次问题');
+    const conversation = commit('conversation.start', {
+      goal,
+      entryContract: SINGLE_QUESTION_CONTRACT,
+      explicit: true
+    });
+    selectedConversationId.value = conversation.id;
+    selectedMode.value = 'cloud';
+    error.value = '';
+    retryState.value = { phase: 'idle', errorCode: null, message: '' };
     return conversation;
   }
   function coachSave(type, data = {}) {
@@ -3441,9 +3472,11 @@ export const useConversationLearningStore = defineStore('conversation-learning',
         entrySource: { conversationId, messageId: request.messageId, length: raw.length },
         goal: active.value.goal,
         ...(active.value.studyProfile ? { studyProfile: active.value.studyProfile } : {}),
-        ...(active.value.messages.some((m) => m.role === 'notice' && m.content.startsWith('当前重点支持考研英语写作；'))
-          ? { generalQAOnly: true }
-          : {}),
+        ...(active.value.entryContract === SINGLE_QUESTION_CONTRACT
+          ? { generalQAOnly: true, questionEntryContract: SINGLE_QUESTION_CONTRACT }
+          : active.value.messages.some((m) => m.role === 'notice' && m.content.startsWith('当前重点支持考研英语写作；'))
+            ? { generalQAOnly: true }
+            : {}),
         task: active.value.task || normalizeLearningTask(),
         capabilities: { ...taskContext.value, visualization: null },
         profile: [
@@ -3573,9 +3606,13 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       if (!result.success) {
         error.value = publicError(result);
         notice(publicError(result), `${id}:error`);
-        return;
+        return active.value?.entryContract === SINGLE_QUESTION_CONTRACT ? result : undefined;
       }
       applyModelResult(result.data, request, requestController.signal);
+      if (active.value?.entryContract === SINGLE_QUESTION_CONTRACT) {
+        void loadModels().catch(() => undefined);
+        return result;
+      }
     } catch (e) {
       if (
         controller === requestController &&
@@ -3606,6 +3643,11 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     if (data.contentBlocks !== undefined)
       data = { ...data, contentBlocks: mapContentBlocks(data.contentBlocks, safeLearningMessage) };
     const { id, conversationId, questionKey: requestedQuestionKey } = request;
+    if (
+      state.value.conversations.find((conversation) => conversation.id === conversationId)?.entryContract ===
+      SINGLE_QUESTION_CONTRACT
+    )
+      assert(!data.question && !(data.tools || []).length, 'FORBIDDEN', '单题答疑不执行测评、档案或计划');
     assert(
       typeof data.message === 'string' &&
         data.message.length <= 8000 &&
@@ -3794,6 +3836,50 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       return null;
     return event.data;
   });
+  const singleQuestionRetries = new Map();
+  async function retrySingleQuestion() {
+    const pending = recoverableRequest.value,
+      context = recordContext(),
+      session = loginContext();
+    assert(
+      pending && active.value?.entryContract === SINGLE_QUESTION_CONTRACT,
+      'PRECONDITION',
+      '当前没有待恢复的单题答疑'
+    );
+    const key = `${context}:${pending.requestId}`;
+    if (singleQuestionRetries.has(key)) return singleQuestionRetries.get(key);
+    assert(sharingAllowed.value, 'CONSENT_REQUIRED', '请先授权本次问题发送');
+    const original = active.value.messages.find(
+      (message) => message.id === pending.messageId && message.role === 'user'
+    )?.content;
+    assert(original, 'NOT_FOUND', '原问题已变化，未重新发送');
+    const operation = (async () => {
+      const recovered = await recoverModelResult();
+      if (recovered.success) return { ...recovered, restored: true };
+      if (!['failed', 'cancelled'].includes(recovered.status)) return recovered;
+      ensureSessionCurrent(session);
+      assert(
+        recordContext() === context &&
+          recoverableRequest.value?.requestId === pending.requestId &&
+          selectedConversationId.value === pending.conversationId &&
+          modelId.value === pending.modelId &&
+          selectedMode.value === 'cloud' &&
+          sharingAllowed.value &&
+          !intakeBusy.value,
+        'CONTEXT_CHANGED',
+        '账户、模型、授权或原问题已变化，未重新发送'
+      );
+      error.value = '';
+      return (
+        (await send(original, { id: learningId('turn'), chatEntry: true, discussionOnly: true })) || {
+          success: false,
+          error: 'INVALID_RESPONSE'
+        }
+      );
+    })().finally(() => singleQuestionRetries.delete(key));
+    singleQuestionRetries.set(key, operation);
+    return operation;
+  }
   async function recoverModelResult() {
     refresh();
     const pending = recoverableRequest.value;
@@ -4033,6 +4119,11 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           result.success &&
           Array.isArray(result.data.presentationContracts) &&
           result.data.presentationContracts.includes(PRESENTATION_CONTRACT);
+        singleQuestionAvailable.value = Boolean(
+          modelPresentationAvailable &&
+          Array.isArray(result.data.questionEntryContracts) &&
+          result.data.questionEntryContracts.includes(SINGLE_QUESTION_CONTRACT)
+        );
         modelIntakeAvailable = result.success && result.data.intakeContract === 'model-intake-v1';
         modelIntakeContract.value =
           result.success && result.data.intakeContracts?.includes(MODEL_INTAKE_V2_CONTRACT)
@@ -5635,6 +5726,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     reply,
     recoverableRequest,
     recoverModelResult,
+    retrySingleQuestion,
     localConnection,
     materialConnection,
     // 文件确认使用实际账户/记录生命周期；普通作答不会使已选文件失效。
@@ -5644,6 +5736,8 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     sharingAllowed,
     refresh,
     start,
+    startSingleQuestion,
+    singleQuestionAvailable,
     setRhythm,
     send,
     submit,
@@ -5728,6 +5822,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
         'restartModelIntake',
         'recoverModelIntake',
         'recoverModelResult',
+        'retrySingleQuestion',
         'testModel'
       ].includes(name);
       const retryTicket = tracksRetry ? ++retryOperation : null;

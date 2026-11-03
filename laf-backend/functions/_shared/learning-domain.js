@@ -7,7 +7,8 @@ import {
   normalizeIntakeReply,
   normalizeStudyProfile,
   intakeFinished,
-  MODEL_INTAKE_V2_CONTRACT
+  MODEL_INTAKE_V2_CONTRACT,
+  SINGLE_QUESTION_CONTRACT
 } from './learning-intake.js';
 import { applyWritingCoachOperation } from './learning-writing-coach.js';
 import { subjectCoachMethodByContract } from './learning-coach-methods.js';
@@ -1403,6 +1404,12 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
     }
     case 'conversation.start': {
       const goal = text(data.goal, 1000);
+      if (data.entryContract !== undefined)
+        assert(
+          data.entryContract === SINGLE_QUESTION_CONTRACT && data.explicit === true,
+          'EXPLICIT_REQUIRED',
+          '请明确选择并发送单题答疑'
+        );
       const conversation = {
         id: opId,
         goal,
@@ -1412,6 +1419,7 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
         pendingHints: [],
         stopped: false
       };
+      if (data.entryContract) conversation.entryContract = data.entryContract;
       if (data.task !== undefined) conversation.task = normalizeLearningTask(data.task);
       state.conversations.push(conversation);
       result = conversation;

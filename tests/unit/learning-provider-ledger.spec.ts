@@ -261,21 +261,24 @@ it('malformed coach JSON retains its failure coordinate without retaining the re
   expect(JSON.stringify(settled.account)).not.toContain(raw);
 });
 
-it('validation diagnostics retain only schema fields and are erased without changing cost facts', () => {
-  const reserved = reserveCall(funded(), input('invalid-path'));
-  const settled = settleCall(reserved.account, 'invalid-path', {
-    success: false,
-    actualCost: null,
-    errorCode: 'COACH_INVALID',
-    validationPath: 'cards[2].private_fixture_key'
-  });
-  expect(settled.call).toMatchObject({ validationPath: 'cards[2].unknown', costStatus: 'pending', actualCost: null });
-  expect(JSON.stringify(settled.account)).not.toContain('private_fixture_key');
-  const erased = eraseModelResultCache(settled.account);
-  expect(erased.account.calls[0]).not.toHaveProperty('validationPath');
-  expect(erased.account.cost).toEqual(settled.account.cost);
-  expect(erased.account.entitlement).toEqual(settled.account.entitlement);
-});
+it.each(['COACH_INVALID', 'INVALID_STRUCTURE'])(
+  'validation diagnostics %s retain only schema fields and are erased without changing cost facts',
+  (errorCode) => {
+    const reserved = reserveCall(funded(), input('invalid-path'));
+    const settled = settleCall(reserved.account, 'invalid-path', {
+      success: false,
+      actualCost: null,
+      errorCode,
+      validationPath: 'cards[2].private_fixture_key'
+    });
+    expect(settled.call).toMatchObject({ validationPath: 'cards[2].unknown', costStatus: 'pending', actualCost: null });
+    expect(JSON.stringify(settled.account)).not.toContain('private_fixture_key');
+    const erased = eraseModelResultCache(settled.account);
+    expect(erased.account.calls[0]).not.toHaveProperty('validationPath');
+    expect(erased.account.cost).toEqual(settled.account.cost);
+    expect(erased.account.entitlement).toEqual(settled.account.entitlement);
+  }
+);
 
 it('received nonstream failures keep shape, usage and duration without reply or reasoning text', async () => {
   const priorResolver = process.env.LEARNING_DNS_SERVERS;
