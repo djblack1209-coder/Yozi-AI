@@ -640,6 +640,8 @@ export default {
     handleLearningSync() {
       if (this.learning.syncBusy || this.learning.busy) return;
       if (!this.isLoggedIn) return this.goLogin();
+      // Settings is a read mirror; the main window owns record writes and sync consent.
+      if (this.nativeSettings) return this.goTo('/pages/learning/index?panel=data');
       this.dialogSequence++;
       this.dialog = {
         kind: 'sync',

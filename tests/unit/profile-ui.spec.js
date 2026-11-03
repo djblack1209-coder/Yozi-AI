@@ -77,6 +77,50 @@ it('同步只在明确确认后执行，账户变化会作废旧确认', async (
   uni.clearStorageSync();
 });
 
+it('独立设置窗口将同步交给主窗口，不在只读镜像弹出写入确认或执行同步', () => {
+  const context = {
+    nativeSettings: true,
+    isLoggedIn: true,
+    dialogSequence: 0,
+    showDialog: false,
+    goTo: vi.fn(),
+    learning: {
+      busy: false,
+      syncBusy: false,
+      syncRecords: vi.fn(() => {
+        throw new Error('Settings does not own the record write lease');
+      })
+    }
+  };
+  ProfilePage.methods.handleLearningSync.call(context);
+  expect(context.goTo).toHaveBeenCalledExactlyOnceWith('/pages/learning/index?panel=data');
+  expect(context.showDialog).toBe(false);
+  expect(context.dialogSequence).toBe(0);
+  expect(context.learning.syncRecords).not.toHaveBeenCalled();
+});
+
+it('设置同步交接仍先检查正在处理的任务与登录，不触发后台写入', () => {
+  const context = {
+    nativeSettings: true,
+    isLoggedIn: true,
+    goTo: vi.fn(),
+    goLogin: vi.fn(),
+    learning: { busy: true, syncBusy: false, syncRecords: vi.fn() }
+  };
+  ProfilePage.methods.handleLearningSync.call(context);
+  expect(context.goTo).not.toHaveBeenCalled();
+  context.learning.busy = false;
+  context.learning.syncBusy = true;
+  ProfilePage.methods.handleLearningSync.call(context);
+  expect(context.goTo).not.toHaveBeenCalled();
+  context.learning.syncBusy = false;
+  context.isLoggedIn = false;
+  ProfilePage.methods.handleLearningSync.call(context);
+  expect(context.goLogin).toHaveBeenCalledOnce();
+  expect(context.goTo).not.toHaveBeenCalled();
+  expect(context.learning.syncRecords).not.toHaveBeenCalled();
+});
+
 describe('profile panel navigation across page registration', () => {
   afterEach(() => {
     consumeProfilePanel();

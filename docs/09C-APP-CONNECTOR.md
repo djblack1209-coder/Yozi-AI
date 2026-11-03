@@ -16,7 +16,7 @@ Android 用 HttpURLConnection，iOS 用 NSURLSession，独立校验精确 origin
 
 3xx 或 Location 拒绝；原生响应最多 2,000,000 字节、硬时限最多 35 秒、正文最多 15 MiB，业务继续用原服务更小上限。Java 活动任务/等待队列各最多四项，Foundation 活动任务最多四项；取消/关闭只回调一次，迟到不落事实。Android 不修改全局 CookieHandler、代理、TLS 信任，iOS 使用无 Cookie/cache 临时会话；系统 TLS 保持，测试证书不安装。
 
-已接文本、健康、已有原件续解析及匹配删除；系统文件选择和确认后的有界读取源码及页面入口保持。云教学流式源码接入下方独立能力合同；Apple OCR、模型页图输入、完整 DCloud 装配和真机仍待验。逐次共享、账户/连接变化、原件删除沿原合同。手机 localhost 不是桌面，HTTPS、ATS/Android 网络策略、合法网关及可达性须设备验收。
+已接文本、健康、已有原件续解析及匹配删除；系统文件选择和确认后的有界读取源码及页面入口保持。云教学流式源码接入下方独立能力合同；Apple OCR、模型页图输入和完整 DCloud 装配仍分别核对本机覆盖范围；外部真机测试事项已移除。逐次共享、账户/连接变化、原件删除沿原合同。本机回环仅表示本机服务可达；HTTPS、ATS/Android网络策略和网关按本机可运行环境分别核对，未覆盖的设备特有行为保持未验证。
 
 ## 云教学分块（wenli-app-stream-v1）
 
@@ -37,7 +37,9 @@ Android 适配器用 `invokeAndKeepAlive` 保留中间回调、终止用 `invoke
 
 ## 移动 SDK 编译
 
-**2026-11-02当前准备状态【未装配】**：本机Xcode可用；实际DCloud Android classpath和iOS头/框架路径均未配置，未发现已安装HBuilderX入口。本轮沿既有build-only入口预查，因 `DCUniModule.h` 及依赖未配置退出2，未生成二进制、下载、改App配置或云打包。已配对iPhone当前未连接，未启动手机执行服务；没有以Apple SDK或模拟器代替DCloud装配与真机验收。
+**2026-11-02验证范围更正**：客户要求所有测试在本机完成，移除手机连接／解锁、外部设备与跨设备实测事项；产品多端方向和既有适配源码保留。本机编译、桌面原生、共享App、本机已具备条件的原生／模拟器与独立桥接测试分别报告，不把其中一种替代未覆盖能力；以下历史“未做真机”属于事实记录，不再形成外部设备验收门槛。
+
+**2026-11-02当前准备状态【未装配】**：本机Xcode可用；实际DCloud Android classpath和iOS头/框架路径均未配置，未发现已安装HBuilderX入口。本轮沿既有build-only入口预查，因 `DCUniModule.h` 及依赖未配置退出2，未生成二进制、下载、改App配置或云打包。不安排连接iPhone或启动手机执行服务；缺少完整DCloud SDK时继续记录未装配，本机已有Apple SDK不冒充完整DCloud装配。
 
 当前锁定DCloud系列为 `3.0.0-alpha-5030120260930001`；已安装vite-plugin-uni的 `uni-app.compilerVersion` 与当前App产物manifest均为 **5.31**。下方10月2日的5.08只属于历史准备记录，不能继续作为当前SDK装配基线。11月2日官方[iOS下载/升级说明](https://nativesupport.dcloud.net.cn/AppDocs/download/ios.html)列稳定版5.34及alpha版5.33，尚无与5.31匹配的本机完整包或兼容验收；不能据“最新版”或单个头文件存在直接判定可装配。取得包后核对官方来源、许可、完整版本、依赖库与资源，再沿现有build-only入口编译；不同版本须有对应平台兼容依据和实际验收，不以关闭版本提示代替。
 
