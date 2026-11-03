@@ -236,6 +236,8 @@ impl Drop for DialogLease<'_> {
 fn filename(kind: &str) -> Result<&'static str, String> {
     match kind {
         "records" => Ok("learning-records.json"),
+        "records-conflict-local" => Ok("learning-conflict-local.json"),
+        "records-conflict-remote" => Ok("learning-conflict-remote.json"),
         "locator" => Ok("wenli-upload-locator.json"),
         "poster" => Ok("Yozi-AI-study.png"),
         _ => Err("不支持此文件类型".into()),
@@ -706,6 +708,23 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn conflict_exports_keep_distinct_names_and_record_guards() {
+        let local = filename("records-conflict-local").unwrap();
+        let remote = filename("records-conflict-remote").unwrap();
+        assert_eq!(local, "learning-conflict-local.json");
+        assert_eq!(remote, "learning-conflict-remote.json");
+        assert_ne!(local, remote);
+        assert_ne!(local, filename("records").unwrap());
+        assert_ne!(remote, filename("records").unwrap());
+        for kind in ["records-conflict-local", "records-conflict-remote"] {
+            assert!(validate_content(kind, r#"{"version":1,"owner":"test","events":[]}"#).is_ok());
+            assert!(validate_content(kind, r#"{"message":"unrelated"}"#).is_err());
+            assert!(validate_content(kind, r#"{"version":1,"owner":"test","events":[],"api_key":"test-only"}"#).is_err());
+        }
+        assert!(filename("../learning-conflict-local.json").is_err());
+        assert!(filename("records-conflict-unknown").is_err());
+    }
     #[test]
     fn poster_export_is_bounded_png_and_keeps_record_validation() {
         assert_eq!(filename("poster").unwrap(), "Yozi-AI-study.png");

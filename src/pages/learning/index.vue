@@ -4321,7 +4321,13 @@ async function exportRecordFile(content, filename) {
   // #ifdef H5
   if (desktopHost) {
     const context = learning.recordContext();
-    const result = await saveDesktopLearningFile('records', content, {
+    const kind =
+      filename === 'learning-conflict-local.json'
+        ? 'records-conflict-local'
+        : filename === 'learning-conflict-remote.json'
+          ? 'records-conflict-remote'
+          : 'records';
+    const result = await saveDesktopLearningFile(kind, content, {
       isCurrent: () => appPageAlive && learning.recordContext() === context
     });
     feedback.value = result.saved

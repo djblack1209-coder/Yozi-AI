@@ -56,6 +56,7 @@ vi.mock('@dcloudio/uni-app', () => ({
 }));
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { learningRepository } from '@/services/learning/learning-repository.js';
+import * as desktopLearningFiles from '@/services/desktop/learning-files.js';
 import { setLanguage, t } from '@/i18n/index.js';
 import { learningText } from '@/i18n/learning.js';
 import {
@@ -1103,6 +1104,47 @@ describe('同步等待与冲突确认', () => {
     const stop = observeLearningDialogs(wrapper, (dialog) => dialogs.push(dialog));
     return { store, wrapper, button, dialogs, stop };
   }
+  it.each(['local', 'remote'])(
+    'S25 native %s conflict export selects a distinct file kind and preserves both snapshots',
+    async (side) => {
+      vi.stubGlobal('__YOZI_DESKTOP__', true);
+      const previous = Object.getOwnPropertyDescriptor(window, '__TAURI_INTERNALS__');
+      Object.defineProperty(window, '__TAURI_INTERNALS__', { configurable: true, value: { invoke: vi.fn() } });
+      const save = vi
+        .spyOn(desktopLearningFiles, 'saveDesktopLearningFile')
+        .mockResolvedValue({ saved: true, name: 'selected.json' });
+      const p = page();
+      const remote = JSON.parse(p.store.exportData());
+      remote.conversations[0].goal = '保留的云端合成目标';
+      remote.events.find((event) => event.id === remote.conversations[0].id).data.goal = '保留的云端合成目标';
+      learningRepository.captureSyncConflict(remote, []);
+      p.store.refresh();
+      const expected = learningRepository.exportSyncConflict(side);
+      const before = p.store.exportData();
+      const other = learningRepository.exportSyncConflict(side === 'local' ? 'remote' : 'local');
+      try {
+        for (const load of loadHooks.callbacks) load({ panel: 'data' });
+        await flushPromises();
+        await p.button(side === 'local' ? '导出本机冲突副本' : '导出云端冲突副本').trigger('tap');
+        await flushPromises();
+        expect(save).toHaveBeenCalledWith(
+          `records-conflict-${side}`,
+          expected,
+          expect.objectContaining({ isCurrent: expect.any(Function) })
+        );
+        expect(p.store.exportData()).toBe(before);
+        expect(learningRepository.exportSyncConflict(side === 'local' ? 'remote' : 'local')).toBe(other);
+      } finally {
+        p.stop();
+        p.wrapper.unmount();
+        p.store.$dispose();
+        save.mockRestore();
+        if (previous) Object.defineProperty(window, '__TAURI_INTERNALS__', previous);
+        else delete window.__TAURI_INTERNALS__;
+        vi.unstubAllGlobals();
+      }
+    }
+  );
   it.each(['local', 'remote'])('legacy关闭时实际导出%s冲突文件，不只写入隐藏的恢复输入', async (side) => {
     vi.stubEnv('VITE_ENABLE_LEGACY_LEARNING', 'false');
     const p = page();
