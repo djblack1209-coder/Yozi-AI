@@ -27,6 +27,7 @@
             mode="aspectFit"
             alt=""
           />
+          <BaseIcon v-else name="plug" size="32px" />
           <view class="connect-name"
             ><text>{{ model.provider }}</text
             ><text class="connect-model">{{ model.requiresModelSelection ? '请选择型号' : model.model }}</text
@@ -49,6 +50,7 @@
             mode="aspectFit"
             alt=""
           />
+          <BaseIcon v-else-if="provider.custom" name="plug" size="32px" />
           <view class="connect-name"
             ><text>{{ provider.provider }}</text></view
           ><BaseButton variant="quiet" :disabled="locked" @tap="open(provider)">添加</BaseButton>
@@ -68,6 +70,7 @@
     >
       <view class="connect-form">
         <template v-if="current?.saved && !editing && !choosing">
+          <text class="connect-model">{{ savedEndpoint }}</text>
           <text class="connect-model">{{ connectionLabel(current.saved) }}</text>
           <BaseButton
             variant="primary"
@@ -83,6 +86,23 @@
           <BaseButton variant="quiet" :disabled="locked" @tap="disconnecting = true">断开</BaseButton>
         </template>
         <template v-if="!current?.saved || editing">
+          <template v-if="current?.custom && !current.saved">
+            <BaseInput v-model="draft.provider" label="服务名称" maxlength="80" autocomplete="off" :disabled="saving" />
+            <BaseInput
+              v-model="draft.endpoint"
+              label="接口地址"
+              type="url"
+              maxlength="2048"
+              autocomplete="off"
+              placeholder="https://api.example.com/v1/chat/completions"
+              :error="
+                endpointAttempted && !connectionEndpoint(draft.endpoint)
+                  ? '请输入不含账号、查询参数或片段的完整 HTTPS 接口地址'
+                  : ''
+              "
+              :disabled="saving"
+            />
+          </template>
           <BaseInput
             v-model="apiKey"
             label="API 密钥"
@@ -96,7 +116,11 @@
           <BaseButton
             variant="primary"
             :loading="saving"
-            :disabled="locked || (!current?.saved && !apiKey.trim())"
+            :disabled="
+              locked ||
+              (!current?.saved &&
+                (!apiKey.trim() || (current?.custom && (!draft.provider?.trim() || !draft.endpoint?.trim()))))
+            "
             @tap="saveKey"
             >{{ current?.saved ? '保存密钥' : '保存并读取型号' }}</BaseButton
           >
@@ -157,6 +181,7 @@
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import {
   MODEL_ENDPOINTS,
+  completeModelEndpoint,
   MODEL_API_KEY_MAX_LENGTH
 } from '../../../../laf-backend/functions/_shared/ai-providers/model-endpoints.js';
 import { modelErrorPresentation } from '../../../../laf-backend/functions/_shared/model-errors.js';
@@ -187,6 +212,7 @@ const query = ref(''),
   modelOptions = ref([]),
   manual = ref(false),
   newConnection = ref(false),
+  endpointAttempted = ref(false),
   operationState = ref({ phase: 'idle' }),
   testRequest = ref(null);
 const locked = computed(() => saving.value || discovering.value || learning.busy || learning.intakeBusy);
@@ -194,10 +220,33 @@ const matches = (item) =>
   `${item.provider} ${item.model || ''}`.toLocaleLowerCase().includes(query.value.trim().toLocaleLowerCase());
 const savedModels = computed(() => learning.models.filter((model) => model.source === 'byok').filter(matches));
 const providers = computed(() =>
-  MODEL_ENDPOINTS.filter((item) => item.id !== 'cloudflare')
-    .map((item) => ({ ...item, ...modelBrand(item.provider) }))
-    .filter(matches)
+  [
+    ...MODEL_ENDPOINTS.filter((item) => item.id !== 'cloudflare').map((item) => ({
+      ...item,
+      ...modelBrand(item.provider)
+    })),
+    { id: 'custom', provider: '自定义服务', custom: true }
+  ].filter(matches)
 );
+function connectionEndpoint(value) {
+  if (typeof value !== 'string' || !value.trim()) return '';
+  try {
+    const url = new URL(value.trim());
+    if (
+      url.protocol !== 'https:' ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      (url.port && url.port !== '443')
+    )
+      return '';
+    return completeModelEndpoint(value.trim());
+  } catch {
+    return '';
+  }
+}
+const savedEndpoint = computed(() => connectionEndpoint(current.value?.saved?.endpoint) || '接口地址暂不可读');
 function connectionLabel(saved) {
   if (saved.requiresModelSelection) return '待选择型号';
   if (!saved.configured) return '待填写密钥';
@@ -219,6 +268,7 @@ function close() {
   manual.value = false;
   operationState.value = { phase: 'idle' };
   testRequest.value = null;
+  endpointAttempted.value = false;
 }
 function open(provider, saved = false) {
   if (locked.value) return;
@@ -229,6 +279,7 @@ function open(provider, saved = false) {
   }
   current.value = { ...provider, ...(saved ? { saved: provider } : {}) };
   draft.value = { ...provider, model: saved && !provider.requiresModelSelection ? provider.model : '' };
+  if (provider.custom && !saved) draft.value = { ...draft.value, provider: '', endpoint: '' };
   newConnection.value = !saved;
 }
 function goLogin() {
@@ -282,6 +333,12 @@ function profile(extra = {}) {
 }
 async function saveKey() {
   if (locked.value || !current.value) return;
+  if (current.value.custom && !current.value.saved) {
+    endpointAttempted.value = true;
+    const endpoint = connectionEndpoint(draft.value.endpoint);
+    if (!endpoint || !draft.value.provider?.trim() || !apiKey.value.trim()) return;
+    draft.value = { ...draft.value, provider: draft.value.provider.trim(), endpoint };
+  }
   if (!current.value.saved)
     draft.value.id = `byok_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const target = current.value;
@@ -289,6 +346,7 @@ async function saveKey() {
   if (!result?.success || current.value !== target) return;
   current.value = {
     ...target,
+    provider: draft.value.provider,
     saved: learning.models.find((model) => model.id === draft.value.id) || { ...profile(), configured: true }
   };
   editing.value = false;

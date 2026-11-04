@@ -84,6 +84,128 @@ async function manage(id = 'one') {
 }
 
 describe('BYOK two-step connector UI', () => {
+  async function customFields(endpoint = 'https://model.example.com/v1/chat/completions') {
+    await add('custom');
+    await wrapper.get('input[aria-label="服务名称"]').setValue('  我的服务  ');
+    await wrapper.get('input[aria-label="接口地址"]').setValue(endpoint);
+    await wrapper.get('input[type="password"]').setValue('S51_SYNTHETIC_NOT_VALID');
+  }
+  it('S51 adds a named custom endpoint and requires the existing explicit live-model choice', async () => {
+    await customFields();
+    expect(wrapper.find('[data-provider-id="custom"]').text()).toContain('自定义服务');
+    expect(harness.store.saveModel).not.toHaveBeenCalled();
+    await tap('保存并读取型号');
+    const first = harness.store.saveModel.mock.calls[0][0];
+    expect(first).toMatchObject({
+      provider: '我的服务',
+      endpoint: 'https://model.example.com/v1/chat/completions',
+      model: '',
+      requiresModelSelection: true,
+      apiKey: 'S51_SYNTHETIC_NOT_VALID'
+    });
+    expect(harness.store.saveModel.mock.calls[0][1]).toBe(true);
+    expect(harness.store.loadModelDiscovery).toHaveBeenCalledExactlyOnceWith({ profileId: first.id, refresh: true });
+    expect(harness.store.selectModel).not.toHaveBeenCalled();
+    expect(wrapper.find('input[type="password"]').exists()).toBe(false);
+    await wrapper.get('select').setValue('live-model');
+    await tap('保存并使用');
+    expect(harness.store.saveModel.mock.calls[1][0]).toMatchObject({
+      id: first.id,
+      provider: '我的服务',
+      endpoint: first.endpoint,
+      model: 'live-model',
+      requiresModelSelection: false
+    });
+    expect(harness.store.saveModel.mock.calls[1][0]).not.toHaveProperty('apiKey');
+    expect(harness.store.selectModel).toHaveBeenCalledExactlyOnceWith(first.id);
+    expect(harness.store.beginModelIntake).not.toHaveBeenCalled();
+    expect(wrapper.text()).not.toContain('S51_SYNTHETIC_NOT_VALID');
+  });
+  it.each([
+    'http://model.example.com/v1/chat/completions',
+    'https://user:password@model.example.com/v1/chat/completions',
+    'https://model.example.com/v1/chat/completions?key=hidden',
+    'https://model.example.com/v1/chat/completions#hidden',
+    'https://model.example.com:8443/v1/chat/completions'
+  ])('S51 rejects an unsafe custom address before sending a credential: %s', async (endpoint) => {
+    await customFields(endpoint);
+    await tap('保存并读取型号');
+    expect(wrapper.get('input[aria-label="接口地址"]').attributes('aria-invalid')).toBe('true');
+    expect(wrapper.text()).toContain('完整 HTTPS 接口地址');
+    expect(harness.store.saveModel).not.toHaveBeenCalled();
+    expect(harness.store.loadModelDiscovery).not.toHaveBeenCalled();
+    expect(harness.store.selectModel).not.toHaveBeenCalled();
+  });
+  it('S51 completes only a known provider base and preserves a custom completion path', async () => {
+    await customFields('  https://api.deepseek.com  ');
+    await tap('保存并读取型号');
+    expect(harness.store.saveModel.mock.calls[0][0].endpoint).toBe('https://api.deepseek.com/chat/completions');
+  });
+  it('S51 leaves forbidden endpoints to the existing server gate and never starts discovery or selection', async () => {
+    harness.store.saveModel.mockResolvedValue({
+      success: false,
+      error: 'ENDPOINT_FORBIDDEN',
+      message: 'unsafe vendor detail'
+    });
+    await customFields();
+    await tap('保存并读取型号');
+    expect(harness.store.saveModel).toHaveBeenCalledOnce();
+    expect(harness.store.loadModelDiscovery).not.toHaveBeenCalled();
+    expect(harness.store.selectModel).not.toHaveBeenCalled();
+    expect(wrapper.text()).not.toContain('unsafe vendor detail');
+    expect(wrapper.get('input[type="password"]').element.value).toBe('');
+    expect(wrapper.get('input[aria-label="接口地址"]').element.value).toBe(
+      'https://model.example.com/v1/chat/completions'
+    );
+  });
+  it('S51 clears custom identity, endpoint and key drafts on account change and cancellation', async () => {
+    await customFields();
+    harness.store.owner = 'owner-b';
+    await nextTick();
+    expect(wrapper.find('input[type="password"]').exists()).toBe(false);
+    expect(harness.store.saveModel).not.toHaveBeenCalled();
+    await add('custom');
+    expect(wrapper.get('input[aria-label="服务名称"]').element.value).toBe('');
+    expect(wrapper.get('input[aria-label="接口地址"]').element.value).toBe('');
+    expect(wrapper.get('input[type="password"]').element.value).toBe('');
+    await wrapper.get('.test-close').trigger('click');
+    await add('custom');
+    expect(wrapper.get('input[aria-label="接口地址"]').element.value).toBe('');
+    expect(harness.store.saveModel).not.toHaveBeenCalled();
+  });
+  it('S51 shows a saved custom address read-only while changing its model and retains its identity', async () => {
+    harness.store.models = [
+      saved('custom-one', { provider: '我的服务', endpoint: 'https://model.example.com/compatible/chat/completions' })
+    ];
+    await nextTick();
+    await manage('custom-one');
+    expect(wrapper.text()).toContain('https://model.example.com/compatible/chat/completions');
+    expect(wrapper.find('input[aria-label="接口地址"]').exists()).toBe(false);
+    await tap('换型号');
+    await wrapper.get('select').setValue('live-model');
+    await tap('保存型号');
+    expect(harness.store.saveModel).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        id: 'custom-one',
+        provider: '我的服务',
+        endpoint: 'https://model.example.com/compatible/chat/completions'
+      }),
+      true
+    );
+  });
+  it('S51 never renders credentials or query parameters from an invalid legacy saved address', async () => {
+    harness.store.models = [
+      saved('custom-one', {
+        provider: '我的服务',
+        endpoint: 'https://user:legacy-secret@model.example.com/v1/chat/completions?key=legacy-secret'
+      })
+    ];
+    await nextTick();
+    await manage('custom-one');
+    expect(wrapper.text()).toContain('接口地址暂不可读');
+    expect(wrapper.text()).not.toContain('legacy-secret');
+    expect(harness.store.saveModel).not.toHaveBeenCalled();
+  });
   it('offers provider choices, shows multiple saved connections and filters platform models', async () => {
     harness.store.models = [
       saved(),
