@@ -4,6 +4,7 @@ import { nextTick, reactive } from 'vue';
 import { emptyLearningState } from '@/services/learning/learning-domain.js';
 import MuseLibrary from '@/components/business/learning/muse-library.vue';
 import { safeNavigateTo } from '@/utils/safe-navigate.js';
+import { workspaceConversationContext } from '@/services/learning/workspace-context.js';
 vi.mock('@/utils/safe-navigate.js', () => ({ safeNavigateTo: vi.fn() }));
 
 const harness = vi.hoisted(() => ({ store: null }));
@@ -29,6 +30,99 @@ beforeEach(() => {
 });
 afterEach(() => wrapper?.unmount());
 const button = (label) => wrapper.findAll('button').find((node) => node.text() === label);
+
+describe('S50 Library saved-source navigation', () => {
+  async function sources() {
+    harness.store.state.conversations.push(
+      { id: 'source-a', goal: '来源甲', at: 1000, messages: [], materialIds: ['one'] },
+      { id: 'source-b', goal: '来源乙', at: 2000, messages: [], materialIds: ['one'] }
+    );
+    await nextTick();
+  }
+  async function chooseSource(label) {
+    await button('来源对话').trigger('tap');
+    await wrapper
+      .findAll('.library-sidebar .lib-nav')
+      .find((node) => node.text().startsWith(label))
+      .trigger('tap');
+  }
+  it('opens a shared private material in the explicitly selected saved conversation without changing facts', async () => {
+    await sources();
+    const before = JSON.stringify(harness.store.state),
+      navigations = safeNavigateTo.mock.calls.length;
+    await chooseSource('来源乙');
+    expect(wrapper.findAll('.artifact')).toHaveLength(1);
+    expect(wrapper.find('[aria-label="打开 另一份资料"]').exists()).toBe(false);
+    await wrapper.get('[aria-label="打开 我的私人资料"]').trigger('tap');
+    expect(harness.store.locateConversation.mock.calls).toEqual([['source-b', undefined, null, undefined]]);
+    expect(safeNavigateTo.mock.calls.slice(navigations)).toEqual([['/pages/learning/index']]);
+    expect(wrapper.find('.material-reader').exists()).toBe(false);
+    expect(JSON.stringify(harness.store.state)).toBe(before);
+  });
+  it('uses the first explicit saved source in All without inventing a new conversation', async () => {
+    await sources();
+    const before = JSON.stringify(harness.store.state);
+    expect(workspaceConversationContext(harness.store).id.value).toBe('all');
+    await wrapper.get('[aria-label="打开 我的私人资料"]').trigger('tap');
+    expect(harness.store.locateConversation.mock.calls).toEqual([['source-a', undefined, null, undefined]]);
+    expect(harness.store.focus).not.toHaveBeenCalled();
+    expect(JSON.stringify(harness.store.state)).toBe(before);
+  });
+  it('focuses a linked practice at its exact question version and conversation', async () => {
+    await sources();
+    harness.store.state.questions.push({ id: 'source-question', version: 2, title: '原练习', prompt: '原题干' });
+    harness.store.state.attempts.push({
+      id: 'source-attempt',
+      conversationId: 'source-b',
+      questionKey: 'source-question@2',
+      answer: '原答',
+      at: 3000,
+      grade: { status: 'unverified' }
+    });
+    await nextTick();
+    const before = JSON.stringify(harness.store.state);
+    await wrapper.get('[aria-label="打开 原练习"]').trigger('tap');
+    expect(harness.store.focus.mock.calls).toEqual([['source-question@2', 'source-b']]);
+    expect(harness.store.locateConversation).not.toHaveBeenCalled();
+    expect(JSON.stringify(harness.store.state)).toBe(before);
+  });
+  it('selects a source-linked material without opening its conversation or reader', async () => {
+    await sources();
+    await chooseSource('来源乙');
+    const before = JSON.stringify(harness.store.state),
+      navigations = safeNavigateTo.mock.calls.length;
+    await button('选择').trigger('tap');
+    await wrapper.get('[aria-label="选择 我的私人资料"]').trigger('tap');
+    expect(wrapper.get('.library-title').text()).toBe('已选择 1 项');
+    expect(harness.store.locateConversation).not.toHaveBeenCalled();
+    expect(harness.store.focus).not.toHaveBeenCalled();
+    expect(safeNavigateTo.mock.calls).toHaveLength(navigations);
+    expect(wrapper.find('.material-reader').exists()).toBe(false);
+    expect(JSON.stringify(harness.store.state)).toBe(before);
+  });
+  it.each(['account', 'API'])('resets a former source filter when the %s namespace changes', async (change) => {
+    harness.store.apiContext = 'first-api';
+    harness.store.recordContext = function () {
+      return this.state.owner + ':' + this.apiContext;
+    };
+    await sources();
+    await chooseSource('来源乙');
+    const context = workspaceConversationContext(harness.store);
+    expect(context.id.value).toBe('conversation:source-b');
+    const former = JSON.stringify(harness.store.state);
+    if (change === 'account') harness.store.state = JSON.parse(former.replace('library-owner', 'next-owner'));
+    else harness.store.apiContext = 'second-api';
+    await nextTick();
+    const before = JSON.stringify(harness.store.state);
+    expect(context.id.value).toBe('all');
+    expect(wrapper.findAll('.artifact')).toHaveLength(2);
+    expect(wrapper.find('.material-reader').exists()).toBe(false);
+    await wrapper.get('[aria-label="打开 我的私人资料"]').trigger('tap');
+    expect(harness.store.locateConversation.mock.calls).toEqual([['source-a', undefined, null, undefined]]);
+    expect(JSON.stringify(harness.store.state)).toBe(before);
+    if (change === 'API') expect(before).toBe(former);
+  });
+});
 
 it('keeps history, insights, practice and saved items reachable from the product library without writing facts', async () => {
   wrapper = mount(MuseLibrary, { global: { stubs: { BaseIcon: true } } });
