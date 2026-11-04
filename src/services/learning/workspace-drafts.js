@@ -10,6 +10,12 @@ function inputFields(value) {
   const result = {};
   for (const key of ['draft', 'answer', 'goal', 'text']) if (typeof value?.[key] === 'string') result[key] = value[key];
   if (['study', 'question'].includes(value?.entryMode)) result.entryMode = value.entryMode;
+  if (value?.analysis && typeof value.analysis === 'object') {
+    const analysis = {};
+    for (const key of ['genre', 'recipient', 'purpose', 'points', 'words'])
+      if (typeof value.analysis[key] === 'string') analysis[key] = value.analysis[key];
+    if (Object.values(analysis).some(Boolean)) result.analysis = analysis;
+  }
   if (value?.profile && typeof value.profile === 'object') {
     result.profile = {};
     for (const key of ['subject', 'exam', 'deadline', 'deadlineBucket', 'foundation', 'minutes'])

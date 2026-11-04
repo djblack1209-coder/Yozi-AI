@@ -10,6 +10,7 @@ import MuseModelIntake from '@/components/business/learning/muse-model-intake.vu
 import MuseComposer from '@/components/business/learning/muse-composer.vue';
 import WritingCoach from '@/pages/learning/components/writing-coach.vue';
 import LearningShell from '@/components/business/learning/learning-shell.vue';
+import BaseInput from '@/components/base/base-input/base-input.vue';
 
 let wrapper;
 beforeEach(() => {
@@ -42,6 +43,85 @@ function renderCoach(props = { connectionTone: 'mint' }) {
 }
 
 describe('device-only student drafts', () => {
+  it('S32 restores only the five analysis inputs by owner, conversation and day across a fresh runtime', () => {
+    const store = student(),
+      drafts = workspaceDrafts(store),
+      before = JSON.stringify(store.state),
+      analysis = { genre: '核对说明', recipient: '服务站', purpose: '保留原件', points: '每日核对', words: '一段' };
+    drafts.save(store.context, 'coach:a:day-1', {
+      analysis: { ...analysis, apiKey: 'must-not-persist', nested: { token: 'must-not-persist' } }
+    });
+    const restarted = workspaceDrafts(student());
+    expect(restarted.read('session-a', 'coach:a:day-1')).toEqual({ analysis });
+    expect(restarted.read('session-a', 'coach:b:day-1')).toEqual({});
+    expect(restarted.read('session-a', 'coach:a:day-2')).toEqual({});
+    expect(workspaceDrafts(student('student-b')).read('session-a', 'coach:a:day-1')).toEqual({});
+    expect(JSON.stringify(uni.getStorageSync(key('student-a')))).not.toContain('must-not-persist');
+    expect(JSON.stringify(store.state)).toBe(before);
+    drafts.save(store.context, 'coach:a:day-1', { analysis: { genre: '', points: '', unknown: 'ignored' } });
+    expect(workspaceDrafts(student()).read('session-a', 'coach:a:day-1')).toEqual({});
+  });
+
+  it('S32 keeps each unsent analysis form through conversation switches and remounts without submitting facts', async () => {
+    const learning = useConversationLearningStore();
+    const seed = (goal) => {
+      const conversation = learning.startCoach(goal);
+      learning.coachSave('profile', { profile: { exam: 'english2', minutes: 25, deadline: null } });
+      learning.active.coach.diagnostic = { cards: [], answers: [], feedback: { kind: 'feedback', lines: [] } };
+      learning.active.coach.days.push({
+        day: learning.todaySummary.day,
+        pack: {
+          kind: 'daily',
+          cards: [],
+          writing: {
+            prompt: 'Synthetic task.',
+            patterns: [['Synthetic role.']],
+            source: { kind: 'model_generated', verified: false }
+          }
+        },
+        answers: [],
+        analysis: null,
+        drafts: [],
+        rewrites: [],
+        feedback: {},
+        essay: null,
+        summary: null,
+        completed: false
+      });
+      return conversation.id;
+    };
+    const first = seed('第一份写作任务'),
+      second = seed('另一份写作任务');
+    learning.selectedConversationId = first;
+    const before = learning.exportData(),
+      request = vi.spyOn(learning, 'requestCoach');
+    const fields = () =>
+      wrapper
+        .findAllComponents(BaseInput)
+        .filter((input) => ['体裁', '对象', '目的', '要点', '字数'].includes(input.props('label')));
+    renderCoach();
+    await flushPromises();
+    expect(fields()).toHaveLength(5);
+    const original = ['说明', '服务站', '核对记录', '保留原件', '180字'];
+    for (const [index, input] of fields().entries()) await input.get('input').setValue(original[index]);
+    learning.selectedConversationId = second;
+    await flushPromises();
+    expect(fields().map((input) => input.props('modelValue'))).toEqual(['', '', '', '', '']);
+    await fields()[0].get('input').setValue('比较建议');
+    learning.selectedConversationId = first;
+    await flushPromises();
+    expect(fields().map((input) => input.props('modelValue'))).toEqual(original);
+    wrapper.unmount();
+    renderCoach();
+    await flushPromises();
+    expect(fields().map((input) => input.props('modelValue'))).toEqual(original);
+    learning.selectedConversationId = second;
+    await flushPromises();
+    expect(fields().map((input) => input.props('modelValue'))).toEqual(['比较建议', '', '', '', '']);
+    expect(learning.exportData()).toBe(before);
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it('S23 restores question entry with its unsent text, isolates it by owner and does not keep an empty default draft', () => {
     const owner = student(),
       drafts = workspaceDrafts(owner),

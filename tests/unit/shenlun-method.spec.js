@@ -113,6 +113,37 @@ it('S29 keeps valid public-service feedback and original input while old source-
   expect(normalizeCoachOutput(old, r)).toMatchObject({ sourceStatus: 'pending_verification', dimensions: [] });
 });
 
+it('S32 example consistency applies to new v2 daily guidance without changing saved examples or requests', () => {
+  const r = request('daily', { methodContract: METHOD_V2 }),
+    before = JSON.stringify(r);
+  expect(coachSystemPrompt(r)).toContain('另情境示例自洽：');
+  expect(coachSystemPrompt(r)).toContain('不能又列为同一事项的待核内容');
+  expect(coachSystemPrompt(r)).toContain('跨卡的主体、数量、时间与已知状态也须一致');
+  expect(coachSystemPrompt(r)).toContain('writing.patterns先核对本题材料');
+  expect(coachSystemPrompt(r)).toContain('不得改写为“是否”的待核事项');
+  expect(coachSystemPrompt(r)).toContain('未来是否获准才是后续决定，不能混为现状未知');
+  const historical = generation(r);
+  historical.cards[1].example = '每周盘点；待核：盘点频次。';
+  historical.writing.patterns = [['把人员是否增编、方案是否批复列为待核']];
+  expect(normalizeCoachOutput(historical, r).cards[1].example).toBe(historical.cards[1].example);
+  expect(normalizeCoachOutput(historical, r).writing.patterns).toEqual(historical.writing.patterns);
+  expect(JSON.stringify(r)).toBe(before);
+});
+
+it('S32 example consistency leaves v1 and non-generation feedback prompts unchanged', () => {
+  expect(coachSystemPrompt(request('daily'))).not.toContain('另情境示例自洽：');
+  for (const phase of ['diagnostic', 'feedback', 'essay', 'summary'])
+    expect(
+      coachSystemPrompt(
+        request(phase, {
+          methodContract: METHOD_V2,
+          input: '原答保留。',
+          ...(phase === 'feedback' ? { target: 'card-c1' } : {})
+        })
+      )
+    ).not.toContain('另情境示例自洽：');
+});
+
 it.each(['diagnostic', 'card-c3', 'paragraph-0'])(
   'S30 separates student-facing feedback prose from routing identifiers without changing original input: %s',
   (target) => {

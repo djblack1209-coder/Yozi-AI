@@ -1029,6 +1029,7 @@ function saveDraft() {
       answer: answer.value,
       goal: goal.value,
       entryMode: entryMode.value,
+      analysis: { ...analysis },
       profile: { ...profile, subjects: [...profile.subjects] },
       step: profileStep.value
     });
@@ -1043,6 +1044,7 @@ watch(
     answer.value = saved.answer || '';
     goal.value = saved.goal || '';
     entryMode.value = saved.entryMode === 'question' ? 'question' : 'study';
+    for (const field of analysisFields) analysis[field.key] = saved.analysis?.[field.key] || '';
     message.value = '';
     resetProfileDraft();
     if (saved.profile) Object.assign(profile, saved.profile, { subjects: [...saved.profile.subjects] });
@@ -1086,7 +1088,7 @@ watch(
   },
   { immediate: true, flush: 'sync' }
 );
-watch([answer, goal, entryMode, profile, profileStep], saveDraft, { deep: true, flush: 'sync' });
+watch([answer, goal, entryMode, analysis, profile, profileStep], saveDraft, { deep: true, flush: 'sync' });
 onBeforeUnmount(() => {
   saveDraft();
   draftAlive = false;
