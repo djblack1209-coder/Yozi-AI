@@ -95,6 +95,9 @@ export function createLearningArtifacts({
     return info?.keys;
   }
 } = {}) {
+  // A failed/revoked capture is not a guest. Preserve the existing retry/change
+  // classification before reading identity fields or any private device keys.
+  check(session);
   const owner = session.owner;
   const prefix = `conversation_learning_v1_artifacts:${encodeURIComponent(api)}:`;
   const key = (type, id) => `${prefix}${type}:${id}`;

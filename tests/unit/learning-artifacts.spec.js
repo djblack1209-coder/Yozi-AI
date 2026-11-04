@@ -125,6 +125,44 @@ function s45DeviceFixture() {
 }
 
 describe('S4 device state and confirmed mutations', () => {
+  it('S47 rejects a missing captured identity before device access or transport', () => {
+    const get = vi.spyOn(storage, 'get');
+    let error;
+    try {
+      createLearningArtifacts({ session: null, request, storage });
+    } catch (failure) {
+      error = failure;
+    }
+    expect(error).toMatchObject({ code: 'CONTEXT_CHANGED' });
+    expect(error.message).toContain('登录会话已变化');
+    expect(get).not.toHaveBeenCalled();
+    expect(request).not.toHaveBeenCalled();
+    expect(storage.rows.size).toBe(0);
+  });
+  it('S47 treats unreadable identity as retryable without falling back to another runtime', () => {
+    uni.setStorageSync('EXAM_USER_ID', 'artifact-student');
+    uni.setStorageSync('EXAM_TOKEN', 'S47_SYNTHETIC_NOT_VALID');
+    localStorage.setItem('EXAM_USER_ID', 'different-runtime-owner');
+    const before = JSON.stringify(globalThis.__mockStorage);
+    const get = vi.spyOn(storage, 'get');
+    const reader = uni.getStorageSync;
+    uni.getStorageSync = () => {
+      throw new Error('S47 synthetic identity read failure');
+    };
+    let error;
+    try {
+      createLearningArtifacts({ request, storage });
+    } catch (failure) {
+      error = failure;
+    } finally {
+      uni.getStorageSync = reader;
+    }
+    expect(error).toMatchObject({ code: 'SESSION_UNAVAILABLE', message: '登录状态暂不可读，请重试' });
+    expect(get).not.toHaveBeenCalled();
+    expect(request).not.toHaveBeenCalled();
+    expect(storage.rows.size).toBe(0);
+    expect(JSON.stringify(globalThis.__mockStorage)).toBe(before);
+  });
   it('explicit local deletion clears only this account/API scratch and pin keys', () => {
     const c = client();
     c.writeDraft(item.id, draft());

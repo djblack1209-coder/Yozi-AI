@@ -92,6 +92,78 @@ async function ready() {
 }
 
 describe('S4 artifact panel and library', () => {
+  it('S47 shows the identity retry message and restores the owned unsaved draft after reads recover', async () => {
+    const client = createLearningArtifacts();
+    client.writeDraft(item.id, {
+      version: 1,
+      title: item.title,
+      content: 'S47 keep the unsaved owned words.',
+      mode: 'edit',
+      scrollTop: 0,
+      pending: null
+    });
+    const before = JSON.stringify(globalThis.__mockStorage);
+    const reader = uni.getStorageSync;
+    uni.getStorageSync = () => {
+      throw new Error('S47 synthetic identity read failure');
+    };
+    try {
+      const w = render();
+      await ready();
+      expect(w.get('[role="alert"]').text()).toContain('登录状态暂不可读，请重试');
+      expect(w.text()).not.toContain('Cannot read');
+      expect(w.find('textarea').exists()).toBe(false);
+      expect(w.find('[data-artifact-sync]').exists()).toBe(false);
+      expect(requestLearningArtifact).not.toHaveBeenCalled();
+      expect(JSON.stringify(globalThis.__mockStorage)).toBe(before);
+      uni.getStorageSync = reader;
+      await tap(w, '重试');
+      await ready();
+      expect(w.get('textarea').element.value).toBe('S47 keep the unsaved owned words.');
+      expect(w.get('.artifact-panel-version').text()).toContain('版本 1');
+      expect(requestLearningArtifact.mock.calls.map(([body]) => body.action)).toEqual(['open']);
+      expect(JSON.stringify(harness.store.state)).toBe(original);
+    } finally {
+      uni.getStorageSync = reader;
+    }
+  });
+  it('S47 library identity errors preserve existing draft and pin until a checked reread', async () => {
+    const client = createLearningArtifacts();
+    client.writeDraft(item.id, {
+      version: 1,
+      title: item.title,
+      content: 'S47 preserve the pending library draft.',
+      mode: 'edit',
+      scrollTop: 0,
+      pending: { requestId: 's47-frozen-request', signature: 's47-original-pending' }
+    });
+    client.setPin(item.id, true);
+    const before = JSON.stringify(globalThis.__mockStorage);
+    const reader = uni.getStorageSync;
+    uni.getStorageSync = () => {
+      throw new Error('S47 synthetic identity read failure');
+    };
+    try {
+      const w = render(Library);
+      await ready();
+      expect(w.get('[role="alert"]').text()).toBe('登录状态暂不可读，请重试');
+      expect(w.text()).not.toContain('Cannot read');
+      expect(JSON.stringify(globalThis.__mockStorage)).toBe(before);
+      expect(requestLearningArtifact).not.toHaveBeenCalled();
+      uni.getStorageSync = reader;
+      harness.store.recordContext = () => 'artifact-student:after-identity-read-recovery';
+      await ready();
+      expect(w.find('[role="alert"]').exists()).toBe(false);
+      expect(w.get('[aria-label="取消置顶"]').attributes('aria-pressed')).toBe('true');
+      expect(client.readDraft(item.id)).toMatchObject({
+        content: 'S47 preserve the pending library draft.',
+        pending: { requestId: 's47-frozen-request', signature: 's47-original-pending' }
+      });
+      expect(JSON.stringify(harness.store.state)).toBe(original);
+    } finally {
+      uni.getStorageSync = reader;
+    }
+  });
   function unsyncSource() {
     const row = [...fixture.rows.values()][0];
     row.state.conversations = [];
