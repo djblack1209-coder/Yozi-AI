@@ -26,6 +26,7 @@ import WritingCoach from '@/pages/learning/components/writing-coach.vue';
 import BaseCheckbox from '@/components/base/base-checkbox/base-checkbox.vue';
 import BaseButton from '@/components/base/base-button/base-button.vue';
 import { coachFixture } from '../fixtures/writing-coach.js';
+import { prepareCoachFeedbackModel } from '../../laf-backend/functions/_shared/ai-providers/learning-provider.ts';
 
 vi.mock('@dcloudio/uni-app', () => ({ onShow: vi.fn(), onHide: vi.fn(), onLoad: vi.fn(), onBackPress: vi.fn() }));
 vi.mock('@/services/api/domains/learning.api.js', async (original) => ({
@@ -47,6 +48,47 @@ const base = {
   input: 'Please join us.',
   sources: []
 };
+
+it('S37 keeps structural quote bindings while adding student wording rules to both English feedback paths', () => {
+  const model = {
+    source: 'byok',
+    endpoint: 'https://api.deepseek.com/chat/completions',
+    model: 'synthetic-only',
+    capabilities: { structured: true },
+    capabilityCheck: { version: 1, structured: true, tools: true }
+  };
+  for (const exam of ['english1', 'english2'])
+    for (const phase of ['feedback', 'essay']) {
+      const request = normalizeCoachRequest({
+        ...base,
+        exam,
+        phase,
+        target: phase === 'essay' ? 'essay' : 'paragraph-1',
+        feedbackVersion: 2,
+        dimensionContract: 'writing-dimensions-v1'
+      });
+      const before = structuredClone(request);
+      const prepared = prepareCoachFeedbackModel(model, request, false, false, false, true);
+      const schema = structuredClone(prepared.writingOutput.schema);
+      const prompt = coachSystemPrompt(request, schema);
+      expect(prompt).toContain('引用编号只保留在Schema指定的quoteId、evidenceIds等结构字段');
+      expect(prompt).toContain('称呼、落款与空行不用于推断段序');
+      expect(prepared.writingOutput.quoteReferences).toEqual([{ id: 'q1', quote: base.input }]);
+      expect(schema.properties.lines.items.properties.quoteId.enum).toEqual(['q1']);
+      expect(prepared.writingOutput.schema).toEqual(schema);
+      expect(request).toEqual(before);
+    }
+});
+
+it('S37 does not extend the wording rule to generation, summaries or another teaching method', () => {
+  for (const patch of [
+    { phase: 'daily', target: 'daily' },
+    { phase: 'diagnostic', target: 'diagnostic' },
+    { phase: 'summary', target: 'summary' },
+    { exam: 'general' }
+  ])
+    expect(coachSystemPrompt({ ...base, ...patch })).not.toContain('面向学生的message');
+});
 
 // Synthetic flow only: exercise the actual reducer, adoption and request binding.
 function harness(withMaterial = false) {

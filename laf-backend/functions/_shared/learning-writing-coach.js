@@ -708,7 +708,12 @@ export function coachQuoteOptions(input, wholeLines = false) {
 }
 export function coachSystemPrompt(request, outputSchema = null, embedSchema = true) {
   const prompt = coachBaseSystemPrompt(request, outputSchema, embedSchema);
-  return request.personalCorpus ? `${prompt}\n${PERSONAL_CORPUS_PROMPT}` : prompt;
+  const englishFeedback =
+    ['english1', 'english2'].includes(request.exam) && ['feedback', 'essay'].includes(request.phase);
+  const wording = englishFeedback
+    ? '面向学生的message、advice、comment、标签及观察note用自然语言，不出现内部引用编号（如q1）、字段名或目标编号。引用编号只保留在Schema指定的quoteId、evidenceIds等结构字段，仍须逐字绑定原答，不改编号或校验规则。需要指出位置时用所引原句的内容说明，不用“第几段／第几句”猜位置；称呼、落款与空行不用于推断段序。全文语言与衔接观察只说明对应原句的结构、指代或连接，不据此判断任务覆盖。'
+    : '';
+  return [prompt, request.personalCorpus ? PERSONAL_CORPUS_PROMPT : '', wording].filter(Boolean).join('\n');
 }
 function coachBaseSystemPrompt(request, outputSchema = null, embedSchema = true) {
   const r = normalizeCoachRequest(request);
