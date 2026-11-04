@@ -11,6 +11,7 @@ import { EXAM_SCOPE_CONTRACTS } from './_shared/learning-exam-scope.js';
 import { SUBJECT_COACH_METHODS } from './_shared/learning-coach-methods.js';
 import { PRESENTATION_CONTRACT } from './_shared/learning-content-blocks.js';
 import crypto from 'node:crypto';
+import { cancelWorkflowCalls, LEARNING_WORKFLOW_CONTRACT } from './_shared/learning-workflow.js';
 import { requireAuth, isAuthError } from './_shared/auth-middleware.js';
 import { requireActiveUser } from './_shared/active-user.js';
 import { checkRateLimitDistributed } from './_shared/api-response.js';
@@ -256,7 +257,9 @@ export default async function (ctx: any) {
           modelResultUnavailable(call, Date.now(), policy) || {
             code: 0,
             success: true,
-            data: repair ? { ...call.result, requestId: body.requestId, repairRequestId: repair.id } : call.result,
+            data: repair
+              ? { ...call.result, requestId: body.requestId, repairRequestId: repair.id }
+              : { ...call.result, ...(call.workflowCancelledAt ? { workflowCancelled: true } : {}) },
             reused: true
           }
         );
@@ -277,14 +280,16 @@ export default async function (ctx: any) {
       };
     }
     if (body.action === 'cancel') {
-      const { call } = await mutateAccount(db, auth.userId, (account) => cancelCall(account, body.requestId));
-      cancelActiveLearningCall(auth.userId, body.requestId);
+      const { call, requestIds } = await mutateAccount(db, auth.userId, (account) =>
+        cancelWorkflowCalls(account, body.requestId, cancelCall)
+      );
+      requestIds.forEach((id: string) => cancelActiveLearningCall(auth.userId, id));
       return {
         code: 0,
         success: true,
         data: {
           requestId: call.id,
-          cancellationRecorded: Boolean(call.cancelRequestedAt),
+          cancellationRecorded: Boolean(call.cancelRequestedAt || call.workflowCancelledAt),
           status: call.status,
           executionStopped: call.costStatus === 'not_called'
         }
@@ -363,6 +368,7 @@ export default async function (ctx: any) {
           writingCorpusContracts: [WRITING_PERSONAL_CORPUS_CONTRACT],
           presentationContracts: [PRESENTATION_CONTRACT],
           questionEntryContracts: [SINGLE_QUESTION_CONTRACT],
+          workflowContracts: [LEARNING_WORKFLOW_CONTRACT],
           platformEnabled: process.env.LEARNING_PLATFORM_CALLS_ENABLED === 'true',
           coreLearningFree: true,
           keyStorage: 'server_aes_gcm',

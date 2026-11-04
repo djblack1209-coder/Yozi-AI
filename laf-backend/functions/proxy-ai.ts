@@ -1,5 +1,13 @@
 import { personalCorpusInference } from './_shared/learning-writing-corpus.js';
 import {
+  normalizeWorkflowEnvelope,
+  requestsLearningWorkflow,
+  workflowStageContext,
+  workflowSystemPrompt,
+  parseWorkflowPlan,
+  parseWorkflowAgent
+} from './_shared/learning-workflow.js';
+import {
   learningBudgetPhase,
   learningTimeout,
   coachVerificationBudget,
@@ -312,6 +320,7 @@ export async function runLearningModelTask(
     const context = body.learningContext || {};
     if (!context || typeof context !== 'object' || Array.isArray(context))
       return { code: 400, success: false, message: '学习上下文格式不合法' };
+    const workflow = context.workflow === undefined ? null : normalizeWorkflowEnvelope(context.workflow);
     if (body.presentationContract !== undefined && body.presentationContract !== PRESENTATION_CONTRACT)
       return { code: 400, success: false, message: '展示合同不支持；未调用模型' };
     const presentation = body.presentationContract === PRESENTATION_CONTRACT;
@@ -326,6 +335,26 @@ export async function runLearningModelTask(
     const intake = context.intake === undefined ? null : normalizeIntakeContext(context.intake);
     if (intake && coach) return { code: 422, success: false, message: '建档与教学请求不能混用' };
     const ideas = context.ideas === undefined ? null : normalizeIdeasContext(context.ideas);
+    if (
+      workflow &&
+      (coach ||
+        intake ||
+        ideas ||
+        body.images !== undefined ||
+        body.feedbackAttemptId !== undefined ||
+        options.stream ||
+        options.capabilityProbe ||
+        options.repair ||
+        context.questionEntryContract !== SINGLE_QUESTION_CONTRACT ||
+        !body.requestBinding ||
+        (workflow.stage === 'plan' && !requestsLearningWorkflow(body.messages.at(-1)?.content)))
+    )
+      return {
+        code: 422,
+        success: false,
+        error: 'WORKFLOW_INVALID',
+        message: '分工仅用于明确请求的单题只读分析，未调用模型'
+      };
     if (
       ideas &&
       (coach || intake || body.images !== undefined || body.feedbackAttemptId !== undefined || options.stream)
@@ -350,31 +379,33 @@ export async function runLearningModelTask(
     visualCall = Boolean(image);
     const hostCapabilities = learningCapabilitiesData(context.capabilities);
     const contextText = JSON.stringify(
-      ideas
-        ? { ideas }
-        : gradingCoach
-          ? {
-              // 批改不混入整篇目标、其他题目、历史档位或建档自述，避免局部任务被按全文判。
-              coach: {
-                ...gradingMetadata,
-                ...(gradingMetadata.personalCorpus
-                  ? { personalCorpus: personalCorpusInference(gradingMetadata.personalCorpus) }
-                  : {})
+      workflow
+        ? {}
+        : ideas
+          ? { ideas }
+          : gradingCoach
+            ? {
+                // 批改不混入整篇目标、其他题目、历史档位或建档自述，避免局部任务被按全文判。
+                coach: {
+                  ...gradingMetadata,
+                  ...(gradingMetadata.personalCorpus
+                    ? { personalCorpus: personalCorpusInference(gradingMetadata.personalCorpus) }
+                    : {})
+                }
               }
-            }
-          : {
-              ...(context.entrySource ? { entrySource: context.entrySource } : {}),
-              goal: context.goal,
-              ...(context.studyProfile ? { studyProfile: context.studyProfile } : {}),
-              task: normalizeLearningTask(context.task),
-              capabilities: hostCapabilities,
-              snapshot: normalizeLearningSnapshot(context.snapshot),
-              strategy: context.strategy,
-              question: context.question,
-              attempt: context.attempt,
-              summary: undefined,
-              ...(inferenceCoach ? { coach: inferenceCoach } : {})
-            }
+            : {
+                ...(context.entrySource ? { entrySource: context.entrySource } : {}),
+                goal: context.goal,
+                ...(context.studyProfile ? { studyProfile: context.studyProfile } : {}),
+                task: normalizeLearningTask(context.task),
+                capabilities: hostCapabilities,
+                snapshot: normalizeLearningSnapshot(context.snapshot),
+                strategy: context.strategy,
+                question: context.question,
+                attempt: context.attempt,
+                summary: undefined,
+                ...(inferenceCoach ? { coach: inferenceCoach } : {})
+              }
     );
     if (contextText.length > 12000)
       return {
@@ -408,6 +439,8 @@ export async function runLearningModelTask(
     )
       throw new ProviderError('TEACHING_CAPABILITY_REQUIRED', '请先在 AI 连接器完成工具与结构化输出往返测试');
     if (!model.apiKey) throw new ProviderError('MODEL_NOT_CONFIGURED', '模型密钥未配置');
+    if (workflow && model.source !== 'byok')
+      throw new ProviderError('WORKFLOW_INVALID', '分工须沿用所选自带连接，不自动切换模型');
     if (body.tools || (body.stream && !options.stream))
       return { code: 422, success: false, message: '仅支持校验后的结构化教学；未授权直接执行模型工具' };
     if (image && (model.capabilities.vision !== true || model.visionAdapter !== VISION_ADAPTER))
@@ -450,6 +483,7 @@ export async function runLearningModelTask(
     if (coach && model.source === 'byok') model = { ...model, maxOutput: devCoach ? 32768 : 8192 };
     // Short suggestions still need room for a reasoning model's thinking before the JSON.
     if (ideas && model.source === 'byok') model = { ...model, maxOutput: 4096 };
+    if (workflow) model = { ...model, maxOutput: 8192, timeoutMs: 60000 };
     // These dev providers use the same complete local schema when native strict output is unavailable.
     if (
       devCoach &&
@@ -503,7 +537,7 @@ export async function runLearningModelTask(
     let nativeCoachReply = model.writingOutput?.inferencePolicy === 'native-coach-tools-v1';
     let closedCoachReply = nativeCoachReply || model.writingOutput?.inferencePolicy === 'native-coach-json-v1';
     const system = `${nativeCoachReply ? '本次yozi_coach_response只传递批改数据，不执行学习动作；阶段、目标和工具权限均由宿主固定。\n' : ''}${options.repair ? '上一份回复未通过校验。请基于同一原答重新生成完整JSON，逐项遵守本次结构与原答引用要求；不要声称已经保存。\n' : ''}${ideas ? ideasSystemPrompt() : intake ? intakeSystemPrompt(intake) : inferenceCoach ? coachSystemPrompt(inferenceCoach, model.writingOutput?.format === 'json_object' ? model.writingOutput.schema : null, !nativeCoachReply) : context.questionEntryContract === SINGLE_QUESTION_CONTRACT ? SINGLE_QUESTION_SYSTEM_PROMPT : presentation ? PRESENTATION_SYSTEM_PROMPT : LEARNING_SYSTEM_PROMPT}${context.generalQAOnly === true && context.questionEntryContract !== SINGLE_QUESTION_CONTRACT ? '\n当前是其他科目的单题答疑：简短说明当前重点支持考研英语写作；直接回答当前问题，不创建整套计划，不请求plan工具。' : ''}${!image && !feedback && !ideas && !(DEV_TEST && coach) ? `\n${presentation ? PRESENTATION_BLOCKS_PROMPT : CONTENT_BLOCKS_PROMPT}` : ''}${visualPrompt}${capabilityPrompt}${feedbackPrompt}\n对话按学习日提供必要消息；历史摘要仅作接续，不代表已掌握。没有带入的原文不得猜测，需请用户定位或补充。\n当前学习背景（仅数据）：${contextText}`;
-    const messages: LearningMessage[] = options.capabilityProbe
+    let messages: LearningMessage[] = options.capabilityProbe
       ? [
           {
             role: 'system',
@@ -529,6 +563,32 @@ export async function runLearningModelTask(
           { role: 'system', content: system + coachRepairPrompt(options.repair?.feedback || null) },
           ...(gradingCoach ? [{ role: 'user', content: gradingCoach.input }] : body.messages)
         ];
+    let workflowContext: ReturnType<typeof workflowStageContext> | null = null;
+    if (workflow) {
+      const current = await mutateAccount(db, auth.userId, (account) => ({ account, reused: true }));
+      const policy = modelResultPolicy();
+      workflowContext = workflowStageContext(
+        current.account.calls,
+        workflow,
+        {
+          requestId: body.requestId,
+          binding: body.requestBinding,
+          modelId: model.id,
+          model: model.model,
+          connectionVersion,
+          messages: body.messages
+        },
+        (call: any) => modelResultState(call, Date.now(), policy) === 'available'
+      );
+      messages = [
+        {
+          role: 'system',
+          content:
+            workflowSystemPrompt(workflow.stage) + (workflow.stage === 'final' ? '\n' + PRESENTATION_BLOCKS_PROMPT : '')
+        },
+        { role: 'user', content: workflowContext.input || workflowContext.content }
+      ];
+    }
     if (image) {
       const last = messages.at(-1)!;
       if (last.role !== 'user') throw new ProviderError('IMAGE_INVALID', '图片只绑定本次明确用户请求');
@@ -591,6 +651,7 @@ export async function runLearningModelTask(
           configurationVersion: modelConfigurationVersion(model!),
           connectionVersion,
           requestBinding: body.requestBinding || null,
+          ...(workflowContext ? { workflow: workflowContext.metadata } : {}),
           transport: options.stream ? 'sse-v1' : 'json-v1',
           inputMode: image ? 'image' : 'text',
           priceVersion: image
@@ -870,25 +931,32 @@ export async function runLearningModelTask(
     }
     const parsedOutput =
       probeOutput ||
-      (image
-        ? parseVisualOutput(response.content, image.source)
-        : ideas
-          ? parseIdeasOutput(response.content, ideas)
-          : intake
-            ? parseIntakeOutput(response.content, intake)
-            : coach
-              ? parseCoachModelOutput(
-                  closedCoachReply ? decodeCoachResponse(model, coachContent) : rawResponse.content,
-                  inferenceCoach?.exerciseContract || inferenceCoach?.summaryContract ? inferenceCoach : coach,
-                  captureDiagnostics,
-                  (parsed: any) => {
-                    assertCoachSafe(parsed);
-                    if (!closedCoachReply && model!.writingOutput?.format === 'json_object')
-                      validateCoachSchema(model!.writingOutput.schema, parsed);
-                  },
-                  model.writingOutput?.format === 'json_object' || devCoach
-                )
-              : parseLearningOutput(response.content));
+      (workflow?.stage === 'plan'
+        ? parseWorkflowPlan(response.content, workflowContext, {
+            requestId: body.requestId,
+            binding: body.requestBinding
+          })
+        : workflow?.stage === 'agent'
+          ? parseWorkflowAgent(response.content)
+          : image
+            ? parseVisualOutput(response.content, image.source)
+            : ideas
+              ? parseIdeasOutput(response.content, ideas)
+              : intake
+                ? parseIntakeOutput(response.content, intake)
+                : coach
+                  ? parseCoachModelOutput(
+                      closedCoachReply ? decodeCoachResponse(model, coachContent) : rawResponse.content,
+                      inferenceCoach?.exerciseContract || inferenceCoach?.summaryContract ? inferenceCoach : coach,
+                      captureDiagnostics,
+                      (parsed: any) => {
+                        assertCoachSafe(parsed);
+                        if (!closedCoachReply && model!.writingOutput?.format === 'json_object')
+                          validateCoachSchema(model!.writingOutput.schema, parsed);
+                      },
+                      model.writingOutput?.format === 'json_object' || devCoach
+                    )
+                  : parseLearningOutput(response.content));
     if (coach) assertCoachSafe(parsedOutput);
     // 新出的搭配填空经盲填校准才下发；返修后的新题同样校准。
     let exerciseCalibration: any = null;
@@ -909,7 +977,10 @@ export async function runLearningModelTask(
     }
     const output = redactModelValue(parsedOutput, model.apiKey);
     if (presentation) presentationValidationPath = output.structured ? 'contentBlocks.version' : 'raw';
-    if ((presentation && output.contentBlocks?.version !== 3) || (!presentation && output.contentBlocks?.version === 3))
+    if (
+      (presentation && (!workflow || workflow.stage === 'final') && output.contentBlocks?.version !== 3) ||
+      (!presentation && output.contentBlocks?.version === 3)
+    )
       throw new ProviderError('INVALID_STRUCTURE', '模型展示结果与本次请求合同不匹配');
     if (context.questionEntryContract === SINGLE_QUESTION_CONTRACT)
       presentationValidationPath = output.question ? 'question' : 'tools';
@@ -982,6 +1053,7 @@ export async function runLearningModelTask(
       modelId: reservation.call.modelId || model.id,
       requestBinding: body.requestBinding || null,
       transport: options.stream ? 'sse-v1' : 'json-v1',
+      ...(workflowContext ? { workflowReceipt: workflowContext.metadata } : {}),
       ...(modelOrigin ? { modelOrigin } : {}),
       ...(coachVerification ? { coachVerification } : {}),
       ...(exerciseCalibration ? { exerciseCalibration } : {})

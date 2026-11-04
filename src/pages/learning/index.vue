@@ -997,6 +997,13 @@
             t('learning.khs')
           }}</BaseButton>
           <BaseButton
+            v-if="learning.workflowCanContinue"
+            variant="quiet"
+            :disabled="!learning.sharingAllowed"
+            @tap="run(() => learning.recoverModelResult({ continueWorkflow: true }))"
+            >继续分工</BaseButton
+          >
+          <BaseButton
             v-if="learning.active?.entryContract === SINGLE_QUESTION_CONTRACT"
             variant="quiet"
             :disabled="!learning.sharingAllowed"

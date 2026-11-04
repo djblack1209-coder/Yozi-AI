@@ -207,6 +207,11 @@ import {
 } from '@/services/api/domains/learning.api.js';
 import { callLocalConnector, testLocalConnector, learningClientPlatform } from '@/services/learning/local-connector.js';
 import {
+  runLearningWorkflow,
+  requestsLearningWorkflow,
+  LEARNING_WORKFLOW_CONTRACT
+} from '@/services/learning/learning-workflow.js';
+import {
   parseConnectedMaterial,
   testMaterialConnector,
   deleteConnectedMaterial,
@@ -425,6 +430,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   let modelIntakeAvailable = false;
   let modelCoachMethods = [];
   let modelPresentationAvailable = false;
+  let modelWorkflowAvailable = false;
   const singleQuestionAvailable = ref(false);
   const modelIntakeContract = shallowRef(null);
   let modelIntakeScopeContract = null;
@@ -566,6 +572,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     streamPreview = ref('');
   // Device-only presentation. Provisional text never enters the event repository.
   const reply = ref(null);
+  const workflowContinuation = shallowRef(null);
   let replyController = null;
   let retryOperation = 0;
   const sending = new Map();
@@ -726,6 +733,8 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     modelActions.clear();
   }
   function resetModelResources() {
+    modelWorkflowAvailable = false;
+    workflowContinuation.value = null;
     cancelModelReads(undefined, 'CONTEXT_CHANGED');
     modelIntakeAvailable = false;
     modelCoachMethods = [];
@@ -1439,6 +1448,8 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     modelIntakeAvailable = false;
     modelCoachMethods = [];
     modelPresentationAvailable = false;
+    modelWorkflowAvailable = false;
+    workflowContinuation.value = null;
     modelIntakeContract.value = null;
     modelIntakeScopeContract = null;
     models.value = [];
@@ -3478,6 +3489,18 @@ export const useConversationLearningStore = defineStore('conversation-learning',
             ? PRESENTATION_CONTRACT
             : undefined
         : undefined;
+    const workflowRequested = active.value.entryContract === SINGLE_QUESTION_CONTRACT && requestsLearningWorkflow(raw);
+    if (workflowRequested)
+      assert(
+        mode === 'cloud' &&
+          modelWorkflowAvailable &&
+          presentationContract === PRESENTATION_CONTRACT &&
+          !streamEnabled.value &&
+          !options.visual &&
+          !options.feedbackAttemptId,
+        'CAPABILITY_UNAVAILABLE',
+        '当前连接或模式未开放分工分析，请选择已连接的非流式自带API'
+      );
     const request = {
       id,
       owner,
@@ -3491,6 +3514,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       ...(options.feedbackAttemptId ? { feedbackAttemptId: options.feedbackAttemptId } : {}),
       ...(feedbackOutputContract ? { feedbackOutputContract } : {}),
       ...(presentationContract ? { presentationContract } : {}),
+      ...(workflowRequested ? { workflowContract: LEARNING_WORKFLOW_CONTRACT } : {}),
       lockedMethod:
         directive?.type === 'strategy.set'
           ? directive.data.method
@@ -3534,7 +3558,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           }
         : {}),
       ...(options.visual ? { images: [options.image], imageShareConsent: true } : {}),
-      messages: dailyContext.messages,
+      messages: request.workflowContract ? [{ role: 'user', content: raw }] : dailyContext.messages,
       learningContext: {
         owner,
         snapshot: compactLearningProgress(state.value, conversationId),
@@ -3623,6 +3647,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     try {
       busy.value = true;
       streamPreview.value = '';
+      workflowContinuation.value = null;
       if (mode === 'cloud') {
         assert(
           !streamEnabled.value || streamSupported.value,
@@ -3643,6 +3668,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
             ...(request.feedbackAttemptId ? { feedbackAttemptId: request.feedbackAttemptId } : {}),
             ...(request.feedbackOutputContract ? { feedbackOutputContract: request.feedbackOutputContract } : {}),
             ...(request.presentationContract ? { presentationContract: request.presentationContract } : {}),
+            ...(request.workflowContract ? { workflowContract: request.workflowContract } : {}),
             ...(request.visualSource ? { visualSource: request.visualSource } : {})
           },
           `${id}:request`
@@ -3657,12 +3683,23 @@ export const useConversationLearningStore = defineStore('conversation-learning',
               platform: learningClientPlatform(),
               assertCurrent
             })
-          : await generateLearningTurn(payload, {
+          : await (request.workflowContract ? runLearningWorkflow : generateLearningTurn)(payload, {
               signal: requestController.signal,
               session: boundSession,
               expectedOwner: owner,
               stream: streamEnabled.value,
               expectedModel: request.model,
+              onWorkflowProgress: ({ phase, completed, total }) => {
+                assertCurrent();
+                previewReply(
+                  requestController,
+                  phase === 'planning'
+                    ? '正在拆分本次问题…'
+                    : phase === 'synthesis'
+                      ? '正在核对并汇总分析…'
+                      : '正在分工分析（' + completed + '/' + total + '）…'
+                );
+              },
               assertCurrent,
               onPreview: (text) => {
                 assertCurrent();
@@ -3906,6 +3943,12 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     return event.data;
   });
   const singleQuestionRetries = new Map();
+  const workflowCanContinue = computed(
+    () =>
+      workflowContinuation.value?.context === recordContext() &&
+      workflowContinuation.value?.requestId === recoverableRequest.value?.requestId &&
+      recoverableRequest.value?.workflowContract === LEARNING_WORKFLOW_CONTRACT
+  );
   async function retrySingleQuestion() {
     const pending = recoverableRequest.value,
       context = recordContext(),
@@ -3949,7 +3992,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     singleQuestionRetries.set(key, operation);
     return operation;
   }
-  async function recoverModelResult() {
+  async function recoverModelResult({ continueWorkflow = false } = {}) {
     refresh();
     const pending = recoverableRequest.value;
     assert(pending && !busy.value, 'PRECONDITION', '当前没有可读取的模型请求');
@@ -3961,6 +4004,15 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     const owner = state.value.owner,
       lifecycle = learningRepository.lifecycleRevision();
     const session = loginContext();
+    if (continueWorkflow)
+      assert(
+        pending.workflowContract === LEARNING_WORKFLOW_CONTRACT &&
+          sharingAllowed.value &&
+          modelWorkflowAvailable &&
+          !streamEnabled.value,
+        'CONSENT_REQUIRED',
+        '请先允许原问题发送，再明确继续分工'
+      );
     const requestController = beginReply('chat', pending.requestId, pending.conversationId);
     controller = requestController;
     pendingCloudCall = { id: pending.requestId, owner, session };
@@ -3977,6 +4029,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           lifecycle === learningRepository.lifecycleRevision() &&
           selectedConversationId.value === pending.conversationId &&
           selectedMode.value === 'cloud' &&
+          (!continueWorkflow || sharingAllowed.value) &&
           modelId.value === pending.modelId &&
           (active.value?.activeQuestionKey || null) === pending.questionKey &&
           active.value.messages.filter((m) => m.role === 'user').at(-1)?.id === pending.messageId &&
@@ -3995,13 +4048,35 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     };
     try {
       assertRecovery();
-      const result = await fetchLearningResult(pending.requestId, {
+      const recoveryOptions = {
         session: boundSession,
         expectedOwner: owner,
         signal: requestController.signal,
-        assertCurrent: assertRecovery
-      });
+        assertCurrent: assertRecovery,
+        expectedModel: pending.model
+      };
+      const original = active.value.messages.find(
+        (message) => message.id === pending.messageId && message.role === 'user'
+      )?.content;
+      const result =
+        pending.workflowContract === LEARNING_WORKFLOW_CONTRACT
+          ? await runLearningWorkflow(
+              {
+                requestId: pending.requestId,
+                requestBinding: pending.binding,
+                modelId: pending.modelId,
+                shareConsent: sharingAllowed.value,
+                presentationContract: pending.presentationContract,
+                messages: [{ role: 'user', content: original }],
+                learningContext: { owner }
+              },
+              { ...recoveryOptions, workflowMode: continueWorkflow ? 'continue' : 'read' }
+            )
+          : await fetchLearningResult(pending.requestId, recoveryOptions);
       assertRecovery();
+      workflowContinuation.value = result.workflowCanContinue
+        ? { context: recordContext(), requestId: pending.requestId }
+        : null;
       if (!result.success) {
         error.value = publicError(result);
         return result;
@@ -4040,6 +4115,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     }
   }
   function cancel() {
+    workflowContinuation.value = null;
     const wasPending = Boolean(controller || replyController);
     retryOperation++;
     visualRequest.value = null;
@@ -4188,6 +4264,11 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           result.success &&
           Array.isArray(result.data.presentationContracts) &&
           result.data.presentationContracts.includes(PRESENTATION_CONTRACT);
+        modelWorkflowAvailable = Boolean(
+          result.success &&
+          Array.isArray(result.data.workflowContracts) &&
+          result.data.workflowContracts.includes(LEARNING_WORKFLOW_CONTRACT)
+        );
         singleQuestionAvailable.value = Boolean(
           modelPresentationAvailable &&
           Array.isArray(result.data.questionEntryContracts) &&
@@ -5809,6 +5890,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     streamPreview,
     reply,
     recoverableRequest,
+    workflowCanContinue,
     recoverModelResult,
     retrySingleQuestion,
     localConnection,

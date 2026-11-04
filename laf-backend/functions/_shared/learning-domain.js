@@ -2,6 +2,7 @@ import { ENTRY_EVENTS, applyEntryOperation, normalizeEntrySchedule } from './lea
 import { applyAdherenceOperation, ADHERENCE_EVENTS, reviewFacts } from './learning-adherence.js';
 import { normalizeLearningProposal, assertLearningProposalAcceptance } from './learning-proposals.js';
 import { normalizeContentBlocks, PRESENTATION_CONTRACT } from './learning-content-blocks.js';
+import { LEARNING_WORKFLOW_CONTRACT, requestsLearningWorkflow } from './learning-workflow.js';
 import {
   normalizeIntakeContext,
   normalizeSavedIntakeReply,
@@ -1526,12 +1527,24 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
             'feedbackAttemptId',
             'feedbackOutputContract',
             'presentationContract',
+            'workflowContract',
             'visualSource'
           ].includes(k)
         ),
         'INVALID_INPUT',
         '模型请求不保存消息正文或密钥'
       );
+      if (data.workflowContract !== undefined)
+        assert(
+          data.workflowContract === LEARNING_WORKFLOW_CONTRACT &&
+            data.presentationContract === PRESENTATION_CONTRACT &&
+            session.entryContract === SINGLE_QUESTION_CONTRACT &&
+            !data.visualSource &&
+            !data.feedbackAttemptId &&
+            requestsLearningWorkflow(session.messages.find((message) => message.id === data.messageId)?.content),
+          'INVALID_INPUT',
+          '分工只绑定明确请求的单题分析'
+        );
       if (data.feedbackAttemptId) {
         const q = state.questions.find((q) => questionKey(q) === data.questionKey);
         const attempt = state.attempts

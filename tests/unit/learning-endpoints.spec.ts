@@ -114,6 +114,10 @@ import ai, {
   PRESENTATION_BLOCKS_PROMPT
 } from '../../laf-backend/functions/proxy-ai';
 import { PRESENTATION_CONTRACT } from '../../laf-backend/functions/_shared/learning-content-blocks.js';
+import {
+  LEARNING_WORKFLOW_CONTRACT,
+  workflowRequestId
+} from '../../laf-backend/functions/_shared/learning-workflow.js';
 import stream from '../../laf-backend/functions/proxy-ai-stream';
 import sync from '../../laf-backend/functions/learning-sync';
 import subscription from '../../laf-backend/functions/learning-subscriptions';
@@ -3098,5 +3102,183 @@ it.each(['clean', 'secret-in-context'])(
       expect(usage.data.calls[0]).toMatchObject({ status: 'failed', actualCost: null, costStatus: 'pending' });
       expect(JSON.stringify([result, usage.data.calls])).not.toContain(sentinel);
     }
+  }
+);
+
+const workflowApiRoot = 'workflow_endpoint_root';
+const workflowApiInput = '多角度分析：比较两种邮件开头的语气和任务覆盖。';
+const workflowApiPlan = {
+  tasks: [
+    { id: 'tone', title: '语气', instruction: '分析语气。', dependsOn: [] },
+    { id: 'coverage', title: '覆盖', instruction: '分析覆盖。', dependsOn: [] },
+    { id: 'check', title: '复核', instruction: '核对语气依据。', dependsOn: ['tone'] }
+  ]
+};
+const workflowApiBody = (stage: 'plan' | 'agent' | 'final' = 'plan', taskId?: string, owner = 'u1') => ({
+  ...streamBody(stage === 'plan' ? workflowApiRoot : workflowRequestId(workflowApiRoot, taskId || 'final')),
+  presentationContract: PRESENTATION_CONTRACT,
+  messages: [{ role: 'user', content: stage === 'plan' ? workflowApiInput : '客户端伪造的兄弟结论，不应发送。' }],
+  learningContext: {
+    owner,
+    generalQAOnly: true,
+    questionEntryContract: SINGLE_QUESTION_CONTRACT,
+    workflow: {
+      contract: LEARNING_WORKFLOW_CONTRACT,
+      stage,
+      ...(stage === 'plan' ? {} : { parentId: workflowApiRoot }),
+      ...(stage === 'agent' ? { taskId } : {})
+    }
+  }
+});
+function workflowApiProvider() {
+  vi.mocked(callLearningProvider).mockImplementation(async (_config: any, messages: any[]) => {
+    const system = String(messages[0].content);
+    const value = system.includes('拆成2至8')
+      ? { message: '先分别分析再核对。', question: null, tools: [], workflow: workflowApiPlan }
+      : system.includes('你只完成data.task')
+        ? { message: 'S52_RESULT_' + JSON.parse(messages[1].content).task.title, question: null, tools: [] }
+        : {
+            message: '按目的选择开头。',
+            question: null,
+            tools: [],
+            contentBlocks: {
+              version: 3,
+              items: [{ kind: 'knowledge', title: '邮件开头', body: '区分语气和任务覆盖。' }]
+            }
+          };
+    return { ...streamCompleted, content: JSON.stringify(value) };
+  });
+}
+it('S52 executes model-authored dependencies on the protected API, isolates child contexts and recovers without inference', async () => {
+  await streamProfile(false);
+  workflowApiProvider();
+  const catalog = await models(context({ action: 'list' }));
+  expect(catalog.data.workflowContracts).toEqual([LEARNING_WORKFLOW_CONTRACT]);
+  const parent = await ai(context(workflowApiBody()));
+  expect(parent).toMatchObject({ success: true, data: { workflow: { plan: workflowApiPlan } } });
+  expect(await ai(context(workflowApiBody('agent', 'check')))).toMatchObject({
+    success: false,
+    error: 'WORKFLOW_INCOMPLETE'
+  });
+  expect(callLearningProvider).toHaveBeenCalledTimes(1);
+  const roots = await Promise.all(['tone', 'coverage'].map((id) => ai(context(workflowApiBody('agent', id)))));
+  expect(roots.every((result) => result.success)).toBe(true);
+  expect(await ai(context(workflowApiBody('agent', 'check')))).toMatchObject({ success: true });
+  const childInput = String(vi.mocked(callLearningProvider).mock.calls[3][1][1].content);
+  expect(childInput).toContain('S52_RESULT_语气');
+  expect(childInput).not.toContain('S52_RESULT_覆盖');
+  expect(childInput).not.toContain('客户端伪造');
+  const result = await ai(context(workflowApiBody('final')));
+  expect(result).toMatchObject({
+    success: true,
+    data: { workflowReceipt: { stage: 'final', parentId: workflowApiRoot }, contentBlocks: { version: 3 }, tools: [] }
+  });
+  const count = vi.mocked(callLearningProvider).mock.calls.length;
+  expect(await models(context({ action: 'result', requestId: workflowRequestId(workflowApiRoot) }))).toMatchObject({
+    success: true,
+    reused: true
+  });
+  expect(callLearningProvider).toHaveBeenCalledTimes(count);
+  const account: any = [...mock.rows.values()].find((row) => row.user_id === 'u1' && row.calls);
+  expect(account.calls).toHaveLength(5);
+  expect(account.calls.every((call: any) => call.status === 'completed' && call.workflow && call.usage)).toBe(true);
+  expect([...mock.rows.keys()].some((key) => key.startsWith('learning_states:'))).toBe(false);
+});
+
+it.each(['tool', 'malformed'])(
+  'S52 retains the billed %s worker failure without automatic retry or synthesis',
+  async (kind) => {
+    await streamProfile(false);
+    workflowApiProvider();
+    expect((await ai(context(workflowApiBody()))).success).toBe(true);
+    const raw = JSON.stringify({
+      message: '不应执行',
+      question: null,
+      tools: kind === 'tool' ? [{ name: 'plan', arguments: { tasks: [] } }] : []
+    });
+    vi.mocked(callLearningProvider).mockResolvedValueOnce({
+      ...streamCompleted,
+      content: kind === 'malformed' ? raw.slice(0, -1) : raw
+    });
+    expect(await ai(context(workflowApiBody('agent', 'tone')))).toMatchObject({
+      success: false,
+      error: 'WORKFLOW_INVALID'
+    });
+    const count = vi.mocked(callLearningProvider).mock.calls.length;
+    expect(await ai(context(workflowApiBody('final')))).toMatchObject({ success: false, error: 'WORKFLOW_INCOMPLETE' });
+    expect(callLearningProvider).toHaveBeenCalledTimes(count);
+    const account: any = [...mock.rows.values()].find((row) => row.user_id === 'u1' && row.calls);
+    expect(account.calls).toHaveLength(2);
+    expect(account.calls[1]).toMatchObject({ status: 'failed', actualCost: null, costStatus: 'pending' });
+    expect(account.calls[1].usage).toBeTruthy();
+  }
+);
+
+it('S52 refuses another owner and changed credentials before sending a child', async () => {
+  await streamProfile(false);
+  workflowApiProvider();
+  expect((await ai(context(workflowApiBody()))).success).toBe(true);
+  await streamProfile(false, 'u2');
+  expect(await ai(context(workflowApiBody('agent', 'tone', 'u2'), 'u2'))).toMatchObject({
+    success: false,
+    error: 'WORKFLOW_UNAVAILABLE'
+  });
+  await streamProfile(false, 'u1', 'changed-fixture-only-workflow-key');
+  expect(await ai(context(workflowApiBody('agent', 'tone')))).toMatchObject({
+    success: false,
+    error: 'CONTEXT_CHANGED'
+  });
+  expect(callLearningProvider).toHaveBeenCalledTimes(1);
+});
+
+it('S52 whole-workflow cancellation aborts two active children and blocks later stages without rewriting costs', async () => {
+  await streamProfile(false);
+  workflowApiProvider();
+  expect((await ai(context(workflowApiBody()))).success).toBe(true);
+  let active = 0;
+  vi.mocked(callLearningProvider).mockImplementation(
+    async (_config: any, _messages: any[], _origins: any, signal: any) =>
+      new Promise((_resolve, reject) => {
+        active++;
+        const aborted = () => reject(signal.reason || new ProviderError('CANCELLED', 'cancelled'));
+        if (signal.aborted) aborted();
+        else signal.addEventListener('abort', aborted, { once: true });
+      })
+  );
+  const pending = Promise.all(['tone', 'coverage'].map((id) => ai(context(workflowApiBody('agent', id)))));
+  await vi.waitFor(() => expect(active).toBe(2));
+  const cancel = await models(context({ action: 'cancel', requestId: workflowApiRoot }));
+  expect(cancel).toMatchObject({ success: true, data: { cancellationRecorded: true } });
+  expect((await pending).every((result) => !result.success)).toBe(true);
+  const account: any = [...mock.rows.values()].find((row) => row.user_id === 'u1' && row.calls);
+  expect(account.calls[0]).toMatchObject({ status: 'completed', workflowCancelledAt: expect.any(Number) });
+  expect(
+    account.calls
+      .slice(1)
+      .every((call: any) => call.status === 'cancelled' && call.actualCost === null && call.costStatus === 'pending')
+  ).toBe(true);
+  expect(await models(context({ action: 'result', requestId: workflowApiRoot }))).toMatchObject({
+    success: true,
+    data: { workflowCancelled: true }
+  });
+  const count = vi.mocked(callLearningProvider).mock.calls.length;
+  expect(await ai(context(workflowApiBody('agent', 'check')))).toMatchObject({
+    success: false,
+    error: 'WORKFLOW_UNAVAILABLE'
+  });
+  expect(callLearningProvider).toHaveBeenCalledTimes(count);
+});
+
+it.each(['no-consent', 'no-explicit-request', 'wrong-owner', 'mixed-intake'])(
+  'S52 rejects %s before any workflow reservation or provider call',
+  async (kind) => {
+    const body: any = workflowApiBody();
+    if (kind === 'no-consent') body.shareConsent = false;
+    if (kind === 'no-explicit-request') body.messages = [{ role: 'user', content: '普通解释' }];
+    if (kind === 'wrong-owner') body.learningContext.owner = 'u2';
+    if (kind === 'mixed-intake') body.learningContext.intake = { unexpected: true };
+    expect((await ai(context(body))).success).toBe(false);
+    expect(callLearningProvider).not.toHaveBeenCalled();
+    expect([...mock.rows.values()].some((row) => row.calls?.length)).toBe(false);
   }
 );

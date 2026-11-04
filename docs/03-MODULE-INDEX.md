@@ -1,5 +1,7 @@
 # 源码导航
 
+受保护分工（S52）：[共享任务图与关联校验](../laf-backend/functions/_shared/learning-workflow.js)和[客户端调度／只读恢复](../src/services/learning/learning-workflow.js)沿既有proxy、账户CAS、费用与单题答疑接入；主模型拆分、最多两路独立上下文、依赖与最终汇总均绑定原请求。取消在预留CAS阻止后续调用；[任务图／费用／恢复专项](../tests/unit/learning-workflow.spec.js)，接口与Store专项仍在原测试文件。
+
 宿主教学权限与快照：[共享策略](../laf-backend/functions/_shared/learning-runtime-policy.js)统一模型白名单、阶段额度、30／60秒时限、压缩状态与宿主复习档映射；[执行入口](../src/services/learning/learning-tools.js)在本地写入前检查2秒并只记元信息收据。新写作四维与次日改写沿原 writing-coach/reducer/repository，不建第二套事实库。
 
 申论材料与中文带写：[教学方法定义](../laf-backend/functions/_shared/learning-shenlun-method.js)经[宿主白名单](../laf-backend/functions/_shared/learning-coach-methods.js)接入既有coach阶段、明确提交和恢复事件；新建档须由服务端声明支持并保存方法版本，旧建档含义不变。四项中文观察不给官方分数，不进入英语节点、预测准确率或搭配复习；[全链路合同回归](../tests/unit/shenlun-method.spec.js)、[建档／授权／中文编辑](../tests/unit/shenlun-method-ui.spec.js)。

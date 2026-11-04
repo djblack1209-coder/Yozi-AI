@@ -1,11 +1,13 @@
 import { phaseCallLimit, LEARNING_BUDGET_PHASES } from './learning-runtime-policy.js';
 import { modelConfigurationVersion } from './ai-providers/free-model-presets.js';
+import { assertWorkflowReservation } from './learning-workflow.js';
 import crypto from 'node:crypto';
 import { DEV_TEST } from './build-channel.js';
 import {
   modelResultPolicy,
   maintainModelResources,
   boundedModelUsage,
+  modelResultState,
   modelResourceBytes,
   MODEL_ACCOUNT_RESERVE_MAX_BYTES,
   type ModelResultPolicy
@@ -253,6 +255,8 @@ export function reserveCall(account: any, input: any, now = Date.now(), policy =
     'INPUT_INVALID',
     '请求标识不合法'
   );
+  // The same CAS that reserves a child rechecks parent cancellation and every dependency.
+  assertWorkflowReservation(account, input, (call: any) => modelResultState(call, now, policy) === 'available');
   const previous = account.calls.find((call: any) => call.id === input.id);
   if (previous) {
     requireValue(

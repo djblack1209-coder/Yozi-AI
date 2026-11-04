@@ -38,6 +38,10 @@ export function modelErrorPresentation(input = {}) {
     ADDRESS_INVALID: ['API 地址不合法或未获允许，请检查连接', connector],
     COACH_INVALID: ['回复校验未通过，原答已保留，可重新评估', { type: 'retry' }],
     COST_PENDING: ['用量待确认，请先查询原请求', { type: 'query_result' }],
+    WORKFLOW_INVALID: ['分工回复未通过检查，请先查询原请求', { type: 'query_result' }],
+    WORKFLOW_INCOMPLETE: ['分工尚未全部完成，已完成结果保留', { type: 'query_result' }],
+    WORKFLOW_UNAVAILABLE: ['原分工已取消或结果不可用，未启动新步骤', { type: 'query_result' }],
+    WORKFLOW_BUSY: ['分工步骤仍在执行，请先查询结果', { type: 'query_result' }],
     UNSUPPORTED_DISCOVERY: ['供应商不支持读取型号，请手填型号', { type: 'manual_model' }]
   };
   const pending = typeof input === 'object' && ['reserved', 'pending'].includes(input.status);

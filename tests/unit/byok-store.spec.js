@@ -5,6 +5,12 @@ import { useConversationLearningStore } from '@/stores/modules/conversation-lear
 import { captureSession } from '@/services/auth-storage.js';
 import { coachFixture } from '../fixtures/writing-coach.js';
 import { explicitIntakeFacts } from '../../laf-backend/functions/_shared/learning-intake.js';
+import { SINGLE_QUESTION_CONTRACT } from '../../laf-backend/functions/_shared/learning-intake.js';
+import { PRESENTATION_CONTRACT } from '../../laf-backend/functions/_shared/learning-content-blocks.js';
+import {
+  LEARNING_WORKFLOW_CONTRACT,
+  workflowPlanDigest
+} from '../../laf-backend/functions/_shared/learning-workflow.js';
 import { learningRepository } from '@/services/learning/learning-repository.js';
 import { synchronizeLearning } from '@/services/learning/learning-sync.js';
 import {
@@ -326,3 +332,126 @@ it('catalog failure after a completed sync preserves its result and allows an ex
   expect(store.modelListState.phase).toBe('ready');
   expect(generateLearningTurn).not.toHaveBeenCalled();
 });
+
+const workflowQuestion = '多角度分析：比较邀请邮件两种开头的语气和任务覆盖。';
+const workflowPlan = {
+  tasks: [
+    { id: 'tone', title: '语气', instruction: '分析语气。', dependsOn: [] },
+    { id: 'coverage', title: '覆盖', instruction: '分析任务覆盖。', dependsOn: [] }
+  ]
+};
+async function prepareWorkflowStore(enabled = true) {
+  const result = catalog([connection('first')], { selectedModelId: 'first', sharingAllowed: true });
+  Object.assign(result.data, {
+    presentationContracts: [PRESENTATION_CONTRACT],
+    questionEntryContracts: [SINGLE_QUESTION_CONTRACT],
+    workflowContracts: enabled ? [LEARNING_WORKFLOW_CONTRACT] : []
+  });
+  vi.mocked(fetchLearningModels).mockResolvedValue(result);
+  await store.loadModels();
+  store.startSingleQuestion(workflowQuestion);
+}
+function installWorkflowReplies({ losePlanReply = false } = {}) {
+  const saved = new Map();
+  vi.mocked(fetchLearningResult).mockImplementation(async (id) =>
+    saved.has(id) ? { ...saved.get(id), reused: true } : { success: false, code: 404 }
+  );
+  vi.mocked(generateLearningTurn).mockImplementation(async (body) => {
+    const stage = body.learningContext.workflow,
+      root = stage.parentId || body.requestId;
+    const data = {
+      requestId: body.requestId,
+      requestBinding: body.requestBinding,
+      modelId: body.modelId,
+      model: 'first',
+      message: '请按收信人与目的选择开头。',
+      question: null,
+      tools: [],
+      workflowReceipt: {
+        contract: LEARNING_WORKFLOW_CONTRACT,
+        stage: stage.stage,
+        parentId: root,
+        ...(stage.taskId ? { taskId: stage.taskId } : {}),
+        ...(stage.stage === 'plan' ? {} : { planDigest: workflowPlanDigest(workflowPlan) })
+      }
+    };
+    if (stage.stage === 'plan')
+      data.workflow = {
+        contract: LEARNING_WORKFLOW_CONTRACT,
+        stage: 'plan',
+        parentId: root,
+        binding: body.requestBinding,
+        input: body.messages.at(-1).content,
+        plan: workflowPlan
+      };
+    if (stage.stage === 'final')
+      data.contentBlocks = {
+        version: 3,
+        items: [{ kind: 'knowledge', title: '邮件开头', body: '先交代目的，再说明邀请对象与事项。' }]
+      };
+    const response = { success: true, data };
+    saved.set(body.requestId, response);
+    if (losePlanReply && stage.stage === 'plan') return { success: false, code: 503, error: 'NETWORK_FAILED' };
+    return response;
+  });
+  return saved;
+}
+
+it('S52 routes only an explicit single-question workflow through independently billed stages without assessment facts', async () => {
+  await prepareWorkflowStore();
+  installWorkflowReplies();
+  const result = await store.send(workflowQuestion, { chatEntry: true, discussionOnly: true });
+  expect(result.success).toBe(true);
+  const request = store.state.events.find((event) => event.type === 'model.request');
+  expect(request.data.workflowContract).toBe(LEARNING_WORKFLOW_CONTRACT);
+  expect(generateLearningTurn).toHaveBeenCalledTimes(4);
+  expect(vi.mocked(generateLearningTurn).mock.calls.map(([body]) => body.learningContext.workflow.stage)).toEqual([
+    'plan',
+    'agent',
+    'agent',
+    'final'
+  ]);
+  expect(store.active.messages.filter((message) => message.role === 'assistant').at(-1).content).toBe(
+    '请按收信人与目的选择开头。'
+  );
+  expect(store.state.attempts).toHaveLength(0);
+  expect(store.active.coach).toBeFalsy();
+  expect(store.recoverableRequest).toBeNull();
+});
+
+it('S52 restores a lost planner reply after reopening by reads, then requires explicit continuation for missing steps', async () => {
+  await prepareWorkflowStore();
+  installWorkflowReplies({ losePlanReply: true });
+  const failed = await store.send(workflowQuestion, { chatEntry: true, discussionOnly: true });
+  expect(failed.success).toBe(false);
+  const original = JSON.parse(JSON.stringify(store.recoverableRequest)),
+    before = JSON.stringify(store.state.events);
+  store.$dispose();
+  setActivePinia(createPinia());
+  store = useConversationLearningStore();
+  await store.loadModels();
+  expect(store.selectedConversationId).toBe(original.conversationId);
+  vi.mocked(generateLearningTurn).mockClear();
+  expect(await store.recoverModelResult()).toMatchObject({ workflowCanContinue: true, status: 'workflow_incomplete' });
+  expect(generateLearningTurn).not.toHaveBeenCalled();
+  expect(store.workflowCanContinue).toBe(true);
+  expect(JSON.stringify(store.state.events)).toBe(before);
+  expect(await store.recoverModelResult({ continueWorkflow: true })).toMatchObject({ success: true });
+  expect(generateLearningTurn).toHaveBeenCalledTimes(3);
+  expect(store.state.events.filter((event) => event.type === 'model.request')).toHaveLength(1);
+  expect(store.state.attempts).toHaveLength(0);
+  expect(store.recoverableRequest).toBeNull();
+});
+
+it.each(['unadvertised', 'stream'])(
+  'S52 refuses unsupported %s workflow execution before any request is sent',
+  async (kind) => {
+    await prepareWorkflowStore(kind !== 'unadvertised');
+    if (kind === 'stream') store.streamEnabled = true;
+    await expect(store.send(workflowQuestion, { chatEntry: true, discussionOnly: true })).rejects.toMatchObject({
+      code: 'CAPABILITY_UNAVAILABLE'
+    });
+    expect(generateLearningTurn).not.toHaveBeenCalled();
+    expect(fetchLearningResult).not.toHaveBeenCalled();
+  }
+);
