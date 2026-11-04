@@ -95,6 +95,24 @@ const parse = (output, r) =>
   parseCoachModelOutput(JSON.stringify({ message: '继续这一小步。', question: null, tools: [], coach: output }), r)
     .coach;
 
+it('S29 keeps valid public-service feedback and original input while old source-uncertain history stays readable', () => {
+  const r = request('feedback', {
+    methodContract: METHOD_V2,
+    target: 'diagnostic',
+    input: '不能把七个工作日写成交付资料期限，不能索取材料外证明或提前决定公开。',
+    task: '说明补正告知期限与交付资料的区别，不索材料未要求的证明。'
+  });
+  const before = JSON.stringify(r);
+  const raw = feedback(r);
+  const result = parse(raw, r);
+  expect(result.sourceStatus).toBeUndefined();
+  expect(result.lines).toEqual(raw.lines);
+  expect(result.dimensions).toEqual(raw.dimensions);
+  expect(JSON.stringify(r)).toBe(before);
+  const old = { ...raw, sourceStatus: 'pending_verification', dimensions: [] };
+  expect(normalizeCoachOutput(old, r)).toMatchObject({ sourceStatus: 'pending_verification', dimensions: [] });
+});
+
 function readyIntake() {
   return {
     requestId: 'intake',

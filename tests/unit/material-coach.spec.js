@@ -147,6 +147,23 @@ function harness() {
 }
 
 describe('资料带练复用同一事实引擎', () => {
+  it.each([
+    '七个工作日不是交付资料期限，不索材料未要求的证明，不决定是否公开。',
+    '不能把七个工作日写成交付资料期限，不能索取材料外证明或提前决定公开。',
+    '资料交付另按程序核对，不能索要额外证明。'
+  ])('S29 proof-document requests do not create a source dispute: %s', (input) => {
+    expect(coachSourceDisputed(input)).toBe(false);
+  });
+  it.each([
+    '提供的资料只解释next存下标，并未证明这道题的前提。',
+    '资料没有明确提供该前提的依据。',
+    '资料不能证明无需索取证明。',
+    '题目超出资料范围，但不能索取额外证明。',
+    '课本没有这条结论的证明。',
+    '不要索取资料并未证明的额外前提。'
+  ])('S29 genuine source disputes still withhold judgment: %s', (input) => {
+    expect(coachSourceDisputed(input)).toBe(true);
+  });
   it('本次评阅不携带旧错误标签，无原答证据的薄弱点不进入新洞察，历史仍可回看', () => {
     const h = harness();
     const request = {

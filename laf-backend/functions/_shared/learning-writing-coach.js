@@ -616,9 +616,15 @@ export function coachWeaknesses(coach, { days = coach.days.slice(-2), limit = 8 
   ].slice(0, limit);
 }
 export function coachSourceDisputed(input) {
+  // Requesting a proof document is not a claim that study material cannot
+  // prove the question. Mask that noun phrase only for this guard; inference,
+  // quoted evidence and saved answers still receive the unchanged original.
+  const disputeText = String(input ?? '').replace(/(?:索取|索要|不索)[^。！？\n，,；;]{0,12}证明(?!的)/gu, (span) =>
+    ' '.repeat(span.length)
+  );
   return (
     /(?:资料|讲义|教材|课本)[^。！？\n]{0,120}(?:未(?:能)?|没(?:有)?|不(?:足以|能))[^。！？\n]{0,16}(?:证明|支持|依据|说明|提及|提供|给出|覆盖|包含)/u.test(
-      input
+      disputeText
     ) ||
     /(?:题目|题干|这道题)[^。！？\n]{0,12}(?:超出|不在)[^。！？\n]{0,8}(?:资料|讲义)[^。！？\n]{0,4}(?:范围|内容)/u.test(
       input
