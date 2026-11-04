@@ -102,7 +102,9 @@
             ><view v-for="item in phrases" :key="`${item.conversationId}:${item.id}`" class="phrase-card"
               ><BaseIcon name="bulb" size="24px" /><text class="phrase-text" selectable>{{ item.text }}</text
               ><view class="observation-foot"
-                ><text>{{ item.due <= learning.calendarTime ? '待复习' : dateLabel(item.due) }}</text
+                ><text>{{
+                  item.paused ? '已暂停使用' : item.due <= learning.calendarTime ? '待复习' : dateLabel(item.due)
+                }}</text
                 ><BaseButton
                   variant="quiet"
                   icon="arrow-right"
@@ -111,7 +113,7 @@
                   @tap="open(item.conversationId)"
                 />
                 <BaseButton
-                  v-if="DEV_TEST"
+                  v-if="DEV_TEST && !item.paused"
                   variant="quiet"
                   @tap="
                     practiceId = item.id;
@@ -120,8 +122,15 @@
                   "
                   >主动复习</BaseButton
                 >
+                <BaseButton
+                  variant="quiet"
+                  :disabled="learning.busy"
+                  :data-library-use="`${item.conversationId}:${item.id}`"
+                  @tap="chooseUse(item)"
+                  >{{ item.paused ? '恢复使用' : '暂停使用' }}</BaseButton
+                >
               </view>
-              <view v-if="DEV_TEST && practiceId === item.id" class="active-practice">
+              <view v-if="DEV_TEST && !item.paused && practiceId === item.id" class="active-practice">
                 <BaseInput v-model="practiceAnswer" label="用这条句式另造一句" multiline />
                 <text>主动练习只保存原答与系统核对结果，不改变到期安排。</text>
                 <view class="active-practice-actions">
@@ -144,6 +153,25 @@
       </view></view
     >
     <MuseShareSheet :category="context.id.value" :visible="sharing" @close="sharing = false" />
+    <CustomModal
+      :visible="Boolean(useChoice)"
+      :title="useChoice?.paused ? '暂停使用' : '恢复使用'"
+      :confirm-text="useChoice?.paused ? '暂停使用' : '恢复使用'"
+      :confirm-disabled="learning.busy"
+      :is-dark="theme.isDark"
+      @cancel="
+        useChoice = null;
+        useError = '';
+      "
+      @confirm="saveUse"
+    >
+      <text>{{
+        useChoice?.paused
+          ? '暂停后不再提示复习，也不用于新的带写参考；原句和历史记录保留。'
+          : '恢复后继续沿用原复习安排，并可在授权后用于后续带写参考。'
+      }}</text>
+      <text v-if="useError" role="alert">{{ useError }}</text>
+    </CustomModal>
     <CustomModal
       :visible="Boolean(expanded)"
       :title="expanded?.label || ''"
@@ -219,7 +247,31 @@ function savePractice(item) {
 const query = ref(''),
   sharing = ref(false),
   section = ref('overview'),
-  expanded = ref(null);
+  expanded = ref(null),
+  useChoice = ref(null),
+  useError = ref('');
+function chooseUse(item) {
+  useError.value = '';
+  useChoice.value = {
+    conversationId: item.conversationId,
+    itemId: item.id,
+    expectedPaused: item.paused,
+    paused: !item.paused,
+    context: learning.recordContext()
+  };
+}
+function saveUse() {
+  try {
+    const choice = useChoice.value;
+    if (!choice || choice.context !== learning.recordContext())
+      throw Object.assign(new Error('记录已变化，请重新打开'), { code: 'CONTEXT_CHANGED' });
+    learning.setLibraryUse(choice.conversationId, choice.itemId, choice.paused, choice.expectedPaused);
+    useChoice.value = null;
+    useError.value = '';
+  } catch (error) {
+    useError.value = publicError(error);
+  }
+}
 const materialOnly = computed(() => {
   const coaches = context.state.value.conversations.filter((item) => item.coach?.profile);
   return coaches.length > 0 && coaches.every((item) => coachUsesMaterials(item.coach));
@@ -253,6 +305,8 @@ watch([() => learning.recordContext(), () => context.id.value], () => {
   query.value = '';
   sharing.value = false;
   expanded.value = null;
+  useChoice.value = null;
+  useError.value = '';
   section.value = 'overview';
 });
 const calendar = learning.observeCalendar();

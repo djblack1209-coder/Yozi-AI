@@ -1,5 +1,11 @@
 export const WRITING_PERSONAL_CORPUS_CONTRACT = 'writing-personal-corpus-v1';
 export const PHRASE_RECALL_CONTRACT = 'phrase-recall-v1';
+export const WRITING_LIBRARY_USE_CONTRACT = 'writing-library-use-v1';
+
+// Preferences are dated separately from adoption and completed review facts.
+export function libraryItemPaused(item, at = Infinity) {
+  return [...(item?.useHistory || [])].reverse().find((entry) => entry.at <= at)?.paused === true;
+}
 
 export function personalCorpusTarget(request) {
   return (
@@ -92,6 +98,7 @@ export function writingPersonalCorpus(state, conversation, request) {
   const coach = conversation.coach;
   const materials = new Set((state.materials || []).map((material) => material.id));
   return [...(coach.library || [])]
+    .filter((phrase) => !libraryItemPaused(phrase))
     .sort((a, b) => b.at - a.at || a.id.localeCompare(b.id))
     .map((phrase) => personalCorpusSource(coach, phrase))
     .filter(

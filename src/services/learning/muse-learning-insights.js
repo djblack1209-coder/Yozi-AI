@@ -1,5 +1,6 @@
 import { coachAssessmentCounts } from '../../../laf-backend/functions/_shared/learning-writing-coach.js';
 import { dayKey } from './learning-domain.js';
+import { libraryItemPaused } from '../../../laf-backend/functions/_shared/learning-writing-corpus.js';
 
 export function coachFeedbackPreview(feedback) {
   const placeholders = ['只解释一个关键原因', '一个关键原因', '依据资料的正确思路', '针对这句原答的建议改写'];
@@ -51,7 +52,12 @@ export function museLearningInsights(state, now) {
         collect(day.essay, day.day);
     }
     for (const phrase of coach.library)
-      phrases.push({ ...phrase, conversationId: conversation.id, goal: conversation.goal });
+      phrases.push({
+        ...phrase,
+        paused: libraryItemPaused(phrase, now),
+        conversationId: conversation.id,
+        goal: conversation.goal
+      });
   }
   const days = Array.from({ length: 7 }, (_, index) => {
     const at = new Date(`${today}T12:00:00Z`);
@@ -79,7 +85,7 @@ export function museLearningInsights(state, now) {
     strengths: [...strengths.values()].sort((a, b) => b.evidence.length - a.evidence.length),
     feedbackCount: feedbacks.length,
     phrases,
-    due: phrases.filter((phrase) => phrase.due <= now).length,
+    due: phrases.filter((phrase) => !phrase.paused && phrase.due <= now).length,
     familiar: phrases.filter(
       (phrase) => phrase.reviews.length >= 2 && phrase.reviews.slice(-2).every((r) => r.rating >= 3)
     ).length

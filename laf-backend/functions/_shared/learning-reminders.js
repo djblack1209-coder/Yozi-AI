@@ -1,7 +1,9 @@
 import { journeyDate } from './learning-journey.js';
 import { reviewFacts, coachReviewId } from './learning-adherence.js';
+import { libraryItemPaused } from './learning-writing-corpus.js';
 
 export const REMINDER_CONTRACT = 'learning-reminder-v1';
+
 export const REMINDER_KINDS = Object.freeze([
   { id: 'study', label: '学习提醒' },
   { id: 'review', label: '到期复测' },
@@ -12,6 +14,7 @@ export function coachDueItem(coach, at, events = [], conversationId = null) {
     .filter(
       (item) =>
         item.due <= at &&
+        !libraryItemPaused(item, at) &&
         !events.some(
           (e) =>
             ['review.skip', 'review.reschedule'].includes(e.type) &&

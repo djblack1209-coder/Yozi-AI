@@ -2,7 +2,9 @@ import {
   normalizePersonalCorpus,
   writingPersonalCorpus,
   PERSONAL_CORPUS_PROMPT,
-  PHRASE_RECALL_CONTRACT
+  PHRASE_RECALL_CONTRACT,
+  WRITING_LIBRARY_USE_CONTRACT,
+  libraryItemPaused
 } from './learning-writing-corpus.js';
 import { phraseReviewRating } from './learning-runtime-policy.js';
 /* global __YOZI_DEV_TEST__ */
@@ -1902,7 +1904,7 @@ export function coachOperationDay(coach, calendarDay, type, data = {}) {
 export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
   const d = op.data,
     c = state.conversations.find((v) => v.id === d.conversationId);
-  assert(c && !c.stopped, 'STOPPED', '当前学习已停止或切换');
+  assert(c && (!c.stopped || op.type === 'coach.libraryUse'), 'STOPPED', '当前学习已停止或切换');
   assert(d.explicit === true, 'EXPLICIT_REQUIRED', '请明确提交或保存');
   const today = coachOperationDay(c.coach, dayKey(op.at, state.timezone), op.type, d);
   assert(d.day === undefined || d.day === today, 'PRECONDITION', '学习日期已变化，请返回今天');
@@ -1924,6 +1926,24 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
   }
   const coach = c.coach;
   assert(coach?.contract === WRITING_COACH_CONTRACT, 'PRECONDITION', '请先建立写作学习档案');
+  if (op.type === 'coach.libraryUse') {
+    assert(
+      d.contract === WRITING_LIBRARY_USE_CONTRACT &&
+        typeof d.paused === 'boolean' &&
+        typeof d.expectedPaused === 'boolean' &&
+        Object.keys(d).every((key) =>
+          ['conversationId', 'itemId', 'paused', 'expectedPaused', 'contract', 'explicit', 'day'].includes(key)
+        ),
+      'INVALID_INPUT',
+      '条目使用状态不合法'
+    );
+    const item = coach.library.find((entry) => entry.id === d.itemId);
+    assert(item, 'NOT_FOUND', '条目已变化');
+    assert(libraryItemPaused(item, op.at) === d.expectedPaused, 'CONFLICT', '条目状态已变化，请重新打开');
+    assert(d.paused !== d.expectedPaused, 'INVALID_INPUT', '请明确选择新的使用状态');
+    (item.useHistory ||= []).push({ id: op.id, at: op.at, paused: d.paused });
+    return { itemId: item.id, paused: d.paused };
+  }
   if (op.type === 'coach.profile') {
     const p = d.profile;
     const subjectMethod = subjectCoachMethod(p?.exam, p?.methodContract);
@@ -2433,6 +2453,7 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
   }
   if (op.type === 'coach.review') {
     const item = coach.library.find((v) => v.id === d.itemId);
+    assert(!libraryItemPaused(item, op.at), 'PRECONDITION', '该条目已暂停使用');
     const recall = d.reviewContract !== undefined || d.referenceShown !== undefined;
     if (recall)
       assert(

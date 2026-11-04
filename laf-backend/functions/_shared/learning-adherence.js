@@ -1,4 +1,5 @@
 import { coachErrorReviews } from './learning-coach-review.js';
+import { libraryItemPaused } from './learning-writing-corpus.js';
 // Read-only views over the existing private event stream. No network, grades or BKT estimates.
 export const REVIEW_REASONS = Object.freeze({
   time_short: '今天时间不够',
@@ -59,7 +60,7 @@ export function reviewFacts(state, at = Date.now(), { owner = state.owner, conve
           itemId: item.id,
           kind: 'coach',
           due,
-          cancelled: false,
+          cancelled: !completed && libraryItemPaused(item, at),
           conversationId: c.id,
           completedBy: completed?.id || null,
           completedAt: completed?.at || null,

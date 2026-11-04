@@ -3,6 +3,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { flushPromises, mount } from '@vue/test-utils';
 import {
   WRITING_PERSONAL_CORPUS_CONTRACT,
+  WRITING_LIBRARY_USE_CONTRACT,
+  libraryItemPaused,
   normalizePersonalCorpus,
   personalCorpusInference,
   personalCorpusSource,
@@ -15,7 +17,16 @@ import {
   coachSystemPrompt
 } from '../../laf-backend/functions/_shared/learning-writing-coach.js';
 import { coachSavedRecords } from '../../laf-backend/functions/_shared/learning-coach-records.js';
-import { emptyLearningState, applyLearningOperation } from '@/services/learning/learning-domain.js';
+import {
+  emptyLearningState,
+  applyLearningOperation,
+  normalizePrivateSyncOperation
+} from '@/services/learning/learning-domain.js';
+import { reviewFacts } from '../../laf-backend/functions/_shared/learning-adherence.js';
+import { coachDueItem } from '../../laf-backend/functions/_shared/learning-reminders.js';
+import { museLearningInsights } from '@/services/learning/muse-learning-insights.js';
+import MuseSavedLibrary from '@/components/business/learning/muse-saved-library.vue';
+import CustomModal from '@/components/common/CustomModal.vue';
 import { prepareLearningRestore } from '@/services/learning/learning-backup.js';
 import { parsePastedMaterial } from '@/services/learning/material-intake.js';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
@@ -473,5 +484,283 @@ describe('personal corpus separate session consent', () => {
     expect(wrapper.get('[data-test="personal-corpus-original"]').text()).toContain(sentence);
     expect(JSON.stringify(store.state)).toBe(before);
     expect(generateLearningTurn.mock.calls.length).toBe(calls);
+  });
+});
+
+describe('S43 adopted library use preference', () => {
+  const preference = (h, paused, expectedPaused, patch = {}) =>
+    h.apply('coach.libraryUse', {
+      contract: WRITING_LIBRARY_USE_CONTRACT,
+      itemId: h.current().library[0].id,
+      paused,
+      expectedPaused,
+      ...patch
+    });
+
+  it('pauses future corpus selection while keeping the source and rejecting a new stale corpus request', () => {
+    const h = harness(),
+      old = structuredClone(h.get());
+    const items = writingPersonalCorpus(h.get(), h.get().conversations[0], base);
+    preference(h, true, false);
+    expect(libraryItemPaused(h.current().library[0])).toBe(true);
+    expect(writingPersonalCorpus(h.get(), h.get().conversations[0], base)).toEqual([]);
+    expect(personalCorpusSource(h.current(), h.current().library[0])).toEqual(items[0]);
+    expect(h.current().requests).toEqual(old.conversations[0].coach.requests);
+    expect(h.current().days).toEqual(old.conversations[0].coach.days);
+    const before = JSON.stringify(h.get());
+    expect(() =>
+      h.request('feedback', 'paragraph-1', {
+        personalCorpus: { contract: WRITING_PERSONAL_CORPUS_CONTRACT, items }
+      })
+    ).toThrow(/个人句式/);
+    expect(JSON.stringify(h.get())).toBe(before);
+  });
+
+  it('resumes the same adoption and schedule without recreating a phrase or completing a review', () => {
+    const h = harness(),
+      item = structuredClone(h.current().library[0]);
+    preference(h, true, false);
+    preference(h, false, true);
+    expect(libraryItemPaused(h.current().library[0])).toBe(false);
+    const { useHistory, ...current } = h.current().library[0];
+    expect(current).toEqual(item);
+    expect(useHistory.map((entry) => entry.paused)).toEqual([true, false]);
+    expect(writingPersonalCorpus(h.get(), h.get().conversations[0], base)).toHaveLength(1);
+    expect(h.current().library).toHaveLength(1);
+  });
+
+  it('keeps already frozen pending request and its result bound to the original corpus', () => {
+    const h = harness();
+    const value = {
+      contract: WRITING_PERSONAL_CORPUS_CONTRACT,
+      items: writingPersonalCorpus(h.get(), h.get().conversations[0], base)
+    };
+    const request = h.request('feedback', 'paragraph-1', { personalCorpus: value });
+    const frozen = structuredClone(h.current().requests.find((item) => item.id === request.id).request);
+    preference(h, true, false);
+    h.complete(request);
+    const saved = h.current().requests.find((item) => item.id === request.id);
+    expect(saved.status).toBe('completed');
+    expect(saved.request).toEqual(frozen);
+    expect(
+      coachSavedRecords(h.get().conversations[0]).find((row) => row.target === 'paragraph-1').personalCorpus
+    ).toEqual(value);
+    expect(writingPersonalCorpus(h.get(), h.get().conversations[0], base)).toEqual([]);
+  });
+
+  it.each([
+    { contract: 'unknown' },
+    { paused: 'true' },
+    { expectedPaused: undefined },
+    { explicit: false },
+    { itemId: 'another-owner-item' },
+    { injectedText: 'untrusted' }
+  ])('rejects malformed, implicit and foreign item changes without touching original facts (%j)', (patch) => {
+    const h = harness(),
+      before = JSON.stringify(h.get());
+    expect(() => preference(h, true, false, patch)).toThrow();
+    expect(JSON.stringify(h.get())).toBe(before);
+  });
+
+  it('rejects an outdated confirmation instead of overwriting a newer preference', () => {
+    const h = harness();
+    preference(h, true, false);
+    const before = JSON.stringify(h.get());
+    expect(() => preference(h, true, false)).toThrow(/状态已变化/);
+    expect(JSON.stringify(h.get())).toBe(before);
+  });
+
+  it('can manage adopted assets in a stopped conversation without resuming its learning flow', () => {
+    const h = harness();
+    h.apply('task.stop', { conversationId: 'c', explicit: true });
+    preference(h, true, false);
+    expect(h.get().conversations[0].stopped).toBe(true);
+    expect(libraryItemPaused(h.current().library[0])).toBe(true);
+    expect(() => h.apply('coach.analysis', { fields: {} })).toThrow(/停止|切换/);
+  });
+
+  it('hides the pending due cue, preserves historical rows and resumes the original due time', () => {
+    const h = harness(),
+      initial = h.get(),
+      item = h.current().library[0],
+      dueAt = item.due + 1;
+    const before = structuredClone(reviewFacts(initial, dueAt));
+    const operation = (state, paused, expectedPaused, at, id) =>
+      applyLearningOperation(state, {
+        id,
+        type: 'coach.libraryUse',
+        at,
+        data: {
+          conversationId: 'c',
+          explicit: true,
+          contract: WRITING_LIBRARY_USE_CONTRACT,
+          itemId: item.id,
+          paused,
+          expectedPaused
+        }
+      }).state;
+    const paused = operation(initial, true, false, dueAt + 1, 'pause-after-due');
+    expect(reviewFacts(paused, dueAt)).toEqual(before);
+    expect(reviewFacts(paused, dueAt + 1).find((row) => row.itemId === item.id)).toMatchObject({
+      cancelled: true,
+      completedBy: null,
+      due: item.due
+    });
+    expect(coachDueItem(paused.conversations[0].coach, dueAt + 1)).toBeNull();
+    expect(museLearningInsights(paused, dueAt + 1).due).toBe(0);
+    const resumed = operation(paused, false, true, dueAt + 2, 'resume-after-due');
+    expect(coachDueItem(resumed.conversations[0].coach, dueAt + 2)?.id).toBe(item.id);
+    expect(reviewFacts(resumed, dueAt + 2).find((row) => row.itemId === item.id)).toMatchObject({
+      cancelled: false,
+      completedBy: null,
+      due: item.due
+    });
+    expect(resumed.conversations[0].coach.library[0].schedule).toEqual(item.schedule);
+    expect(resumed.conversations[0].coach.library[0].reviews).toEqual(item.reviews);
+  });
+
+  it('keeps completed review facts when pausing the next cycle and refuses a paused review', () => {
+    const h = harness(),
+      initial = h.get(),
+      item = h.current().library[0],
+      dueAt = item.due + 1;
+    const reviewed = applyLearningOperation(initial, {
+      id: 'first-completed-review',
+      type: 'coach.review',
+      at: dueAt,
+      data: {
+        conversationId: 'c',
+        explicit: true,
+        itemId: item.id,
+        answer: sentence,
+        rating: 3,
+        ratingSource: 'host-v1',
+        schedule: { due: new Date(dueAt + 600000).toISOString() }
+      }
+    }).state;
+    const paused = applyLearningOperation(reviewed, {
+      id: 'pause-next-cycle',
+      type: 'coach.libraryUse',
+      at: dueAt + 1,
+      data: {
+        conversationId: 'c',
+        explicit: true,
+        itemId: item.id,
+        paused: true,
+        expectedPaused: false,
+        contract: WRITING_LIBRARY_USE_CONTRACT
+      }
+    }).state;
+    const rows = reviewFacts(paused, dueAt + 600001);
+    expect(rows.find((row) => row.completedBy === 'first-completed-review')).toMatchObject({ cancelled: false });
+    expect(paused.conversations[0].coach.library[0].reviews).toEqual(
+      reviewed.conversations[0].coach.library[0].reviews
+    );
+    expect(() =>
+      applyLearningOperation(paused, {
+        id: 'forbidden-paused-review',
+        type: 'coach.review',
+        at: dueAt + 600001,
+        data: {
+          conversationId: 'c',
+          explicit: true,
+          itemId: item.id,
+          answer: sentence,
+          rating: 4,
+          schedule: { due: new Date(dueAt + 700000).toISOString() }
+        }
+      })
+    ).toThrow(/暂停/);
+  });
+
+  it('replays the explicit use events over sync operations and preserves them in a restore preview', () => {
+    const h = harness();
+    preference(h, true, false);
+    const state = h.get();
+    let replay = emptyLearningState(state.owner, state.timezone);
+    for (const event of state.events)
+      replay = applyLearningOperation(replay, normalizePrivateSyncOperation(event)).state;
+    expect(replay).toEqual(state);
+    const restored = prepareLearningRestore(emptyLearningState(state.owner, state.timezone), JSON.stringify(state));
+    expect(restored.state.conversations[0].coach.library).toEqual(h.current().library);
+    expect(restored.state.events.filter((event) => event.type === 'coach.libraryUse')).toHaveLength(1);
+  });
+
+  it('shows a confirmation without writing, cancels safely, then pauses and resumes in the existing page', async () => {
+    const { store } = await corpusStore();
+    const wrapper = mount(MuseSavedLibrary, { global: { stubs: { BaseIcon: true, MuseShareSheet: true } } });
+    wrappers.push(wrapper);
+    await wrapper
+      .findAllComponents(BaseButton)
+      .find((node) => node.text().trim() === '句式')
+      .vm.$emit('tap');
+    await flushPromises();
+    const original = JSON.stringify(store.state),
+      selected = store.selectedConversationId;
+    const action = () => wrapper.find('[data-library-use]');
+    await action().trigger('tap');
+    expect(JSON.stringify(store.state)).toBe(original);
+    let modal = wrapper.findAllComponents(CustomModal).find((node) => node.props('visible'));
+    modal.vm.$emit('cancel');
+    await flushPromises();
+    expect(JSON.stringify(store.state)).toBe(original);
+    await action().trigger('tap');
+    modal = wrapper.findAllComponents(CustomModal).find((node) => node.props('visible'));
+    modal.vm.$emit('confirm');
+    await flushPromises();
+    expect(action().text()).toContain('恢复使用');
+    expect(store.personalCorpusChoices).toEqual([]);
+    expect(store.selectedConversationId).toBe(selected);
+    await action().trigger('tap');
+    wrapper
+      .findAllComponents(CustomModal)
+      .find((node) => node.props('visible'))
+      .vm.$emit('confirm');
+    await flushPromises();
+    expect(action().text()).toContain('暂停使用');
+    expect(store.personalCorpusChoices).toHaveLength(1);
+    expect(store.state.events.filter((event) => event.type === 'coach.libraryUse')).toHaveLength(2);
+  });
+
+  it('redacts use preferences with deleted source material and cannot restore the old private phrase', () => {
+    const h = harness(true);
+    preference(h, true, false);
+    const old = JSON.stringify(h.get());
+    h.apply('material.delete', { materialId: 'corpus-private-material', questionKeys: [] });
+    expect(h.get().conversations[0].coach).toBeUndefined();
+    expect(JSON.stringify(h.get())).not.toContain(sentence);
+    expect(h.get().events.some((event) => event.type === 'coach.libraryUse')).toBe(false);
+    expect(() => prepareLearningRestore(h.get(), old)).toThrow('已删除资料');
+    const restored = prepareLearningRestore(
+      emptyLearningState(h.get().owner, h.get().timezone),
+      JSON.stringify(h.get())
+    ).state;
+    expect(JSON.stringify(restored)).not.toContain(sentence);
+    expect(restored.conversations[0].coach).toBeUndefined();
+  });
+
+  it('keeps the original page state and confirmation visible after a rejected write', async () => {
+    const { store } = await corpusStore();
+    const wrapper = mount(MuseSavedLibrary, { global: { stubs: { BaseIcon: true, MuseShareSheet: true } } });
+    wrappers.push(wrapper);
+    wrapper
+      .findAllComponents(BaseButton)
+      .find((node) => node.text().trim() === '句式')
+      .vm.$emit('tap');
+    await flushPromises();
+    await wrapper.find('[data-library-use]').trigger('tap');
+    const before = JSON.stringify(store.state);
+    vi.spyOn(store, 'setLibraryUse').mockImplementationOnce(() => {
+      throw Error('private-provider-body');
+    });
+    wrapper
+      .findAllComponents(CustomModal)
+      .find((node) => node.props('visible'))
+      .vm.$emit('confirm');
+    await flushPromises();
+    expect(JSON.stringify(store.state)).toBe(before);
+    expect(wrapper.findAllComponents(CustomModal).some((node) => node.props('visible'))).toBe(true);
+    expect(wrapper.text()).not.toContain('private-provider-body');
+    expect(wrapper.find('[data-library-use]').text()).toContain('暂停使用');
   });
 });

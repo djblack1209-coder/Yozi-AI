@@ -204,6 +204,10 @@ export function museActivity(state) {
         title = '已提交复习自评';
         body = preview(data.answer);
         icon = 'refresh';
+      } else if (event.type === 'coach.libraryUse') {
+        title = data.paused ? '已暂停条目使用' : '已恢复条目使用';
+        body = coach.library.find((item) => item.id === data.itemId)?.text || '';
+        icon = 'bulb';
       }
       if (!title) return [];
       return [

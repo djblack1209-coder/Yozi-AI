@@ -1,6 +1,7 @@
 import {
   WRITING_PERSONAL_CORPUS_CONTRACT,
   PHRASE_RECALL_CONTRACT,
+  WRITING_LIBRARY_USE_CONTRACT,
   writingPersonalCorpus
 } from '../../../laf-backend/functions/_shared/learning-writing-corpus.js';
 import { LOCATION_KEY, restoredConversation } from '@/services/learning/shell-navigation.js';
@@ -1822,6 +1823,20 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       explicit: true,
       day: coachOperationDay(active.value.coach, dayKey(Date.now(), state.value.timezone), `coach.${type}`, data)
     });
+  }
+  function setLibraryUse(conversationId, itemId, paused, expectedPaused) {
+    idleRecords();
+    const result = commit('coach.libraryUse', {
+      conversationId,
+      itemId,
+      paused,
+      expectedPaused,
+      contract: WRITING_LIBRARY_USE_CONTRACT,
+      explicit: true
+    });
+    // The existing calendar tick may precede this explicit event by milliseconds.
+    calendarTime.value = Math.max(calendarTime.value, state.value.events.at(-1).at);
+    return result;
   }
   function coachReview(itemId, answer, { referenceShown = false } = {}) {
     const item = active.value?.coach?.library.find((v) => v.id === itemId);
@@ -5650,6 +5665,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   const exposed = {
     startCoach,
     coachSave,
+    setLibraryUse,
     attachMaterial,
     attachText,
     requestCoach,

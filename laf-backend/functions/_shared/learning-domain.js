@@ -1387,6 +1387,7 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
     case 'coach.essaySubmit':
     case 'coach.rewriteAnswer':
     case 'coach.adopt':
+    case 'coach.libraryUse':
     case 'coach.finish':
     case 'coach.survey': {
       result = applyWritingCoachOperation(state, { ...operation, id: opId, at: now, data }, { assert, dayKey });
