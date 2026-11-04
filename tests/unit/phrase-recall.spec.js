@@ -234,6 +234,7 @@ describe('S38 local reference visibility and explicit submit', () => {
     const request = vi.spyOn(store, 'requestCoach'),
       before = store.exportData();
     await render();
+    expect(wrapper.get('.muse-composer textarea').attributes('placeholder')).toBe('回忆并写出原句');
     expect(wrapper.find('[data-test="phrase-review-original"]').exists()).toBe(false);
     await wrapper.get('[data-test="phrase-review-reveal"]').trigger('tap');
     expect(wrapper.get('[data-test="phrase-review-original"]').text()).toBe(sentence);

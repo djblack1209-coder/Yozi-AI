@@ -1006,7 +1006,9 @@ const composerLabel = computed(() =>
       : answerTarget.value?.kind === 'review'
         ? materialTrack.value
           ? '用自己的话解释'
-          : '用这个句式或搭配写一句话'
+          : phraseRecall.value
+            ? '回忆并写出原句'
+            : '用这个句式或搭配写一句话'
         : answerTarget.value?.kind === 'rewrite'
           ? '保存改写'
           : answerTarget.value?.kind === 'paragraph'
@@ -1119,11 +1121,13 @@ const recallDraftKey = computed(() =>
     : null
 );
 watch(
-  () => [learning.recordContext(), recallDraftKey.value],
-  ([context, key]) => {
+  () => [learning.state.owner, recallDraftKey.value],
+  ([, key]) => {
+    // Session reads may refresh reactive records. Keep them out of the watcher getter.
+    const context = learning.recordContext();
     referenceShown.value = Boolean(key && drafts.read(context, key).referenceShown);
   },
-  { immediate: true, flush: 'sync' }
+  { immediate: true }
 );
 function showReviewReference() {
   if (!recallDraftKey.value) return;
