@@ -69,6 +69,52 @@ describe('explicit exam scope and bounded syllabus sources', () => {
   const gdScope = (positionCategory = 'gd-shenlun-2', patch = {}) =>
     scope({ contract: EXAM_SCOPE_V2_CONTRACT, region: 'CN-GD', positionCategory, ...patch });
   const extractV2 = (answers) => explicitShenlunScope(answers, EXAM_SCOPE_V2_CONTRACT);
+  describe('police duty alias scope regression', () => {
+    const goal = '准备2027年广东省考公安执法勤务类申论，练习舆情预判与沟通反馈，使用我提供的材料和题目。';
+    it.each(['公安执法勤务类', '公安机关执法勤务类'])(
+      'recognizes explicit %s only in the Guangdong v2 scope',
+      (name) => {
+        expect(extractV2([goal.replace('公安执法勤务类', name)])).toEqual(gdScope('gd-police'));
+      }
+    );
+    it.each([
+      '准备2027年广东省考公安职位申论。',
+      '准备2027年广东省考公安类申论。',
+      '准备2027年广东省考公安执法勤务类或行政执法类申论。',
+      '准备2027年广东省考申论，不准备公安执法勤务类。',
+      '不是公安执法勤务类，准备2027年广东省考申论。'
+    ])('keeps generic, conflicting or negated police duties unknown: %s', (answer) => {
+      expect(extractV2([answer])).toEqual(gdScope(null));
+    });
+    it('preserves v1 extraction and does not select a Guangdong paper for another province', () => {
+      expect(explicitShenlunScope([goal])).toEqual(scope({ region: 'CN-GD', positionCategory: null }));
+      expect(extractV2([goal.replace('广东', '江苏')])).toEqual(
+        scope({ contract: EXAM_SCOPE_V2_CONTRACT, positionCategory: null })
+      );
+    });
+    it('binds the unchanged native goal to the police source only after explicit confirmation', () => {
+      const ctx = { ...context([goal]), scopeContract: EXAM_SCOPE_V2_CONTRACT };
+      const reply = proposal(ctx);
+      expect(reply.intake.profile.examScope).toEqual(gdScope('gd-police'));
+      let state = emptyLearningState('police-alias-synthetic', 'America/Los_Angeles');
+      state.intake = { ...ctx, requestId: 'police-alias-intake', modelId: 'synthetic', status: 'ready', reply };
+      expect(state.conversations).toHaveLength(0);
+      state = applyLearningOperation(state, {
+        id: 'police-alias-confirm',
+        type: 'intake.accept',
+        at,
+        data: { explicit: true, coachMethod: 'shenlun-writing-method-v2' }
+      }).state;
+      const saved = state.conversations[0].coach.profile.examScope;
+      expect(saved).toEqual(gdScope('gd-police'));
+      expect(shenlunScopeBinding(saved)).toMatchObject({
+        sourceStatus: 'body_available',
+        alignmentStatus: 'pending_verification',
+        source: { id: 'gd-civil-2027-shenlun-v1' }
+      });
+      expect(shenlunScopeBinding(saved).source.section).toContain('公安专业和申论');
+    });
+  });
   it('uses student-facing character-count instructions only for the new source contract', () => {
     const essay = (saved) => ({
       ...request(saved, 'essay'),

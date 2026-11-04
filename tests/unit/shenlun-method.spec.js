@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { applyLearningOperation, emptyLearningState } from '@/services/learning/learning-domain.js';
+import { applyLearningOperation, emptyLearningState, dayKey } from '@/services/learning/learning-domain.js';
 import { parsePastedMaterial } from '@/services/learning/material-intake.js';
 import { coachMaterialContext } from '@/services/learning/coach-material-context.js';
 import { learningProgressReadModel } from '@/services/learning/learning-progress-read-model.js';
@@ -18,6 +18,8 @@ import {
   parseCoachModelOutput,
   coachSystemPrompt,
   coachInputFor,
+  coachLearningDay,
+  coachOperationDay,
   coachInferenceContext,
   coachEssayType
 } from '../../laf-backend/functions/_shared/learning-writing-coach.js';
@@ -94,6 +96,308 @@ const feedback = (r) => ({
 const parse = (output, r) =>
   parseCoachModelOutput(JSON.stringify({ message: '继续这一小步。', question: null, tools: [], coach: output }), r)
     .coach;
+
+it.each(['daily', 'feedback', 'essay'])(
+  'S34 original-task priority constrains new v2 %s without rewriting saved input',
+  (phase) => {
+    const r = request(phase, {
+      methodContract: METHOD_V2,
+      target: phase === 'feedback' ? 'paragraph-0' : phase,
+      input: '应先核实活动与通行安排，再按已核与待核分别说明并持续反馈。',
+      task: '面向居民沟通，直接答复是否前往。',
+      sources: [
+        {
+          id: 'original-task',
+          name: '原创资料',
+          content: '本周活动安排待核。题目：写一段信息风险与沟通提纲，区分已核待核，提出核实与持续反馈办法。'
+        }
+      ]
+    });
+    const before = JSON.stringify(r),
+      prompt = coachSystemPrompt(r);
+    expect(prompt).toContain('材料中的原题是要求依据');
+    expect(prompt).toContain('不能把新增内容升级为必答项');
+    expect(prompt).toContain('原题未限定身份或收件对象时，如实标明未限定');
+    expect(prompt).toContain('未照模型补设的要求作答不得判error');
+    expect(prompt).toContain('没有事实或授权依据的出行指令与承诺');
+    expect(prompt).toContain('只有原题实质要求确实缺失或原文有据冲突才判error');
+    expect(JSON.stringify(r)).toBe(before);
+  }
+);
+
+it('S34 original-task priority preserves v1 and does not alter diagnostic or summary guidance', () => {
+  for (const phase of ['daily', 'feedback', 'essay', 'diagnostic', 'summary'])
+    expect(
+      coachSystemPrompt(
+        request(phase, { input: '原答保留。', ...(phase === 'feedback' ? { target: 'paragraph-0' } : {}) })
+      )
+    ).not.toContain('原题优先：');
+  for (const phase of ['diagnostic', 'summary'])
+    expect(coachSystemPrompt(request(phase, { methodContract: METHOD_V2, input: '原答保留。' }))).not.toContain(
+      '原题优先：'
+    );
+});
+
+describe('S34 source task inference context', () => {
+  const task = '写信息风险与沟通提纲，220至300字，只写一段，区分已核待核并提出核实与持续反馈办法。';
+  const scoped = (phase, target = phase, content = '活动安排待核。题目：' + task) =>
+    request(phase, {
+      methodContract: METHOD_V2,
+      target,
+      input: '应先核实安排，再按已核与待核分别说明并持续反馈。',
+      task: '以协调人员身份直接答复居民是否前往。',
+      examScope: {
+        contract: 'learning-exam-scope-v2',
+        year: 2027,
+        examLevel: 'provincial',
+        region: 'CN-GD',
+        positionCategory: 'gd-police'
+      },
+      sources: [{ id: 'native-task-source', name: '原创资料', page: null, content }]
+    });
+  it.each([
+    ['daily', 'daily'],
+    ['feedback', 'analysis'],
+    ['feedback', 'paragraph-0'],
+    ['essay', 'essay']
+  ])('uses the unique supplied task for %s/%s while preserving the saved request', (phase, target) => {
+    const r = scoped(phase, target),
+      before = JSON.stringify(r),
+      inference = coachInferenceContext(r);
+    expect(inference.task).toBe(task);
+    expect(inference.task).not.toContain('直接答复居民是否前往');
+    expect(inference.input).toBe(r.input);
+    expect(inference.sources).toEqual(r.sources);
+    expect(coachSystemPrompt(inference)).toContain('原题优先：');
+    expect(JSON.stringify(r)).toBe(before);
+  });
+  it.each([
+    ['feedback', 'diagnostic'],
+    ['feedback', 'card-c2'],
+    ['summary', 'summary']
+  ])('retains the actual local task for %s/%s', (phase, target) => {
+    const r = scoped(phase, target);
+    r.task = '只用一句话归纳，不超过60字。';
+    expect(coachInferenceContext(r).task).toBe(r.task);
+  });
+  it('keeps v1, an older source scope, missing scope and English inference unchanged', () => {
+    const r = scoped('essay');
+    for (const patch of [
+      { methodContract: METHOD, examScope: undefined },
+      {
+        examScope: {
+          contract: 'learning-exam-scope-v1',
+          year: 2027,
+          examLevel: 'provincial',
+          region: 'CN-GD',
+          positionCategory: null
+        }
+      },
+      { examScope: undefined },
+      { exam: 'english2', methodContract: undefined, examScope: undefined }
+    ])
+      expect(coachInferenceContext({ ...r, ...patch }).task).toBe(r.task);
+  });
+  it.each([
+    '活动安排待核，写一段提纲。',
+    '题目：写第一份提纲。题目：写第二份提纲。',
+    '题目一：写第一份提纲。题目二：写第二份提纲。',
+    '题目：写一段提纲。\n材料：另有尚未归属的资料。'
+  ])('does not guess a missing or ambiguous source task: %s', (content) => {
+    const r = scoped('essay', 'essay', content);
+    expect(coachInferenceContext(r).task).toBe(r.task);
+  });
+});
+
+describe('S34 overnight writing continuation', () => {
+  function savedWriting() {
+    let state = emptyLearningState('overnight-synthetic', 'Asia/Shanghai'),
+      now = at,
+      serial = 0;
+    const coach = () => state.conversations[0]?.coach;
+    const calendar = () => dayKey(now, state.timezone);
+    const commit = (type, data = {}, id = `overnight-${++serial}`) => {
+      const operation = {
+        id,
+        type,
+        at: now,
+        data: type.startsWith('coach.')
+          ? {
+              conversationId: 'study',
+              explicit: true,
+              day: coachOperationDay(coach(), calendar(), type, data),
+              ...data
+            }
+          : data
+      };
+      const result = applyLearningOperation(state, operation);
+      state = result.state;
+      return operation;
+    };
+    commit('conversation.start', { goal: '申论原创材料与写作' }, 'study');
+    commit('coach.begin');
+    commit('coach.profile', {
+      profile: {
+        exam: 'shenlun',
+        methodContract: METHOD_V2,
+        track: TRACK,
+        subjects: ['gongkao_shenlun'],
+        minutes: null,
+        deadline: null
+      }
+    });
+    commit('material.add', { material: parsePastedMaterial(materialText, 'overnight-material') });
+    commit('coach.material', { materialId: 'overnight-material' });
+    const generate = (phase, target = phase) => {
+      const requestedDay = coachOperationDay(coach(), calendar(), 'coach.request', { request: { phase, target } });
+      const day = coach().days.find((item) => item.day === requestedDay);
+      const bound = coachInputFor(coach(), day, phase, target);
+      const r = request(phase, {
+        methodContract: METHOD_V2,
+        ...bound,
+        target,
+        day: requestedDay,
+        sources: coachMaterialContext(state, state.conversations[0], bound),
+        essayType: coachEssayType(coach(), requestedDay)
+      });
+      const requestId = `overnight-request-${++serial}`;
+      commit('coach.request', { requestId, request: r, modelId: 'synthetic', binding: 'synthetic-binding' });
+      const output = ['diagnostic', 'daily'].includes(phase)
+        ? generation(r)
+        : phase === 'summary'
+          ? { kind: 'summary', learned: ['保留原题与原答'], tomorrow: ['回看本次反馈'] }
+          : feedback(r);
+      if (phase === 'daily') output.writing.patterns = [['说明事实、建议与核实边界']];
+      commit('coach.result', { requestId, output: parse(output, r) });
+    };
+    generate('diagnostic');
+    for (let i = 1; i <= 5; i++)
+      commit('coach.answer', { target: 'diagnostic', cardId: `d${i}`, answer: '材料尚未提供实施效果。' });
+    generate('feedback', 'diagnostic');
+    generate('daily');
+    for (let i = 1; i <= 4; i++) {
+      commit('coach.answer', { target: 'daily', cardId: `c${i}`, answer: '建议核实需求并收集反馈。' });
+      generate('feedback', `card-c${i}`);
+    }
+    commit('coach.analysis', {
+      fields: {
+        genre: '建议稿',
+        recipient: '社区负责人',
+        purpose: '说明建议与核实边界',
+        points: '事实、建议和核实',
+        words: '120至180字'
+      }
+    });
+    generate('feedback', 'analysis');
+    commit('coach.paragraph', {
+      index: 0,
+      text: '建议核实需求后研究周六预约安排，不能把未核效果写成已经实现。',
+      authorship: 'user_typed'
+    });
+    generate('feedback', 'paragraph-0');
+    return {
+      get state() {
+        return state;
+      },
+      coach,
+      commit,
+      generate,
+      setNow(value) {
+        now = value;
+      },
+      calendar
+    };
+  }
+
+  it('finishes the saved original across midnight with current timestamps, one submission and exact replay', () => {
+    vi.stubGlobal('__YOZI_DEV_TEST__', true);
+    const h = savedWriting(),
+      oldDay = h.coach().days[0].day;
+    const original = structuredClone(h.coach().days[0].drafts[0]),
+      prefix = structuredClone(h.state.events);
+    const priorFeedback = structuredClone(h.coach().days[0].feedback['paragraph-0']);
+    h.setNow(at + 86400000);
+    expect(coachLearningDay(h.coach(), h.calendar())).toBe(oldDay);
+    h.commit('coach.reassess', { target: 'paragraph-0', feedbackId: priorFeedback.id });
+    h.generate('feedback', 'paragraph-0');
+    h.commit('coach.paragraph', { index: 0, rewrite: true, text: original.text, authorship: 'user_typed' });
+    const beforeDuplicate = structuredClone(h.state);
+    expect(() =>
+      h.commit('coach.paragraph', { index: 0, rewrite: true, text: '覆盖原稿', authorship: 'user_typed' })
+    ).toThrow();
+    expect(h.state).toEqual(beforeDuplicate);
+    h.commit('coach.essaySubmit');
+    h.generate('essay');
+    h.generate('summary');
+    h.commit('coach.finish');
+    const day = h.coach().days[0];
+    expect(day).toMatchObject({ day: oldDay, completed: true, completedAt: at + 86400000 });
+    expect(day.drafts[0]).toEqual(original);
+    expect(day.writingSubmissions).toHaveLength(1);
+    expect(day.writingSubmissions[0]).toMatchObject({
+      text: original.text,
+      submittedAt: at + 86400000,
+      authorship: 'user_typed'
+    });
+    expect(day.feedbackHistory['paragraph-0'][0]).toEqual({ ...priorFeedback, supersededAt: at + 86400000 });
+    expect(
+      h
+        .coach()
+        .requests.filter((r) => r.at >= at + 86400000)
+        .every((r) => r.request.day === oldDay)
+    ).toBe(true);
+    expect(h.state.events.slice(0, prefix.length)).toEqual(prefix);
+    expect(h.state.events.slice(prefix.length).every((e) => e.at === at + 86400000)).toBe(true);
+    expect(coachLearningDay(h.coach(), h.calendar())).toBe(h.calendar());
+    let replay = emptyLearningState(h.state.owner, h.state.timezone);
+    for (const event of h.state.events) replay = applyLearningOperation(replay, event).state;
+    expect(replay).toEqual(h.state);
+  });
+
+  it('keeps review, diagnostic, profile and new daily generation on the calendar date', () => {
+    const h = savedWriting();
+    h.setNow(at + 86400000);
+    const before = JSON.stringify(h.coach());
+    for (const [type, data] of [
+      ['coach.review', {}],
+      ['coach.profile', {}],
+      ['coach.answer', { target: 'diagnostic' }],
+      ['coach.request', { request: { phase: 'daily', target: 'daily' } }],
+      ['coach.request', { request: { phase: 'feedback', target: 'diagnostic' } }],
+      ['coach.request', { request: { phase: 'feedback', target: 'error-review' } }]
+    ])
+      expect(coachOperationDay(h.coach(), h.calendar(), type, data)).toBe(h.calendar());
+    expect(JSON.stringify(h.coach())).toBe(before);
+  });
+
+  it.each(['completed', 'current-day-exists', 'newer-completed-day', 'unused-plan', 'unversioned-task'])(
+    'does not reopen a non-eligible old task: %s',
+    (kind) => {
+      const h = savedWriting(),
+        day = h.coach().days[0],
+        oldDay = day.day;
+      h.setNow(at + 2 * 86400000);
+      if (kind === 'completed') day.completed = true;
+      if (kind === 'current-day-exists') h.coach().days.push({ ...structuredClone(day), day: h.calendar() });
+      if (kind === 'newer-completed-day')
+        h.coach().days.push({ ...structuredClone(day), day: dayKey(at + 86400000, h.state.timezone), completed: true });
+      if (kind === 'unused-plan') Object.assign(day, { answers: [], analysis: null, drafts: [], rewrites: [] });
+      if (kind === 'unversioned-task') delete day.writingTask;
+      const before = structuredClone(h.state);
+      expect(coachLearningDay(h.coach(), h.calendar())).toBe(h.calendar());
+      expect(() => h.commit('coach.paragraph', { day: oldDay, index: 0, rewrite: true, text: '改写旧稿' })).toThrow();
+      expect(h.state).toEqual(before);
+    }
+  );
+
+  it.each(['2026-10-01', '2026-12-01'])('rejects arbitrary historical or future dates: %s', (day) => {
+    const h = savedWriting();
+    h.setNow(at + 86400000);
+    const before = structuredClone(h.state);
+    expect(() => h.commit('coach.paragraph', { day, index: 0, rewrite: true, text: '伪造日期' })).toThrow();
+    expect(h.state).toEqual(before);
+  });
+});
 
 it('S29 keeps valid public-service feedback and original input while old source-uncertain history stays readable', () => {
   const r = request('feedback', {

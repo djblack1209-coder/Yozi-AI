@@ -36,6 +36,7 @@ import {
   coachInputFor,
   coachWeaknesses,
   coachEssayType,
+  coachOperationDay,
   coachWritingBandContext
 } from '../../../laf-backend/functions/_shared/learning-writing-coach.js';
 import { createNewCard, scheduleCard } from '@/services/fsrs-service.js';
@@ -1776,7 +1777,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       ...(type === 'answer' ? { predictionContract: WRITING_PREDICTION_CONTRACT } : {}),
       conversationId: active.value.id,
       explicit: true,
-      day: dayKey(Date.now(), state.value.timezone)
+      day: coachOperationDay(active.value.coach, dayKey(Date.now(), state.value.timezone), `coach.${type}`, data)
     });
   }
   function coachReview(itemId, answer) {
@@ -1825,7 +1826,9 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     assert(getToken(), 'AUTH_REQUIRED', '登录后开始 AI 带练，建档和原答已保留');
     const conversationId = active.value.id,
       context = recordContext(),
-      today = dayKey(Date.now(), state.value.timezone);
+      today = coachOperationDay(active.value.coach, dayKey(Date.now(), state.value.timezone), 'coach.request', {
+        request: { phase, target }
+      });
     const coach = active.value.coach;
     let request = coach.requests.find(
       (v) =>

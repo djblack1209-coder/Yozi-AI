@@ -6,8 +6,8 @@ import { coachErrorReviews } from './learning-coach-review.js';
 import { WRITING_KNOWLEDGE_CONTRACT, writingKnowledgeBinding } from './learning-writing-knowledge.js';
 import { normalizeLearningModelOrigin } from './learning-model-origin.js';
 import { subjectCoachMethod, subjectCoachMethodByContract } from './learning-coach-methods.js';
-import { normalizeExamScope } from './learning-exam-scope.js';
-import { shenlunScopeBinding } from './learning-shenlun-method.js';
+import { normalizeExamScope, EXAM_SCOPE_V2_CONTRACT } from './learning-exam-scope.js';
+import { shenlunScopeBinding, SHENLUN_METHOD_V2_CONTRACT } from './learning-shenlun-method.js';
 import {
   WRITING_PREDICTION_CONTRACT,
   writingPredictionSnapshot,
@@ -553,8 +553,41 @@ export function coachAssessmentTask(request) {
   }
   return null;
 }
+function originalShenlunWritingTask(request) {
+  if (
+    request.exam !== 'shenlun' ||
+    request.methodContract !== SHENLUN_METHOD_V2_CONTRACT ||
+    request.examScope?.contract !== EXAM_SCOPE_V2_CONTRACT ||
+    !(
+      request.phase === 'daily' ||
+      request.phase === 'essay' ||
+      (request.phase === 'feedback' && (request.target === 'analysis' || /^paragraph-\d+$/u.test(request.target)))
+    )
+  )
+    return null;
+  const tasks = request.sources.flatMap((source) =>
+    [...source.content.matchAll(/(?:^|[。\n])\s*(?:题目[一二三四五六七八九十\d]*|写作题目)\s*[:：]\s*/gu)].map(
+      (match) => source.content.slice(match.index + match[0].length).trim()
+    )
+  );
+  if (tasks.length !== 1) return null;
+  const task = tasks[0];
+  if (
+    !task ||
+    task.length > 2400 ||
+    !/^(?:请)?(?:写|概括|归纳|分析|说明|围绕|根据|结合)/u.test(task) ||
+    /\n\s*(?:材料|资料|情境|背景|参考答案|解析|题目)\s*[:：]/u.test(task)
+  )
+    return null;
+  return task;
+}
+
 export function coachInferenceContext(request) {
-  const current = normalizeCoachRequest(request);
+  const normalized = normalizeCoachRequest(request);
+  // A generated writing prompt must not overrule an unambiguous supplied task.
+  // Scope only new model inference; saved requests, signatures and history stay intact.
+  const originalTask = originalShenlunWritingTask(normalized);
+  const current = originalTask ? { ...normalized, task: originalTask } : normalized;
   if (
     subjectCoachMethod(current.exam, current.methodContract)?.observationOnly &&
     ['feedback', 'essay'].includes(current.phase)
@@ -1808,12 +1841,53 @@ function boundWritingBandResult(coach, day, request, candidate) {
     );
   }
 }
+export function coachLearningDay(coach, calendarDay) {
+  if (coach?.days?.some((day) => day.day === calendarDay)) return calendarDay;
+  const previous = coach?.days
+    ?.filter((day) => day.day < calendarDay)
+    .slice()
+    .sort((a, b) => a.day.localeCompare(b.day))
+    .at(-1);
+  // Continue only the latest unfinished, versioned writing task with saved work.
+  // Completed days and unused plans remain history; event timestamps stay current.
+  return previous?.completed === false &&
+    previous.writingTask?.taskVersion === 1 &&
+    previous.pack?.writing?.patterns?.length &&
+    (previous.answers?.length || previous.analysis || previous.drafts?.length || previous.rewrites?.length)
+    ? previous.day
+    : calendarDay;
+}
+
+export function coachOperationDay(coach, calendarDay, type, data = {}) {
+  const writingOperation =
+    [
+      'coach.analysis',
+      'coach.paragraph',
+      'coach.essaySubmit',
+      'coach.reassess',
+      'coach.adopt',
+      'coach.finish'
+    ].includes(type) ||
+    (type === 'coach.answer' && data.target !== 'diagnostic');
+  const request =
+    type === 'coach.result'
+      ? coach?.requests?.find((item) => item.id === data.requestId)?.request
+      : type === 'coach.request'
+        ? data.request
+        : null;
+  const writingRequest =
+    request &&
+    ['feedback', 'essay', 'summary'].includes(request.phase) &&
+    !['diagnostic', 'error-review', 'rewrite'].includes(request.target);
+  return writingOperation || writingRequest ? coachLearningDay(coach, calendarDay) : calendarDay;
+}
+
 export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
   const d = op.data,
     c = state.conversations.find((v) => v.id === d.conversationId);
   assert(c && !c.stopped, 'STOPPED', '当前学习已停止或切换');
   assert(d.explicit === true, 'EXPLICIT_REQUIRED', '请明确提交或保存');
-  const today = dayKey(op.at, state.timezone);
+  const today = coachOperationDay(c.coach, dayKey(op.at, state.timezone), op.type, d);
   assert(d.day === undefined || d.day === today, 'PRECONDITION', '学习日期已变化，请返回今天');
   if (op.type === 'coach.begin') {
     assert(!c.coach, 'CONFLICT', '学习档案已建立');

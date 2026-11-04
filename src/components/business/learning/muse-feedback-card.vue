@@ -125,6 +125,7 @@ import { DEV_TEST } from '@/config/build-channel.js';
 import { publicError } from '@/i18n/index.js';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { dayKey } from '@/services/learning/learning-domain.js';
+import { coachLearningDay } from '../../../../laf-backend/functions/_shared/learning-writing-coach.js';
 import BaseButton from '@/components/base/base-button/base-button.vue';
 import BaseIcon from '@/components/base/base-icon/base-icon.vue';
 import MuseRichText from './muse-rich-text.vue';
@@ -152,7 +153,8 @@ const canReassessEssay = computed(
   () =>
     DEV_TEST &&
     props.feedback.target === 'essay' &&
-    feedbackDay.value?.day === dayKey(Date.now(), learning.state.timezone) &&
+    feedbackDay.value?.day ===
+      coachLearningDay(learning.active?.coach, dayKey(learning.calendarTime, learning.state.timezone)) &&
     !feedbackDay.value.completed
 );
 const previousFeedbacks = computed(() => feedbackDay.value?.feedbackHistory?.[props.feedback.target] || []);

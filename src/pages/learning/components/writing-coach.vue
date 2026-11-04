@@ -239,7 +239,10 @@
           <text v-if="coach.profile.examScope" class="coach-muted">{{ examScopeLabel(coach.profile.examScope) }}</text>
 
           <BaseButton v-if="!loggedIn" variant="primary" @tap="login">登录后开始带练</BaseButton>
-          <text v-if="yesterday" class="coach-muted">{{ reentryText }}</text>
+          <text v-if="learningDay !== today" class="coach-muted" role="status"
+            >继续 {{ learningDay }} 未完成的训练</text
+          >
+          <text v-else-if="yesterday" class="coach-muted">{{ reentryText }}</text>
           <BaseBubble
             v-if="coachReply"
             :id="coachReply.id"
@@ -314,7 +317,8 @@
                 :material-track="materialTrack || Boolean(subjectMethod)"
                 :title="`${record.feedback.target === 'diagnostic' ? '摸底反馈' : subjectMethod && record.phase === 'essay' ? '成文反馈' : record.title} · AI 评估`"
                 :adoptable="
-                  record.day === today && Object.values(day?.feedback || {}).some((f) => f.id === record.feedback.id)
+                  record.day === learningDay &&
+                  Object.values(day?.feedback || {}).some((f) => f.id === record.feedback.id)
                 "
                 :adopted="coach.library.map((item) => item.text)"
                 :disabled="learning.busy"
@@ -599,7 +603,7 @@
                     :disabled="assessmentCounts.pending > 0"
                     variant="primary"
                     @tap="act(() => learning.coachSave('finish'))"
-                    >确认完成今天</BaseButton
+                    >{{ learningDay === today ? '确认完成今天' : '确认完成这次训练' }}</BaseButton
                   ><BaseButton variant="quiet" @tap="safeNavigateTo('/pages/archive/index?view=phrases')"
                     >查看已保存进度</BaseButton
                   ></BaseCard
@@ -679,6 +683,7 @@ import { resolveSkippedProfile } from '@/services/learning/coach-profile.js';
 import {
   COACH_MATERIAL_TRACK,
   coachUsesMaterials,
+  coachLearningDay,
   coachAssessmentCounts
 } from '../../../../laf-backend/functions/_shared/learning-writing-coach.js';
 import { subjectCoachMethod } from '../../../../laf-backend/functions/_shared/learning-coach-methods.js';
@@ -810,7 +815,8 @@ const subjectMethod = computed(() =>
   subjectCoachMethod(coach.value?.profile?.exam || profile.exam, coach.value?.profile?.methodContract)
 );
 const today = computed(() => dayKey(learning.calendarTime, learning.state.timezone));
-const day = computed(() => coach.value?.days.find((d) => d.day === today.value));
+const learningDay = computed(() => coachLearningDay(coach.value, today.value));
+const day = computed(() => coach.value?.days.find((d) => d.day === learningDay.value));
 const canSubmitWriting = computed(
   () =>
     day.value?.writingTask?.taskVersion === 1 &&
@@ -833,7 +839,7 @@ const diagnosticCard = computed(() =>
   coach.value?.diagnostic?.cards.find((c) => !coach.value.diagnostic.answers.some((a) => a.cardId === c.id))
 );
 const skippedCards = ref([]);
-const assessmentCounts = computed(() => coachAssessmentCounts(coach.value, today.value));
+const assessmentCounts = computed(() => coachAssessmentCounts(coach.value, learningDay.value));
 const trainingCard = computed(() =>
   day.value?.analysis && !materialTrack.value
     ? null
@@ -897,7 +903,7 @@ function dictationContext() {
     ? JSON.stringify([
         context,
         learning.selectedConversationId,
-        today.value,
+        learningDay.value,
         answerTarget.value?.kind,
         answerTarget.value?.card?.id,
         paragraphIndex.value,
@@ -1035,7 +1041,7 @@ function saveDraft() {
     });
 }
 watch(
-  () => [learning.recordContext(), learning.selectedConversationId, today.value],
+  () => [learning.recordContext(), learning.selectedConversationId, learningDay.value],
   ([context, id, day]) => {
     saveDraft();
     restoringDraft = true;
@@ -1186,7 +1192,7 @@ function pendingCoachRequest(phase, target = phase) {
       item.status === 'pending' &&
       item.request.phase === phase &&
       item.request.target === target &&
-      item.request.day === today.value
+      item.request.day === (['diagnostic', 'daily'].includes(phase) ? today.value : learningDay.value)
   );
 }
 function requestDisabled(phase, target = phase) {
@@ -1211,7 +1217,7 @@ function requestLabel(phase, target = phase, label = '开始摸底') {
   return coach.value?.requests.some(
     (r) =>
       r.status === 'pending' &&
-      r.request.day === today.value &&
+      r.request.day === (['diagnostic', 'daily'].includes(phase) ? today.value : learningDay.value) &&
       r.request.phase === phase &&
       r.request.target === target
   )

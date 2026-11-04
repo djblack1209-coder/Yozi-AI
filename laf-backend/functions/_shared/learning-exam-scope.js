@@ -174,7 +174,7 @@ function explicitShenlunScopeV2(turns) {
         ...(/申论\s*(?:一|1|Ⅰ)/u.test(text) ? ['gd-shenlun-1'] : []),
         ...(/申论\s*(?:二|2|Ⅱ)/u.test(text) ? ['gd-shenlun-2'] : []),
         ...(/行政执法/u.test(text) ? ['gd-law-enforcement'] : []),
-        ...(/公安专业(?:和|与|及)申论|公安机关执法勤务/u.test(text) ? ['gd-police'] : [])
+        ...(/公安专业(?:和|与|及)申论|公安(?:机关)?执法勤务/u.test(text) ? ['gd-police'] : [])
       ]);
       if (categories.length) facts.positionCategory = categories.length === 1 ? categories[0] : null;
       else if (positionCategory !== undefined || /一般职位|综合管理类职位|公安.*申论/u.test(text))
