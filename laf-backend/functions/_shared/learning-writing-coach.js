@@ -1,4 +1,9 @@
-import { normalizePersonalCorpus, writingPersonalCorpus, PERSONAL_CORPUS_PROMPT } from './learning-writing-corpus.js';
+import {
+  normalizePersonalCorpus,
+  writingPersonalCorpus,
+  PERSONAL_CORPUS_PROMPT,
+  PHRASE_RECALL_CONTRACT
+} from './learning-writing-corpus.js';
 import { phraseReviewRating } from './learning-runtime-policy.js';
 /* global __YOZI_DEV_TEST__ */
 // 教学方法与已保存事实共用现有学习 reducer、备份及同步；模型不授予可靠判分。
@@ -2428,6 +2433,17 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
   }
   if (op.type === 'coach.review') {
     const item = coach.library.find((v) => v.id === d.itemId);
+    const recall = d.reviewContract !== undefined || d.referenceShown !== undefined;
+    if (recall)
+      assert(
+        d.reviewContract === PHRASE_RECALL_CONTRACT &&
+          typeof d.referenceShown === 'boolean' &&
+          ['english1', 'english2'].includes(coach.profile?.exam) &&
+          d.practice !== true &&
+          d.ratingSource === 'host-v1',
+        'INVALID_INPUT',
+        '句式复习版本或参考状态不合法'
+      );
     if (d.practice === true) {
       assert(
         typeof __YOZI_DEV_TEST__ !== 'undefined' && __YOZI_DEV_TEST__ === true,
@@ -2460,7 +2476,11 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
       '复习记录不合法'
     );
     if (d.ratingSource === 'host-v1')
-      assert(d.rating === phraseReviewRating(item, d.answer), 'INVALID_INPUT', '复习评分必须由宿主核对结果映射');
+      assert(
+        d.rating === phraseReviewRating(item, d.answer, { hinted: recall && d.referenceShown }),
+        'INVALID_INPUT',
+        '复习评分必须由宿主核对结果映射'
+      );
     const due = Date.parse(d.schedule.due);
     assert(due > op.at && due - op.at <= 366 * 86400000, 'INVALID_INPUT', '复习日期超出范围');
     item.schedule = JSON.parse(JSON.stringify(d.schedule));
@@ -2471,7 +2491,8 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
       rating: d.rating,
       at: op.at,
       day: today,
-      source: d.ratingSource === 'host-v1' ? 'host_checked' : 'self_report'
+      source: d.ratingSource === 'host-v1' ? 'host_checked' : 'self_report',
+      ...(recall ? { reviewContract: PHRASE_RECALL_CONTRACT, referenceShown: d.referenceShown } : {})
     });
     return { itemId: item.id, due };
   }

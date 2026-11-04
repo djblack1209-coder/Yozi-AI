@@ -1,6 +1,7 @@
 // A read-only view of saved originals. Never infer a grade or reconstruct deleted facts from events.
 import { writingAnswerHash, writingBandRubric, WRITING_BAND_RESULT_CONTRACT } from './learning-rubric.js';
 import { subjectCoachMethod } from './learning-coach-methods.js';
+import { PHRASE_RECALL_CONTRACT } from './learning-writing-corpus.js';
 
 function currentWritingSubmission(coach, day) {
   const method = subjectCoachMethod(coach.profile?.exam, coach.profile?.methodContract);
@@ -139,10 +140,13 @@ export function coachSavedRecords(conversation) {
       rows.push({
         key: review.id,
         day: review.day,
-        title: '复习自评',
+        title: review.reviewContract === PHRASE_RECALL_CONTRACT ? '句式复习' : '复习自评',
         prompt: item.text,
         answer: review.answer,
-        at: review.at
+        at: review.at,
+        ...(review.reviewContract === PHRASE_RECALL_CONTRACT
+          ? { reviewContext: review.referenceShown ? '复习卡已显示原句' : '复习卡未显示原句' }
+          : {})
       });
   for (const attempt of coach.errorReviews || [])
     rows.push({

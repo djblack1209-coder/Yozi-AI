@@ -1,4 +1,5 @@
 export const WRITING_PERSONAL_CORPUS_CONTRACT = 'writing-personal-corpus-v1';
+export const PHRASE_RECALL_CONTRACT = 'phrase-recall-v1';
 
 export function personalCorpusTarget(request) {
   return (
@@ -73,6 +74,17 @@ export function personalCorpusSource(coach, phrase) {
     essayType: source.request.essayType,
     materialIds: [...(phrase.materialIds || [])]
   };
+}
+
+export function phraseRecallCue(coach, phrase) {
+  const source = personalCorpusSource(coach, phrase);
+  const card =
+    source &&
+    coach.days.find((day) => day.day === source.day)?.pack?.cards?.find((card) => `card-${card.id}` === source.target);
+  // Reuse a saved translation task, not its example/answer or a newly generated exercise.
+  if (card?.kind !== 'translate_en' || typeof card.prompt !== 'string') return '';
+  const normalize = (value) => value.normalize('NFKC').replace(/\s+/gu, ' ').trim().toLowerCase();
+  return normalize(card.prompt).includes(normalize(phrase.text)) ? '' : card.prompt;
 }
 
 export function writingPersonalCorpus(state, conversation, request) {

@@ -45,7 +45,7 @@ export function hostReviewRating({ outcome, hinted = false, correctStreak = 0 })
   if (hinted) return 2;
   return correctStreak >= 2 ? 4 : 3;
 }
-export function phraseReviewRating(item, answer) {
+export function phraseReviewRating(item, answer, { hinted = false } = {}) {
   const normalize = (value) =>
     String(value || '')
       .normalize('NFKC')
@@ -55,6 +55,7 @@ export function phraseReviewRating(item, answer) {
   const correct = normalize(answer) === normalize(item.text);
   return hostReviewRating({
     outcome: correct ? 'correct' : 'uncertain',
+    hinted,
     correctStreak: (item.reviews || []).slice(-2).filter((review) => review.rating >= 3).length
   });
 }

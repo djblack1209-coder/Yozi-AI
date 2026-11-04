@@ -313,6 +313,9 @@
           >
           <view v-for="record in visiblePractice" :key="record.key" class="coach-history-turn">
             <text class="coach-day-divider">{{ record.day }} · {{ record.title }}</text>
+            <text v-if="record.reviewContext" class="coach-muted" data-test="phrase-review-context">{{
+              record.reviewContext
+            }}</text>
             <BaseBubble v-if="record.prompt || record.source" avatar rich class="coach-agent-turn">
               <MuseRichText v-if="record.prompt" :content="record.prompt" />
               <text v-if="record.source" class="coach-muted">{{ sourceLabel(record.source) }}</text>
@@ -434,11 +437,26 @@
                 >
               </template>
             </BaseCard>
-            <BaseCard v-if="dueItem">
-              <text class="coach-title">{{ materialTrack ? '先复习一个知识点' : '先复习到期句式' }}</text
-              ><text>{{ dueItem.text }}</text>
+            <BaseCard v-if="dueItem" data-test="phrase-review-card">
+              <text class="coach-title">{{ materialTrack ? '先复习一个知识点' : '先复习到期句式' }}</text>
+              <template v-if="phraseRecall">
+                <text v-if="recallCue" selectable>{{ recallCue }}</text>
+                <text v-else class="coach-muted">复习 {{ dueItem.day }} 保存的句式，先尝试回忆，再查看原句。</text>
+                <BaseButton
+                  v-if="!referenceShown"
+                  variant="quiet"
+                  data-test="phrase-review-reveal"
+                  @tap="showReviewReference"
+                  >查看原句</BaseButton
+                >
+                <text v-else selectable data-test="phrase-review-original">{{ dueItem.text }}</text>
+                <text v-if="referenceShown" class="coach-muted">已查看原句，本次按提示后复习安排。</text>
+              </template>
+              <text v-else>{{ dueItem.text }}</text>
               <text class="coach-muted">提交后由系统核对原句并安排复习，近义表达保留待核对。</text>
-              <BaseButton :disabled="!answer.trim() || learning.busy" @tap="review">提交复习答案</BaseButton>
+              <BaseButton data-test="phrase-review-submit" :disabled="!answer.trim() || learning.busy" @tap="review"
+                >提交复习答案</BaseButton
+              >
             </BaseCard>
             <template v-else>
               <BaseCard v-if="!coach.diagnostic">
@@ -700,6 +718,7 @@ import { computed, ref, reactive, watch, onMounted, onBeforeUnmount, onUnmounted
 import { coachSavedRecords } from '../../../../laf-backend/functions/_shared/learning-coach-records.js';
 import { coachDueItem } from '../../../../laf-backend/functions/_shared/learning-reminders.js';
 import { workspaceDrafts } from '@/services/learning/workspace-drafts.js';
+import { phraseRecallCue } from '../../../../laf-backend/functions/_shared/learning-writing-corpus.js';
 import BaseBubble from '@/components/base/base-bubble/base-bubble.vue';
 import LearningMessage from './learning-message.vue';
 import '@/i18n/muse.js';
@@ -891,6 +910,11 @@ const loggedIn = computed(() => Boolean(getToken()));
 const dueItem = computed(() =>
   coachDueItem(coach.value, learning.calendarTime, learning.state.events, learning.active?.id)
 );
+const phraseRecall = computed(() => ['english1', 'english2'].includes(coach.value?.profile?.exam));
+const recallCue = computed(() =>
+  dueItem.value && phraseRecall.value ? phraseRecallCue(coach.value, dueItem.value) : ''
+);
+const referenceShown = ref(false);
 const yesterday = computed(() => coach.value?.days.filter((d) => d.day < today.value).at(-1));
 const reentryText = computed(() => {
   const gap = Math.max(1, Math.round((Date.parse(today.value) - Date.parse(yesterday.value?.day)) / 86400000));
@@ -1089,6 +1113,23 @@ const calendar = learning.observeCalendar();
 calendar.show();
 onUnmounted(() => calendar.dispose());
 const drafts = workspaceDrafts(learning);
+const recallDraftKey = computed(() =>
+  dueItem.value && phraseRecall.value
+    ? `coach:recall:${learning.selectedConversationId}:${dueItem.value.id}:${dueItem.value.due}`
+    : null
+);
+watch(
+  () => [learning.recordContext(), recallDraftKey.value],
+  ([context, key]) => {
+    referenceShown.value = Boolean(key && drafts.read(context, key).referenceShown);
+  },
+  { immediate: true, flush: 'sync' }
+);
+function showReviewReference() {
+  if (!recallDraftKey.value) return;
+  drafts.save(learning.recordContext(), recallDraftKey.value, { referenceShown: true });
+  referenceShown.value = true;
+}
 let draftBinding;
 let draftAlive = true;
 let restoringDraft = false;
@@ -1331,9 +1372,19 @@ function saveParagraph(rewrite) {
   });
 }
 function review() {
-  act(() => {
-    learning.coachReview(dueItem.value.id, answer.value);
-    answer.value = '';
+  const context = learning.recordContext(),
+    conversationId = learning.selectedConversationId,
+    item = dueItem.value,
+    key = recallDraftKey.value,
+    draftKey = draftBinding?.key,
+    submitted = answer.value,
+    shown = referenceShown.value;
+  if (!item) return;
+  return act(async () => {
+    await learning.coachReview(item.id, submitted, phraseRecall.value ? { referenceShown: shown } : undefined);
+    if (context !== learning.recordContext() || conversationId !== learning.selectedConversationId) return;
+    if (key) drafts.remove(context, key);
+    if (draftKey === draftBinding?.key && answer.value === submitted) answer.value = '';
   });
 }
 function toggleMaterial(id) {

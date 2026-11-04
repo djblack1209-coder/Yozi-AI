@@ -10,6 +10,7 @@ function inputFields(value) {
   const result = {};
   for (const key of ['draft', 'answer', 'goal', 'text']) if (typeof value?.[key] === 'string') result[key] = value[key];
   if (['study', 'question'].includes(value?.entryMode)) result.entryMode = value.entryMode;
+  if (typeof value?.referenceShown === 'boolean') result.referenceShown = value.referenceShown;
   if (value?.analysis && typeof value.analysis === 'object') {
     const analysis = {};
     for (const key of ['genre', 'recipient', 'purpose', 'points', 'words'])

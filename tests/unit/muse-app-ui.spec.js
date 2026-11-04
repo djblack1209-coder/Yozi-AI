@@ -189,7 +189,9 @@ it('review keeps the draft local until explicit submission and lets the host der
     await wrapper.get('.muse-composer textarea').trigger('keydown', { key: 'Enter' });
     await flushPromises();
     expect(review).toHaveBeenCalledOnce();
-    expect(review).toHaveBeenCalledWith('synthetic-due', 'I am writing to invite you to a study group.');
+    expect(review).toHaveBeenCalledWith('synthetic-due', 'I am writing to invite you to a study group.', {
+      referenceShown: false
+    });
     expect(wrapper.findAll('button').map((button) => button.text())).not.toContain('记得');
   } finally {
     wrapper?.unmount();

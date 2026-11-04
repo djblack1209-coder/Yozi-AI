@@ -1,5 +1,6 @@
 import {
   WRITING_PERSONAL_CORPUS_CONTRACT,
+  PHRASE_RECALL_CONTRACT,
   writingPersonalCorpus
 } from '../../../laf-backend/functions/_shared/learning-writing-corpus.js';
 import { LOCATION_KEY, restoredConversation } from '@/services/learning/shell-navigation.js';
@@ -1822,10 +1823,12 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       day: coachOperationDay(active.value.coach, dayKey(Date.now(), state.value.timezone), `coach.${type}`, data)
     });
   }
-  function coachReview(itemId, answer) {
+  function coachReview(itemId, answer, { referenceShown = false } = {}) {
     const item = active.value?.coach?.library.find((v) => v.id === itemId);
     assert(item, 'NOT_FOUND', '句式已变化');
-    const rating = phraseReviewRating(item, answer);
+    const recall = ['english1', 'english2'].includes(active.value.coach.profile?.exam);
+    assert(typeof referenceShown === 'boolean', 'INVALID_INPUT', '复习参考状态不合法');
+    const rating = phraseReviewRating(item, answer, { hinted: recall && referenceShown });
     const card = item.schedule
       ? {
           ...item.schedule,
@@ -1839,6 +1842,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       answer,
       rating,
       ratingSource: 'host-v1',
+      ...(recall ? { reviewContract: PHRASE_RECALL_CONTRACT, referenceShown } : {}),
       schedule: JSON.parse(JSON.stringify(scheduled))
     });
   }
