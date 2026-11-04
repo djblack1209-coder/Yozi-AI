@@ -202,4 +202,62 @@ describe('S4 device state and confirmed mutations', () => {
     await c.mutate(item.id, draft());
     expect(c.readDraft(item.id).content).toBe('Newer unsaved text');
   });
+  it.each([
+    ['foreign id', { action: 'save', id: 'another-document', expectedVersion: 1, title: 'x', content: 'x' }],
+    ['wrong base', { action: 'save', expectedVersion: 2, title: 'x', content: 'x' }],
+    ['extra field', { action: 'save', expectedVersion: 1, title: 'x', content: 'x', unexpected: true }],
+    ['invalid action', { action: 'delete', expectedVersion: 1, sourceVersion: 1 }],
+    ['invalid restore source', { action: 'restore', expectedVersion: 1, sourceVersion: 0 }]
+  ])('S44 rejects a damaged pending retry without sending or changing local text: %s', async (_name, patch) => {
+    const c = client();
+    const frozen = { id: item.id, ...patch };
+    c.writeDraft(item.id, {
+      ...draft('Preserve my independent later edit.'),
+      pending: { signature: JSON.stringify(frozen), requestId: 'original-pending-request' }
+    });
+    const before = structuredClone(c.readDraft(item.id));
+    await expect(c.mutate(item.id, before, null, { retryPending: true })).rejects.toThrow('请求不可用');
+    expect(request).not.toHaveBeenCalled();
+    expect(c.readDraft(item.id)).toEqual(before);
+  });
+  it('S44 old restore pending without a frozen input conservatively retains the local text', async () => {
+    const c = client();
+    await c.mutate(item.id, draft('Saved second version.'));
+    const base = c.readDraft(item.id);
+    const body = { action: 'restore', id: item.id, expectedVersion: 2, sourceVersion: 1 };
+    await request({ ...body, requestId: 'legacy-lost-restore' });
+    c.writeDraft(item.id, {
+      ...base,
+      content: 'Legacy scratch with unknown edit timing.',
+      pending: { signature: JSON.stringify(body), requestId: 'legacy-lost-restore' }
+    });
+    const value = await c.mutate(item.id, c.readDraft(item.id), 1, { retryPending: true });
+    expect(value.revision).toMatchObject({ version: 3, restoredFrom: 1, content: item.content });
+    expect(revisions).toHaveLength(3);
+    expect(c.readDraft(item.id)).toMatchObject({
+      version: 3,
+      content: 'Legacy scratch with unknown edit timing.',
+      pending: null
+    });
+  });
+  it('S44 a retry validates the frozen content receipt rather than the newer scratch text', async () => {
+    const c = client();
+    const send = request.getMockImplementation();
+    request.mockImplementationOnce(async (...args) => {
+      await send(...args);
+      throw new Error('Synthetic lost acknowledgement');
+    });
+    await expect(c.mutate(item.id, draft('Frozen saved copy.'))).rejects.toThrow('lost acknowledgement');
+    c.writeDraft(item.id, { ...c.readDraft(item.id), content: 'Later local words.' });
+    const before = structuredClone(c.readDraft(item.id));
+    request.mockImplementationOnce(async (...args) => {
+      const response = await send(...args);
+      response.data.revision.content = 'Later local words.';
+      return response;
+    });
+    await expect(c.mutate(item.id, before, null, { retryPending: true })).rejects.toThrow('回执');
+    expect(c.readDraft(item.id)).toEqual(before);
+    expect(revisions).toHaveLength(2);
+    expect(revisions[1].content).toBe('Frozen saved copy.');
+  });
 });

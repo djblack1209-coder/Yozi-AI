@@ -307,7 +307,8 @@ async function load(discard = false) {
     doc.value = value;
     draft.value = discard || !scratch ? makeDraft(value) : scratch;
     if (draft.value.version !== value.artifact.version) error.value = ARTIFACT_CONFLICT;
-    persist();
+    if (discard) client.writeDraft(props.target.id, draft.value);
+    else persist();
     await position();
   } catch (e) {
     if (current() && ticket === sequence) {
@@ -385,11 +386,15 @@ async function save(restore = false, retryPending = false) {
       ...draft.value,
       ...(restore ? { version: pending?.expectedVersion || doc.value.artifact.version } : {})
     };
-    const value = await client.mutate(props.target.id, submission, sourceVersion);
+    const value = await client.mutate(props.target.id, submission, sourceVersion, { retryPending });
     if (!current() || ticket !== sequence) return;
     doc.value = value;
     draft.value = client.readDraft(props.target.id);
-    saved.value = true;
+    saved.value =
+      draft.value.version === value.revision.version &&
+      draft.value.title === value.revision.title &&
+      draft.value.content === value.revision.content &&
+      !draft.value.pending;
     retryAction.value = '';
     historical.value = null;
     history.value = null;
@@ -401,7 +406,9 @@ async function save(restore = false, retryPending = false) {
   }
 }
 function retry() {
-  if (retryAction.value && doc.value) save(retryAction.value === 'restore', true);
+  const pending = pendingMutation();
+  if (pending && doc.value) save(pending.action === 'restore', true);
+  else if (retryAction.value && doc.value) save(retryAction.value === 'restore');
   else load();
 }
 async function showHistory() {

@@ -224,48 +224,76 @@ export function createLearningArtifacts({
     },
     // Persist request identity before sending. Lost replies, panel recreation and
     // App restarts retry the exact same mutation instead of appending twice.
-    async mutate(id, draft, sourceVersion = null) {
-      const body = sourceVersion
+    async mutate(id, draft, sourceVersion = null, { retryPending = false } = {}) {
+      let body = sourceVersion
         ? { action: 'restore', id, expectedVersion: draft.version, sourceVersion }
         : { action: 'save', id, expectedVersion: draft.version, title: draft.title, content: draft.content };
-      const signature = JSON.stringify(body);
       const saved = readDraft(id);
-      const pending =
-        saved?.pending?.signature === signature
-          ? saved.pending
-          : {
-              signature,
-              requestId:
-                globalThis.crypto?.randomUUID?.() || `artifact_${Date.now()}_${Math.random().toString(36).slice(2)}`
-            };
+      let pending = saved?.pending;
+      if (retryPending) {
+        let frozen;
+        try {
+          frozen = JSON.parse(pending?.signature);
+        } catch {
+          // Keep the local text when an old or damaged pending record cannot be retried.
+        }
+        const fields =
+          frozen?.action === 'save'
+            ? ['action', 'id', 'expectedVersion', 'title', 'content']
+            : ['action', 'id', 'expectedVersion', 'sourceVersion'];
+        if (
+          !frozen ||
+          !['save', 'restore'].includes(frozen.action) ||
+          frozen.id !== id ||
+          !positive(frozen.expectedVersion) ||
+          frozen.expectedVersion !== draft.version ||
+          typeof pending?.requestId !== 'string' ||
+          !pending.requestId ||
+          Object.keys(frozen).length !== fields.length ||
+          !fields.every((field) => Object.hasOwn(frozen, field)) ||
+          (frozen.action === 'save'
+            ? typeof frozen.title !== 'string' || typeof frozen.content !== 'string'
+            : !positive(frozen.sourceVersion))
+        )
+          throw new Error('待确认的文档请求不可用。修改已保留，请重新载入核对。');
+        body = frozen;
+      } else {
+        const signature = JSON.stringify(body);
+        if (pending && pending.signature !== signature)
+          throw new Error('上一项保存或恢复尚待确认。请先重试，当前修改已保留。');
+        pending ||= {
+          signature,
+          requestId:
+            globalThis.crypto?.randomUUID?.() || `artifact_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          input: { title: draft.title, content: draft.content }
+        };
+      }
       write('draft', id, { ...draft, pending });
       const value = document(await send({ ...body, requestId: pending.requestId }), id);
       const receipt = value.receipt;
       if (
         receipt?.requestId !== pending.requestId ||
         receipt.action !== body.action ||
-        receipt.expectedVersion !== draft.version ||
-        receipt.version !== draft.version + 1 ||
+        receipt.expectedVersion !== body.expectedVersion ||
+        receipt.version !== body.expectedVersion + 1 ||
         value.revision.version !== receipt.version ||
         value.artifact.version !== receipt.version ||
-        (!sourceVersion && (value.revision.title !== draft.title || value.revision.content !== draft.content)) ||
-        (sourceVersion && value.revision.restoredFrom !== sourceVersion)
+        (body.action === 'save' && (value.revision.title !== body.title || value.revision.content !== body.content)) ||
+        (body.action === 'restore' && value.revision.restoredFrom !== body.sourceVersion)
       )
         throw new Error(invalidReceipt);
       // Do not erase edits made after a closed panel sent this request.
       const latest = readDraft(id);
-      if (
-        latest?.pending?.requestId === pending.requestId &&
-        latest.title === draft.title &&
-        latest.content === draft.content
-      )
+      if (latest?.pending?.requestId === pending.requestId && latest.version === body.expectedVersion) {
+        const input = body.action === 'save' ? body : pending.input;
+        const unchanged = input && latest.title === input.title && latest.content === input.content;
         write('draft', id, {
-          ...draft,
+          ...latest,
           version: value.revision.version,
-          title: value.revision.title,
-          content: value.revision.content,
+          ...(unchanged ? { title: value.revision.title, content: value.revision.content } : {}),
           pending: null
         });
+      }
       return value;
     }
   };
