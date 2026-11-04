@@ -450,6 +450,7 @@ watch([() => context.id.value, section], () => {
 watch(items, (value) => {
   const ids = new Set(value.map((item) => item.id));
   selected.value = selected.value.filter((id) => ids.has(id));
+  if (!value.some((item) => item.materialId === selectedMaterialId.value)) selectedMaterialId.value = '';
 });
 function kindLabel(value) {
   return (

@@ -40,6 +40,74 @@ it('keeps history, insights, practice and saved items reachable from the product
   expect(JSON.stringify(harness.store.state)).toBe(before);
 });
 describe('Muse library keeps selection and private reading local', () => {
+  it.each(['search', 'type navigation', 'filter menu'])(
+    'S49 closes a private reader excluded by %s and requires an explicit reopen',
+    async (filter) => {
+      const before = JSON.stringify(harness.store.state),
+        storageBefore = JSON.stringify(globalThis.__mockStorage),
+        navigationsBefore = safeNavigateTo.mock.calls.length;
+      await wrapper.get('[aria-label="打开 我的私人资料"]').trigger('tap');
+      expect(wrapper.get('.material-reader').text()).toContain('本人原文');
+      if (filter === 'search') await wrapper.get('input').setValue('另一份');
+      else if (filter === 'type navigation') {
+        await wrapper
+          .findAll('.library-type')
+          .find((node) => node.text() === '视频')
+          .trigger('tap');
+      } else {
+        await wrapper.get('[aria-label="筛选资料"]').trigger('tap');
+        await wrapper
+          .findAll('.library-filter button')
+          .find((node) => node.text() === '图片')
+          .trigger('tap');
+      }
+      expect(wrapper.find('[aria-label="打开 我的私人资料"]').exists()).toBe(false);
+      expect(wrapper.find('.material-reader').exists()).toBe(false);
+      if (filter === 'search') await wrapper.get('input').setValue('');
+      else if (filter === 'type navigation') {
+        await wrapper
+          .findAll('.library-type')
+          .find((node) => node.text() === '全部学习内容')
+          .trigger('tap');
+      } else {
+        await wrapper
+          .findAll('.library-filter button')
+          .find((node) => node.text() === '全部类型')
+          .trigger('tap');
+        await wrapper
+          .findAll('.library-filter button')
+          .find((node) => node.text() === '完成')
+          .trigger('tap');
+      }
+      expect(wrapper.find('[aria-label="打开 我的私人资料"]').exists()).toBe(true);
+      expect(wrapper.find('.material-reader').exists()).toBe(false);
+      await wrapper.get('[aria-label="打开 我的私人资料"]').trigger('tap');
+      expect(wrapper.get('.material-reader').text()).toContain('本人原文');
+      expect(JSON.stringify(harness.store.state)).toBe(before);
+      expect(JSON.stringify(globalThis.__mockStorage)).toBe(storageBefore);
+      expect(safeNavigateTo.mock.calls).toHaveLength(navigationsBefore);
+    }
+  );
+  it('S49 retains a matching private reader across search, document type and sort changes', async () => {
+    const before = JSON.stringify(harness.store.state);
+    await wrapper.get('[aria-label="打开 我的私人资料"]').trigger('tap');
+    await wrapper.get('input').setValue('  私人  ');
+    expect(wrapper.get('.material-reader').text()).toContain('本人原文');
+    await wrapper
+      .findAll('.library-type')
+      .find((node) => node.text() === '文档')
+      .trigger('tap');
+    expect(wrapper.get('.material-reader').text()).toContain('本人原文');
+    await wrapper.get('[aria-label="筛选资料"]').trigger('tap');
+    await wrapper
+      .findAll('.library-filter button')
+      .find((node) => node.text() === '最早优先')
+      .trigger('tap');
+    expect(wrapper.get('.material-reader').text()).toContain('本人原文');
+    await wrapper.get('input').setValue('');
+    expect(wrapper.get('.material-reader').text()).toContain('本人原文');
+    expect(JSON.stringify(harness.store.state)).toBe(before);
+  });
   it('keeps type navigation visible, previews saved text, and does not fabricate empty media or write facts', async () => {
     const before = JSON.stringify(harness.store.state);
     expect(wrapper.findAll('.library-type').map((node) => node.text())).toEqual([
