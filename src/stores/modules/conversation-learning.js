@@ -5411,6 +5411,18 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           ? '已取消采用云端记录，本机记录保留；请待请求收尾后再重试。'
           : '同步已取消，本机记录保留；已发送批次可能已保存云端，请待请求收尾后再明确重试。';
   }
+  function syncFailureMessage(failure, kind) {
+    if (kind === 'sync' && failure?.code === 'CONFLICT') {
+      try {
+        const archive = learningRepository.previewSyncConflict();
+        if (archive?.owner === getUserId() && archive.ids.length)
+          return '本机与云端记录存在差异，两份副本已保留；请在下方查看并选择要继续的记录。';
+      } catch {
+        // 无法读回归档时，不宣称副本已保存。
+      }
+    }
+    return publicError(failure);
+  }
   async function runSync(action, kind, message) {
     idleRecords();
     learningRepository.prepareAsyncAction();
@@ -5467,7 +5479,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
             phase: request.controller.signal.aborted ? 'cancelled' : 'error',
             kind,
             context: request.context,
-            message: request.controller.signal.aborted ? syncCancelledMessage(kind) : publicError(failure)
+            message: request.controller.signal.aborted ? syncCancelledMessage(kind) : syncFailureMessage(failure, kind)
           };
         else syncState.value = { phase: 'idle', message: '', context: null, kind: null };
       }

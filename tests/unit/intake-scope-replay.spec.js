@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
+import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import {
   MODEL_INTAKE_V2_CONTRACT,
   INTAKE_SCOPE_REPLAY_CONTRACT,
@@ -450,5 +452,71 @@ describe('S40 same-id confirmed scope synchronization boundaries', () => {
     await synchronizeLearning(repo, true, request);
     expect(repo.read()).toEqual(state);
     expect(repo.previewSyncConflict()).toBeNull();
+  });
+});
+
+describe('S40 saved conflict feedback in the real learning store', () => {
+  const localAndRemote = () => {
+    const a = harness(),
+      b = harness();
+    a.complete(scope());
+    b.complete(scope({ positionCategory: 'gd-police' }));
+    return [a.get(), b.get()];
+  };
+  const startStore = (local, response) => {
+    storageService.save(LEARNING_KEY, local, true);
+    setActivePinia(createPinia());
+    const store = useConversationLearningStore();
+    vi.spyOn(uni, 'request').mockImplementation((options) => {
+      options.success({ data: response });
+      return { abort: vi.fn() };
+    });
+    return store;
+  };
+  it('explains the retained two-copy conflict and available action instead of suggesting a blind retry', async () => {
+    const [local, remote] = localAndRemote(),
+      store = startStore(local, { success: true, data: syncWireResult({ state: remote, revision: 1 }) });
+    try {
+      await expect(store.syncRecords(true)).rejects.toMatchObject({ code: 'CONFLICT' });
+      expect(store.state).toEqual(local);
+      expect(store.syncConflict).toMatchObject({ localEvents: 5, remoteEvents: 5, ids: ['s39-4'] });
+      expect(store.syncState).toMatchObject({
+        phase: 'error',
+        kind: 'sync',
+        message: '本机与云端记录存在差异，两份副本已保留；请在下方查看并选择要继续的记录。'
+      });
+      expect(store.syncBusy).toBe(false);
+      expect(store.syncProgress).toBeNull();
+    } finally {
+      store.$dispose();
+    }
+  });
+  it('keeps the original state and reports no retained archive when archive persistence fails', async () => {
+    const [local, remote] = localAndRemote(),
+      store = startStore(local, { success: true, data: syncWireResult({ state: remote, revision: 1 }) });
+    const save = storageService.save.bind(storageService);
+    vi.spyOn(storageService, 'save').mockImplementation((key, ...args) =>
+      key === `${LEARNING_KEY}_sync_conflict` ? false : save(key, ...args)
+    );
+    try {
+      await expect(store.syncRecords(true)).rejects.toMatchObject({ code: 'STORAGE_FAILED' });
+      expect(store.state).toEqual(local);
+      expect(store.syncConflict).toBeNull();
+      expect(store.syncState.message).not.toContain('两份副本已保留');
+    } finally {
+      store.$dispose();
+    }
+  });
+  it('does not claim that two copies were saved when the server reports conflict without a local archive', async () => {
+    const [local] = localAndRemote(),
+      store = startStore(local, { success: false, error: 'CONFLICT', message: '服务端冲突' });
+    try {
+      await expect(store.syncRecords(true)).rejects.toThrow();
+      expect(store.state).toEqual(local);
+      expect(store.syncConflict).toBeNull();
+      expect(store.syncState.message).not.toContain('两份副本已保留');
+    } finally {
+      store.$dispose();
+    }
   });
 });
