@@ -2030,6 +2030,7 @@ import {
 import MuseModelControl from '@/components/business/learning/muse-model-control.vue';
 import MuseModelFeedback from '@/components/business/learning/muse-model-feedback.vue';
 import { modelErrorPresentation } from '../../../laf-backend/functions/_shared/model-errors.js';
+import { LEARNING_WORKFLOW_CONTRACT } from '@/services/learning/learning-workflow.js';
 import { publicError, t } from '@/i18n/index.js';
 import BaseButton from '@/components/base/base-button/base-button.vue';
 import BaseCard from '@/components/base/base-card/base-card.vue';
@@ -4449,9 +4450,24 @@ async function runRecordSync(action) {
   feedback.value = '';
   const sequence = syncPageSequence,
     context = learning.recordContext(),
-    previous = learning.syncState;
+    previous = learning.syncState,
+    failure = modelFailure.value,
+    owner = learning.state.owner,
+    workflow =
+      learning.recoverableRequest?.workflowContract === LEARNING_WORKFLOW_CONTRACT ? learning.recoverableRequest : null;
   try {
     await action();
+    if (
+      workflow &&
+      appPageAlive &&
+      appPageVisible &&
+      sequence === syncPageSequence &&
+      learning.state.owner === owner &&
+      modelFailure.value === failure &&
+      !learning.error &&
+      learning.state.events.some((event) => event.id === `${workflow.requestId}:reply`)
+    )
+      modelFailure.value = null;
   } catch (failure) {
     if (
       appPageAlive &&

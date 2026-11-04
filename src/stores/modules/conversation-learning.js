@@ -5520,6 +5520,10 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   }
   async function runSync(action, kind, message) {
     idleRecords();
+    const workflow =
+      recoverableRequest.value?.workflowContract === LEARNING_WORKFLOW_CONTRACT
+        ? { requestId: recoverableRequest.value.requestId, error: error.value }
+        : null;
     learningRepository.prepareAsyncAction();
     const request = {
       controller: new AbortController(),
@@ -5563,6 +5567,10 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       applied = true;
       syncState.value = { phase: 'success', kind, context: recordContext(), message };
       state.value = next;
+      if (workflow && state.value.events.some((event) => event.id === `${workflow.requestId}:reply`)) {
+        if (error.value === workflow.error) error.value = '';
+        if (workflowContinuation.value?.requestId === workflow.requestId) workflowContinuation.value = null;
+      }
       if (!active.value) selectedConversationId.value = state.value.conversations.at(-1)?.id || null;
       uni.$emit('conversationLearningUpdated');
       return state.value;

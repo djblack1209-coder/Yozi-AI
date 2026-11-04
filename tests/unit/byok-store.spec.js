@@ -443,6 +443,41 @@ it('S52 restores a lost planner reply after reopening by reads, then requires ex
   expect(store.recoverableRequest).toBeNull();
 });
 
+it.each([true, false])(
+  'S52 sync resolves an incomplete workflow notice only for its saved final reply (matching=%s)',
+  async (matching) => {
+    await prepareWorkflowStore();
+    installWorkflowReplies({ losePlanReply: true });
+    await store.send(workflowQuestion, { chatEntry: true, discussionOnly: true });
+    await store.recoverModelResult();
+    const pending = JSON.parse(JSON.stringify(store.recoverableRequest)),
+      originalEvents = JSON.parse(JSON.stringify(store.state.events)),
+      incompleteError = store.error;
+    expect(incompleteError).toBeTruthy();
+    vi.mocked(generateLearningTurn).mockClear();
+    vi.mocked(synchronizeLearning).mockImplementationOnce(async () => {
+      const next = learningRepository.commit({
+        id: matching ? `${pending.requestId}:reply` : 'another-saved-reply',
+        type: 'message.add',
+        data: { conversationId: pending.conversationId, role: 'assistant', content: '已保存的汇总。' }
+      }).state;
+      return learningRepository.replaceSynchronized(next);
+    });
+    await store.syncRecords(true);
+    expect(store.state.events.slice(0, originalEvents.length)).toEqual(originalEvents);
+    expect(store.state.attempts).toHaveLength(0);
+    expect(generateLearningTurn).not.toHaveBeenCalled();
+    if (matching) {
+      expect(store.error).toBe('');
+      expect(store.recoverableRequest).toBeNull();
+      expect(store.workflowCanContinue).toBe(false);
+    } else {
+      expect(store.error).toBe(incompleteError);
+      expect(store.recoverableRequest.requestId).toBe(pending.requestId);
+    }
+  }
+);
+
 it.each(['unadvertised', 'stream'])(
   'S52 refuses unsupported %s workflow execution before any request is sent',
   async (kind) => {
