@@ -32,6 +32,42 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('lightweight i18n', () => {
+  it.each([
+    [
+      'zh-CN',
+      'UPDATE_REQUIRED',
+      '学习服务尚不支持保留考试范围，请先更新服务；本机记录保留',
+      'ui.syncScopeUpgradeRequired'
+    ],
+    [
+      'en',
+      'UPDATE_REQUIRED',
+      '学习服务尚不支持保留考试范围，请先更新服务；本机记录保留',
+      'ui.syncScopeUpgradeRequired'
+    ],
+    [
+      'zh-CN',
+      'MISSING_INTAKE_SCOPE',
+      '这份旧备份缺少当时确认的考试范围，请使用完整记录或重新导出；当前记录保留',
+      'ui.backupScopeSnapshotRequired'
+    ],
+    [
+      'en',
+      'MISSING_INTAKE_SCOPE',
+      '这份旧备份缺少当时确认的考试范围，请使用完整记录或重新导出；当前记录保留',
+      'ui.backupScopeSnapshotRequired'
+    ]
+  ])('S41 scope recovery notice stays safe through both filters: %s %s', (language, code, message, key) => {
+    setLanguage(language);
+    expect(t(key)).not.toBe(key);
+    expect(publicError({ code, message })).toBe(t(key));
+    expect(publicError(publicError({ code, message }))).toBe(t(key));
+    expect(publicError(t(key))).toBe(t(key));
+    expect(publicError({ code, message: 'private provider payload or original answer' })).toBe(t('ui.operationFailed'));
+    expect(publicError({ code, message: 'private raw scope at http://127.0.0.1/private' })).toBe(
+      t('ui.operationFailed')
+    );
+  });
   it.each(['zh-CN', 'en'])('S40 retained-conflict message survives both public UI filters in %s', (language) => {
     setLanguage(language);
     const message = '本机与云端记录存在差异，两份副本已保留；请在下方查看并选择要继续的记录。';

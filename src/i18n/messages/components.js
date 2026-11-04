@@ -45,6 +45,9 @@ export default {
     'ui.syncPreviewChanged': '云端记录已更新，本次未采用。请先导出并移除旧冲突副本，再重新读取和确认。',
     'ui.syncArchiveExists': '已有保留的冲突副本。请先导出并明确移除，再重新读取。',
     'ui.syncConflictRetained': '本机与云端记录存在差异，两份副本已保留；请在下方查看并选择要继续的记录。',
+    'ui.syncScopeUpgradeRequired': '学习服务尚不能保留考试范围。请先更新学习服务，再同步；本机记录保留。',
+    'ui.backupScopeSnapshotRequired':
+      '旧备份缺少当时确认的考试范围，无法安全恢复。请使用完整学习记录，或从原记录重新导出备份；当前记录和原文件保留。',
     'ui.recordExportGenerated': '已生成个人记录备份；包含私人学习内容，不含模型配置密钥。',
     'ui.recordExportCancelled': '已取消保存，当前记录及已有副本仍保留。',
     'ui.contextChanged': '学习内容或共享授权已变化，请重新操作。',
@@ -153,6 +156,10 @@ export default {
       'A conflict copy is already retained. Export and explicitly remove it before reading again.',
     'ui.syncConflictRetained':
       'Device and cloud records differ. Both copies are kept. Review them below and choose which records to continue with.',
+    'ui.syncScopeUpgradeRequired':
+      'This learning service cannot preserve confirmed exam scope yet. Update the service before syncing. Your device records are kept.',
+    'ui.backupScopeSnapshotRequired':
+      'This older backup lacks its confirmed exam scope. Use the complete records or a new export from the original records. Current records and the original file are kept.',
     'ui.recordExportGenerated':
       'Your record backup was generated. It contains private learning content, without model keys.',
     'ui.recordExportCancelled': 'Saving was cancelled. Current records and retained copies are unchanged.',

@@ -1570,11 +1570,11 @@ describe('备份预览的输入和页面边界', () => {
     const store = useConversationLearningStore();
     store.start('12 + 8');
     const wrapper = mount(LearningPage, { global: { stubs } });
-    const button = (name) => wrapper.findAll('button').find((item) => matchesLearningControl(item, name));
+    const button = (name) => wrapper.findAll('button').find((item) => matchesLearningControl(item, name.trim()));
     const open = async () => {
       await openLearningSettings(wrapper);
-      await button('记录与隐私').trigger('tap');
-      await button('恢复备份').trigger('tap');
+      await button(t('learning.ksr')).trigger('tap');
+      await button(t('learning.k61')).trigger('tap');
     };
     const preview = () => ({
       owner: store.state.owner,
@@ -1586,6 +1586,41 @@ describe('备份预览的输入和页面边界', () => {
     });
     return { store, wrapper, button, open, preview };
   }
+  it.each(['zh-CN', 'en'])(
+    'S41 ambiguous-backup notice renders once and keeps input/confirmation boundaries in %s',
+    async (language) => {
+      setLanguage(language);
+      const p = page(),
+        original = '原样保留的旧备份输入';
+      const failure = Object.assign(
+        new Error('这份旧备份缺少当时确认的考试范围，请使用完整记录或重新导出；当前记录保留'),
+        { code: 'MISSING_INTAKE_SCOPE' }
+      );
+      const prepare = vi.spyOn(p.store, 'previewRestore').mockRejectedValueOnce(failure);
+      const before = JSON.stringify(p.store.state);
+      try {
+        await p.open();
+        const input = p.wrapper.get(`textarea[aria-label="${t('learning.kny')}"]`);
+        await input.setValue(original);
+        await p.button(t('learning.k1d')).trigger('tap');
+        await flushPromises();
+        const status = p.wrapper.get('[data-test="record-preview-status"]');
+        expect(status.attributes('role')).toBe('alert');
+        expect(status.text()).toContain(t('ui.backupScopeSnapshotRequired'));
+        expect(status.text()).not.toContain(t('ui.backupScopeSnapshotRequired') + ' 当前记录保留。');
+        if (language === 'en') expect(status.text()).not.toContain('当前记录保留');
+        expect(input.element.value).toBe(original);
+        expect(prepare).toHaveBeenCalledExactlyOnceWith(original);
+        expect(p.button(t('learning.k7h'))).toBeUndefined();
+        expect(JSON.stringify(p.store.state)).toBe(before);
+      } finally {
+        p.wrapper.unmount();
+        p.store.$dispose();
+        prepare.mockRestore();
+        setLanguage('zh-CN');
+      }
+    }
+  );
   it('校验期间禁用重复请求，输入改回原文也不能接纳旧结果；明确重试才显示新预览', async () => {
     const p = page();
     let finish;

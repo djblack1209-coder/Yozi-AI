@@ -2839,7 +2839,10 @@ async function prepareRecordPreview(kind) {
     if (current())
       recordPreviewStatus.value = {
         phase: failure.code === 'CANCELLED' ? 'cancelled' : 'error',
-        message: `${publicError(failure, t('ui.invalidBackup'))} 当前记录保留。`
+        message:
+          failure.code === 'MISSING_INTAKE_SCOPE'
+            ? publicError(failure, t('ui.invalidBackup'))
+            : `${publicError(failure, t('ui.invalidBackup'))} 当前记录保留。`
       };
   } finally {
     if (activeRecordPreview === request) {

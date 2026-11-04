@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { publicError } from '@/i18n/index.js';
+import { publicError, setLanguage, t } from '@/i18n/index.js';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import {
   MODEL_INTAKE_V2_CONTRACT,
@@ -311,6 +311,7 @@ beforeEach(() => {
   storageService.saveLoginSession({ userId: OWNER, token: 'synthetic-only', userInfo: {} });
 });
 afterEach(() => {
+  setLanguage('zh-CN');
   learningWriteLease.release();
   vi.restoreAllMocks();
 });
@@ -521,4 +522,72 @@ describe('S40 saved conflict feedback in the real learning store', () => {
       store.$dispose();
     }
   });
+});
+
+describe('S41 real guard recovery notice boundaries', () => {
+  const scopedState = () => {
+    const h = harness();
+    h.complete(scope());
+    return h.get();
+  };
+  const signedStore = (state) => {
+    storageService.save(LEARNING_KEY, state, true);
+    setActivePinia(createPinia());
+    return useConversationLearningStore();
+  };
+  it.each(['zh-CN', 'en'])(
+    'keeps actual unsupported-service sync blocked before any upload and renders recovery in %s',
+    async (language) => {
+      setLanguage(language);
+      const local = scopedState(),
+        store = signedStore(local);
+      const request = vi.spyOn(uni, 'request').mockImplementation((options) => {
+        options.success({ data: { success: true, data: { state: emptyLearningState(OWNER, local.timezone) } } });
+        return { abort: vi.fn() };
+      });
+      try {
+        await expect(store.syncRecords(true)).rejects.toMatchObject({ code: 'UPDATE_REQUIRED' });
+        expect(request.mock.calls.map(([o]) => o.data.action)).toEqual(['pull']);
+        expect(store.state).toEqual(local);
+        expect(store.syncConflict).toBeNull();
+        expect(store.syncState).toMatchObject({ phase: 'error', message: t('ui.syncScopeUpgradeRequired') });
+        expect(publicError(store.syncState.message)).toBe(t('ui.syncScopeUpgradeRequired'));
+        expect(store.syncBusy).toBe(false);
+        expect(store.syncProgress).toBeNull();
+      } finally {
+        store.$dispose();
+      }
+    }
+  );
+  it.each(['zh-CN', 'en'])(
+    'keeps actual ambiguous legacy backup rejected and original inputs unchanged in %s',
+    async (language) => {
+      setLanguage(language);
+      const history = scopedState(),
+        packed = createHistoryPackage(history),
+        decoded = readHistoryPackage(JSON.stringify(packed), OWNER);
+      for (const event of decoded.events) delete event.intakeScope;
+      const encoded = encodeHistory(decoded.events, OWNER, 'export_s41legacy'),
+        content = JSON.stringify({ ...packed, version: 1, manifest: encoded.manifest, pages: encoded.pages });
+      const current = emptyLearningState(OWNER, history.timezone),
+        store = signedStore(current),
+        before = JSON.stringify(current),
+        original = content;
+      try {
+        let failure;
+        try {
+          await store.previewRestore(content);
+        } catch (error) {
+          failure = error;
+        }
+        expect(failure).toMatchObject({ code: 'MISSING_INTAKE_SCOPE' });
+        expect(publicError(failure)).toBe(t('ui.backupScopeSnapshotRequired'));
+        expect(JSON.stringify(store.state)).toBe(before);
+        expect(content).toBe(original);
+        expect(store.historyBusy).toBe(false);
+      } finally {
+        store.$dispose();
+      }
+    }
+  );
 });

@@ -108,6 +108,8 @@ export function publicError(error, fallback = t('ui.operationFailed')) {
     '云端记录已更新，请重新同步预览；本机与冲突副本保留': 'ui.syncPreviewChanged',
     '已有另一份冲突副本；请先导出并明确移除该副本，再重新同步': 'ui.syncArchiveExists',
     '本机与云端记录存在差异，两份副本已保留；请在下方查看并选择要继续的记录。': 'ui.syncConflictRetained',
+    '学习服务尚不支持保留考试范围，请先更新服务；本机记录保留': 'ui.syncScopeUpgradeRequired',
+    '这份旧备份缺少当时确认的考试范围，请使用完整记录或重新导出；当前记录保留': 'ui.backupScopeSnapshotRequired',
     '登录后可连接云模型；本地学习无需登录': 'ui.signInRequired',
     '学习天数必须在 1 到 365 之间': 'ui.invalidDuration',
     计划周期须为1至365天: 'ui.invalidPlanDuration',
