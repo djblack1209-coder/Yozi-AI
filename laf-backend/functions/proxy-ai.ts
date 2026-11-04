@@ -1,3 +1,4 @@
+import { personalCorpusInference } from './_shared/learning-writing-corpus.js';
 import {
   learningBudgetPhase,
   learningTimeout,
@@ -341,7 +342,7 @@ export async function runLearningModelTask(
     const gradingCoach =
       inferenceCoach && ['feedback', 'essay', 'summary'].includes(inferenceCoach.phase) ? inferenceCoach : null;
     // The complete current answer is already the sole user message below.
-    const { input: _currentAnswer, ...gradingMetadata } = gradingCoach || {};
+    const { input: _currentAnswer, ...gradingMetadata }: Record<string, any> = gradingCoach || {};
     const image =
       body.images !== undefined ? validateVisualInput(body.images, body.imageShareConsent, context.question) : null;
     if (presentation && (coach || intake || ideas || image || body.feedbackAttemptId !== undefined))
@@ -354,7 +355,12 @@ export async function runLearningModelTask(
         : gradingCoach
           ? {
               // 批改不混入整篇目标、其他题目、历史档位或建档自述，避免局部任务被按全文判。
-              coach: gradingMetadata
+              coach: {
+                ...gradingMetadata,
+                ...(gradingMetadata.personalCorpus
+                  ? { personalCorpus: personalCorpusInference(gradingMetadata.personalCorpus) }
+                  : {})
+              }
             }
           : {
               ...(context.entrySource ? { entrySource: context.entrySource } : {}),

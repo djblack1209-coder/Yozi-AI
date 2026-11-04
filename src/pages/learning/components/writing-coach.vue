@@ -96,6 +96,32 @@
       :busy="learning.busy || learning.intakeBusy"
       @action="handleModelAction"
     />
+    <CustomModal
+      :visible="corpusItems.length > 0"
+      title="个人句式参考"
+      :is-dark="theme.isDark"
+      :show-actions="false"
+      close-button
+      mask-closable
+      @cancel="
+        corpusItems = [];
+        corpusSource = null;
+      "
+    >
+      <view class="coach-material-dialog" data-test="personal-corpus-sources">
+        <view v-for="item in corpusItems" :key="item.id" class="coach-corpus-item">
+          <text selectable>{{ item.text }}</text>
+          <text class="coach-muted">{{ item.day }} · 已采用</text>
+          <BaseButton variant="quiet" @tap="corpusSource = corpusOriginal(item)">查看来源原答</BaseButton>
+        </view>
+        <view v-if="corpusSource" class="coach-corpus-item" data-test="personal-corpus-original">
+          <text class="coach-muted">来源任务</text>
+          <text selectable>{{ corpusSource.task }}</text>
+          <text class="coach-muted">已保存的原答</text>
+          <text selectable>{{ corpusSource.input }}</text>
+        </view>
+      </view>
+    </CustomModal>
     <view class="coach-workspace" :class="{ 'coach-workspace--text': presentation.mode === 'text' }">
       <BaseBubble v-if="coach" author="user" avatar :avatar-src="userAvatar" class="coach-user-turn"
         ><text selectable>{{ learning.active.goal }}</text></BaseBubble
@@ -238,6 +264,16 @@
           <text class="coach-muted" role="status">建档已保存：{{ profileDescription(coach.profile) }}</text>
           <text v-if="coach.profile.examScope" class="coach-muted">{{ examScopeLabel(coach.profile.examScope) }}</text>
 
+          <view v-if="learning.personalCorpusChoices.length" class="coach-corpus-control">
+            <BaseCheckbox
+              :model-value="learning.personalCorpusAllowed"
+              :disabled="learning.busy || !loggedIn || !learning.sharingAllowed"
+              data-test="personal-corpus-consent"
+              @update:model-value="act(() => learning.setPersonalCorpusAllowed($event))"
+              >本次带写参考已采用的个人句式</BaseCheckbox
+            >
+            <BaseButton variant="quiet" @tap="showCorpus(learning.personalCorpusChoices)">查看句式与来源</BaseButton>
+          </view>
           <BaseButton v-if="!loggedIn" variant="primary" @tap="login">登录后开始带练</BaseButton>
           <text v-if="learningDay !== today" class="coach-muted" role="status"
             >继续 {{ learningDay }} 未完成的训练</text
@@ -324,7 +360,18 @@
                 :disabled="learning.busy"
                 @adopt="act(() => learning.coachSave('adopt', { feedbackId: record.feedback.id, phrase: $event }))"
               />
-              <view v-else-if="record.assessmentStatus === 'pending'" class="coach-agent-message" role="status">
+              <BaseButton
+                v-if="record.personalCorpus"
+                variant="quiet"
+                data-test="saved-personal-corpus"
+                @tap="showCorpus(record.personalCorpus.items)"
+                >本次参考的个人句式</BaseButton
+              >
+              <view
+                v-if="!record.feedback && record.assessmentStatus === 'pending'"
+                class="coach-agent-message"
+                role="status"
+              >
                 <text>原答已保存，AI 评估待完成</text>
                 <BaseButton
                   v-if="record.request"
@@ -802,6 +849,22 @@ const analysisFields = [
 ];
 const analysis = reactive(Object.fromEntries(analysisFields.map((f) => [f.key, ''])));
 const coach = computed(() => learning.active?.coach);
+const corpusItems = ref([]);
+const corpusSource = ref(null);
+function showCorpus(items) {
+  corpusItems.value = items;
+  corpusSource.value = null;
+}
+function corpusOriginal(item) {
+  return coach.value?.requests.find((request) => request.id === item.requestId)?.request || null;
+}
+watch(
+  () => learning.active?.id,
+  () => {
+    corpusItems.value = [];
+    corpusSource.value = null;
+  }
+);
 const cancellationNotice = computed(() => cancelledNotice(learning.error));
 const coachReply = computed(() =>
   learning.reply?.kind === 'coach' &&
@@ -1565,6 +1628,16 @@ function login() {
   text-align: left;
   max-height: 65vh;
   overflow: auto;
+}
+.coach-corpus-control,
+.coach-corpus-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.coach-corpus-item {
+  overflow-wrap: anywhere;
 }
 .coach-material-list {
   display: flex;

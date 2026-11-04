@@ -1,3 +1,4 @@
+import { WRITING_PERSONAL_CORPUS_CONTRACT } from './_shared/learning-writing-corpus.js';
 import { ProviderError } from './_shared/ai-providers/learning-provider.js';
 import cloud from '@lafjs/cloud';
 import {
@@ -359,6 +360,7 @@ export default async function (ctx: any) {
           intakeContracts: MODEL_INTAKE_CONTRACTS,
           intakeScopeContracts: [...EXAM_SCOPE_CONTRACTS],
           coachMethods: SUBJECT_COACH_METHODS,
+          writingCorpusContracts: [WRITING_PERSONAL_CORPUS_CONTRACT],
           presentationContracts: [PRESENTATION_CONTRACT],
           questionEntryContracts: [SINGLE_QUESTION_CONTRACT],
           platformEnabled: process.env.LEARNING_PLATFORM_CALLS_ENABLED === 'true',

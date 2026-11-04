@@ -157,6 +157,10 @@ export function coachSavedRecords(conversation) {
       sourceFeedbackId: attempt.sourceFeedbackId,
       sourceAnswerId: attempt.sourceAnswerId
     });
+  for (const row of rows) {
+    const source = row.feedback && coach.requests?.find((request) => request.resultId === row.feedback.id);
+    if (source?.request.personalCorpus) row.personalCorpus = source.request.personalCorpus;
+  }
   for (const row of rows)
     if (row.target && !row.feedback && !(row.target === 'diagnostic' && coach.diagnostic.feedback)) {
       row.request = [...(coach.requests || [])]

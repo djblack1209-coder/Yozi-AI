@@ -1,3 +1,4 @@
+import { normalizePersonalCorpus, writingPersonalCorpus, PERSONAL_CORPUS_PROMPT } from './learning-writing-corpus.js';
 import { phraseReviewRating } from './learning-runtime-policy.js';
 /* global __YOZI_DEV_TEST__ */
 // 教学方法与已保存事实共用现有学习 reducer、备份及同步；模型不授予可靠判分。
@@ -292,6 +293,8 @@ export function normalizeCoachRequest(value) {
     );
     request.summaryContract = value.summaryContract;
   }
+  if (value.personalCorpus !== undefined)
+    request.personalCorpus = normalizePersonalCorpus(value.personalCorpus, request);
   return request;
 }
 const CLOZE_PROMPT = '先将候选代回整句，再核对结构与语义。请补全句子：';
@@ -704,6 +707,10 @@ export function coachQuoteOptions(input, wholeLines = false) {
     .slice(0, 6);
 }
 export function coachSystemPrompt(request, outputSchema = null, embedSchema = true) {
+  const prompt = coachBaseSystemPrompt(request, outputSchema, embedSchema);
+  return request.personalCorpus ? `${prompt}\n${PERSONAL_CORPUS_PROMPT}` : prompt;
+}
+function coachBaseSystemPrompt(request, outputSchema = null, embedSchema = true) {
   const r = normalizeCoachRequest(request);
   const subjectMethod = subjectCoachMethod(r.exam, r.methodContract);
   if (subjectMethod) return subjectMethod.prompt(r, { quotes: coachQuoteOptions(r.input, true) });
@@ -2114,6 +2121,16 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
       'PRECONDITION',
       '原答或教学任务已变化'
     );
+    if (request.personalCorpus) {
+      const available = writingPersonalCorpus(state, c, request);
+      assert(
+        request.personalCorpus.items.every((item) =>
+          available.some((source) => JSON.stringify(source) === JSON.stringify(item))
+        ),
+        'PRECONDITION',
+        '个人句式须来自当前目标已采用且仍可回看的反馈'
+      );
+    }
     if (request.writingBand) {
       const expected = coachWritingBandContext(coach, day, d.requestId, request.writingBand.promptVersion);
       assert(

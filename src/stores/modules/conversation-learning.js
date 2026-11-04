@@ -1,3 +1,7 @@
+import {
+  WRITING_PERSONAL_CORPUS_CONTRACT,
+  writingPersonalCorpus
+} from '../../../laf-backend/functions/_shared/learning-writing-corpus.js';
 import { LOCATION_KEY, restoredConversation } from '@/services/learning/shell-navigation.js';
 import { EXAM_SCOPE_CONTRACTS } from '../../../laf-backend/functions/_shared/learning-exam-scope.js';
 import {
@@ -439,6 +443,43 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   const localConnection = ref(null);
   const materialConnection = ref(null);
   const sharingAllowed = ref(false);
+  const personalCorpusAvailable = ref(false);
+  const personalCorpusAllowed = ref(false);
+  const personalCorpusChoices = computed(() => {
+    const conversation = active.value;
+    if (!personalCorpusAvailable.value || !conversation?.coach) return [];
+    const day = coachOperationDay(
+      conversation.coach,
+      dayKey(calendarTime.value, state.value.timezone),
+      'coach.request',
+      {
+        request: { phase: 'feedback', target: 'paragraph-0' }
+      }
+    );
+    return writingPersonalCorpus(state.value, conversation, {
+      exam: conversation.coach.profile?.exam,
+      phase: 'feedback',
+      target: 'paragraph-0',
+      day,
+      essayType: coachEssayType(conversation.coach, day)
+    });
+  });
+  watch(
+    [() => state.value.owner, selectedConversationId, modelId, sharingAllowed, personalCorpusAvailable],
+    () => {
+      personalCorpusAllowed.value = false;
+    },
+    { flush: 'sync' }
+  );
+  function setPersonalCorpusAllowed(allowed) {
+    assert(
+      allowed === false ||
+        (personalCorpusAvailable.value && sharingAllowed.value && personalCorpusChoices.value.length),
+      'CONSENT_REQUIRED',
+      '请先选择模型、允许发送，并在当前目标采用可追溯的句式'
+    );
+    personalCorpusAllowed.value = allowed === true;
+  }
   const retryState = ref({ phase: 'idle', errorCode: null, message: '' });
   const modelPreferenceState = ref({ phase: 'idle', errorCode: null });
   const needsConnection = computed(
@@ -686,6 +727,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     cancelModelReads(undefined, 'CONTEXT_CHANGED');
     modelIntakeAvailable = false;
     modelCoachMethods = [];
+    personalCorpusAvailable.value = false;
     modelPresentationAvailable = false;
     singleQuestionAvailable.value = false;
     modelIntakeContract.value = null;
@@ -1918,6 +1960,10 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       const writingBand =
         DEV_TEST && phase === 'essay' && !subjectMethod ? coachWritingBandContext(coach, day, id) : null;
       if (writingBand) data.writingBand = writingBand;
+      if (personalCorpusAllowed.value && personalCorpusAvailable.value) {
+        const items = writingPersonalCorpus(state.value, active.value, data);
+        if (items.length) data.personalCorpus = { contract: WRITING_PERSONAL_CORPUS_CONTRACT, items };
+      }
       commit('coach.request', {
         conversationId,
         explicit: true,
@@ -1947,7 +1993,8 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           state.value.revision === revision &&
           modelId.value === selectedModel &&
           selectedMode.value === selectedProviderMode &&
-          (recovering || sharingAllowed.value),
+          (recovering || sharingAllowed.value) &&
+          (recovering || !request.request.personalCorpus || personalCorpusAllowed.value),
         'CONTEXT_CHANGED',
         '当前学习、模型或共享授权已变化，未采用旧响应'
       );
@@ -4140,6 +4187,9 @@ export const useConversationLearningStore = defineStore('conversation-learning',
               .reverse()
               .find((contract) => result.data.intakeScopeContracts?.includes(contract)) || null
           : null;
+        personalCorpusAvailable.value = Boolean(
+          result.success && result.data.writingCorpusContracts?.includes(WRITING_PERSONAL_CORPUS_CONTRACT)
+        );
         modelCoachMethods =
           result.success && Array.isArray(result.data.coachMethods)
             ? result.data.coachMethods.filter((method) => subjectCoachMethodByContract(method))
@@ -5737,6 +5787,10 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     prepareMaterialAction,
     materialContext,
     sharingAllowed,
+    personalCorpusAvailable,
+    personalCorpusAllowed,
+    personalCorpusChoices,
+    setPersonalCorpusAllowed,
     refresh,
     start,
     startSingleQuestion,
