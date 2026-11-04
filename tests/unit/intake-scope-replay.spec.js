@@ -363,3 +363,92 @@ describe('S39 sync capability and immutable operation payloads', () => {
     expect(repo.read()).toEqual(state);
   });
 });
+
+describe('S40 same-id confirmed scope synchronization boundaries', () => {
+  const oneScope = (value) => {
+    const h = harness();
+    h.complete(value);
+    return h.get();
+  };
+  const proposalId = (state) => state.events.find((e) => e.type === 'intake.result' && e.result?.intake?.profile).id;
+  const assertConflict = async (local, remote, request) => {
+    const repo = repository(local);
+    await expect(synchronizeLearning(repo, true, request)).rejects.toMatchObject({ code: 'CONFLICT' });
+    expect(repo.read()).toEqual(local);
+    expect(repo.previewSyncConflict()?.ids).toEqual([proposalId(local)]);
+    expect(JSON.parse(repo.exportSyncConflict('local'))).toEqual(local);
+    expect(JSON.parse(repo.exportSyncConflict('remote'))).toEqual(remote);
+    return repo;
+  };
+  it.each([false, true])(
+    'preserves both copies when shared original input has different saved scope, reversed=%s',
+    async (reverse) => {
+      const unknown = oneScope(scope()),
+        confirmed = oneScope(scope({ positionCategory: 'gd-police' }));
+      const [local, remote] = reverse ? [confirmed, unknown] : [unknown, confirmed];
+      expect(local.events.map((e) => e.data)).toEqual(remote.events.map((e) => e.data));
+      const request = vi.fn(async () => ({ success: true, data: syncWireResult({ state: remote, revision: 1 }) }));
+      await assertConflict(local, remote, request);
+      expect(request.mock.calls.map(([, body]) => body.action)).toEqual(['pull']);
+    }
+  );
+  it.each([false, true])('treats a missing saved scope on one side as a conflict, reversed=%s', async (reverse) => {
+    const complete = oneScope(scope()),
+      missing = structuredClone(complete);
+    delete missing.events.find((e) => e.id === proposalId(complete)).result.intake.profile.examScope;
+    const [local, remote] = reverse ? [missing, complete] : [complete, missing];
+    const request = vi.fn(async () => ({ success: true, data: syncWireResult({ state: remote, revision: 1 }) }));
+    await assertConflict(local, remote, request);
+  });
+  it.each([false, true])(
+    'rejects changed saved scope in the final server acknowledgement, compact=%s',
+    async (compact) => {
+      const local = oneScope(scope()),
+        remote = oneScope(scope({ positionCategory: 'gd-police' }));
+      let pushed = false;
+      const request = vi.fn(async (_path, body) => {
+        if (body.action === 'push') {
+          pushed = true;
+          expect(body.operations.find((e) => e.id === proposalId(local)).intakeScope).toEqual(receipt());
+          return {
+            success: true,
+            data: syncWireResult({ state: remote, revision: 1, accepted: body.operations.map((e) => e.id) }, compact)
+          };
+        }
+        return {
+          success: true,
+          data: syncWireResult({
+            state: pushed ? remote : emptyLearningState(OWNER, local.timezone),
+            revision: pushed ? 1 : 0
+          })
+        };
+      });
+      await assertConflict(local, remote, request);
+      expect(request.mock.calls.filter(([, body]) => body.action === 'push')).toHaveLength(1);
+    }
+  );
+  it.each([null, 'gd-police'])(
+    'accepts equal saved scopes and keeps non-scope server results authoritative, category=%s',
+    async (positionCategory) => {
+      const local = oneScope(scope({ positionCategory })),
+        remote = structuredClone(local);
+      remote.events.find((e) => e.id === proposalId(local)).result.message = '服务端已保存的确认说明';
+      const repo = repository(local),
+        request = vi.fn(async () => ({ success: true, data: syncWireResult({ state: remote, revision: 1 }) }));
+      await synchronizeLearning(repo, true, request);
+      expect(repo.read()).toEqual(remote);
+      expect(repo.previewSyncConflict()).toBeNull();
+      expect(request.mock.calls.map(([, body]) => body.action)).toEqual(['pull']);
+    }
+  );
+  it('keeps ordinary shared records without any scope receipt readable', async () => {
+    const h = harness();
+    h.start();
+    const state = h.get(),
+      repo = repository(state),
+      request = vi.fn(async () => ({ success: true, data: syncWireResult({ state, revision: 1 }) }));
+    await synchronizeLearning(repo, true, request);
+    expect(repo.read()).toEqual(state);
+    expect(repo.previewSyncConflict()).toBeNull();
+  });
+});

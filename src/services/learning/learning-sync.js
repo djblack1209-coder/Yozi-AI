@@ -52,9 +52,12 @@ function checkSharedEvents(repository, local, remote, assertCurrent) {
       if (!previous) return false;
       const normalized = normalizePrivateSyncOperation(event);
       if (samePrivacyRedaction(previous, normalized)) return false;
+      // 已确认范围是回放输入；其他派生结果仍以服务端事实为准。
       return (
         previous.type !== normalized.type ||
-        operationFingerprint(previous.data) !== operationFingerprint(normalized.data)
+        operationFingerprint(previous.data) !== operationFingerprint(normalized.data) ||
+        operationFingerprint(intakeScopeReplaySnapshot(previous)) !==
+          operationFingerprint(intakeScopeReplaySnapshot(event))
       );
     })
     .map((event) => event.id);
