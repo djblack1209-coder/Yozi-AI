@@ -113,6 +113,34 @@ it('S29 keeps valid public-service feedback and original input while old source-
   expect(normalizeCoachOutput(old, r)).toMatchObject({ sourceStatus: 'pending_verification', dimensions: [] });
 });
 
+it.each(['diagnostic', 'card-c3', 'paragraph-0'])(
+  'S30 separates student-facing feedback prose from routing identifiers without changing original input: %s',
+  (target) => {
+    const input = '原答保留card-c3这个字面片段，不据此改写学生原文。';
+    const r = request('feedback', { methodContract: METHOD_V2, target, input });
+    const original = JSON.stringify(r);
+    const prompt = coachSystemPrompt(r);
+    expect(prompt).toContain('学生可见文案：');
+    expect(prompt).toContain('实际提交进度由页面显示');
+    expect(prompt).toContain('学生原答、original和引用仍逐字保留');
+    expect(coachInferenceContext(r).input).toBe(input);
+    expect(JSON.stringify(r)).toBe(original);
+    const historical = feedback(r);
+    expect(normalizeCoachOutput(historical, r).lines[0].original).toBe(input);
+    expect(normalizeCoachOutput(historical, r).target).toBe(target);
+  }
+);
+
+it('S30 keeps v1 and non-feedback teaching prompts outside the new prose rule', () => {
+  expect(coachSystemPrompt(request('feedback', { target: 'card-c1', input: '原答保持。' }))).not.toContain(
+    '学生可见文案：'
+  );
+  expect(coachSystemPrompt(request('daily', { methodContract: METHOD_V2 }))).not.toContain('学生可见文案：');
+  expect(coachSystemPrompt(request('summary', { methodContract: METHOD_V2, input: '原答保持。' }))).not.toContain(
+    '学生可见文案：'
+  );
+});
+
 function readyIntake() {
   return {
     requestId: 'intake',

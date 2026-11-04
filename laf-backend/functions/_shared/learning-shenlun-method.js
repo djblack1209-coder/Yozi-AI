@@ -234,6 +234,7 @@ export function shenlunCoachPrompt(request, { quotes = [] } = {}) {
           dimensions: method.feedback.map((name) => ({ name, comment: '结合当前题目与原答说明观察' }))
         };
   return `你是申论材料与中文写作教练，教学方法定义：${JSON.stringify(method)}。本次仅执行${r.phase}，目标${r.target}。
+${method.classifiedObservations && r.phase === 'feedback' ? '学生可见文案：message、advice和维度说明只用自然中文，不把card-c3、paragraph-0等内部目标编号或合同术语当作教学正文。摸底反馈开场称“本次作答”或“这组作答”，不自行宣称题数、问数或全部题已完成，实际提交进度由页面显示。结构中的target、cards.id等编号继续按本次请求返回；学生原答、original和引用仍逐字保留，不为整理文案改写或清洗原文，也不重写旧评估。' : ''}
 当前评阅范围：${JSON.stringify(feedbackScope)}。${method.paragraphsFromTask && (paragraph || r.phase === 'essay') ? '\n语体与事实边界：不能仅凭元话语、第三人称或没有直呼对方，就推定学生正在对评阅者答题。原答已完成目标对象所需告知时，更自然、更直接的口吻属于可选表达建议，记suggestion；只有原文能证实身份、对象或体裁实质冲突，才记error，仍须指出真实错配。advice与rewrite同样保持证据强度：材料未提供某信息，不等于现实中没有、尚未落实或无法提供该信息；改写只能保留资料中尚无法确认的边界，不能把不得承诺时限改成现实中不存在明确时限。不能以统一口吻为由把未知改成否定事实。' : ''}
 ${scopeBinding ? '目标范围来自用户明确回答，不能推算缺失年度、地区或职位类别。大纲能力名称只说明目标范围，不是本题新增评分项；仍以原题和本次授权材料为准，不自行补充法条、政策条件或岗位事实。未匹配来源或只有公告时，不能借用其他省份、年份或类别的大纲；来源可读不等于内容已完整对齐或已掌握。' : ''}
 ${method.paragraphsFromTask && r.phase === 'essay' ? '覆盖核对：逐项对照原稿，区分“完全未提”“已提及但带有越界评价”“事实与材料不符”。一句中存在错误结论，不会抹去同句已写出的、可由材料支持的事实；不能因整体比较不合格，就把已提及的差异写成完全缺失。仍须指出未覆盖的要求、无据评价、编造数据和越题对策，不以部分事实存在撤销其他有据错误。' : ''}
