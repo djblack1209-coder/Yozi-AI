@@ -102,7 +102,7 @@
             class="lib-action"
             variant="quiet"
             icon="star"
-            :disabled="!selectedPinnable.length"
+            :disabled="!pinsReady || !selectedPinnable.length"
             @tap="pinSelected"
             >{{
               selectedPinnable.length && selectedPinnable.every((item) => pins[item.id]) ? '取消置顶' : '置顶'
@@ -179,6 +179,12 @@
           >{{ item.label }}</BaseButton
         ><BaseInput v-model="query" label="搜索资料库" placeholder="搜索资料库" hide-label maxlength="120"
       /></view>
+      <view v-if="pinError" class="library-pin-error" role="alert">
+        <text class="library-pin-error-copy">{{ pinError }}</text>
+        <BaseButton class="library-pin-retry" data-library-pin-retry variant="quiet" @tap="readPins">{{
+          t('ui.retry')
+        }}</BaseButton>
+      </view>
       <view class="library-scroll">
         <template v-for="block in blocks" :key="block.id"
           ><text v-if="block.label" class="library-section" role="heading" aria-level="2">{{ block.label }}</text
@@ -219,8 +225,9 @@
                 icon="star"
                 icon-only
                 :label="pins[item.id] ? '取消置顶' : '置顶'"
-                :selected="!!pins[item.id]"
-                :aria-pressed="!!pins[item.id]"
+                :selected="pinsReady && !!pins[item.id]"
+                :aria-pressed="pinsReady ? !!pins[item.id] : undefined"
+                :disabled="!pinsReady"
                 @tap="togglePin(item)"
               /> </view></view
         ></template>
@@ -228,7 +235,6 @@
           ><view class="library-empty-mark"><BaseIcon :name="sectionIcon" size="26px" /></view
           ><text>{{ emptyLabel }}</text></view
         >
-        <text v-if="pinError" role="alert">{{ pinError }}</text>
         <view v-if="selectedMaterial" class="material-reader"
           ><view class="reader-head"
             ><text class="artifact-title">{{ selectedMaterial.name }}</text
@@ -279,27 +285,34 @@ const root = ref(null),
   selectedMaterialId = ref('');
 const context = workspaceConversationContext(learning);
 const pins = ref({}),
+  pinsReady = ref(false),
   pinError = ref('');
 function readPins() {
+  pinsReady.value = false;
   pins.value = {};
+  pinError.value = '';
   try {
     const client = createLearningArtifacts();
     if (client.owner !== learning.state.owner) return;
     pins.value = Object.fromEntries(
       library.value.items.filter((i) => i.source).map((i) => [i.id, client.readPin(i.id)])
     );
+    pinsReady.value = true;
     pinError.value = '';
   } catch (e) {
     pinError.value = e.message;
   }
 }
 function togglePin(item) {
+  if (!pinsReady.value) return;
   try {
     const client = createLearningArtifacts();
     if (client.owner !== learning.state.owner) return;
     pins.value = { ...pins.value, [item.id]: client.setPin(item.id, !pins.value[item.id]) };
     pinError.value = '';
   } catch (e) {
+    pinsReady.value = false;
+    pins.value = {};
     pinError.value = e.message;
   }
 }
@@ -485,6 +498,7 @@ function selectAll() {
   selected.value = allSelected.value ? [] : items.value.map((item) => item.id);
 }
 function pinSelected() {
+  if (!pinsReady.value) return;
   const pinned = !selectedPinnable.value.every((item) => pins.value[item.id]);
   try {
     const client = createLearningArtifacts();
@@ -494,6 +508,8 @@ function pinSelected() {
     pins.value = next;
     pinError.value = '';
   } catch (e) {
+    pinsReady.value = false;
+    pins.value = {};
     pinError.value = e.message;
   }
 }
@@ -777,6 +793,27 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   overflow: auto;
   padding: 0 64px 36px;
   scrollbar-width: none;
+}
+.library-pin-error {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 64px 12px;
+}
+.library-pin-error-copy {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink-3);
+  font-size: 13px;
+  line-height: 20px;
+}
+.library-pin-retry {
+  flex: none;
+  min-height: 44px;
+  min-width: 64px;
 }
 .library-scroll::-webkit-scrollbar {
   display: none;
@@ -1100,6 +1137,10 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   line-height: 1.7;
 }
 @media (max-width: 977px) {
+  .library-pin-error {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
   .library-head {
     padding-left: 28px;
     padding-right: 28px;
@@ -1148,6 +1189,9 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   }
 }
 @media (max-width: 760px) {
+  .library-pin-error {
+    padding: 0 16px 12px;
+  }
   .library-grid {
     grid-template-columns: minmax(0, 1fr);
   }

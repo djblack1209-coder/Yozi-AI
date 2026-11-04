@@ -15,6 +15,7 @@ import {
 } from '@/services/learning/learning-artifacts.js';
 import { requestLearningArtifact } from '@/services/api/domains/learning.api.js';
 import { safeNavigateTo } from '@/utils/safe-navigate.js';
+import { storageService } from '@/services/storageService.js';
 import { artifactFixtureState, artifactMemoryDatabase } from '../fixtures/learning-artifacts.js';
 import { handleLearningArtifacts } from '../../laf-backend/functions/learning-artifacts';
 const harness = vi.hoisted(() => ({ store: null }));
@@ -92,6 +93,193 @@ async function ready() {
 }
 
 describe('S4 artifact panel and library', () => {
+  function s48DeviceDraft(pinned = true) {
+    const client = createLearningArtifacts();
+    // A prior fault deliberately revoked its write base; the new fixture must
+    // perform a checked read before preparing another local pin operation.
+    client.readDraft(item.id);
+    client.readPin(item.id);
+    client.writeDraft(item.id, {
+      version: 1,
+      title: item.title,
+      content: 'S48 original pending words must remain.',
+      mode: 'edit',
+      scrollTop: 0,
+      pending: { requestId: 's48-original-request', signature: 's48-frozen-input' }
+    });
+    client.setPin(item.id, pinned);
+    const key = uni.getStorageInfoSync().keys.find((key) => key.endsWith('pin:' + item.id));
+    expect(key).toBeTruthy();
+    return { client, key };
+  }
+  it('S48 retries local pin reads explicitly in the same context without changing draft or facts', async () => {
+    const { client, key } = s48DeviceDraft();
+    const before = JSON.stringify(globalThis.__mockStorage),
+      context = harness.store.recordContext();
+    const reader = uni.getStorageSync;
+    let unavailable = true,
+      attempts = 0;
+    uni.getStorageSync = (name) => {
+      if (name === key) {
+        attempts++;
+        if (unavailable) throw new Error('S48 synthetic pin read failure');
+      }
+      return reader(name);
+    };
+    try {
+      const w = render(Library);
+      await ready();
+      expect(w.get('[role="alert"]').text()).toContain('持久化数据暂不可读，请重试');
+      const retry = w.get('[data-library-pin-retry]');
+      for (const pin of w.findAll('.artifact-pin')) {
+        expect(pin.attributes('disabled')).toBeDefined();
+        expect(pin.attributes('aria-pressed')).toBeUndefined();
+        await pin.trigger('tap');
+      }
+      expect(JSON.stringify(globalThis.__mockStorage)).toBe(before);
+      await retry.trigger('tap');
+      await ready();
+      expect(attempts).toBe(2);
+      expect(w.find('[data-library-pin-retry]').exists()).toBe(true);
+      expect(JSON.stringify(globalThis.__mockStorage)).toBe(before);
+      unavailable = false;
+      await w.get('[data-library-pin-retry]').trigger('tap');
+      await ready();
+      expect(harness.store.recordContext()).toBe(context);
+      expect(w.find('[role="alert"]').exists()).toBe(false);
+      expect(w.get('[aria-label="取消置顶"]').attributes('aria-pressed')).toBe('true');
+      expect(client.readDraft(item.id).pending).toEqual({
+        requestId: 's48-original-request',
+        signature: 's48-frozen-input'
+      });
+      expect(JSON.stringify(globalThis.__mockStorage)).toBe(before);
+      expect(requestLearningArtifact).not.toHaveBeenCalled();
+      expect(JSON.stringify(harness.store.state)).toBe(original);
+    } finally {
+      uni.getStorageSync = reader;
+    }
+  });
+  it('S48 a partial pin read leaves individual and selected pin controls unknown and disabled', async () => {
+    const { client } = s48DeviceDraft();
+    const second = JSON.parse(JSON.stringify(harness.store.state.conversations[0]));
+    second.id = 's48-second-conversation';
+    harness.store.state.conversations.push(second);
+    const other = studentEssaySources(harness.store.state).find((source) => source.conversationId === second.id);
+    client.setPin(other.id, true);
+    const key = uni.getStorageInfoSync().keys.find((key) => key.endsWith('pin:' + other.id));
+    const before = JSON.stringify(globalThis.__mockStorage),
+      reader = uni.getStorageSync;
+    uni.getStorageSync = (name) => {
+      if (name === key) throw new Error('S48 synthetic second pin read failure');
+      return reader(name);
+    };
+    try {
+      const w = render(Library);
+      await ready();
+      expect(w.findAll('.artifact-pin')).toHaveLength(2);
+      expect(
+        w
+          .findAll('.artifact-pin')
+          .every((pin) => pin.attributes('disabled') !== undefined && pin.attributes('aria-pressed') === undefined)
+      ).toBe(true);
+      await tap(w, '选择');
+      await w
+        .findAll('.artifact')
+        .find((card) => card.attributes('aria-label') === '选择 ' + item.title)
+        .trigger('tap');
+      const bulk = w.findAll('.library-head-actions button').find((button) => button.text() === '置顶');
+      expect(bulk.attributes('disabled')).toBeDefined();
+      await bulk.trigger('tap');
+      expect(JSON.stringify(globalThis.__mockStorage)).toBe(before);
+      expect(requestLearningArtifact).not.toHaveBeenCalled();
+    } finally {
+      uni.getStorageSync = reader;
+    }
+  });
+  it('S48 a retry after an account change reads the current namespace and keeps the former records', async () => {
+    const { key } = s48DeviceDraft();
+    const owned = () =>
+      Object.entries(globalThis.__mockStorage).filter(([key]) => key.startsWith('u_artifact-student_'));
+    const before = JSON.stringify(owned()),
+      reader = uni.getStorageSync;
+    uni.getStorageSync = (name) => {
+      if (name === key) throw new Error('S48 synthetic pin read failure');
+      return reader(name);
+    };
+    try {
+      const w = render(Library);
+      await ready();
+      const retry = w.get('[data-library-pin-retry]');
+      uni.getStorageSync = reader;
+      uni.setStorageSync('EXAM_USER_ID', 's48-another-student');
+      uni.setStorageSync('EXAM_TOKEN', 'S48_SYNTHETIC_NEXT_NOT_VALID');
+      harness.store.state = artifactFixtureState('s48-another-student');
+      await retry.trigger('tap');
+      await ready();
+      expect(w.find('[role="alert"]').exists()).toBe(false);
+      expect(w.get('[aria-label="置顶"]').attributes('aria-pressed')).toBe('false');
+      expect(createLearningArtifacts().readDraft(item.id)).toBeNull();
+      expect(JSON.stringify(owned())).toBe(before);
+      expect(requestLearningArtifact).not.toHaveBeenCalled();
+    } finally {
+      uni.getStorageSync = reader;
+    }
+  });
+  it.each(['individual', 'selected'])(
+    'S48 read-only retry after a committed %s pin write never replays that write',
+    async (mode) => {
+      const { key, client } = s48DeviceDraft(false);
+      const reader = uni.getStorageSync,
+        writer = uni.setStorageSync;
+      const save = vi.spyOn(storageService, 'save');
+      let unavailable = false,
+        writes = 0;
+      uni.getStorageSync = (name) => {
+        if (name === key && unavailable) throw new Error('S48 synthetic pin readback failure');
+        return reader(name);
+      };
+      uni.setStorageSync = (name, value) => {
+        const result = writer(name, value);
+        if (name === key) {
+          writes++;
+          unavailable = true;
+        }
+        return result;
+      };
+      try {
+        const w = render(Library);
+        await ready();
+        if (mode === 'individual') await w.get('.artifact-pin').trigger('tap');
+        else {
+          await tap(w, '选择');
+          await w
+            .findAll('.artifact')
+            .find((card) => card.attributes('aria-label') === '选择 ' + item.title)
+            .trigger('tap');
+          await w
+            .findAll('.library-head-actions button')
+            .find((button) => button.text() === '置顶')
+            .trigger('tap');
+        }
+        await ready();
+        expect(writes).toBe(1);
+        expect(w.get('[data-library-pin-retry]').exists()).toBe(true);
+        unavailable = false;
+        await w.get('[data-library-pin-retry]').trigger('tap');
+        await ready();
+        expect(w.find('[role="alert"]').exists()).toBe(false);
+        expect(writes).toBe(1);
+        expect(save.mock.calls.filter(([key]) => key.endsWith('pin:' + item.id))).toHaveLength(1);
+        expect(client.readPin(item.id)).toBe(true);
+        expect(client.readDraft(item.id).pending.requestId).toBe('s48-original-request');
+        expect(requestLearningArtifact).not.toHaveBeenCalled();
+        expect(JSON.stringify(harness.store.state)).toBe(original);
+      } finally {
+        uni.getStorageSync = reader;
+        uni.setStorageSync = writer;
+      }
+    }
+  );
   it('S47 shows the identity retry message and restores the owned unsaved draft after reads recover', async () => {
     const client = createLearningArtifacts();
     client.writeDraft(item.id, {
@@ -146,7 +334,7 @@ describe('S4 artifact panel and library', () => {
     try {
       const w = render(Library);
       await ready();
-      expect(w.get('[role="alert"]').text()).toBe('登录状态暂不可读，请重试');
+      expect(w.get('.library-pin-error-copy').text()).toBe('登录状态暂不可读，请重试');
       expect(w.text()).not.toContain('Cannot read');
       expect(JSON.stringify(globalThis.__mockStorage)).toBe(before);
       expect(requestLearningArtifact).not.toHaveBeenCalled();
