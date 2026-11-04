@@ -19,6 +19,7 @@ import {
 } from './learning-backup.js';
 import { createHistoryStorage } from './history-storage.js';
 import { createHistoryPackage } from '../../../laf-backend/functions/_shared/learning-history.js';
+import { createLearningArtifacts } from './learning-artifacts.js';
 
 export const LEARNING_KEY = 'conversation_learning_v1';
 export function createLearningRepository(
@@ -105,11 +106,25 @@ export function createLearningRepository(
   }
   const assertWriteAccess = () => writeLease?.assertWritable(owner());
   const privacyKey = `${LEARNING_KEY}_privacy_pending`;
+  function clearDeletedArtifactState(state) {
+    if (!usesSessionStorage) return;
+    const session = sessionBindings.at(-1) || captureSession();
+    createLearningArtifacts({
+      storage,
+      session,
+      keys: () => {
+        const info = storageService.getStorageInfo();
+        assert(info?.limitSize !== 0 && Array.isArray(info?.keys), 'STORAGE_FAILED', '文档设备副本清理失败，请重试');
+        return info.keys;
+      }
+    }).clearMaterialDeletedState(state, assertWriteAccess);
+  }
   function finishPrivacy(state, operation) {
     assert(state.owner === owner(), 'OWNER_MISMATCH', '隐私删除属于其他账户');
     const outcome = applyLearningOperation(state, operation);
     for (const suffix of ['_recovery', '_migration_backup', '_sync_conflict'])
       assert(storage.remove(`${LEARNING_KEY}${suffix}`, true), 'STORAGE_FAILED', '隐私副本未清理，删除待重试');
+    clearDeletedArtifactState(outcome.state);
     assert(storage.save(LEARNING_KEY, outcome.state, true), 'STORAGE_FAILED', '隐私删除未保存，待重试');
     assert(storage.remove(privacyKey, true), 'STORAGE_FAILED', '删除已保存，收尾待重试');
     return outcome;
@@ -128,7 +143,9 @@ export function createLearningRepository(
       invalidateLifecycle();
       return finishPrivacy(state, pending.operation).state;
     }
-    return JSON.parse(JSON.stringify(state));
+    const current = JSON.parse(JSON.stringify(state));
+    clearDeletedArtifactState(current);
+    return current;
   };
   const conflictKey = `${LEARNING_KEY}_sync_conflict`;
   const conflict = () => {

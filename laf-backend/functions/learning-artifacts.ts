@@ -4,6 +4,7 @@ import { requireAuth, isAuthError } from './_shared/auth-middleware.js';
 import { requireActiveUser } from './_shared/active-user.js';
 import { checkRateLimitDistributed } from './_shared/api-response.js';
 import { decodeServerHistory } from './_shared/learning-history-server.js';
+import { materialDeletedConversationIds } from './_shared/learning-domain.js';
 
 const SCHEMA = 'yozi.learning-artifact.v1';
 const conflict = '文档已有新版本。你的修改已保留，请重新载入核对后保存。';
@@ -140,6 +141,27 @@ export async function handleLearningArtifacts(db: any, owner: string, body: any)
           (Number.isSafeInteger(row.essayArtifactRevision) && row.essayArtifactRevision >= 0)),
       'ARTIFACT_UNAVAILABLE'
     );
+    const state = await decodeServerHistory(row.state, owner);
+    const deletedConversations = materialDeletedConversationIds(state);
+    if (deletedConversations.size && row.essayArtifacts) {
+      const kept = Object.fromEntries(
+        Object.entries(row.essayArtifacts).filter(
+          ([, copy]: any) => !deletedConversations.has(copy?.artifact?.source?.conversationId)
+        )
+      );
+      if (Object.keys(kept).length !== Object.keys(row.essayArtifacts).length) {
+        await collection
+          .where({
+            ...query,
+            revision: row.revision,
+            essayArtifactRevision:
+              row.essayArtifactRevision === undefined ? { $exists: false } : row.essayArtifactRevision
+          })
+          .update({ essayArtifacts: kept, essayArtifactRevision: (row.essayArtifactRevision || 0) + 1 });
+        continue;
+      }
+    }
+    requireValue(!deletedConversations.has(body.id.split(':')[1]), 'ARTIFACT_NOT_FOUND');
     const copies = row.essayArtifacts || {},
       stored = copies[key];
     let next: any, receipt: any;
@@ -211,7 +233,7 @@ export async function handleLearningArtifacts(db: any, owner: string, body: any)
       .where({
         ...query,
         essayArtifactRevision: row.essayArtifactRevision === undefined ? { $exists: false } : counter,
-        ...(body.action === 'open' ? { revision: row.revision } : {})
+        revision: row.revision
       })
       .update({ essayArtifacts: updatedCopies, essayArtifactRevision: counter + 1 });
     if (result.updated === 1) return response(next, next.artifact.version, receipt);

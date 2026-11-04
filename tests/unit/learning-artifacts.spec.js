@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createLearningArtifacts,
   studentEssaySources,
@@ -6,6 +6,15 @@ import {
   ARTIFACT_CONFLICT
 } from '@/services/learning/learning-artifacts.js';
 import { artifactFixtureState, artifactMemoryStorage } from '../fixtures/learning-artifacts.js';
+import { createLearningRepository, LEARNING_KEY } from '@/services/learning/learning-repository.js';
+import { storageService } from '@/services/storageService.js';
+import { parsePastedMaterial } from '@/services/learning/material-intake.js';
+import {
+  applyLearningOperation,
+  emptyLearningState,
+  materialDeletedConversationIds
+} from '@/services/learning/learning-domain.js';
+import { prepareLearningRestore } from '@/services/learning/learning-backup.js';
 let storage, session, item, request, check, doc, revisions;
 beforeEach(() => {
   storage = artifactMemoryStorage();
@@ -81,6 +90,39 @@ const draft = (content = 'My revised copy') => ({
   editorScrollTop: 33,
   pending: null
 });
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  uni.clearStorageSync();
+  localStorage.clear();
+});
+function s45DeviceFixture() {
+  uni.clearStorageSync();
+  localStorage.clear();
+  uni.setStorageSync('EXAM_USER_ID', 'artifact-student');
+  uni.setStorageSync('EXAM_TOKEN', 'S45_LOCAL_SYNTHETIC_NOT_VALID');
+  const state = artifactFixtureState('artifact-student');
+  state.materials.push(parsePastedMaterial('S45 private material.', 's45-material'));
+  state.conversations[0].coach.materialIds = ['s45-material'];
+  const c = createLearningArtifacts();
+  c.writeDraft(item.id, {
+    ...draft('S45 private pending words.'),
+    pending: { requestId: 's45-original', signature: 'S45_PRIVATE_PENDING' }
+  });
+  c.setPin(item.id, true);
+  const independentId = 'essay:s45-independent:coach-submission:independent-answer';
+  c.writeDraft(independentId, draft('Keep independent local words.'));
+  c.setPin(independentId, true);
+  expect(storageService.save(LEARNING_KEY, state, true)).toBe(true);
+  const repo = createLearningRepository(storageService, () => 'artifact-student', null);
+  const deletion = {
+    id: 's45-delete-material',
+    type: 'material.delete',
+    at: Date.now(),
+    data: { materialId: 's45-material', questionKeys: [] }
+  };
+  return { c, repo, state, deletion, independentId };
+}
 
 describe('S4 device state and confirmed mutations', () => {
   it('explicit local deletion clears only this account/API scratch and pin keys', () => {
@@ -259,5 +301,168 @@ describe('S4 device state and confirmed mutations', () => {
     expect(c.readDraft(item.id)).toEqual(before);
     expect(revisions).toHaveLength(2);
     expect(revisions[1].content).toBe('Frozen saved copy.');
+  });
+  it('S45 confirmed material deletion clears linked device drafts, pending text and pins', () => {
+    uni.clearStorageSync();
+    localStorage.clear();
+    uni.setStorageSync('EXAM_USER_ID', 'artifact-student');
+    uni.setStorageSync('EXAM_TOKEN', 'S45_LOCAL_SYNTHETIC_NOT_VALID');
+    try {
+      const state = artifactFixtureState('artifact-student');
+      state.materials.push(parsePastedMaterial('S45 private material.', 's45-material'));
+      state.conversations[0].coach.materialIds = ['s45-material'];
+      const c = createLearningArtifacts();
+      c.writeDraft(item.id, {
+        ...draft('S45 private unsaved text'),
+        pending: { requestId: 's45-original-request', signature: 'S45_PRIVATE_PENDING_TEXT' }
+      });
+      c.setPin(item.id, true);
+      expect(storageService.save(LEARNING_KEY, state, true)).toBe(true);
+      const repo = createLearningRepository(storageService, () => 'artifact-student', null);
+      repo.deleteMaterial(repo.previewMaterialDeletion('s45-material'), true, 's45-delete-material');
+      expect(c.readDraft(item.id)).toBeNull();
+      expect(c.readPin(item.id)).toBe(false);
+    } finally {
+      uni.clearStorageSync();
+      localStorage.clear();
+    }
+  });
+
+  it('S45 scoped device cleanup keeps unrelated documents, APIs and accounts exactly', () => {
+    const f = s45DeviceFixture();
+    const otherApi = createLearningArtifacts({ api: 'https://s45-other.synthetic.invalid' });
+    otherApi.writeDraft(item.id, draft('Keep another API draft.'));
+    otherApi.setPin(item.id, true);
+    const foreignKey =
+      'u_another-owner_conversation_learning_v1_artifacts:unrelated:draft:essay:essay-chat:coach-submission:essay-submission';
+    uni.setStorageSync(foreignKey, { content: 'Keep another account.' });
+    const independent = structuredClone(f.c.readDraft(f.independentId));
+    const other = structuredClone(otherApi.readDraft(item.id));
+    f.repo.deleteMaterial(f.repo.previewMaterialDeletion('s45-material'), true, f.deletion.id);
+    expect(f.c.readDraft(item.id)).toBeNull();
+    expect(f.c.readPin(item.id)).toBe(false);
+    expect(f.c.readDraft(f.independentId)).toEqual(independent);
+    expect(f.c.readPin(f.independentId)).toBe(true);
+    expect(otherApi.readDraft(item.id)).toEqual(other);
+    expect(otherApi.readPin(item.id)).toBe(true);
+    expect(uni.getStorageSync(foreignKey)).toEqual({ content: 'Keep another account.' });
+  });
+  it('S45 failed device cleanup keeps the privacy journal and completes on the next checked read', () => {
+    const f = s45DeviceFixture();
+    const remove = storageService.remove.bind(storageService);
+    let blocked = true;
+    vi.spyOn(storageService, 'remove').mockImplementation((key, ...args) =>
+      blocked && key.includes('_artifacts:') && key.includes(':pin:') ? false : remove(key, ...args)
+    );
+    expect(() => f.repo.deleteMaterial(f.repo.previewMaterialDeletion('s45-material'), true, f.deletion.id)).toThrow(
+      '清理失败'
+    );
+    expect(() => f.repo.read()).toThrow('清理失败');
+    const pending = storageService.get(LEARNING_KEY + '_privacy_pending', null);
+    expect(pending.operation.id).toBe(f.deletion.id);
+    expect(JSON.stringify(pending)).not.toContain('S45 private');
+    blocked = false;
+    const state = f.repo.read();
+    expect(state.materials).toHaveLength(0);
+    expect(storageService.get(LEARNING_KEY + '_privacy_pending', null)).toBeNull();
+    expect(f.c.readDraft(item.id)).toBeNull();
+    expect(f.c.readPin(item.id)).toBe(false);
+    expect(f.c.readDraft(f.independentId).content).toBe('Keep independent local words.');
+  });
+  it('S45 an unavailable device key catalog cannot falsely confirm material deletion', () => {
+    const f = s45DeviceFixture();
+    const info = vi.spyOn(storageService, 'getStorageInfo').mockReturnValue({ keys: [], limitSize: 0 });
+    expect(() => f.repo.deleteMaterial(f.repo.previewMaterialDeletion('s45-material'), true, f.deletion.id)).toThrow(
+      '清理失败'
+    );
+    expect(storageService.get(LEARNING_KEY + '_privacy_pending', null)).not.toBeNull();
+    expect(f.c.readDraft(item.id).content).toBe('S45 private pending words.');
+    info.mockRestore();
+    expect(f.repo.read().materials).toHaveLength(0);
+    expect(f.c.readDraft(item.id)).toBeNull();
+  });
+  it('S45 reading an already-redacted legacy state clears only its residual device copies without new facts', () => {
+    const f = s45DeviceFixture();
+    const deleted = applyLearningOperation(f.state, f.deletion).state;
+    storageService.save(LEARNING_KEY, deleted, true);
+    expect(f.repo.read()).toEqual(deleted);
+    expect(f.c.readDraft(item.id)).toBeNull();
+    expect(f.c.readPin(item.id)).toBe(false);
+    expect(f.c.readDraft(f.independentId).content).toBe('Keep independent local words.');
+    expect(storageService.get(LEARNING_KEY, null)).toEqual(deleted);
+  });
+  it('S45 adopting cloud privacy tombstones clears device copies before returning the adopted state', () => {
+    const f = s45DeviceFixture();
+    const deleted = applyLearningOperation(f.state, f.deletion).state;
+    expect(f.repo.replaceSynchronized(deleted)).toEqual(deleted);
+    expect(f.c.readDraft(item.id)).toBeNull();
+    expect(f.c.readPin(item.id)).toBe(false);
+    expect(f.c.readDraft(f.independentId).content).toBe('Keep independent local words.');
+  });
+  it('S45 foreign deletion receipts and ordinary source absence cannot clear owned drafts', () => {
+    const f = s45DeviceFixture();
+    const before = structuredClone(f.c.readDraft(item.id));
+    const deleted = applyLearningOperation(f.state, f.deletion).state;
+    expect(() => f.c.clearMaterialDeletedState({ ...deleted, owner: 'other-owner' })).toThrow('其他账户');
+    const ordinary = structuredClone(f.state);
+    ordinary.conversations = [];
+    ordinary.materials = [];
+    expect(f.c.clearMaterialDeletedState(ordinary)).toBe(0);
+    expect(f.c.readDraft(item.id)).toEqual(before);
+  });
+
+  it('S45 an empty-device restore keeps the redacted conversation receipt and removes its old device draft', () => {
+    const f = s45DeviceFixture();
+    let state = emptyLearningState('artifact-student', 'Asia/Shanghai');
+    const at = Date.now() - 1000;
+    const put = (id, type, data) => {
+      state = applyLearningOperation(state, { id, type, at, data }).state;
+    };
+    put('s45-mat-add', 'material.add', { material: parsePastedMaterial('S45 raw source never restored.', 's45-mat') });
+    put('s45-redacted-chat', 'conversation.start', { goal: 'S45 raw source never restored.' });
+    put('s45-q-add', 'question.add', {
+      question: {
+        id: 's45-q',
+        version: 1,
+        prompt: 'S45 raw source never restored.',
+        source: { materialId: 's45-mat' },
+        scope: 'private',
+        answerType: 'subjective'
+      }
+    });
+    put('s45-focus', 'question.focus', { conversationId: 's45-redacted-chat', questionKey: 's45-q@1' });
+    put('s45-redact', 'material.delete', { materialId: 's45-mat', questionKeys: ['s45-q@1'] });
+    const restored = prepareLearningRestore(
+      emptyLearningState('artifact-student', 'Asia/Shanghai'),
+      JSON.stringify(state)
+    ).state;
+    expect(JSON.stringify(restored)).not.toContain('S45 raw source never restored.');
+    expect([...materialDeletedConversationIds(restored)]).toEqual(['s45-redacted-chat']);
+    const id = 'essay:s45-redacted-chat:writing-attempt:legacy-answer';
+    f.c.writeDraft(id, draft('S45 stale device content.'));
+    f.c.setPin(id, true);
+    expect(f.c.clearMaterialDeletedState(restored)).toBe(2);
+    expect(f.c.readDraft(id)).toBeNull();
+    expect(f.c.readPin(id)).toBe(false);
+    expect(f.c.readDraft(f.independentId).content).toBe('Keep independent local words.');
+  });
+  it('S45 a readonly window cannot purge residual drafts but can read once the writer cleaned them', () => {
+    const f = s45DeviceFixture();
+    const deleted = applyLearningOperation(f.state, f.deletion).state;
+    storageService.save(LEARNING_KEY, deleted, true);
+    const lease = {
+      prepare() {},
+      assertWritable() {
+        throw Object.assign(new Error('另一窗口仍在写入'), { code: 'OTHER_WINDOW_ACTIVE' });
+      }
+    };
+    const reader = createLearningRepository(storageService, () => 'artifact-student', lease);
+    expect(() => reader.read()).toThrow('另一窗口');
+    expect(f.c.readDraft(item.id).content).toBe('S45 private pending words.');
+    expect(f.c.readPin(item.id)).toBe(true);
+    expect(f.repo.read()).toEqual(deleted);
+    expect(reader.read()).toEqual(deleted);
+    expect(f.c.readDraft(item.id)).toBeNull();
+    expect(f.c.readDraft(f.independentId).content).toBe('Keep independent local words.');
   });
 });

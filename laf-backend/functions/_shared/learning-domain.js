@@ -456,6 +456,32 @@ export function inspectMaterialDeletion(state, materialId) {
       .length
   };
 }
+// Use explicit privacy receipts, never a missing source or an ordinary stop.
+// Conversation seeds also cover deletion replay onto an initially empty device.
+export function materialDeletedConversationIds(state) {
+  const removals = new Map((state.materialDeletions || []).map((d) => [d.deletionId, d.materialId]));
+  const ids = new Set();
+  if (!removals.size) return ids;
+  const add = (id) => {
+    if (typeof id === 'string' && id.length > 0 && id.length <= 160) ids.add(id);
+  };
+  for (const event of state.events || []) {
+    if (
+      event.type === 'material.delete' &&
+      removals.get(event.id) === event.data?.materialId &&
+      Array.isArray(event.result?.conversationIds)
+    )
+      for (const id of event.result.conversationIds) add(id);
+    if (
+      event.type === 'privacy.redacted' &&
+      event.data?.seed?.kind === 'conversation' &&
+      removals.get(event.data.deletionId) === event.data.materialId
+    )
+      add(event.id);
+  }
+  return ids;
+}
+
 function redactMaterial(state, data, deletionId, at) {
   const preview = inspectMaterialDeletion(state, data.materialId);
   const materialIds = new Set([...preview.materialIds, ...(data.materialIds || [])]);

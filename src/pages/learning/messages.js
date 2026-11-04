@@ -542,7 +542,7 @@ const messages = {
     'learning.k8z': '请先结束当前文件动作',
     'learning.kbp': '确认资料删除范围',
     'learning.k6u':
-      '清除「{v0}」、{v1} 个关联题目版本、{v2} 个关联对话的全部正文（{v3} 条）和作答（{v4} 次），同时清理本机恢复、迁移及冲突副本。计划保留任务分母，{v5} 项任务标为资料已删除。{v6}云端副本需主动同步删除墓碑；其他设备、已导出文件及运维备份另行处理。',
+      '清除「{v0}」、{v1} 个关联题目版本、{v2} 个关联对话的全部正文（{v3} 条）和作答（{v4} 次），同时清理关联文档副本、历史版本、设备草稿与置顶，以及本机恢复、迁移及冲突副本。计划保留任务分母，{v5} 项任务标为资料已删除。{v6}云端副本需主动同步删除墓碑；其他设备、已导出文件及运维备份另行处理。',
     'learning.khu': '将请求原识别服务删除原件与页图；失败会保留待办。',
     'learning.kli': '本机关联记录已清理；识别服务中的原件删除待确认：{v0}',
     'learning.kuj': '本机关联记录已清理，原件删除状态已确认。云端删除需主动同步；计划分母保留。',
@@ -1889,7 +1889,7 @@ const messages = {
     'learning.k8z': 'Finish the current file action first',
     'learning.kbp': 'Confirm material deletion',
     'learning.k6u':
-      'Delete “{v0}”, {v1} linked question versions, all text in {v2} linked chats ({v3} messages), {v4} answers, and device recovery, migration and conflict copies. Keep the task denominator; mark {v5} tasks as material deleted. {v6}Explicitly sync deletion markers to remove cloud copies. Other devices, exports and operational backups need separate handling.',
+      'Delete “{v0}”, {v1} linked question versions, all text in {v2} linked chats ({v3} messages), {v4} answers, linked document copies and versions, device document drafts and pins, and recovery, migration and conflict copies. Keep the task denominator; mark {v5} tasks as material deleted. {v6}Explicitly sync deletion markers to remove cloud copies. Other devices, exports and operational backups need separate handling.',
     'learning.khu': 'Request original parser deletion of files and images. Keep a pending item if it fails.',
     'learning.kli': 'Linked device records cleared. Document service file deletion unconfirmed: {v0}',
     'learning.kuj':

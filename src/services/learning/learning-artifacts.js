@@ -3,6 +3,7 @@ import { captureSession, assertSession } from '../auth-storage.js';
 import { storageService } from '../storageService.js';
 import { requestLearningArtifact } from '../api/domains/learning.api.js';
 import config from '../../config/index.js';
+import { materialDeletedConversationIds } from './learning-domain.js';
 
 export const ARTIFACT_SCHEMA = 'yozi.learning-artifact.v1';
 // Reuse Muse 2 api.ts ArtifactError copy; no teaching/fact mutation belongs here.
@@ -188,6 +189,38 @@ export function createLearningArtifacts({
       current();
       const remaining = keys();
       if (!Array.isArray(remaining) || owned.some((k) => remaining.includes(k))) throw new Error('删除失败，请重试');
+      return owned.length;
+    },
+    clearMaterialDeletedState(state, beforeRemove) {
+      current();
+      if (state?.owner !== owner) throw new Error('资料删除属于其他账户，未清理文档副本');
+      const deleted = materialDeletedConversationIds(state);
+      if (!deleted.size) return 0;
+      const scoped = `${owner === 'guest' ? `g_${session.epoch}` : `u_${owner}`}_${prefix}`;
+      const all = keys();
+      if (!Array.isArray(all)) throw new Error('文档设备副本清理失败，请重试');
+      const owned = all.filter((raw) => {
+        if (typeof raw !== 'string' || !raw.startsWith(scoped)) return false;
+        const match =
+          /^(draft|pin):essay:([a-zA-Z0-9_-]{1,160}):(coach-submission|coach-legacy|writing-attempt):[a-zA-Z0-9_-]{1,160}$/.exec(
+            raw.slice(scoped.length)
+          );
+        return match && deleted.has(match[2]);
+      });
+      if (owned.length) beforeRemove?.();
+      for (const raw of owned) {
+        current();
+        const localKey = raw.slice(scoped.length - prefix.length);
+        if (
+          storage.remove(localKey, true, session) !== true ||
+          storage.get(localKey, null, { session, migrateLegacy: false }) !== null
+        )
+          throw new Error('文档设备副本清理失败，请重试');
+      }
+      current();
+      const remaining = keys();
+      if (!Array.isArray(remaining) || owned.some((raw) => remaining.includes(raw)))
+        throw new Error('文档设备副本清理失败，请重试');
       return owned.length;
     },
     readDraft,

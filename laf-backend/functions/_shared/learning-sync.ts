@@ -1,6 +1,11 @@
 import crypto from 'node:crypto';
 import { coachingMetricFacts } from './learning-trial-metrics.js';
-import { emptyLearningState, createLearningOperationBatch, normalizePrivateSyncOperation } from './learning-domain.js';
+import {
+  emptyLearningState,
+  createLearningOperationBatch,
+  normalizePrivateSyncOperation,
+  materialDeletedConversationIds
+} from './learning-domain.js';
 import { AccountError } from './learning-account.js';
 import { decodeServerHistory, encodeServerHistory, historyWire } from './learning-history-server.js';
 import { eraseLearningModelResultCache } from './learning-model-runtime.js';
@@ -98,16 +103,47 @@ export async function syncLearningOperations(db: any, userId: string, operations
       accepted.push(operation.id);
     }
     state = batch.finish();
+    const deletedConversations = materialDeletedConversationIds(state);
+    const privacyGuard = materialDeleted || deletedConversations.size > 0;
+    let artifactPatch: any = {};
+    if (privacyGuard && stored.essayArtifacts !== undefined) {
+      if (!stored.essayArtifacts || typeof stored.essayArtifacts !== 'object' || Array.isArray(stored.essayArtifacts))
+        throw new AccountError('CONFLICT', '文档副本清理待重试，未确认资料删除完成');
+      const kept = Object.fromEntries(
+        Object.entries(stored.essayArtifacts).filter(
+          ([, copy]: any) => !deletedConversations.has(copy?.artifact?.source?.conversationId)
+        )
+      );
+      if (Object.keys(kept).length !== Object.keys(stored.essayArtifacts).length) {
+        const counter = stored.essayArtifactRevision ?? 0;
+        if (!Number.isSafeInteger(counter) || counter < 0)
+          throw new AccountError('CONFLICT', '文档副本清理待重试，未确认资料删除完成');
+        artifactPatch = { essayArtifacts: kept, essayArtifactRevision: counter + 1 };
+      }
+    }
     // 读取和重复补传不生成新版本，不让分段读取无故失效。
-    if (!changed) return { state, accepted, revision: stored.revision };
+    if (!changed && !Object.keys(artifactPatch).length) return { state, accepted, revision: stored.revision };
     // 题源关联目前不足以证明所有缓存的材料范围，保守清除本账户全部教学结果。
     // 先提交取消/清除，再提交学习墓碑；任一步失败都不返回删除成功。
     if (materialDeleted) await eraseLearningModelResultCache(db, userId);
-    const persisted = await encodeServerHistory(state, userId);
+    const revision = stored.revision + (changed ? 1 : 0);
+    const learningPatch = changed
+      ? { state: await encodeServerHistory(state, userId), trialFacts: coachingMetricFacts(state), revision }
+      : {};
     const result = await collection
-      .where({ _id: id, user_id: userId, revision: stored.revision })
-      .update({ state: persisted, trialFacts: coachingMetricFacts(state), revision: stored.revision + 1 });
-    if (result.updated === 1) return { state, accepted, revision: stored.revision + 1 };
+      .where({
+        _id: id,
+        user_id: userId,
+        revision: stored.revision,
+        ...(privacyGuard
+          ? {
+              essayArtifactRevision:
+                stored.essayArtifactRevision === undefined ? { $exists: false } : stored.essayArtifactRevision
+            }
+          : {})
+      })
+      .update({ ...learningPatch, ...artifactPatch });
+    if (result.updated === 1) return { state, accepted, revision };
   }
   throw new AccountError('CONFLICT', '学习同步同时更新，请保留本地操作后重试');
 }

@@ -3891,7 +3891,7 @@ function deleteMaterial(material) {
     showLearningDialog({
       title: '确认资料删除范围',
       type: 'warning',
-      content: `清除「${preview.name}」、${preview.questions} 个关联题目版本、${preview.conversations} 个关联对话的全部正文（${preview.messages} 条）和作答（${preview.attempts} 次），同时清理本机恢复、迁移及冲突副本。计划保留任务分母，${preview.tasks} 项任务标为资料已删除。${preview.original ? '将请求原识别服务删除原件与页图；失败会保留待办。' : ''}云端副本需主动同步删除墓碑；其他设备、已导出文件及运维备份另行处理。`,
+      content: `清除「${preview.name}」、${preview.questions} 个关联题目版本、${preview.conversations} 个关联对话的全部正文（${preview.messages} 条）和作答（${preview.attempts} 次），同时清理关联文档副本、历史版本、设备草稿与置顶，以及本机恢复、迁移及冲突副本。计划保留任务分母，${preview.tasks} 项任务标为资料已删除。${preview.original ? '将请求原识别服务删除原件与页图；失败会保留待办。' : ''}云端副本需主动同步删除墓碑；其他设备、已导出文件及运维备份另行处理。`,
       success: (res) => {
         if (res.confirm)
           run(async () => {
