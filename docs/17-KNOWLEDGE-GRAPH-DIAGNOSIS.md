@@ -231,3 +231,11 @@ S34另行预登记六题与有效原稿，不修改或重跑S17九条案例。�
 公开[倡议书](https://www.beijing.gov.cn/ywdt/yaowen/202601/t20260118_4441984.html)仅提炼缘由、行动与动员职责；[调查报告](https://www.nanjing.gov.cn/hdjl/zjdc/wsdc/dcbg/202605/t20260518_5841847.html)仅提炼结果、分析和建议职责，不上传其正文或数字，不当作真实阅卷满分金标准。S9原创案例及原稿预登记后不改题，8例属于有限开发结构证据，原格式／引用失败保留。
 
 N3来源仍未冻结：[DeepSeek官方聊天接口](https://api-docs.deepseek.com/api/create-chat-completion/)当前请求枚举提供型号名，`system_fingerprint`描述后端配置。2026-11-03官方[型号说明](https://api-docs.deepseek.com/quick_start/pricing/)列当前发布标签Flash为DeepSeek-V4.1-Flash-1017、Pro为DeepSeek-V4-Pro-0813；沿现有鉴权、端点校验及DNS固定机制实际读取一次付费`GET /models`，完整列表仅有`deepseek-flash`和`deepseek-v4-pro`，未观察到可固定修订号的入口。当前发布标签与别名列表不等于路由或权重版本不可变，也不能回填旧请求；未新增推理调用、密钥、提供方或平台预测资格。现有记录不以接口别名、配置版本或文档示例指纹补填上游修订版本，预测资格与比例继续保持不足／空值。2027英语两卷正文及真实未见题样本仍未取得，不以未检索到断言尚未公布。
+
+### 国考转载候选与原发布来源（S35）
+
+已正常取得[高校就业站转载](https://jy.slu.edu.cn/2026/1014/c557a58735/page.htm)的原始HTML：页面标注2026-10-14、来源“就业创业处”，标题为2027国考公共科目大纲，包含三类申论章节。私有副本为210,447字节，SHA256 `0eae4c706db3721118db26f1b55a7a489660b9486f0303cbee2d9d1e556b336f`；只作后续与原发布版本比较的候选材料，不作为已核官方正文或公共分发内容。国家公务员局原链接仍无法读取，未由转载推定原发布者、版本或完整性已经认证，当前来源收据继续保持原解释。
+
+[英语一出版社书目](https://xuanshu.hep.com.cn/front/book/findBookDetails?bookId=6aa19108e119ac97297a5c45)可读2027版与2026年9月出版信息，详情／目录仍为空，未观察到正文或试读入口；不能以书目替代26节点的正文对齐。Drive本次只读检索仍为传输失败，不推断账户里没有资料。付费DeepSeek固定修订版本及真实未见题／识别链路仍缺，未追加型号探测或推理调用；历史SDK安全拦截不重试、不绕过。
+
+来源候选及失败结果复用 `resources.json` 的 `closureLocal20261102.batches.remainingSourceAudit`，实际下载追加至既有 `tmp/downloads.json`。S34原生验收、源码、快照、英语37份与预测空值保持，未改产品来源合同或补写学习事实。
