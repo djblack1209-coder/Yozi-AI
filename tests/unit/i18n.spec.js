@@ -32,6 +32,17 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('lightweight i18n', () => {
+  it.each(['zh-CN', 'en'])('S40 retained-conflict message survives both public UI filters in %s', (language) => {
+    setLanguage(language);
+    const message = '本机与云端记录存在差异，两份副本已保留；请在下方查看并选择要继续的记录。';
+    expect(t('ui.syncConflictRetained')).not.toBe('ui.syncConflictRetained');
+    expect(publicError({ code: 'CONFLICT', message })).toBe(t('ui.syncConflictRetained'));
+    expect(publicError(publicError({ code: 'CONFLICT', message }))).toBe(t('ui.syncConflictRetained'));
+    expect(publicError(t('ui.syncConflictRetained'))).toBe(t('ui.syncConflictRetained'));
+    expect(publicError({ code: 'CONFLICT', message: 'private raw scope result or provider trace' })).toBe(
+      t('ui.operationFailed')
+    );
+  });
   it('shows safe recovery steps for known sync preview and archive failures in both languages', () => {
     const cases = [
       ['CONFLICT', '云端记录已更新，请重新同步预览；本机与冲突副本保留', 'ui.syncPreviewChanged'],

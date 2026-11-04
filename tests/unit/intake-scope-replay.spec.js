@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
+import { publicError } from '@/i18n/index.js';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import {
   MODEL_INTAKE_V2_CONTRACT,
@@ -485,6 +486,7 @@ describe('S40 saved conflict feedback in the real learning store', () => {
         kind: 'sync',
         message: '本机与云端记录存在差异，两份副本已保留；请在下方查看并选择要继续的记录。'
       });
+      expect(publicError(store.syncState.message)).toBe(store.syncState.message);
       expect(store.syncBusy).toBe(false);
       expect(store.syncProgress).toBeNull();
     } finally {

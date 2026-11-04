@@ -5415,8 +5415,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     if (kind === 'sync' && failure?.code === 'CONFLICT') {
       try {
         const archive = learningRepository.previewSyncConflict();
-        if (archive?.owner === getUserId() && archive.ids.length)
-          return '本机与云端记录存在差异，两份副本已保留；请在下方查看并选择要继续的记录。';
+        if (archive?.owner === getUserId() && archive.ids.length) return t('ui.syncConflictRetained');
       } catch {
         // 无法读回归档时，不宣称副本已保存。
       }
