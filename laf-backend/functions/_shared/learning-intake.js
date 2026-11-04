@@ -10,6 +10,7 @@ export const INTAKE_CHOICES = Object.freeze([
 ]);
 export const MODEL_INTAKE_V2_CONTRACT = 'model-intake-v2';
 export const SINGLE_QUESTION_CONTRACT = 'single-question-v1';
+export const INTAKE_SCOPE_REPLAY_CONTRACT = 'intake-scope-replay-v1';
 export const MODEL_INTAKE_CONTRACTS = Object.freeze(['model-intake-v1', MODEL_INTAKE_V2_CONTRACT]);
 const choices = (items) => Object.freeze(items.map(([value, label]) => Object.freeze({ value, label })));
 const V2_DIRECTIONS = choices([
@@ -241,6 +242,49 @@ export function normalizeIntakeReply(value, first = false, context) {
     question: null,
     tools: []
   };
+}
+export function normalizeIntakeScopeSnapshot(value) {
+  if (
+    value?.contract !== INTAKE_SCOPE_REPLAY_CONTRACT ||
+    Object.keys(value).some((key) => !['contract', 'scope'].includes(key))
+  )
+    return fail('reply.scope-snapshot');
+  try {
+    return { contract: INTAKE_SCOPE_REPLAY_CONTRACT, scope: normalizeExamScope(value.scope) };
+  } catch {
+    return fail('reply.scope-snapshot');
+  }
+}
+// A saved operation result can differ from its original model reply. Freeze only
+// its bounded exam-scope fields; grades, tool claims and other result fields stay untrusted.
+export function intakeScopeReplaySnapshot(event) {
+  const scope = event?.type === 'intake.result' && event.result?.intake?.profile?.examScope;
+  const receipt = event?.intakeScope;
+  const snapshot =
+    receipt === undefined
+      ? scope
+        ? normalizeIntakeScopeSnapshot({ contract: INTAKE_SCOPE_REPLAY_CONTRACT, scope })
+        : undefined
+      : normalizeIntakeScopeSnapshot(receipt);
+  if (receipt !== undefined && scope && JSON.stringify(snapshot.scope) !== JSON.stringify(normalizeExamScope(scope)))
+    return fail('reply.scope-snapshot-conflict');
+  return snapshot;
+}
+export function normalizeSavedIntakeReply(value, first = false, context, snapshot) {
+  const reply = normalizeIntakeReply(value, first, context);
+  if (snapshot === undefined) return reply;
+  const { scope } = normalizeIntakeScopeSnapshot(snapshot);
+  const explicit = reply.intake.profile?.examScope;
+  if (
+    !explicit ||
+    scope.contract !== context?.scopeContract ||
+    ['year', 'examLevel', 'region', 'positionCategory'].some(
+      (key) => scope[key] !== null && scope[key] !== explicit[key]
+    )
+  )
+    return fail('reply.saved-scope-evidence');
+  reply.intake.profile.examScope = scope;
+  return reply;
 }
 export function parseIntakeOutput(raw, context) {
   let value;

@@ -1,6 +1,10 @@
 import { learningRequest } from '../api/domains/learning.api.js';
 import { captureSession, assertSession } from '../auth-storage.js';
 import {
+  intakeScopeReplaySnapshot,
+  INTAKE_SCOPE_REPLAY_CONTRACT
+} from '../../../laf-backend/functions/_shared/learning-intake.js';
+import {
   HISTORY_LIMITS,
   validateHistoryManifest,
   decodeHistory
@@ -206,12 +210,19 @@ export async function readLearningSnapshot({
   assertSession(session);
   return state;
 }
-function operationBatches(events) {
+function operationBatches(events, scopeReplayAvailable = false) {
   const batches = [];
   let batch = [],
     size = 2;
-  for (const { id, type, data, at } of events) {
-    const operation = { id, type, data, at },
+  for (const event of events) {
+    const { id, type, data, at } = event,
+      intakeScope = intakeScopeReplaySnapshot(event);
+    assert(
+      !intakeScope || scopeReplayAvailable,
+      'UPDATE_REQUIRED',
+      '学习服务尚不支持保留考试范围，请先更新服务；本机记录保留'
+    );
+    const operation = { id, type, data, at, ...(intakeScope ? { intakeScope } : {}) },
       length = JSON.stringify(operation).length + 1;
     assert(length <= 600000, 'RESOURCE_LIMIT', '单个同步操作超过传输上限，请分段处理；本机记录保留');
     if (batch.length && (batch.length >= 100 || size + length > 600000)) {
@@ -272,7 +283,14 @@ export async function synchronizeLearning(
     assert(repository.lifecycleRevision?.() === lifecycle, 'CONTEXT_CHANGED', '记录已删除或恢复，旧同步结果未写入');
   };
   assertContext();
-  const send = syncTransport(request, initial.owner, signal, assertContext, notify);
+  const transport = syncTransport(request, initial.owner, signal, assertContext, notify);
+  let scopeReplayAvailable = false;
+  const send = async (body) => {
+    const response = await transport(body);
+    if (body.action === 'pull')
+      scopeReplayAvailable = response.data?.intakeScopeReplayContracts?.includes(INTAKE_SCOPE_REPLAY_CONTRACT) === true;
+    return response;
+  };
   let remote = await pullSnapshot(send, initial.timezone, initial.owner);
   // 先传播隐私墓碑，绝不先把已删除资料的旧正文补传到服务器。
   const deletionOps = initial.events.filter(
@@ -307,7 +325,7 @@ export async function synchronizeLearning(
   total = pending.length;
   notify({ phase: total ? '准备补传学习操作' : '核对云端记录' });
   let snapshotRequired = false;
-  for (const operations of operationBatches(pending)) {
+  for (const operations of operationBatches(pending, scopeReplayAvailable)) {
     const result = await send({ action: 'push', operations, timezone: initial.timezone, returnSnapshot: false });
     const received = checkedPush(repository, result, operations, initial.owner, assertContext);
     snapshotRequired = !received;
@@ -324,8 +342,16 @@ export async function synchronizeLearning(
     'INVALID_RESPONSE',
     '云端未保留本次已确认的学习操作，本机记录保留；请核对其他设备或重新同步'
   );
-  for (const event of current.events.filter((e) => !remoteIds.has(e.id)))
-    remote = applyLearningOperation(remote, { id: event.id, type: event.type, data: event.data, at: event.at }).state;
+  for (const event of current.events.filter((e) => !remoteIds.has(e.id))) {
+    const intakeScope = intakeScopeReplaySnapshot(event);
+    remote = applyLearningOperation(remote, {
+      id: event.id,
+      type: event.type,
+      data: event.data,
+      at: event.at,
+      ...(intakeScope ? { intakeScope } : {})
+    }).state;
+  }
   assertContext();
   assertRichMessagesPreserved(enforceMaterialDeletions(current, remote), remote);
   return repository.replaceSynchronized(remote);

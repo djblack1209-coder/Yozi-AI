@@ -14,6 +14,10 @@ import {
   HISTORY_LIMITS
 } from '../../../laf-backend/functions/_shared/learning-history.js';
 import { ADHERENCE_EVENTS } from '../../../laf-backend/functions/_shared/learning-adherence.js';
+import {
+  intakeScopeReplaySnapshot,
+  normalizeIntakeReply
+} from '../../../laf-backend/functions/_shared/learning-intake.js';
 
 const ROOT_FIELDS = new Set([
   'version',
@@ -45,7 +49,7 @@ function checkKeys(value, depth = 0) {
   }
 }
 
-// JSON 是不可信输入。只重放操作，不接纳导入文件中的统计、判分结果或工具成功声明。
+// JSON 是不可信输入。考试范围快照另按原回答校验；不接纳统计、判分结果或工具成功声明。
 export function prepareLearningRestore(
   current,
   content,
@@ -101,6 +105,17 @@ export function prepareLearningRestore(
     let operation;
     try {
       operation = normalizePrivateSyncOperation(raw);
+      const intakeScope = intakeScopeReplaySnapshot(event);
+      if (intakeScope) operation.intakeScope = intakeScope;
+      else if (operation.type === 'intake.result' && operation.data.reply?.intake?.profile?.examScope) {
+        const derived = normalizeIntakeReply(operation.data.reply, !state.intake?.turns.length, state.intake).intake
+          .profile?.examScope;
+        assert(
+          operationFingerprint(derived || null) === operationFingerprint(operation.data.reply.intake.profile.examScope),
+          'MISSING_INTAKE_SCOPE',
+          '这份旧备份缺少当时确认的考试范围，请使用完整记录或重新导出；当前记录保留'
+        );
+      }
     } catch (error) {
       if (error.code) throw error;
       assert(false, 'INVALID_BACKUP', '备份操作不完整或不受支持');

@@ -1,4 +1,5 @@
 // 有界分页载荷；校验和只检测损坏，不是签名、授权或判分依据。
+import { intakeScopeReplaySnapshot, normalizeIntakeScopeSnapshot } from './learning-intake.js';
 export const HISTORY_FORMAT = 'learning-pages-v1';
 export const HISTORY_PACKAGE = 'learning-history-v1';
 export const HISTORY_LIMITS = Object.freeze({
@@ -118,11 +119,15 @@ export function readStoredHistory(value, get, owner, maximum = HISTORY_LIMITS.st
 }
 export function createHistoryPackage(state) {
   historyAssert(state.events.length <= HISTORY_LIMITS.operations, 'RESOURCE_LIMIT', '历史操作超过配置上限');
-  const events = state.events.map(({ id, type, at, data }) => ({ id, type, at, data }));
+  const events = state.events.map((event) => {
+    const { id, type, at, data } = event,
+      intakeScope = intakeScopeReplaySnapshot(event);
+    return { id, type, at, data, ...(intakeScope ? { intakeScope } : {}) };
+  });
   const encoded = encodeHistory(events, state.owner, `export_${state.revision.toString(36).padStart(8, '0')}`);
   return {
     format: HISTORY_PACKAGE,
-    version: 1,
+    version: events.some((event) => event.intakeScope) ? 2 : 1,
     owner: state.owner,
     timezone: state.timezone,
     count: events.length,
@@ -143,7 +148,7 @@ export function readHistoryPackage(content, owner) {
     historyAssert(false, 'INVALID_BACKUP', '历史备份不是有效 JSON');
   }
   historyAssert(
-    value?.format === HISTORY_PACKAGE && value.version === 1 && value.owner === owner,
+    value?.format === HISTORY_PACKAGE && [1, 2].includes(value.version) && value.owner === owner,
     'OWNER_MISMATCH',
     '历史备份版本或账户不匹配'
   );
@@ -159,5 +164,27 @@ export function readHistoryPackage(content, owner) {
   );
   const events = decodeHistory(value.manifest, value.pages, owner);
   historyAssert(Array.isArray(events) && events.length === value.count, 'INVALID_BACKUP', '历史操作计数不一致');
+  for (const event of events) {
+    if (value.version === 2) {
+      historyAssert(
+        event && Object.keys(event).every((key) => ['id', 'type', 'at', 'data', 'intakeScope'].includes(key)),
+        'INVALID_BACKUP',
+        '历史操作含未知字段'
+      );
+      historyAssert(
+        event.type !== 'intake.result' || !event.data?.reply?.intake?.profile?.examScope || event.intakeScope,
+        'INVALID_BACKUP',
+        '建档确认范围快照缺失，原记录保留'
+      );
+    }
+    if (event?.intakeScope !== undefined) {
+      historyAssert(
+        value.version === 2 && event.type === 'intake.result',
+        'INVALID_BACKUP',
+        '考试范围快照版本或操作不符'
+      );
+      normalizeIntakeScopeSnapshot(event.intakeScope);
+    }
+  }
   return { ...value, events };
 }

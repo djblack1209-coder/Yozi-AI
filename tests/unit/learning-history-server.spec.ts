@@ -15,6 +15,7 @@ import {
 import { syncLearningOperations, readLearningHistoryPages } from '../../laf-backend/functions/_shared/learning-sync.js';
 import { parsePastedMaterial } from '@/services/learning/material-intake.js';
 import { decodeHistory } from '../../laf-backend/functions/_shared/learning-history.js';
+import { INTAKE_SCOPE_REPLAY_CONTRACT } from '../../laf-backend/functions/_shared/learning-intake.js';
 let large: any;
 beforeAll(() => {
   large = historyFixture();
@@ -161,7 +162,13 @@ describe('服务端历史单文档与分页传输', () => {
     const wire = syncWireResult(result),
       pages = [];
     expect(wire.state).toBeUndefined();
-    expect(syncWireResult(result, true)).toEqual({ accepted: [], revision: 10, snapshotRequired: true });
+    expect(syncWireResult(result, true)).toEqual({
+      accepted: [],
+      revision: 10,
+      snapshotRequired: true,
+      intakeScopeReplayContracts: [INTAKE_SCOPE_REPLAY_CONTRACT]
+    });
+    expect(wire.intakeScopeReplayContracts).toEqual([INTAKE_SCOPE_REPLAY_CONTRACT]);
     for (let offset = 0; offset < wire.history.checksums.length; offset += 3) {
       const part = await readLearningHistoryPages(db, 'u1', {
         revision: 10,

@@ -4,7 +4,8 @@ import { normalizeLearningProposal, assertLearningProposalAcceptance } from './l
 import { normalizeContentBlocks, PRESENTATION_CONTRACT } from './learning-content-blocks.js';
 import {
   normalizeIntakeContext,
-  normalizeIntakeReply,
+  normalizeSavedIntakeReply,
+  normalizeIntakeScopeSnapshot,
   normalizeStudyProfile,
   intakeFinished,
   MODEL_INTAKE_V2_CONTRACT,
@@ -1168,6 +1169,9 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
   const previousEvent = budget?.eventIndex
     ? budget.eventIndex.get(opId)
     : original.events.find((event) => event.id === opId);
+  const intakeScope =
+    operation.intakeScope === undefined ? undefined : normalizeIntakeScopeSnapshot(operation.intakeScope);
+  if (intakeScope) assert(operation.type === 'intake.result', 'INVALID_INPUT', '考试范围快照不属于本操作');
   if (previousEvent) {
     assert(
       previousEvent.type !== 'privacy.redacted' || operation.type === 'privacy.redacted',
@@ -1182,6 +1186,14 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
       'IDEMPOTENCY_CONFLICT',
       '同一操作标识对应不同内容'
     );
+    if (intakeScope)
+      assert(
+        previousEvent.result?.intake?.profile?.examScope &&
+          operationFingerprint(previousEvent.result.intake.profile.examScope) ===
+            operationFingerprint(intakeScope.scope),
+        'IDEMPOTENCY_CONFLICT',
+        '已有建档范围与快照不同，原记录保留'
+      );
     return { state: original, reused: true, result: previousEvent.result };
   }
   const state = owned ? original : clone(original);
@@ -1287,7 +1299,7 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
         'CONTEXT_CHANGED',
         '旧模型建档回复不再适用'
       );
-      state.intake.reply = normalizeIntakeReply(data.reply, !state.intake.turns.length, state.intake);
+      state.intake.reply = normalizeSavedIntakeReply(data.reply, !state.intake.turns.length, state.intake, intakeScope);
       state.intake.status = 'ready';
       state.intake.finalFailure = false;
       result = state.intake.reply;

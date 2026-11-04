@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { gzip, gunzip } from 'node:zlib';
 import { promisify } from 'node:util';
 import { HISTORY_LIMITS, encodeHistory, historyAssert } from './learning-history.js';
+import { INTAKE_SCOPE_REPLAY_CONTRACT } from './learning-intake.js';
 
 const compress = promisify(gzip),
   decompress = promisify(gunzip);
@@ -82,7 +83,8 @@ export function historyWire(state: any, revision: number) {
 }
 export function syncWireResult(result: any, compact = false) {
   const { state, accepted, revision } = result;
-  if (compact) return { accepted, revision, snapshotRequired: true };
-  if (JSON.stringify(state).length < HISTORY_LIMITS.pageCharacters) return result;
-  return { history: historyWire(state, revision).manifest, accepted, revision };
+  const intakeScopeReplayContracts = [INTAKE_SCOPE_REPLAY_CONTRACT];
+  if (compact) return { accepted, revision, snapshotRequired: true, intakeScopeReplayContracts };
+  if (JSON.stringify(state).length < HISTORY_LIMITS.pageCharacters) return { ...result, intakeScopeReplayContracts };
+  return { history: historyWire(state, revision).manifest, accepted, revision, intakeScopeReplayContracts };
 }
