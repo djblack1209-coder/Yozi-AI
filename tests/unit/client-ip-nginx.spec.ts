@@ -35,6 +35,9 @@ const publicServers = config.filter(
 const locations = (server: Directive) => server.children.filter((d) => d.words[0] === 'location');
 const directive = (node: Directive, name: string) =>
   node.children.filter((d) => d.words[0] === name).map((d) => d.words.slice(1).join(' '));
+const retiredWebsite = publicServers.find((s) =>
+  directive(s, 'server_name').includes('exam.245334.xyz exam.blackdj.dpdns.org')
+)!;
 const functions = [
   ...new Set(
     publicServers.flatMap((s) =>
@@ -68,17 +71,22 @@ it('routes public API prefixes and function paths directly to the backend with o
   expect(functions.length).toBeGreaterThan(40);
   const https = publicServers.filter((s) => s.children.some((d) => d.words[0] === 'listen' && d.words[1] === '443'));
   expect(https).toHaveLength(2);
-  const prefixBlocks = https.map((s) => locations(s).filter((l) => l.words.join(' ') === 'location /exam-master/'));
-  prefixBlocks.forEach((blocks) => expect(blocks).toHaveLength(1));
-  expect(prefixBlocks[0][0]).toEqual(prefixBlocks[1][0]);
-  expect(directive(prefixBlocks[1][0], 'rewrite')).toEqual(['^/exam-master/(.*)$ /$1 break']);
-  expect(directive(prefixBlocks[1][0], 'limit_req')).toEqual(['zone=global_api burst=30 nodelay']);
-  expect(directive(prefixBlocks[1][0], 'proxy_set_header')).toContain('X-Forwarded-Proto $scheme');
+  const activeHttps = https.filter((s) => s !== retiredWebsite);
+  expect(activeHttps).toHaveLength(1);
+  const prefixBlocks = locations(activeHttps[0]).filter((l) => l.words.join(' ') === 'location /exam-master/');
+  expect(prefixBlocks).toHaveLength(1);
+  expect(directive(prefixBlocks[0], 'rewrite')).toEqual(['^/exam-master/(.*)$ /$1 break']);
+  expect(directive(prefixBlocks[0], 'limit_req')).toEqual(['zone=global_api burst=30 nodelay']);
+  expect(directive(prefixBlocks[0], 'proxy_set_header')).toContain('X-Forwarded-Proto $scheme');
   for (const server of publicServers) {
     for (const path of apiPaths) {
       const selected = route(server, path);
       expect(selected, `${server.words}: ${path}`).toBeDefined();
       if (directive(selected, 'return').length) {
+        if (server === retiredWebsite) {
+          expect(directive(selected, 'return')[0]).toMatch(/^410 /);
+          continue;
+        }
         // Port 80 redirects domains; the default server explicitly rejects the prefix.
         expect(server.children.some((d) => d.words[0] === 'listen' && d.words[1] === '80')).toBe(true);
         expect(directive(selected, 'return')[0]).toMatch(/^(301|404) /);
@@ -95,6 +103,18 @@ it('routes public API prefixes and function paths directly to the backend with o
         path
       ).toEqual(['X-Real-IP $remote_addr']);
     }
+  }
+});
+
+it('retires only the two legacy website names and does not forward their page or API paths', () => {
+  expect(retiredWebsite).toBeDefined();
+  expect(directive(retiredWebsite, 'return')[0]).toMatch(/^410 /);
+  expect(locations(retiredWebsite)).toEqual([]);
+  expect(directive(retiredWebsite, 'add_header')).toContain('Cache-Control "no-store" always');
+  expect(directive(retiredWebsite, 'add_header')).toContain('X-Robots-Tag "noindex, nofollow" always');
+  for (const path of ['/', '/index.html', '/health', '/login', '/exam-master/learning-models']) {
+    expect(route(retiredWebsite, path)).toBe(retiredWebsite);
+    expect(directive(route(retiredWebsite, path), 'proxy_pass')).toEqual([]);
   }
 });
 

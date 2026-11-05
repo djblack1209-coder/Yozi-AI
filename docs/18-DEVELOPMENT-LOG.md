@@ -92,3 +92,10 @@ S52 及以前的完整回执见[历史归档](archive/18-DEVELOPMENT-LOG-until-S
 <a id="外壳第-6-批设置分区与微信式头像claude2026-10-31"></a>[历史回执：外壳第-6-批设置分区与微信式头像claude2026-10-31](archive/18-DEVELOPMENT-LOG-until-S52-2026-11-04.md#外壳第-6-批设置分区与微信式头像claude2026-10-31)
 <a id="外壳第-7-批灵感页与资料库选择claude2026-11-01"></a>[历史回执：外壳第-7-批灵感页与资料库选择claude2026-11-01](archive/18-DEVELOPMENT-LOG-until-S52-2026-11-04.md#外壳第-7-批灵感页与资料库选择claude2026-11-01)
 <a id="外壳第-8-批灵感页用学生自带-api-生成建议claude2026-11-01"></a>[历史回执：外壳第-8-批灵感页用学生自带-api-生成建议claude2026-11-01](archive/18-DEVELOPMENT-LOG-until-S52-2026-11-04.md#外壳第-8-批灵感页用学生自带-api-生成建议claude2026-11-01)
+
+## 公网入口更正与旧站下线（20261105）
+
+- 客户要求给出官网并停用旧地址；依据VPS-Config现行域名台账及真实访问，更正官网为 https://yozi.bot.cd/。此前误报的 `exam.245334.xyz`／`exam.blackdj.dpdns.org` 是旧站。UI顺序仍为官网→macOS／Windows→iOS／安卓，本批未启动UI实现或完整验收，未更新公网应用版本或日常App。
+- 复用腾讯现有nginx，仅将两个旧hostname的HTTPS网站虚拟主机改为HTTP410，禁止缓存与搜索索引；HTTP跳转、在用API、Yozi的8113入口、3002后端及DNS／Tunnel保持。`yozi.bot.cd` 的CNAME仍依赖 `exam.245334.xyz`，因此保留DNS兼容链。现有受保护文件事务 `84d6a8bb87b14fcab029e419b837c675` accepted、业务后检通过、独立观察者verified；原文件及元数据私存Mac，支持独立恢复。
+- 同一现有健康timer仅切换base URL至 `https://yozi.bot.cd/exam-master`，事务 `1cba0846fe3743969736becbc7fca518` accepted／verified，实际oneshot状态success、三项HTTP200／日志ok，timer仍active／enabled。首次前检因文本截取多带一个换行而未通过，生产文件未写入；改为读取原始字节后完成。源检查脚本同步当前端口3002及TLS校验，未重启后端。
+- 执行证据：原生事务 `nginx -t` 通过；证书校验开启的公网curl实测新官网首页200、标题「Yozi AI · 对话学习空间」、入口JS／CSS200、health为ok；受保护learning-models返回JSON401，共享API健康200；两个旧站的首页及health均410。`YOZI_ISOLATED_BUILD=1 npm test -- tests/unit/client-ip-nginx.spec.ts --maxWorkers=1` 3／3通过；文档链接与diff检查通过。主账户与数据未操作、0模型调用；S56及四项非阻塞待办沿用原结论，仅本地提交、不推送。
