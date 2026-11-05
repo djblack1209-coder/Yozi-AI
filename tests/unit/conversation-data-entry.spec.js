@@ -19,6 +19,7 @@ import {
 } from '../../laf-backend/functions/_shared/learning-entries.js';
 import {
   extractConversationEntries,
+  pendingGoalEntryRetryId,
   stageConversationEntryScan
 } from '../../laf-backend/functions/_shared/learning-entry-extractor.js';
 import { proposalStatus } from '../../laf-backend/functions/_shared/learning-proposals.js';
@@ -155,6 +156,60 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   uni.clearStorageSync();
+});
+
+it('S53 stages a new pause after an explicit resume without replacing the old confirmed pause', () => {
+  const [first] = extracted('目标先暂停。', 'first-pause:message');
+  accept(first.id);
+  op('goal.resume', { conversationId: 'chat', explicit: true });
+  const before = structuredClone(repo.read().events);
+  const [second] = extracted('目标先暂停。', 'second-pause:message');
+  expect(second).toBeTruthy();
+  expect(second.id).not.toBe(first.id);
+  expect(second.data.proposal.entry.basis).not.toBe(first.data.proposal.entry.basis);
+  expect(repo.read().events.slice(0, before.length)).toEqual(before);
+  expect(proposalStatus(repo.read(), second.id)).toBe('pending');
+  expect(repo.read().conversations[0].stopped).toBe(false);
+  accept(second.id);
+  expect(repo.read().conversations[0].stopped).toBe(true);
+});
+
+it('S53 stages another explicit close after reopening while retaining same-basis semantic deduplication', () => {
+  const [first] = extracted('我完成目标了', 'first-close:message');
+  expect(extracted('目标完成了', 'same-basis-close:message')).toEqual([]);
+  accept(first.id);
+  op('goal.reopen', { conversationId: 'chat', explicit: true });
+  const [second] = extracted('我完成目标了', 'second-close:message');
+  expect(second).toBeTruthy();
+  expect(second.id).not.toBe(first.id);
+  expect(proposalStatus(repo.read(), second.id)).toBe('pending');
+  expect(repo.read().conversations[0].goalLifecycle).toBeFalsy();
+  accept(second.id);
+  expect(repo.read().conversations[0].goalLifecycle.status).toBe('completed');
+});
+
+it('S53 reuses only the last unhandled local Goal intent and creates no events while preparing its retry', () => {
+  const [first] = extracted('目标先暂停。', 'old-pause:message');
+  accept(first.id);
+  op('goal.resume', { conversationId: 'chat', explicit: true });
+  user('目标先暂停。', 'failed-control:message');
+  const before = structuredClone(repo.read());
+  expect(pendingGoalEntryRetryId(repo.read(), 'chat', '目标先暂停。')).toBe('failed-control');
+  expect(pendingGoalEntryRetryId(repo.read(), 'chat', '目标先暂停')).toBeNull();
+  expect(pendingGoalEntryRetryId(repo.read(), 'other-chat', '目标先暂停。')).toBeNull();
+  expect(repo.read()).toEqual(before);
+  const [candidate] = extractConversationEntries(repo.read(), 'chat', 'failed-control:message');
+  repo.commit(candidate);
+  expect(pendingGoalEntryRetryId(repo.read(), 'chat', '目标先暂停。')).toBeNull();
+  expect(repo.read().events.filter((event) => event.id === 'failed-control:message')).toHaveLength(1);
+});
+
+it('S53 does not reuse a Goal retry after another saved event or for an ordinary question', () => {
+  user('目标先暂停。', 'old-control:message');
+  op('timezone.set', { timezone: 'Asia/Shanghai' });
+  expect(pendingGoalEntryRetryId(repo.read(), 'chat', '目标先暂停。')).toBeNull();
+  user('这两句的语气有什么不同？', 'question:message');
+  expect(pendingGoalEntryRetryId(repo.read(), 'chat', '这两句的语气有什么不同？')).toBeNull();
 });
 
 describe('阶段 B：隔离对话即入口 8.2', () => {

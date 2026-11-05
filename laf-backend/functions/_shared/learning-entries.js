@@ -653,6 +653,8 @@ export function entryCandidateOperation(state, name, args, conversationId, now =
   const same = messages.find(
     (m) =>
       m.proposal?.entry?.semantic === proposal.entry.semantic &&
+      (!(args.kind === 'Goal' && ['goal.pause', 'goal.resume', 'goal.close', 'goal.reopen'].includes(proposal.type)) ||
+        m.proposal.entry.basis === proposal.entry.basis) &&
       !(reintroduced && ['expired', 'dismissed'].includes(ideaEntryStatus(state, m.id, now)))
   );
   if (same) return { proposalId: same.id, duplicate: true };

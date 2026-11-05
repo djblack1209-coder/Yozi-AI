@@ -95,6 +95,27 @@ export function extractConversationEntries(state, conversationId, messageId, now
   return operations;
 }
 
+// Reuse only the last, still unhandled local lifecycle intent after a failed send.
+// Preparing a retry does not save the candidate or call a model.
+export function pendingGoalEntryRetryId(state, conversationId, input, now = Date.now()) {
+  const message = state.conversations.find((c) => c.id === conversationId)?.messages.at(-1);
+  const event = state.events.at(-1);
+  if (
+    message?.role !== 'user' ||
+    message.content !== input ||
+    !message.id.endsWith(':message') ||
+    event?.id !== message.id ||
+    event.type !== 'message.add' ||
+    event.data.conversationId !== conversationId
+  )
+    return null;
+  const candidates = extractConversationEntries(state, conversationId, message.id, now);
+  return candidates.length === 1 &&
+    ['goal.pause', 'goal.resume', 'goal.close', 'goal.reopen'].includes(candidates[0].data.proposal?.type)
+    ? message.id.slice(0, -':message'.length)
+    : null;
+}
+
 // Caller owns scheduling/consent. This function only stages an isolated batch.
 // Cursor follows message.add event order, including late-synced old timestamps.
 export function stageConversationEntryScan(

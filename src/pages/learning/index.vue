@@ -2031,6 +2031,7 @@ import MuseModelControl from '@/components/business/learning/muse-model-control.
 import MuseModelFeedback from '@/components/business/learning/muse-model-feedback.vue';
 import { modelErrorPresentation } from '../../../laf-backend/functions/_shared/model-errors.js';
 import { LEARNING_WORKFLOW_CONTRACT } from '@/services/learning/learning-workflow.js';
+import { pendingGoalEntryRetryId } from '../../../laf-backend/functions/_shared/learning-entry-extractor.js';
 import { publicError, t } from '@/i18n/index.js';
 import BaseButton from '@/components/base/base-button/base-button.vue';
 import BaseCard from '@/components/base/base-card/base-card.vue';
@@ -3339,7 +3340,9 @@ function prepareSubmission(kind, input) {
     kind,
     input,
     key,
-    id: learningId(kind === 'send' ? 'turn' : 'answer'),
+    id:
+      (kind === 'send' && pendingGoalEntryRetryId(learning.state, learning.selectedConversationId, input)) ||
+      learningId(kind === 'send' ? 'turn' : 'answer'),
     recordContext: learning.recordContext(),
     conversationId: learning.selectedConversationId
   });
