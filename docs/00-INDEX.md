@@ -31,6 +31,8 @@
 | 知识图谱候选与展示方向        | [16 框架图候选](16-KNOWLEDGE-MAPS-BACKLOG.md)     |
 | 自适应诊断引擎与种子边界      | [17 诊断验证版](17-KNOWLEDGE-GRAPH-DIAGNOSIS.md)  |
 
+历史批次入口：[截至 2026-11-04 的计划原文](archive/13-DEVELOPMENT-PLAN-until-2026-11-04.md)、[第 0 轮至 S52 的开发回执](archive/18-DEVELOPMENT-LOG-until-S52-2026-11-04.md)；当前状态与候选仍在 13，S53、门禁基线和新回执在 18。归档保留失败和恢复索引，不作为新的验收结论。
+
 ## 维护规则
 
 [README](../README.md) 面向首次接触者，[AGENTS](../AGENTS.md) 面向执行代理。每类事实一处主文档，其他文件引用，避免重复日志。状态文档区分源码实现、隔离测试、真实依赖、设备和发布，不从历史全绿推断当前通过。
