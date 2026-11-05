@@ -10,7 +10,13 @@ import {
   parseWorkflowAgent,
   cancelWorkflowCalls
 } from '../../laf-backend/functions/_shared/learning-workflow.js';
-import { newAccount, reserveCall, settleCall, cancelCall } from '../../laf-backend/functions/_shared/learning-account';
+import {
+  newAccount,
+  reserveCall,
+  settleCall,
+  cancelCall,
+  modelValidationPath
+} from '../../laf-backend/functions/_shared/learning-account';
 import { createLearningWorkflowRunner } from '@/services/learning/learning-workflow.js';
 import { PRESENTATION_CONTRACT } from '../../laf-backend/functions/_shared/learning-content-blocks.js';
 
@@ -402,5 +408,123 @@ describe('S52 client workflow scheduling and recovery', () => {
     f.payload.shareConsent = true;
     f.saved.get(workflowRequestId(identity.requestId, 'tone')).data.workflowReceipt.planDigest = 'wrong';
     await expect(f.run({ workflowMode: 'read' })).rejects.toMatchObject({ code: 'CONTEXT_CHANGED' });
+  });
+});
+
+describe('S55 workflow JSON transport and one repair per chain', () => {
+  it('accepts one complete JSON fence for plans and agents without changing the schema', () => {
+    const fence = String.fromCharCode(96).repeat(3);
+    expect(
+      parseWorkflowPlan(fence + 'json\n' + rawPlan() + '\n' + fence, rootContext(), identity).workflow.plan
+    ).toEqual(plan);
+    expect(parseWorkflowAgent(fence + 'JSON\n{"message":"仅分析","question":null,"tools":[]}\n' + fence).message).toBe(
+      '仅分析'
+    );
+    expect(() =>
+      parseWorkflowAgent('前言\n' + fence + 'json\n{"message":"分析","question":null,"tools":[]}\n' + fence)
+    ).toThrow(expect.objectContaining({ path: 'workflow.agent.json' }));
+    expect(modelValidationPath('WORKFLOW_INVALID', 'workflow.agent.json')).toBe('workflow.agent.json');
+    expect(modelValidationPath('WORKFLOW_INVALID', 'workflow.agent.PRIVATE_TEXT')).toBeNull();
+  });
+
+  function failedAgent(account, id, patch = {}) {
+    const stage = workflowStageContext(account.calls, envelope('agent', id), stageIdentity(id));
+    account = reserveCall(account, reservation(stageIdentity(id).requestId, stage.metadata)).account;
+    return settleCall(account, stageIdentity(id).requestId, {
+      success: false,
+      actualCost: null,
+      usage,
+      executionStage: 'received',
+      errorCode: 'WORKFLOW_INVALID',
+      validationPath: 'workflow.agent.json',
+      ...patch
+    }).account;
+  }
+  const repairInput = (call) => ({
+    ...reservation(call.id + ':repair1', call.workflow),
+    repairOf: call.id
+  });
+
+  it('keeps the failed planner and its cost while a repaired plan retains the original logical root', () => {
+    let account = reserveCall(
+      newAccount('workflow-owner'),
+      reservation(identity.requestId, rootContext().metadata)
+    ).account;
+    account = settleCall(account, identity.requestId, {
+      success: false,
+      actualCost: null,
+      usage,
+      executionStage: 'received',
+      errorCode: 'WORKFLOW_INVALID',
+      validationPath: 'workflow.plan.json'
+    }).account;
+    const original = structuredClone(account.calls[0]),
+      retry = repairInput(original);
+    account = reserveCall(account, retry).account;
+    account = complete(account, retry.id, {
+      ...parseWorkflowPlan(rawPlan(), rootContext(), identity),
+      workflowReceipt: rootContext().metadata
+    });
+    expect(account.calls[0]).toMatchObject({ status: 'failed', result: null, usage, costStatus: 'pending' });
+    expect(account.calls[1]).toMatchObject({ status: 'completed', repairOf: original.id, costStatus: 'pending' });
+    expect(workflowStageContext(account.calls, envelope('agent', 'tone'), stageIdentity('tone')).stage).toBe('agent');
+  });
+
+  it('uses a repaired worker as a dependency and final input without rewriting the failed call', () => {
+    let account = failedAgent(rootAccount(), 'tone');
+    const original = structuredClone(account.calls[1]),
+      retry = repairInput(original);
+    account = reserveCall(account, retry).account;
+    account = complete(account, retry.id, {
+      message: 'REPAIRED_TONE_ONLY',
+      question: null,
+      tools: [],
+      workflowReceipt: original.workflow
+    });
+    expect(account.calls[1]).toMatchObject({ status: 'failed', result: null, usage, costStatus: 'pending' });
+    const dependent = workflowStageContext(account.calls, envelope('agent', 'check'), stageIdentity('check'));
+    expect(JSON.parse(dependent.content).results[0].result).toBe('REPAIRED_TONE_ONLY');
+    account = completeAgent(completeAgent(account, 'coverage'), 'check');
+    const final = workflowStageContext(account.calls, envelope('final'), stageIdentity('final'));
+    expect(JSON.parse(final.content).results).toHaveLength(3);
+    expect(final.content).toContain('REPAIRED_TONE_ONLY');
+  });
+
+  it('reserves only one repair across independently failed workers and reuses that exact reservation', () => {
+    let account = failedAgent(failedAgent(rootAccount(), 'tone'), 'coverage');
+    const first = repairInput(account.calls[1]),
+      second = repairInput(account.calls[2]);
+    account = reserveCall(account, first).account;
+    expect(reserveCall(account, first).reused).toBe(true);
+    expect(() => reserveCall(account, second)).toThrow(expect.objectContaining({ code: 'REPAIR_INVALID' }));
+    expect(() => reserveCall(account, { ...first, id: first.repairOf + ':repair2' })).toThrow();
+    expect(account.calls.filter((call) => call.repairOf)).toHaveLength(1);
+  });
+
+  it.each([
+    { modelId: 'other-connection' },
+    { model: 'other-model' },
+    { connectionVersion: 'other-version' },
+    { configurationVersion: 'other-config' },
+    { requestBinding: 'other_binding' },
+    { source: 'platform' }
+  ])('does not repair across a changed model or binding %#', (patch) => {
+    const account = failedAgent(rootAccount(), 'tone');
+    expect(() => reserveCall(account, { ...repairInput(account.calls[1]), ...patch })).toThrow();
+    expect(account.calls).toHaveLength(2);
+  });
+
+  it.each([
+    { validationPath: 'workflow.agent.tools' },
+    { validationPath: 'workflow.agent.question' },
+    { validationPath: undefined },
+    { errorCode: 'MODEL_MISMATCH' },
+    { resultDeletedAt: Date.now() },
+    { cancelRequestedAt: Date.now() }
+  ])('does not repair authority failures, unknown old failures, cancellation or deleted results %#', (patch) => {
+    const account = failedAgent(rootAccount(), 'tone');
+    Object.assign(account.calls[1], patch);
+    expect(() => reserveCall(account, repairInput(account.calls[1]))).toThrow();
+    expect(account.calls).toHaveLength(2);
   });
 });

@@ -5,7 +5,8 @@ import {
   workflowStageContext,
   workflowSystemPrompt,
   parseWorkflowPlan,
-  parseWorkflowAgent
+  parseWorkflowAgent,
+  workflowRepairable
 } from './_shared/learning-workflow.js';
 import {
   learningBudgetPhase,
@@ -264,6 +265,8 @@ export async function runLearningModelTask(
     repair?: {
       parentId: string;
       configurationVersion: string;
+      workflow?: true;
+      validationPath?: string;
       feedback?: ReturnType<typeof coachRepairFeedback>;
       verified?: boolean;
       // 开发付费兜底的第二次返修：直接由 DeepSeek 质量型号作答。
@@ -344,7 +347,7 @@ export async function runLearningModelTask(
         body.feedbackAttemptId !== undefined ||
         options.stream ||
         options.capabilityProbe ||
-        options.repair ||
+        (options.repair && !options.repair.workflow) ||
         context.questionEntryContract !== SINGLE_QUESTION_CONTRACT ||
         !body.requestBinding ||
         (workflow.stage === 'plan' && !requestsLearningWorkflow(body.messages.at(-1)?.content)))
@@ -571,7 +574,7 @@ export async function runLearningModelTask(
         current.account.calls,
         workflow,
         {
-          requestId: body.requestId,
+          requestId: options.repair?.workflow ? options.repair.parentId : body.requestId,
           binding: body.requestBinding,
           modelId: model.id,
           model: model.model,
@@ -584,7 +587,13 @@ export async function runLearningModelTask(
         {
           role: 'system',
           content:
-            workflowSystemPrompt(workflow.stage) + (workflow.stage === 'final' ? '\n' + PRESENTATION_BLOCKS_PROMPT : '')
+            workflowSystemPrompt(workflow.stage) +
+            (workflow.stage === 'final' ? '\n' + PRESENTATION_BLOCKS_PROMPT : '') +
+            (options.repair?.workflow
+              ? '\n上一份该步骤回复未通过结构检查（' +
+                options.repair.validationPath +
+                '）。本分工仅此一次返修；基于同一原问题及依赖重新返回完整JSON，正文简明，不补权限、题目或工具，不引用上一份错误输出。'
+              : '')
         },
         { role: 'user', content: workflowContext.input || workflowContext.content }
       ];
@@ -699,12 +708,19 @@ export async function runLearningModelTask(
         );
       const repair = latestRepair(reservation.account.calls, body.requestId);
       if (repair?.status === 'completed')
-        return {
-          code: 0,
-          success: true,
-          data: { ...repair.result, requestId: body.requestId, repairRequestId: repair.id },
-          reused: true
-        };
+        return (
+          modelResultUnavailable(repair, Date.now(), resultPolicy) || {
+            code: 0,
+            success: true,
+            data: {
+              ...repair.result,
+              requestId: body.requestId,
+              repairRequestId: repair.id,
+              ...(reservation.call.workflowCancelledAt ? { workflowCancelled: true } : {})
+            },
+            reused: true
+          }
+        );
       return {
         code: 409,
         success: false,
@@ -933,7 +949,7 @@ export async function runLearningModelTask(
       probeOutput ||
       (workflow?.stage === 'plan'
         ? parseWorkflowPlan(response.content, workflowContext, {
-            requestId: body.requestId,
+            requestId: options.repair?.workflow ? options.repair.parentId : body.requestId,
             binding: body.requestBinding
           })
         : workflow?.stage === 'agent'
@@ -1180,6 +1196,46 @@ export async function runLearningModelTask(
       } catch {
         /* 预留留存供恢复 */
       }
+    }
+    if (
+      !options.repair &&
+      !error.repairForbidden &&
+      observedResponse &&
+      usedModel &&
+      workflowRepairable(failedReceipt?.call) &&
+      reservation.call.id.length <= 152
+    ) {
+      execution?.stop();
+      execution = null;
+      const repairRequestId = reservation.call.id + ':repair1';
+      const repaired = await runLearningModelTask(
+        { ...ctx, body: { ...ctx.body, requestId: repairRequestId } },
+        {
+          ...options,
+          stream: false,
+          onStart: undefined,
+          onPreview: undefined,
+          repair: {
+            parentId: reservation.call.id,
+            configurationVersion: reservation.call.configurationVersion,
+            workflow: true,
+            validationPath: validationPath || undefined
+          }
+        }
+      );
+      if (repaired.success)
+        return { ...repaired, data: { ...repaired.data, requestId: reservation.call.id, repairRequestId } };
+      if (repaired.error === 'REPAIR_INVALID')
+        return {
+          code: 503,
+          success: false,
+          status: 'failed',
+          error: error.code,
+          validationPath,
+          repairExhausted: true,
+          message: '本分工的一次结构返修已用尽或不可用；原失败与用量保留，未启动后续步骤'
+        };
+      return { ...repaired, repairRequestId, repairExhausted: true };
     }
     if (
       !options.repair &&

@@ -3194,8 +3194,143 @@ it('S52 executes model-authored dependencies on the protected API, isolates chil
   expect([...mock.rows.keys()].some((key) => key.startsWith('learning_states:'))).toBe(false);
 });
 
+it('S55 repairs a malformed planner once and completes dependencies and final summary with separately billed receipts', async () => {
+  await streamProfile(false);
+  workflowApiProvider();
+  vi.mocked(callLearningProvider).mockResolvedValueOnce({ ...streamCompleted, content: '{broken' });
+  const parent = await ai(context(workflowApiBody()));
+  expect(parent).toMatchObject({
+    success: true,
+    data: { requestId: workflowApiRoot, repairRequestId: workflowApiRoot + ':repair1' }
+  });
+  for (const id of ['tone', 'coverage', 'check'])
+    expect((await ai(context(workflowApiBody('agent', id)))).success).toBe(true);
+  expect(await ai(context(workflowApiBody('final')))).toMatchObject({
+    success: true,
+    data: { workflowReceipt: { stage: 'final' }, contentBlocks: { version: 3 } }
+  });
+  const account: any = [...mock.rows.values()].find((row) => row.user_id === 'u1' && row.calls);
+  expect(account.calls).toHaveLength(6);
+  expect(account.calls[0]).toMatchObject({
+    status: 'failed',
+    result: null,
+    errorCode: 'WORKFLOW_INVALID',
+    validationPath: 'workflow.plan.json',
+    costStatus: 'pending'
+  });
+  expect(account.calls[1]).toMatchObject({ status: 'completed', repairOf: workflowApiRoot, costStatus: 'pending' });
+  expect(account.calls.every((call: any) => call.usage)).toBe(true);
+  expect(account.calls.filter((call: any) => call.repairOf)).toHaveLength(1);
+  expect(await models(context({ action: 'result', requestId: workflowApiRoot }))).toMatchObject({
+    success: true,
+    data: { requestId: workflowApiRoot, repairRequestId: workflowApiRoot + ':repair1' }
+  });
+  expect((await ai(context(workflowApiBody()))).success).toBe(true);
+  expect(callLearningProvider).toHaveBeenCalledTimes(6);
+  expect([...mock.rows.keys()].some((key) => key.startsWith('learning_states:'))).toBe(false);
+});
+
+it('S55 retains repaired plan cancellation and privacy deletion without another model invocation', async () => {
+  await streamProfile(false);
+  workflowApiProvider();
+  vi.mocked(callLearningProvider).mockResolvedValueOnce({ ...streamCompleted, content: '{bad plan' });
+  expect((await ai(context(workflowApiBody()))).success).toBe(true);
+  expect((await models(context({ action: 'cancel', requestId: workflowApiRoot }))).success).toBe(true);
+  expect(await models(context({ action: 'result', requestId: workflowApiRoot }))).toMatchObject({
+    success: true,
+    data: { workflowCancelled: true, requestId: workflowApiRoot, repairRequestId: workflowApiRoot + ':repair1' }
+  });
+  expect(await ai(context(workflowApiBody('agent', 'tone')))).toMatchObject({
+    success: false,
+    error: 'WORKFLOW_UNAVAILABLE'
+  });
+  expect((await sync(context({ action: 'delete' }))).success).toBe(true);
+  expect((await models(context({ action: 'result', requestId: workflowApiRoot }))).code).toBe(410);
+  expect(callLearningProvider).toHaveBeenCalledTimes(2);
+});
+
+it('S55 refuses an expired repair cache instead of regenerating or returning an empty success', async () => {
+  await streamProfile(false);
+  workflowApiProvider();
+  vi.mocked(callLearningProvider).mockResolvedValueOnce({ ...streamCompleted, content: '{bad plan' });
+  expect((await ai(context(workflowApiBody()))).success).toBe(true);
+  const account: any = [...mock.rows.values()].find((row) => row.user_id === 'u1' && row.calls);
+  account.calls[1].resultExpiresAt = Date.now() - 1;
+  expect((await ai(context(workflowApiBody()))).code).toBe(410);
+  expect((await models(context({ action: 'result', requestId: workflowApiRoot }))).code).toBe(410);
+  expect(callLearningProvider).toHaveBeenCalledTimes(2);
+});
+
+it('S55 stops after one failed repair and does not repair another failed stage in the same chain', async () => {
+  await streamProfile(false);
+  workflowApiProvider();
+  expect((await ai(context(workflowApiBody()))).success).toBe(true);
+  vi.mocked(callLearningProvider)
+    .mockResolvedValueOnce({ ...streamCompleted, content: '{bad worker' })
+    .mockResolvedValueOnce({ ...streamCompleted, content: '{bad repair' });
+  expect(await ai(context(workflowApiBody('agent', 'tone')))).toMatchObject({
+    success: false,
+    error: 'WORKFLOW_INVALID',
+    repairExhausted: true
+  });
+  vi.mocked(callLearningProvider).mockResolvedValueOnce({ ...streamCompleted, content: '{bad sibling' });
+  expect(await ai(context(workflowApiBody('agent', 'coverage')))).toMatchObject({
+    success: false,
+    error: 'WORKFLOW_INVALID',
+    repairExhausted: true
+  });
+  expect(await ai(context(workflowApiBody('final')))).toMatchObject({ success: false, error: 'WORKFLOW_INCOMPLETE' });
+  const account: any = [...mock.rows.values()].find((row) => row.user_id === 'u1' && row.calls);
+  expect(account.calls).toHaveLength(4);
+  expect(account.calls.filter((call: any) => call.repairOf)).toHaveLength(1);
+  expect(
+    account.calls.slice(1).every((call: any) => call.status === 'failed' && call.usage && call.costStatus === 'pending')
+  ).toBe(true);
+  await models(context({ action: 'result', requestId: workflowRequestId(workflowApiRoot, 'tone') }));
+  await ai(context(workflowApiBody('agent', 'tone')));
+  expect(callLearningProvider).toHaveBeenCalledTimes(4);
+});
+
+it('S55 repairs a final structural failure and preserves original request identity on later read', async () => {
+  await streamProfile(false);
+  workflowApiProvider();
+  expect((await ai(context(workflowApiBody()))).success).toBe(true);
+  for (const id of ['tone', 'coverage', 'check'])
+    expect((await ai(context(workflowApiBody('agent', id)))).success).toBe(true);
+  vi.mocked(callLearningProvider).mockResolvedValueOnce({
+    ...streamCompleted,
+    content: '{"message":"缺少最终组件","question":null,"tools":[]}'
+  });
+  const id = workflowRequestId(workflowApiRoot);
+  expect(await ai(context(workflowApiBody('final')))).toMatchObject({
+    success: true,
+    data: {
+      requestId: id,
+      repairRequestId: id + ':repair1',
+      workflowReceipt: { stage: 'final' },
+      contentBlocks: { version: 3 }
+    }
+  });
+  expect(await models(context({ action: 'result', requestId: id }))).toMatchObject({
+    success: true,
+    data: { requestId: id, repairRequestId: id + ':repair1' }
+  });
+  const account: any = [...mock.rows.values()].find((row) => row.user_id === 'u1' && row.calls);
+  expect(account.calls).toHaveLength(6);
+  expect(account.calls.find((call: any) => call.id === id)).toMatchObject({
+    status: 'failed',
+    result: null,
+    usage: streamCompleted.usage
+  });
+  expect(account.calls.find((call: any) => call.id === id + ':repair1')).toMatchObject({
+    status: 'completed',
+    repairOf: id
+  });
+  expect(callLearningProvider).toHaveBeenCalledTimes(6);
+});
+
 it.each(['tool', 'malformed'])(
-  'S52 retains the billed %s worker failure without automatic retry or synthesis',
+  'S55 retains billed %s worker failure and only repairs safe structural output once',
   async (kind) => {
     await streamProfile(false);
     workflowApiProvider();
@@ -3209,17 +3344,31 @@ it.each(['tool', 'malformed'])(
       ...streamCompleted,
       content: kind === 'malformed' ? raw.slice(0, -1) : raw
     });
-    expect(await ai(context(workflowApiBody('agent', 'tone')))).toMatchObject({
-      success: false,
-      error: 'WORKFLOW_INVALID'
-    });
+    const outcome = await ai(context(workflowApiBody('agent', 'tone')));
+    expect(outcome).toMatchObject(
+      kind === 'malformed'
+        ? {
+            success: true,
+            data: {
+              requestId: workflowRequestId(workflowApiRoot, 'tone'),
+              repairRequestId: workflowRequestId(workflowApiRoot, 'tone') + ':repair1'
+            }
+          }
+        : { success: false, error: 'WORKFLOW_INVALID' }
+    );
     const count = vi.mocked(callLearningProvider).mock.calls.length;
     expect(await ai(context(workflowApiBody('final')))).toMatchObject({ success: false, error: 'WORKFLOW_INCOMPLETE' });
     expect(callLearningProvider).toHaveBeenCalledTimes(count);
     const account: any = [...mock.rows.values()].find((row) => row.user_id === 'u1' && row.calls);
-    expect(account.calls).toHaveLength(2);
+    expect(account.calls).toHaveLength(kind === 'malformed' ? 3 : 2);
     expect(account.calls[1]).toMatchObject({ status: 'failed', actualCost: null, costStatus: 'pending' });
     expect(account.calls[1].usage).toBeTruthy();
+    if (kind === 'malformed')
+      expect(account.calls[2]).toMatchObject({
+        status: 'completed',
+        repairOf: account.calls[1].id,
+        costStatus: 'pending'
+      });
   }
 );
 

@@ -248,6 +248,7 @@ export default async function (ctx: any) {
           )
         : null;
       let call = maintained?.account.calls.find((c: any) => c.id === body.requestId);
+      const workflowCancelled = Boolean(call?.workflowCancelledAt);
       const repair = maintained ? latestRepair(maintained.account.calls, body.requestId) : undefined;
       if (call?.status === 'failed' && repair) call = repair;
       if (!call) return { code: 404, success: false, message: '本账户没有此模型请求' };
@@ -258,7 +259,12 @@ export default async function (ctx: any) {
             code: 0,
             success: true,
             data: repair
-              ? { ...call.result, requestId: body.requestId, repairRequestId: repair.id }
+              ? {
+                  ...call.result,
+                  requestId: body.requestId,
+                  repairRequestId: repair.id,
+                  ...(workflowCancelled ? { workflowCancelled: true } : {})
+                }
               : { ...call.result, ...(call.workflowCancelledAt ? { workflowCancelled: true } : {}) },
             reused: true
           }

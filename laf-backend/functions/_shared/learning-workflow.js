@@ -2,9 +2,67 @@ import { historyChecksum } from './learning-history.js';
 
 export const LEARNING_WORKFLOW_CONTRACT = 'learning-workflow-v1';
 export const LEARNING_WORKFLOW_CONCURRENCY = 2;
-const fail = (condition, code, message) => {
-  if (!condition) throw Object.assign(new Error(message), { code });
+const fail = (condition, code, message, path) => {
+  if (!condition) throw Object.assign(new Error(message), { code, ...(path ? { path } : {}) });
 };
+export const WORKFLOW_VALIDATION_PATHS = [
+  'workflow.plan.json',
+  'workflow.plan.root',
+  'workflow.plan.tasks',
+  'workflow.agent.json',
+  'workflow.agent.root',
+  'workflow.agent.message',
+  'workflow.agent.question',
+  'workflow.agent.tools'
+];
+// Same single-JSON-fence transport as normal learning replies; schema and authority stay strict.
+function parseWorkflowJson(raw, path) {
+  try {
+    const json = raw.trim().match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/i)?.[1] || raw;
+    return JSON.parse(json);
+  } catch {
+    fail(false, 'WORKFLOW_INVALID', '分工回复不是完整JSON，未采用结果', path);
+  }
+}
+export function workflowRepairable(call) {
+  return Boolean(
+    call?.workflow?.contract === LEARNING_WORKFLOW_CONTRACT &&
+    call.status === 'failed' &&
+    !call.repairOf &&
+    !call.resultDeletedAt &&
+    !call.cancelRequestedAt &&
+    !call.workflowCancelledAt &&
+    call.executionStage === 'received' &&
+    ((call.errorCode === 'WORKFLOW_INVALID' &&
+      ['workflow.plan.json', 'workflow.plan.tasks', 'workflow.agent.json', 'workflow.agent.message'].includes(
+        call.validationPath
+      )) ||
+      (call.errorCode === 'INVALID_STRUCTURE' &&
+        (call.validationPath === 'finish_reason' ||
+          (call.workflow.stage === 'final' &&
+            (call.validationPath === 'raw' || call.validationPath?.startsWith('contentBlocks.'))))))
+  );
+}
+function matchingWorkflowRepair(original, repair) {
+  return Boolean(
+    repair?.id === original.id + ':repair1' &&
+    repair.repairOf === original.id &&
+    repair.modelId === original.modelId &&
+    repair.model === original.model &&
+    repair.source === original.source &&
+    repair.configurationVersion === original.configurationVersion &&
+    repair.connectionVersion === original.connectionVersion &&
+    repair.requestBinding === original.requestBinding &&
+    JSON.stringify(repair.workflow) === JSON.stringify(original.workflow)
+  );
+}
+function workflowCall(calls, id) {
+  const original = calls.find((call) => call.id === id);
+  if (!workflowRepairable(original)) return original;
+  const repair = calls.find((call) => matchingWorkflowRepair(original, call));
+  // Keep logical stage IDs stable while retaining both billed records independently.
+  return repair?.status === 'completed' ? { ...repair, id: original.id } : original;
+}
 const object = (value, keys) =>
   value &&
   typeof value === 'object' &&
@@ -114,7 +172,7 @@ export function workflowStageContext(calls, envelope, identity, readable = (call
       metadata: { contract: LEARNING_WORKFLOW_CONTRACT, stage: 'plan', parentId: identity.requestId }
     };
   }
-  const root = calls.find((call) => call.id === stage.parentId);
+  const root = workflowCall(calls, stage.parentId);
   const saved = root?.result?.workflow;
   fail(
     root?.status === 'completed' &&
@@ -149,7 +207,7 @@ export function workflowStageContext(calls, envelope, identity, readable = (call
     '分工步骤须沿用原请求编号，不能另发重复调用'
   );
   const dependencies = (task ? task.dependsOn : plan.tasks.map((item) => item.id)).map((id) => {
-    const call = calls.find((item) => item.id === workflowRequestId(root.id, id));
+    const call = workflowCall(calls, workflowRequestId(root.id, id));
     fail(
       call?.status === 'completed' &&
         !call.resultDeletedAt &&
@@ -215,12 +273,7 @@ export function workflowSystemPrompt(stage) {
 }
 
 export function parseWorkflowPlan(raw, context, identity) {
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    fail(false, 'WORKFLOW_INVALID', '分工回复不是完整JSON，未启动子任务');
-  }
+  const parsed = parseWorkflowJson(raw, 'workflow.plan.json');
   fail(
     object(parsed, ['message', 'question', 'tools', 'workflow']) &&
       text(parsed.message, 400) &&
@@ -228,9 +281,16 @@ export function parseWorkflowPlan(raw, context, identity) {
       Array.isArray(parsed.tools) &&
       parsed.tools.length === 0,
     'WORKFLOW_INVALID',
-    '分工回复超出只读权限，未启动子任务'
+    '分工回复超出只读权限，未启动子任务',
+    'workflow.plan.root'
   );
-  const plan = normalizeWorkflowPlan(parsed.workflow);
+  let plan;
+  try {
+    plan = normalizeWorkflowPlan(parsed.workflow);
+  } catch (error) {
+    if (error.code === 'WORKFLOW_INVALID') error.path = 'workflow.plan.tasks';
+    throw error;
+  }
   return {
     message: parsed.message,
     question: null,
@@ -248,20 +308,20 @@ export function parseWorkflowPlan(raw, context, identity) {
 }
 
 export function parseWorkflowAgent(raw) {
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    fail(false, 'WORKFLOW_INVALID', '子任务回复不是完整JSON，未采用分析');
-  }
+  const parsed = parseWorkflowJson(raw, 'workflow.agent.json');
   fail(
-    object(parsed, ['message', 'question', 'tools']) &&
-      text(parsed.message, 2000) &&
-      parsed.question === null &&
-      Array.isArray(parsed.tools) &&
-      parsed.tools.length === 0,
+    object(parsed, ['message', 'question', 'tools']),
     'WORKFLOW_INVALID',
-    '子任务只能返回分析，未执行工具或写入学习事实'
+    '子任务只能返回分析，未执行工具或写入学习事实',
+    'workflow.agent.root'
+  );
+  fail(text(parsed.message, 2000), 'WORKFLOW_INVALID', '子任务分析正文不合法', 'workflow.agent.message');
+  fail(parsed.question === null, 'WORKFLOW_INVALID', '子任务不创建题目', 'workflow.agent.question');
+  fail(
+    Array.isArray(parsed.tools) && parsed.tools.length === 0,
+    'WORKFLOW_INVALID',
+    '子任务不执行工具或写入学习事实',
+    'workflow.agent.tools'
   );
   return { message: parsed.message, question: null, tools: [], structured: true };
 }
@@ -270,9 +330,26 @@ export function assertWorkflowReservation(account, input, readable) {
   if (!input.workflow) return;
   const meta = input.workflow;
   fail(meta.contract === LEARNING_WORKFLOW_CONTRACT, 'WORKFLOW_INVALID', '分工预留合同不合法');
+  const logicalId = input.repairOf || input.id;
+  if (input.repairOf) {
+    const original = account.calls.find((call) => call.id === input.repairOf);
+    fail(
+      workflowRepairable(original) &&
+        matchingWorkflowRepair(original, input) &&
+        !account.calls.some(
+          (call) =>
+            call.repairOf &&
+            call.workflow?.contract === LEARNING_WORKFLOW_CONTRACT &&
+            call.workflow.parentId === meta.parentId &&
+            call.id !== input.id
+        ),
+      'REPAIR_INVALID',
+      '本分工仅允许同连接的一次结构返修，原失败与费用保留'
+    );
+  }
   if (meta.stage === 'plan') {
-    fail(meta.parentId === input.id && parentId(input.id), 'WORKFLOW_INVALID', '分工主请求不合法');
-    fail(!account.calls.find((call) => call.id === input.id)?.workflowCancelledAt, 'CANCELLED', '原分工已取消');
+    fail(meta.parentId === logicalId && parentId(logicalId), 'WORKFLOW_INVALID', '分工主请求不合法');
+    fail(!account.calls.find((call) => call.id === logicalId)?.workflowCancelledAt, 'CANCELLED', '原分工已取消');
     return;
   }
   const stage = workflowStageContext(
@@ -284,7 +361,7 @@ export function assertWorkflowReservation(account, input, readable) {
       ...(meta.taskId ? { taskId: meta.taskId } : {})
     },
     {
-      requestId: input.id,
+      requestId: logicalId,
       binding: input.requestBinding,
       modelId: input.modelId,
       model: input.model,
