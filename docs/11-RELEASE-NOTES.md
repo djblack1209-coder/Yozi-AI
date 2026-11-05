@@ -2,6 +2,8 @@
 
 当前方向与验收状态见 [13 开发计划](13-DEVELOPMENT-PLAN.md)，功能限制按下列清单维护。此前按日回执已收进 [历史记录](archive/11-RELEASE-NOTES-until-2026-11-01.md)，其中测试数字、设备与小程序结论仅代表当时状态。
 
+门禁口径（2026-11-04）：本页及历史回执中的 `release:gate`／`release:gate:report` 指含小程序步骤的旧聚合门禁，现已废弃、整条不执行；现行 App 门禁为 `npm run release:gate:app`，口径见 [08C](08C-SCRIPTS-REFERENCE.md#当前-app-验收范围2026-11-02-裁定)。旧数字只作历史事实，不构成当前门禁要求。
+
 ## 用户功能与边界
 
 | 功能                   | 已实现路径                                                                                                         | 当前能力边界                                                                                                                                                                        |

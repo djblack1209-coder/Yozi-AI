@@ -49,6 +49,7 @@
     "baidu:sources:verified": "python3 scripts/baidu/verified_source_registry.py --registry data/verified-source-registry.json --output data/verified-source-export.json",
     "baidu:sources:merge": "python3 scripts/baidu/source_manifest.py --input data/verified-source-export.json --source-channel verified_registry && python3 scripts/baidu/manifest_quality.py --manifest data/source-manifest.json --output data/source-manifest-quality.json",
     "release:gate:report": "npm run build:h5 && npm run build:mp-weixin && npm run audit:public-build && npm run deps:audit:prod && npm run audit:question-bank:report && npm run audit:release:external:report && npm run audit:release:backlog && npm run audit:wechat:artifacts",
+    "release:gate:app": "npm run build:h5 && npm run build:app && node scripts/build/ui-quality-gate.js --public-build dist/build/h5 dist/build/app && npm run audit:app:artifacts && npm run typecheck:backend && npm test -- --maxWorkers=4 --exclude tests/unit/mobile-viewport-smoke.spec.js --exclude tests/unit/engineering-eval-v1.spec.js",
     "release:gate": "npm run build:h5 && npm run build:mp-weixin && npm run audit:public-build && npm run deps:audit:prod && npm run audit:question-bank:release && npm run audit:release:external && npm run audit:release:backlog:release && npm run audit:wechat:artifacts && npm run test:cloud:smoke:release",
     "deps:check": "npm outdated",
     "deps:audit": "npm audit --registry=https://registry.npmjs.org",

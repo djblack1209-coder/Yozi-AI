@@ -44,6 +44,16 @@ describe('release scripts', () => {
     );
   });
 
+  it('keeps the App release gate runnable without paused mini-program steps', () => {
+    const appGate = packageJson.scripts['release:gate:app'];
+    expect(appGate).toContain('npm run build:h5');
+    expect(appGate).toContain('npm run build:app');
+    expect(appGate).not.toContain('mp-weixin');
+    expect(appGate).not.toContain('wechat');
+    expect(appGate).toContain('tests/unit/mobile-viewport-smoke.spec.js');
+    expect(appGate).toContain('tests/unit/engineering-eval-v1.spec.js');
+  });
+
   it('generates a request signing salt that satisfies the external release gate', () => {
     const first = createRequestSigningSalt();
     const second = createRequestSigningSalt();
