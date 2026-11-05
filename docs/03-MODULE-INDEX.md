@@ -4,6 +4,8 @@
 
 Goal生命周期恢复（S53）：同一客户端模块只对原只读分工识别已保存的暂停／继续／结束／重开，原问题与其余上下文门禁保持；暂停／结束只读，缺失步骤须恢复目标并再次明确授权。原Goal／task事件与普通工具恢复不改；[Store衔接与拒绝边界](../tests/unit/byok-store.spec.js)使用新S53用例，旧专项不重跑。
 
+现有[目标页](../src/pages/archive/components/conversation-entries.vue)提供绑定记录上下文／目标依据／状态的明确继续与重开；[组件边界](../tests/unit/shell-goal-navigation.spec.js)拒绝陈旧按钮。[候选去重](../laf-backend/functions/_shared/learning-entries.js)按当前Goal依据区分四种生命周期的重复意图；[本地指令提取](../laf-backend/functions/_shared/learning-entry-extractor.js)只为最后一条未处理的同文Goal指令提供原编号，由现有学习页明确重试。[重复生命周期与重试专项](../tests/unit/conversation-data-entry.spec.js)不重跑旧专项，不新增事件、页面或模型权限。
+
 宿主教学权限与快照：[共享策略](../laf-backend/functions/_shared/learning-runtime-policy.js)统一模型白名单、阶段额度、30／60秒时限、压缩状态与宿主复习档映射；[执行入口](../src/services/learning/learning-tools.js)在本地写入前检查2秒并只记元信息收据。新写作四维与次日改写沿原 writing-coach/reducer/repository，不建第二套事实库。
 
 申论材料与中文带写：[教学方法定义](../laf-backend/functions/_shared/learning-shenlun-method.js)经[宿主白名单](../laf-backend/functions/_shared/learning-coach-methods.js)接入既有coach阶段、明确提交和恢复事件；新建档须由服务端声明支持并保存方法版本，旧建档含义不变。四项中文观察不给官方分数，不进入英语节点、预测准确率或搭配复习；[全链路合同回归](../tests/unit/shenlun-method.spec.js)、[建档／授权／中文编辑](../tests/unit/shenlun-method-ui.spec.js)。
