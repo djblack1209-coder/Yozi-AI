@@ -624,7 +624,7 @@ export async function runLearningModelTask(
             (options.repair?.workflow
               ? '\n上一份该步骤回复未通过结构检查（' +
                 options.repair.validationPath +
-                '）。本分工仅此一次返修；基于同一原问题及依赖重新返回完整JSON，正文简明，不补权限、题目或工具，不引用上一份错误输出。'
+                '）。本分工仅此一次返修；基于同一原问题及依赖重新返回完整JSON，JSON字段间只用半角逗号，question必须为null，tools必须为空数组；message正文可用中文标点。正文简明，不补权限、题目或工具，不引用上一份错误输出。'
               : '')
         },
         { role: 'user', content: workflowContext.input || workflowContext.content }

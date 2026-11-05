@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import actualCommaFailure from '../fixtures/workflow-agent-fullwidth-comma.json';
 import { intakeChoicesFor, SINGLE_QUESTION_CONTRACT } from '../../laf-backend/functions/_shared/learning-intake.js';
 import {
   mixedDiagnosticRequest,
@@ -3191,6 +3192,44 @@ it('S52 executes model-authored dependencies on the protected API, isolates chil
   const account: any = [...mock.rows.values()].find((row) => row.user_id === 'u1' && row.calls);
   expect(account.calls).toHaveLength(5);
   expect(account.calls.every((call: any) => call.status === 'completed' && call.workflow && call.usage)).toBe(true);
+  expect([...mock.rows.keys()].some((key) => key.startsWith('learning_states:'))).toBe(false);
+});
+
+it('S56 accepts the actual JSON-mode punctuation failure without billing another worker call', async () => {
+  await streamProfile(false);
+  workflowApiProvider();
+  expect((await ai(context(workflowApiBody()))).success).toBe(true);
+  vi.mocked(callLearningProvider).mockResolvedValueOnce({ ...streamCompleted, content: actualCommaFailure.content });
+  expect(await ai(context(workflowApiBody('agent', 'tone')))).toMatchObject({
+    success: true,
+    data: { question: null, tools: [] }
+  });
+  expect(callLearningProvider).toHaveBeenCalledTimes(2);
+  const account: any = [...mock.rows.values()].find((row) => row.user_id === 'u1' && row.calls);
+  expect(account.calls).toHaveLength(2);
+  expect(account.calls.every((call: any) => call.status === 'completed' && !call.repairOf)).toBe(true);
+  expect([...mock.rows.keys()].some((key) => key.startsWith('learning_states:'))).toBe(false);
+});
+
+it('S56 repairs a rejected question using the actual punctuation reply once and preserves its failed receipt', async () => {
+  await streamProfile(false);
+  workflowApiProvider();
+  expect((await ai(context(workflowApiBody()))).success).toBe(true);
+  vi.mocked(callLearningProvider)
+    .mockResolvedValueOnce({
+      ...streamCompleted,
+      content: JSON.stringify({ message: '不得建题', question: { prompt: '不能执行' }, tools: [] })
+    })
+    .mockResolvedValueOnce({ ...streamCompleted, content: actualCommaFailure.content });
+  const result = await ai(context(workflowApiBody('agent', 'tone')));
+  expect(result).toMatchObject({ success: true, data: { question: null, tools: [] } });
+  expect(result.data.repairRequestId).toBe(workflowRequestId(workflowApiRoot, 'tone') + ':repair1');
+  expect(callLearningProvider).toHaveBeenCalledTimes(3);
+  const repairPrompt = vi.mocked(callLearningProvider).mock.calls[2][1][0].content;
+  expect(repairPrompt).toContain('question必须为null');
+  const account: any = [...mock.rows.values()].find((row) => row.user_id === 'u1' && row.calls);
+  expect(account.calls[1]).toMatchObject({ status: 'failed', result: null, validationPath: 'workflow.agent.question' });
+  expect(account.calls[2]).toMatchObject({ status: 'completed', repairOf: account.calls[1].id });
   expect([...mock.rows.keys()].some((key) => key.startsWith('learning_states:'))).toBe(false);
 });
 

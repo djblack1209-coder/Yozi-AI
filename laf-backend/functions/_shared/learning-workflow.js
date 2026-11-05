@@ -19,7 +19,23 @@ export const WORKFLOW_VALIDATION_PATHS = [
 function parseWorkflowJson(raw, path) {
   try {
     const json = raw.trim().match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/i)?.[1] || raw;
-    return JSON.parse(json);
+    // A real JSON-mode reply used U+FF0C between fields. Normalize only that
+    // separator outside strings; preserve the student's text and strict schema.
+    let normalized = '',
+      quoted = false,
+      escaped = false;
+    for (const char of json) {
+      if (quoted) {
+        normalized += char;
+        if (escaped) escaped = false;
+        else if (char === '\\') escaped = true;
+        else if (char === '"') quoted = false;
+      } else {
+        if (char === '"') quoted = true;
+        normalized += char === '，' ? ',' : char;
+      }
+    }
+    return JSON.parse(normalized);
   } catch {
     fail(false, 'WORKFLOW_INVALID', '分工回复不是完整JSON，未采用结果', path);
   }

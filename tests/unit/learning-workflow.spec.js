@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import actualCommaFailure from '../fixtures/workflow-agent-fullwidth-comma.json';
 import {
   LEARNING_WORKFLOW_CONTRACT as contract,
   normalizeWorkflowEnvelope,
@@ -27,6 +28,31 @@ const plan = {
     { id: 'check', title: '复核语气', instruction: '核对语气结论的依据。', dependsOn: ['tone'] }
   ]
 };
+
+describe('S56 actual JSON-mode punctuation failure', () => {
+  it('accepts the actual field separator without rewriting Chinese prose or consuming a repair', () => {
+    expect(() => JSON.parse(actualCommaFailure.content)).toThrow();
+    const result = parseWorkflowAgent(actualCommaFailure.content);
+    expect(result).toMatchObject({ question: null, tools: [], structured: true });
+    expect(result.message).toContain('陈述性、告知性，整体中性');
+    expect(actualCommaFailure.content).toContain(JSON.stringify(result.message));
+  });
+
+  it('preserves escaped quotes and backslashes inside strings, including a complete JSON fence', () => {
+    const message = '原句“你好，世界”，引用"逗号，"和路径 C:\\资料\\';
+    const raw = JSON.stringify({ message, question: null, tools: [] }).replace(',"question"', '，"question"');
+    expect(parseWorkflowAgent('```json\n' + raw + '\n```').message).toBe(message);
+  });
+
+  it.each([
+    actualCommaFailure.content.replace('"question":null', '"question":{"prompt":"不能创建"}'),
+    actualCommaFailure.content.replace('"tools":[]', '"tools":[{"name":"plan","arguments":{}}]'),
+    actualCommaFailure.content.replace('"tools":[]', '"tools":[],"authority":"write"'),
+    actualCommaFailure.content.slice(0, -1)
+  ])('still rejects question/authority violations and incomplete JSON %#', (raw) => {
+    expect(() => parseWorkflowAgent(raw)).toThrow();
+  });
+});
 const input = '多角度分析：比较两种邮件开头，分别说明语气和任务覆盖。';
 const identity = {
   requestId: 'workflow_root_1',
