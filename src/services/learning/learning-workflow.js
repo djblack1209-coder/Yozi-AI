@@ -7,6 +7,7 @@ import {
 } from '../../../laf-backend/functions/_shared/learning-workflow.js';
 import { SINGLE_QUESTION_CONTRACT } from '../../../laf-backend/functions/_shared/learning-intake.js';
 import { fetchLearningResult, generateLearningTurn } from '../api/domains/learning.api.js';
+import { userDirective } from './learning-tools.js';
 export {
   LEARNING_WORKFLOW_CONTRACT,
   requestsLearningWorkflow
@@ -23,6 +24,68 @@ const incomplete = () => ({
   workflowCanContinue: true,
   message: '已保留完成的分工结果，可明确继续剩余步骤。'
 });
+
+// Lifecycle controls do not change a read-only workflow's frozen question or model input.
+// Their confirmed source/proposal messages are the only later user text accepted here.
+export function workflowRecoveryContextMatches(state, request) {
+  const conversation = state.conversations.find((item) => item.id === request.conversationId);
+  const index = state.events.findIndex((event) => event.id === `${request.requestId}:request`);
+  const original = conversation?.messages.find((message) => message.id === request.messageId);
+  if (
+    request.workflowContract !== LEARNING_WORKFLOW_CONTRACT ||
+    conversation?.entryContract !== SINGLE_QUESTION_CONTRACT ||
+    original?.role !== 'user' ||
+    index < 0 ||
+    state.events[index].type !== 'model.request' ||
+    state.events[index].data.workflowContract !== LEARNING_WORKFLOW_CONTRACT ||
+    state.events[index].data.messageId !== request.messageId
+  )
+    return false;
+  const tail = state.events.slice(index + 1);
+  const lifecycle = new Set(['task.stop', 'task.resume', 'goal.pause', 'goal.resume', 'goal.close', 'goal.reopen']);
+  const allowed = new Set([`${request.requestId}:error`, `${request.requestId}:reply`]);
+  const controls = tail.filter(
+    (event) => lifecycle.has(event.type) && event.data.conversationId === request.conversationId
+  );
+  for (const control of controls) {
+    allowed.add(control.id);
+    if (control.type.startsWith('goal.') && control.data.proposalId) {
+      const message = conversation.messages.find((item) => item.id === control.data.proposalId);
+      if (control.data.explicit !== true || message?.proposal?.type !== control.type) return false;
+      allowed.add(message.id);
+      for (const ref of message.proposal.sourceRefs || [])
+        if (ref.conversationId === request.conversationId) allowed.add(ref.messageId);
+    }
+    if (control.type.startsWith('task.') && control.id.endsWith(':directive')) {
+      const root = control.id.slice(0, -':directive'.length);
+      const message = conversation.messages.find((item) => item.id === `${root}:message`);
+      if (
+        message?.role !== 'user' ||
+        userDirective(message.content, state, request.conversationId)?.type !== control.type
+      )
+        return false;
+      allowed.add(message.id);
+      allowed.add(`${root}:updated`);
+    }
+  }
+  const notices = { 'task.stop': '当前任务已停止。', 'task.resume': '已继续学习。' };
+  return (
+    tail.every((event, position) => {
+      if (allowed.has(event.id) || event.id.startsWith(`${request.requestId}:tool:`)) return true;
+      const previous = tail[position - 1];
+      return (
+        controls.includes(previous) &&
+        event.type === 'message.add' &&
+        event.data.conversationId === request.conversationId &&
+        event.data.role === 'notice' &&
+        notices[previous.type] === event.data.content
+      );
+    }) &&
+    [request.messageId, ...allowed].includes(
+      conversation.messages.filter((message) => message.role === 'user').at(-1)?.id
+    )
+  );
+}
 
 export function createLearningWorkflowRunner({ read, generate }) {
   return async function run(payload, options = {}) {

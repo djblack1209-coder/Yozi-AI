@@ -490,3 +490,194 @@ it.each(['unadvertised', 'stream'])(
     expect(fetchLearningResult).not.toHaveBeenCalled();
   }
 );
+
+async function confirmWorkflowGoal(text, expectedType) {
+  expect(await store.send(text)).toMatchObject({ proposal: true });
+  const message = store.active.messages.findLast((item) => item.proposal?.type === expectedType);
+  expect(message).toBeTruthy();
+  store.commit(
+    expectedType,
+    { ...message.proposal.data, proposalId: message.id, explicit: true },
+    `${message.id}:accept`
+  );
+}
+
+it('S53 keeps original workflow recoverable after confirmed Goal pause and resume without regenerating its plan', async () => {
+  await prepareWorkflowStore();
+  installWorkflowReplies({ losePlanReply: true });
+  await store.send(workflowQuestion, { chatEntry: true, discussionOnly: true });
+  const original = JSON.parse(JSON.stringify(store.recoverableRequest));
+  await confirmWorkflowGoal('目标先暂停。', 'goal.pause');
+  expect(store.active.stopped).toBe(true);
+  vi.mocked(generateLearningTurn).mockClear();
+  store.sharingAllowed = false;
+  expect(await store.recoverModelResult()).toMatchObject({ workflowCanContinue: true, status: 'workflow_incomplete' });
+  expect(store.workflowCanContinue).toBe(false);
+  await expect(store.recoverModelResult({ continueWorkflow: true })).rejects.toMatchObject({ code: 'STOPPED' });
+  expect(generateLearningTurn).not.toHaveBeenCalled();
+  await confirmWorkflowGoal('目标继续。', 'goal.resume');
+  await expect(store.recoverModelResult({ continueWorkflow: true })).rejects.toMatchObject({
+    code: 'CONSENT_REQUIRED'
+  });
+  expect(generateLearningTurn).not.toHaveBeenCalled();
+  store.sharingAllowed = true;
+  expect(await store.recoverModelResult({ continueWorkflow: true })).toMatchObject({ success: true });
+  expect(store.state.events.filter((event) => event.type === 'model.request')).toHaveLength(1);
+  expect(store.state.events.find((event) => event.id === `${original.requestId}:reply`)).toBeTruthy();
+  expect(generateLearningTurn.mock.calls.map(([body]) => body.learningContext.workflow.stage)).toEqual([
+    'agent',
+    'agent',
+    'final'
+  ]);
+  expect(store.state.attempts).toHaveLength(0);
+});
+
+it('S53 restores a host-paused workflow on reopen and requires an explicit task resume before continuation', async () => {
+  await prepareWorkflowStore();
+  installWorkflowReplies({ losePlanReply: true });
+  await store.send(workflowQuestion, { chatEntry: true, discussionOnly: true });
+  const original = JSON.parse(JSON.stringify(store.recoverableRequest));
+  store.dispatchLearningAction({ type: 'stop' });
+  const pausedEvents = JSON.parse(JSON.stringify(store.state.events));
+  store.$dispose();
+  setActivePinia(createPinia());
+  store = useConversationLearningStore();
+  await store.loadModels();
+  vi.mocked(generateLearningTurn).mockClear();
+  expect(store.active.stopped).toBe(true);
+  expect(await store.recoverModelResult()).toMatchObject({ workflowCanContinue: true });
+  expect(store.state.events).toEqual(pausedEvents);
+  expect(store.workflowCanContinue).toBe(false);
+  expect(generateLearningTurn).not.toHaveBeenCalled();
+  store.dispatchLearningAction({ type: 'resume' });
+  expect(await store.recoverModelResult({ continueWorkflow: true })).toMatchObject({ success: true });
+  expect(store.state.events.find((event) => event.id === `${original.requestId}:reply`)).toBeTruthy();
+  expect(generateLearningTurn.mock.calls.map(([body]) => body.learningContext.workflow.stage)).toEqual([
+    'agent',
+    'agent',
+    'final'
+  ]);
+});
+
+it('S53 keeps an explicitly closed Goal read-only until it is reopened, preserving the original workflow intent', async () => {
+  await prepareWorkflowStore();
+  installWorkflowReplies({ losePlanReply: true });
+  await store.send(workflowQuestion, { chatEntry: true, discussionOnly: true });
+  const original = JSON.parse(JSON.stringify(store.recoverableRequest));
+  await confirmWorkflowGoal('我完成目标了', 'goal.close');
+  vi.mocked(generateLearningTurn).mockClear();
+  expect(await store.recoverModelResult()).toMatchObject({ workflowCanContinue: true });
+  await expect(store.recoverModelResult({ continueWorkflow: true })).rejects.toMatchObject({ code: 'STOPPED' });
+  expect(generateLearningTurn).not.toHaveBeenCalled();
+  expect(store.active.goalLifecycle.status).toBe('completed');
+  await confirmWorkflowGoal('重开目标', 'goal.reopen');
+  expect(await store.recoverModelResult({ continueWorkflow: true })).toMatchObject({ success: true });
+  expect(store.active.goalLifecycle).toBeUndefined();
+  expect(
+    store.state.events.filter((event) => event.type === 'model.request').map((event) => event.data.requestId)
+  ).toEqual([original.requestId]);
+});
+
+it('S53 reads a cached final result while the Goal is paused without resuming it or starting model work', async () => {
+  await prepareWorkflowStore();
+  installWorkflowReplies({ losePlanReply: true });
+  await store.send(workflowQuestion, { chatEntry: true, discussionOnly: true });
+  const root = generateLearningTurn.mock.calls[0][0];
+  for (const task of [...workflowPlan.tasks, { id: 'final' }])
+    await generateLearningTurn({
+      ...root,
+      requestId: `${root.requestId}:wf:${task.id}`,
+      learningContext: {
+        ...root.learningContext,
+        workflow: {
+          contract: LEARNING_WORKFLOW_CONTRACT,
+          stage: task.id === 'final' ? 'final' : 'agent',
+          parentId: root.requestId,
+          ...(task.id === 'final' ? {} : { taskId: task.id })
+        }
+      }
+    });
+  await confirmWorkflowGoal('目标先暂停。', 'goal.pause');
+  vi.mocked(generateLearningTurn).mockClear();
+  const events = JSON.parse(JSON.stringify(store.state.events));
+  expect(await store.recoverModelResult()).toMatchObject({ success: true });
+  expect(generateLearningTurn).not.toHaveBeenCalled();
+  expect(store.active.stopped).toBe(true);
+  expect(store.state.events.slice(0, events.length)).toEqual(events);
+  expect(store.state.events.at(-1).id).toBe(`${root.requestId}:reply`);
+  expect(store.state.attempts).toHaveLength(0);
+});
+
+it.each(['question', 'goal', 'method'])(
+  'S53 rejects a workflow with an unrelated %s change even after a valid Goal pause and resume',
+  async (change) => {
+    await prepareWorkflowStore();
+    installWorkflowReplies({ losePlanReply: true });
+    await store.send(workflowQuestion, { chatEntry: true, discussionOnly: true });
+    if (change === 'question')
+      store.commit('message.add', { conversationId: store.active.id, role: 'user', content: '改为核对另一份通知。' });
+    if (change === 'goal')
+      await confirmWorkflowGoal('我的目标是准备考研英语一写作，到2026年12月20日，每天20分钟。', 'goal.revise');
+    if (change === 'method') store.dispatchLearningAction({ type: 'change_method' });
+    await confirmWorkflowGoal('目标先暂停。', 'goal.pause');
+    await confirmWorkflowGoal('目标继续。', 'goal.resume');
+    vi.mocked(generateLearningTurn).mockClear();
+    vi.mocked(fetchLearningResult).mockClear();
+    await expect(store.recoverModelResult({ continueWorkflow: true })).rejects.toMatchObject({
+      code: 'CONTEXT_CHANGED'
+    });
+    expect(generateLearningTurn).not.toHaveBeenCalled();
+    expect(fetchLearningResult).not.toHaveBeenCalled();
+    expect(store.state.attempts).toHaveLength(0);
+  }
+);
+
+it('S53 keeps ordinary model-result and tool recovery strict after Goal lifecycle changes', async () => {
+  await prepareWorkflowStore();
+  generateLearningTurn.mockResolvedValueOnce({ success: false, code: 503, error: 'NETWORK_FAILED' });
+  await store.send('请解释邀请邮件的开头。', { chatEntry: true, discussionOnly: true });
+  expect(store.recoverableRequest.workflowContract).toBeUndefined();
+  await confirmWorkflowGoal('目标先暂停。', 'goal.pause');
+  await confirmWorkflowGoal('目标继续。', 'goal.resume');
+  vi.mocked(generateLearningTurn).mockClear();
+  vi.mocked(fetchLearningResult).mockClear();
+  await expect(store.recoverModelResult()).rejects.toMatchObject({ code: 'CONTEXT_CHANGED' });
+  expect(generateLearningTurn).not.toHaveBeenCalled();
+  expect(fetchLearningResult).not.toHaveBeenCalled();
+});
+
+it('S53 observes a saved pause during child calls, then reuses those results after explicit resume', async () => {
+  await prepareWorkflowStore();
+  const saved = installWorkflowReplies({ losePlanReply: true });
+  await store.send(workflowQuestion, { chatEntry: true, discussionOnly: true });
+  const original = JSON.parse(JSON.stringify(store.recoverableRequest));
+  const generate = vi.mocked(generateLearningTurn).getMockImplementation();
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  vi.mocked(generateLearningTurn)
+    .mockClear()
+    .mockImplementation(async (body) => {
+      if (body.learningContext.workflow.stage === 'agent') await gate;
+      return generate(body);
+    });
+  const continuing = store.recoverModelResult({ continueWorkflow: true });
+  const observed = continuing.catch((error) => error);
+  await vi.waitFor(() => expect(generateLearningTurn).toHaveBeenCalledTimes(2));
+  learningRepository.commit({
+    id: 's53-race-pause',
+    type: 'task.stop',
+    data: { conversationId: original.conversationId }
+  });
+  release();
+  expect(await observed).toMatchObject({ code: 'CONTEXT_CHANGED' });
+  expect(generateLearningTurn).toHaveBeenCalledTimes(2);
+  expect(store.active.stopped).toBe(true);
+  expect(saved.has(`${original.requestId}:wf:tone`)).toBe(true);
+  expect(saved.has(`${original.requestId}:wf:coverage`)).toBe(true);
+  store.dispatchLearningAction({ type: 'resume' });
+  vi.mocked(generateLearningTurn).mockClear();
+  expect(await store.recoverModelResult({ continueWorkflow: true })).toMatchObject({ success: true });
+  expect(generateLearningTurn.mock.calls.map(([body]) => body.learningContext.workflow.stage)).toEqual(['final']);
+});

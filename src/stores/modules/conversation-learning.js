@@ -209,6 +209,7 @@ import { callLocalConnector, testLocalConnector, learningClientPlatform } from '
 import {
   runLearningWorkflow,
   requestsLearningWorkflow,
+  workflowRecoveryContextMatches,
   LEARNING_WORKFLOW_CONTRACT
 } from '@/services/learning/learning-workflow.js';
 import {
@@ -3945,6 +3946,8 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   const singleQuestionRetries = new Map();
   const workflowCanContinue = computed(
     () =>
+      !active.value?.stopped &&
+      !active.value?.goalLifecycle &&
       workflowContinuation.value?.context === recordContext() &&
       workflowContinuation.value?.requestId === recoverableRequest.value?.requestId &&
       recoverableRequest.value?.workflowContract === LEARNING_WORKFLOW_CONTRACT
@@ -4004,7 +4007,12 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     const owner = state.value.owner,
       lifecycle = learningRepository.lifecycleRevision();
     const session = loginContext();
-    if (continueWorkflow)
+    if (continueWorkflow) {
+      assert(
+        !active.value?.stopped && !active.value?.goalLifecycle,
+        'STOPPED',
+        '目标已暂停或结束，请先明确继续或重开目标'
+      );
       assert(
         pending.workflowContract === LEARNING_WORKFLOW_CONTRACT &&
           sharingAllowed.value &&
@@ -4013,6 +4021,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
         'CONSENT_REQUIRED',
         '请先允许原问题发送，再明确继续分工'
       );
+    }
     const requestController = beginReply('chat', pending.requestId, pending.conversationId);
     controller = requestController;
     pendingCloudCall = { id: pending.requestId, owner, session };
@@ -4030,18 +4039,21 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           selectedConversationId.value === pending.conversationId &&
           selectedMode.value === 'cloud' &&
           (!continueWorkflow || sharingAllowed.value) &&
+          (!continueWorkflow || (!active.value?.stopped && !active.value?.goalLifecycle)) &&
           modelId.value === pending.modelId &&
           (active.value?.activeQuestionKey || null) === pending.questionKey &&
-          active.value.messages.filter((m) => m.role === 'user').at(-1)?.id === pending.messageId &&
-          eventIndex >= 0 &&
-          state.value.events
-            .slice(eventIndex + 1)
-            .every(
-              (e) =>
-                e.id === `${pending.requestId}:error` ||
-                e.id.startsWith(`${pending.requestId}:tool:`) ||
-                e.id === `${pending.requestId}:reply`
-            ),
+          (pending.workflowContract === LEARNING_WORKFLOW_CONTRACT
+            ? workflowRecoveryContextMatches(state.value, pending)
+            : active.value.messages.filter((m) => m.role === 'user').at(-1)?.id === pending.messageId &&
+              eventIndex >= 0 &&
+              state.value.events
+                .slice(eventIndex + 1)
+                .every(
+                  (e) =>
+                    e.id === `${pending.requestId}:error` ||
+                    e.id.startsWith(`${pending.requestId}:tool:`) ||
+                    e.id === `${pending.requestId}:reply`
+                )),
         'CONTEXT_CHANGED',
         '学习上下文已变化，旧结果只保留在服务端，不应用旧工具'
       );
