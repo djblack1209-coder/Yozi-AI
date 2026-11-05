@@ -8,7 +8,7 @@
 - 不执行 `dev:mp-weixin`、`build:mp-weixin`、`audit:mp-main-usage`、`audit:wechat:artifacts`、`smoke:wechat:devtools`，不启动微信开发者工具，不做390px小程序适配。
 - `release:gate`／`release:gate:report` 是含微信步骤的旧聚合脚本，本阶段整条不运行；保留原脚本，App工单分别执行需要的现有检查。
 - App 主线门禁用 `npm run release:gate:app`（`build:h5`＋`build:app`＋显式目录的公开产物检查＋App 产物检查＋后端类型＋全量 `npm test`），只在里程碑与发布候选执行一次。两条测试按已知限制排除、不降低产品判定：`mobile-viewport-smoke.spec.js`（本机无 Playwright 浏览器，CI 装浏览器后单独跑）与 `engineering-eval-v1.spec.js`（冻结清单版本漂移，10-31 裁定封存不改）。依赖安全审计不进门禁，按 AGENTS.md 每月集中扫描并记账。日常批次按 AGENTS.md「验证分级与流程纪律」只跑受影响范围，已验项登记在 docs/13 §3，采信规则见 §0.0。
-- S55 唯一一次 App 门禁：两项登记缺陷已通过，7276 项＝7269 通过／1 超时／6 跳过，exit 1。超时的跨窗口全动作检查保留原断言与 10 秒阈值，单项 4.203 秒通过；未重跑整轮或更改排除项，不宣称门禁 exit 0。动作表补齐，删除问题经真实 HTTP／Mongo 查明为测试库的 `$exists` 语义缺失，生产隐私 CAS 保持。完整分工仍未通过，见 [S55 记录](18-DEVELOPMENT-LOG.md#s55功能补齐收尾分工未通过20261104)。
+- 最新S56唯一一次App门禁：`npm run release:gate:app` exit0／253秒，7284项＝7278通过／6跳过，0失败、0登记产品缺陷失败；构建、公开／App产物及后端类型通过，未改时限或排除项。S55的exit1／超时保留为历史，不回填通过；完整真实分工已走到最终汇总，见[S56记录](18-DEVELOPMENT-LOG.md#s56真实分工最终汇总与门禁通过20261104)。
 - 20 个 `audit:*` 脚本按里程碑集中执行，不逐批叠加；CI 已覆盖的检查不在本地重复跑，日常批次只跑与本次改动直接相关的那一个。
 - 不使用默认会扫描微信目录的裸 `audit:public-build`／`ui-quality-gate.js --public-build`；App共享前端检查须显式传入本轮App输出目录。CI当前构建H5、桌面脚本已指定桌面目录，无需为了小程序追加验证。H5结果仍不替代App目标端验收。
 - 所有测试在本机完成，不安排手机连接／解锁、外部物理设备或跨设备实测。窄屏与键盘检查限本机窗口及已有原生／模拟器，App权限、批改契约、写作主链和桌面构建按实际覆盖报告；不把共享前端或构建当作未覆盖原生能力通过。
