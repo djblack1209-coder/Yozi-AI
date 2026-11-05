@@ -295,6 +295,38 @@ export async function runLearningModelTask(
   let visualCall = false;
   let presentationValidationPath: string | null = null;
   const db = cloud.database();
+  const repairWorkflow = async (call: any, validationPath: string | null) => {
+    execution?.stop();
+    execution = null;
+    const repairRequestId = call.id + ':repair1';
+    const repaired = await runLearningModelTask(
+      { ...ctx, body: { ...ctx.body, requestId: repairRequestId } },
+      {
+        ...options,
+        stream: false,
+        onStart: undefined,
+        onPreview: undefined,
+        repair: {
+          parentId: call.id,
+          configurationVersion: call.configurationVersion,
+          workflow: true,
+          validationPath: validationPath || undefined
+        }
+      }
+    );
+    if (repaired.success) return { ...repaired, data: { ...repaired.data, requestId: call.id, repairRequestId } };
+    if (repaired.error === 'REPAIR_INVALID')
+      return {
+        code: 503,
+        success: false,
+        status: 'failed',
+        error: call.errorCode,
+        validationPath,
+        repairExhausted: true,
+        message: '本分工的一次结构返修已用尽或不可用；原失败与用量保留，未启动后续步骤'
+      };
+    return { ...repaired, repairRequestId, repairExhausted: true };
+  };
   try {
     await assertTrialUser(db, auth.userId);
     const body = ctx.body || {};
@@ -721,6 +753,10 @@ export async function runLearningModelTask(
             reused: true
           }
         );
+      // Explicitly resending a known failed stage may use its one missing repair;
+      // read-only result queries still never enter this inference path.
+      if (!repair && workflowRepairable(reservation.call) && !options.repair)
+        return repairWorkflow(reservation.call, reservation.call.validationPath);
       return {
         code: 409,
         success: false,
@@ -1205,37 +1241,7 @@ export async function runLearningModelTask(
       workflowRepairable(failedReceipt?.call) &&
       reservation.call.id.length <= 152
     ) {
-      execution?.stop();
-      execution = null;
-      const repairRequestId = reservation.call.id + ':repair1';
-      const repaired = await runLearningModelTask(
-        { ...ctx, body: { ...ctx.body, requestId: repairRequestId } },
-        {
-          ...options,
-          stream: false,
-          onStart: undefined,
-          onPreview: undefined,
-          repair: {
-            parentId: reservation.call.id,
-            configurationVersion: reservation.call.configurationVersion,
-            workflow: true,
-            validationPath: validationPath || undefined
-          }
-        }
-      );
-      if (repaired.success)
-        return { ...repaired, data: { ...repaired.data, requestId: reservation.call.id, repairRequestId } };
-      if (repaired.error === 'REPAIR_INVALID')
-        return {
-          code: 503,
-          success: false,
-          status: 'failed',
-          error: error.code,
-          validationPath,
-          repairExhausted: true,
-          message: '本分工的一次结构返修已用尽或不可用；原失败与用量保留，未启动后续步骤'
-        };
-      return { ...repaired, repairRequestId, repairExhausted: true };
+      return repairWorkflow(failedReceipt.call, validationPath);
     }
     if (
       !options.repair &&

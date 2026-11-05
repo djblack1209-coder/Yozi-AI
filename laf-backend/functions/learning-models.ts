@@ -11,7 +11,11 @@ import { EXAM_SCOPE_CONTRACTS } from './_shared/learning-exam-scope.js';
 import { SUBJECT_COACH_METHODS } from './_shared/learning-coach-methods.js';
 import { PRESENTATION_CONTRACT } from './_shared/learning-content-blocks.js';
 import crypto from 'node:crypto';
-import { cancelWorkflowCalls, LEARNING_WORKFLOW_CONTRACT } from './_shared/learning-workflow.js';
+import {
+  cancelWorkflowCalls,
+  LEARNING_WORKFLOW_CONTRACT,
+  workflowRepairAvailable
+} from './_shared/learning-workflow.js';
 import { requireAuth, isAuthError } from './_shared/auth-middleware.js';
 import { requireActiveUser } from './_shared/active-user.js';
 import { checkRateLimitDistributed } from './_shared/api-response.js';
@@ -277,6 +281,9 @@ export default async function (ctx: any) {
         ...projectResponseDiagnostics(maintained?.account, body.requestId, auth.userId),
         ...(typeof call.errorCode === 'string' ? { error: call.errorCode } : {}),
         ...(validationPath ? { validationPath } : {}),
+        ...(workflowRepairAvailable(maintained!.account.calls, call)
+          ? { workflowCanRepair: true, workflowCanContinue: true }
+          : {}),
         message:
           call.status === 'reserved'
             ? '模型任务仍在执行，尚无可用结果；读取不会重试模型'

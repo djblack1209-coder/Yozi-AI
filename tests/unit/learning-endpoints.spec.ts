@@ -3230,6 +3230,55 @@ it('S55 repairs a malformed planner once and completes dependencies and final su
   expect([...mock.rows.keys()].some((key) => key.startsWith('learning_states:'))).toBe(false);
 });
 
+it('S55 repairs an invalid question field into read-only analysis without creating a question', async () => {
+  await streamProfile(false);
+  workflowApiProvider();
+  expect((await ai(context(workflowApiBody()))).success).toBe(true);
+  vi.mocked(callLearningProvider).mockResolvedValueOnce({
+    ...streamCompleted,
+    content: JSON.stringify({ message: '未采用的题目字段', question: { prompt: '不得建题' }, tools: [] })
+  });
+  expect(await ai(context(workflowApiBody('agent', 'tone')))).toMatchObject({
+    success: true,
+    data: { question: null, tools: [], repairRequestId: workflowRequestId(workflowApiRoot, 'tone') + ':repair1' }
+  });
+  const account: any = [...mock.rows.values()].find((row) => row.user_id === 'u1' && row.calls);
+  expect(account.calls[1]).toMatchObject({ status: 'failed', result: null, validationPath: 'workflow.agent.question' });
+  expect(account.calls[2]).toMatchObject({ status: 'completed', repairOf: account.calls[1].id });
+  expect(callLearningProvider).toHaveBeenCalledTimes(3);
+  expect([...mock.rows.keys()].some((key) => key.startsWith('learning_states:'))).toBe(false);
+});
+
+it('S55 explicitly continues a known failed stage with one missing repair while result queries stay read-only', async () => {
+  await streamProfile(false);
+  workflowApiProvider();
+  expect((await ai(context(workflowApiBody()))).success).toBe(true);
+  vi.mocked(callLearningProvider).mockResolvedValueOnce({
+    ...streamCompleted,
+    content: JSON.stringify({ message: '旧失败收据夹具', question: null, tools: [{ name: 'plan', arguments: {} }] })
+  });
+  expect((await ai(context(workflowApiBody('agent', 'tone')))).success).toBe(false);
+  const account: any = [...mock.rows.values()].find((row) => row.user_id === 'u1' && row.calls);
+  // A persisted known structural-failure fixture, before automatic repair existed.
+  account.calls[1].validationPath = 'workflow.agent.question';
+  const id = workflowRequestId(workflowApiRoot, 'tone');
+  expect(await models(context({ action: 'result', requestId: id }))).toMatchObject({
+    success: false,
+    workflowCanRepair: true,
+    workflowCanContinue: true
+  });
+  expect(callLearningProvider).toHaveBeenCalledTimes(2);
+  expect(await ai(context(workflowApiBody('agent', 'tone')))).toMatchObject({
+    success: true,
+    data: { requestId: id, repairRequestId: id + ':repair1' }
+  });
+  expect((await ai(context(workflowApiBody('agent', 'tone')))).success).toBe(true);
+  const after: any = [...mock.rows.values()].find((row) => row.user_id === 'u1' && row.calls);
+  expect(after.calls[1]).toMatchObject({ status: 'failed', result: null });
+  expect(after.calls.filter((call: any) => call.repairOf)).toHaveLength(1);
+  expect(callLearningProvider).toHaveBeenCalledTimes(3);
+});
+
 it('S55 retains repaired plan cancellation and privacy deletion without another model invocation', async () => {
   await streamProfile(false);
   workflowApiProvider();

@@ -412,6 +412,42 @@ describe('S52 client workflow scheduling and recovery', () => {
 });
 
 describe('S55 workflow JSON transport and one repair per chain', () => {
+  it('normalizes an omitted null-only question while rejecting any supplied question', () => {
+    expect(parseWorkflowAgent(JSON.stringify({ message: '只读分析', tools: [] })).question).toBeNull();
+    const planner = JSON.parse(rawPlan());
+    delete planner.question;
+    expect(parseWorkflowPlan(JSON.stringify(planner), rootContext(), identity).question).toBeNull();
+    expect(() =>
+      parseWorkflowAgent(JSON.stringify({ message: '分析', question: { prompt: '不得建题' }, tools: [] }))
+    ).toThrow(expect.objectContaining({ path: 'workflow.agent.question' }));
+  });
+
+  it('uses explicit continuation for an available repair and never repairs during read-only recovery', async () => {
+    const f = runnerFixture();
+    const stage = (kind, taskId) => ({
+      ...f.payload,
+      requestId: kind === 'plan' ? identity.requestId : workflowRequestId(identity.requestId, taskId),
+      learningContext: { workflow: envelope(kind, taskId) }
+    });
+    f.saved.set(identity.requestId, f.data(stage('plan')));
+    f.saved.set(workflowRequestId(identity.requestId, 'tone'), f.data(stage('agent', 'tone')));
+    f.saved.set(workflowRequestId(identity.requestId, 'coverage'), {
+      success: false,
+      code: 503,
+      error: 'WORKFLOW_INVALID',
+      workflowCanRepair: true,
+      workflowCanContinue: true
+    });
+    expect((await f.run({ workflowMode: 'read' })).success).toBe(false);
+    expect(f.generate).not.toHaveBeenCalled();
+    expect((await f.run({ workflowMode: 'continue' })).success).toBe(true);
+    expect(f.generate.mock.calls.map(([body]) => body.requestId)).toEqual([
+      workflowRequestId(identity.requestId, 'coverage'),
+      workflowRequestId(identity.requestId, 'check'),
+      workflowRequestId(identity.requestId, 'final')
+    ]);
+  });
+
   it('accepts one complete JSON fence for plans and agents without changing the schema', () => {
     const fence = String.fromCharCode(96).repeat(3);
     expect(
@@ -516,7 +552,7 @@ describe('S55 workflow JSON transport and one repair per chain', () => {
 
   it.each([
     { validationPath: 'workflow.agent.tools' },
-    { validationPath: 'workflow.agent.question' },
+    { validationPath: 'workflow.agent.root' },
     { validationPath: undefined },
     { errorCode: 'MODEL_MISMATCH' },
     { resultDeletedAt: Date.now() },

@@ -34,9 +34,13 @@ export function workflowRepairable(call) {
     !call.workflowCancelledAt &&
     call.executionStage === 'received' &&
     ((call.errorCode === 'WORKFLOW_INVALID' &&
-      ['workflow.plan.json', 'workflow.plan.tasks', 'workflow.agent.json', 'workflow.agent.message'].includes(
-        call.validationPath
-      )) ||
+      [
+        'workflow.plan.json',
+        'workflow.plan.tasks',
+        'workflow.agent.json',
+        'workflow.agent.message',
+        'workflow.agent.question'
+      ].includes(call.validationPath)) ||
       (call.errorCode === 'INVALID_STRUCTURE' &&
         (call.validationPath === 'finish_reason' ||
           (call.workflow.stage === 'final' &&
@@ -62,6 +66,23 @@ function workflowCall(calls, id) {
   const repair = calls.find((call) => matchingWorkflowRepair(original, call));
   // Keep logical stage IDs stable while retaining both billed records independently.
   return repair?.status === 'completed' ? { ...repair, id: original.id } : original;
+}
+export function workflowRepairAvailable(calls, call) {
+  if (
+    !workflowRepairable(call) ||
+    calls.some(
+      (item) =>
+        item.repairOf &&
+        item.workflow?.contract === LEARNING_WORKFLOW_CONTRACT &&
+        item.workflow.parentId === call.workflow.parentId
+    )
+  )
+    return false;
+  if (call.workflow.stage === 'plan') return true;
+  const root = workflowCall(calls, call.workflow.parentId);
+  return Boolean(
+    root?.status === 'completed' && !root.workflowCancelledAt && !root.resultDeletedAt && root.result?.workflow
+  );
 }
 const object = (value, keys) =>
   value &&
@@ -277,7 +298,7 @@ export function parseWorkflowPlan(raw, context, identity) {
   fail(
     object(parsed, ['message', 'question', 'tools', 'workflow']) &&
       text(parsed.message, 400) &&
-      parsed.question === null &&
+      (parsed.question === null || parsed.question === undefined) &&
       Array.isArray(parsed.tools) &&
       parsed.tools.length === 0,
     'WORKFLOW_INVALID',
@@ -316,7 +337,13 @@ export function parseWorkflowAgent(raw) {
     'workflow.agent.root'
   );
   fail(text(parsed.message, 2000), 'WORKFLOW_INVALID', '子任务分析正文不合法', 'workflow.agent.message');
-  fail(parsed.question === null, 'WORKFLOW_INVALID', '子任务不创建题目', 'workflow.agent.question');
+  // An omitted null-only field is no question, as in normal learning replies.
+  fail(
+    parsed.question === null || parsed.question === undefined,
+    'WORKFLOW_INVALID',
+    '子任务不创建题目',
+    'workflow.agent.question'
+  );
   fail(
     Array.isArray(parsed.tools) && parsed.tools.length === 0,
     'WORKFLOW_INVALID',

@@ -123,7 +123,7 @@ export function createLearningWorkflowRunner({ read, generate }) {
       const request = stagePayload(stage, taskId);
       let result = await read(request.requestId, options);
       current();
-      if (result.code === 404 && mode !== 'read') {
+      if (mode !== 'read' && (result.code === 404 || (mode === 'continue' && result.workflowCanRepair === true))) {
         requireValue(payload.shareConsent === true, '请先允许本次问题发送至所选连接');
         result = await generate(request, { ...options, stream: false });
         current();
