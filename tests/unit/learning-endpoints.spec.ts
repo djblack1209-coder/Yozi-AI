@@ -33,7 +33,12 @@ vi.mock('@lafjs/cloud', () => ({
           const matches = () =>
             [...new Map([...(name === 'users' ? mock.users.entries() : []), ...mock.rows.entries()]).entries()].filter(
               ([id, row]: any) =>
-                id.startsWith(`${name}:`) && Object.entries(query).every(([k, value]) => row[k] === value)
+                id.startsWith(`${name}:`) &&
+                Object.entries(query).every(([k, value]) =>
+                  value && typeof value === 'object' && '$exists' in value
+                    ? Object.hasOwn(row, k) === value.$exists
+                    : row[k] === value
+                )
             );
           return {
             get: async () => ({ data: matches().map(([, row]) => structuredClone(row)) }),
@@ -1511,6 +1516,7 @@ describe('模型结果缓存的隐私删除', () => {
       at: Date.now(),
       data: { materialId: 'private-m1', questionKeys: [] }
     };
+    const beforeInvalid = (await sync(context({ action: 'pull' }))).data;
     expect(
       (
         await sync(
@@ -1521,6 +1527,9 @@ describe('模型结果缓存的隐私删除', () => {
         )
       ).success
     ).toBe(false);
+    const afterInvalid = (await sync(context({ action: 'pull' }))).data;
+    expect(afterInvalid.revision).toBe(beforeInvalid.revision);
+    expect(afterInvalid.state).toEqual(beforeInvalid.state);
     expect((await models(context({ action: 'result', requestId: 'before-material-delete' }))).success).toBe(true);
     const deleted = await sync(context({ action: 'push', operations: [deletion] }));
     expect(deleted.success).toBe(true);
