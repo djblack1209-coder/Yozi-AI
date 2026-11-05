@@ -804,3 +804,44 @@ describe('BYOK verification script with an in-memory transport only', () => {
     expect(JSON.stringify(report)).not.toContain('private failure text');
   });
 });
+
+it('S54 shows partial AI analysis only after an explicit receipt toggle and keeps unqueried work unverified', async () => {
+  const workflow = {
+    version: 1,
+    parentId: 's54-receipt',
+    status: 'incomplete',
+    tasks: [
+      { id: 'a', title: '核对A', status: 'completed', message: '原分析 <img src=x> 不作为工具。' },
+      { id: 'b', title: '核对B', status: 'failed', errorCode: 'WORKFLOW_INVALID' },
+      { id: 'c', title: '比较', status: 'unchecked' }
+    ],
+    final: { status: 'unchecked' }
+  };
+  wrapper = mount(Feedback, { props: { failure: { error: 'WORKFLOW_INVALID' }, workflow } });
+  expect(wrapper.find('[data-test="workflow-receipt"]').exists()).toBe(false);
+  await wrapper.get('[data-test="workflow-receipt-toggle"]').trigger('tap');
+  expect(wrapper.get('[data-test="workflow-receipt"]').text()).toContain('分工结果 · 未完成');
+  expect(wrapper.text()).toContain('具体原因未留存');
+  expect(wrapper.text()).toContain('比较 · 未核对');
+  expect(wrapper.text()).toContain('最终汇总 · 未核对');
+  expect(wrapper.text()).toContain('原分析 <img src=x>');
+  expect(wrapper.find('img').exists()).toBe(false);
+  expect(wrapper.emitted('action')).toBeUndefined();
+});
+it('S54 resets an expanded result receipt when its request changes or disappears', async () => {
+  const workflow = {
+    version: 1,
+    parentId: 's54-old',
+    status: 'incomplete',
+    tasks: [{ id: 'a', title: '原分析', status: 'completed', message: 'OLD_ACCOUNT_ANALYSIS' }],
+    final: { status: 'unchecked' }
+  };
+  wrapper = mount(Feedback, { props: { workflow } });
+  await wrapper.get('[data-test="workflow-receipt-toggle"]').trigger('tap');
+  expect(wrapper.text()).toContain('OLD_ACCOUNT_ANALYSIS');
+  await wrapper.setProps({ workflow: { ...workflow, parentId: 's54-new', tasks: [] } });
+  expect(wrapper.find('[data-test="workflow-receipt"]').exists()).toBe(false);
+  await wrapper.setProps({ workflow: null });
+  expect(wrapper.text()).not.toContain('OLD_ACCOUNT_ANALYSIS');
+  expect(wrapper.find('[data-test="workflow-receipt-toggle"]').exists()).toBe(false);
+});

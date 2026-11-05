@@ -1,6 +1,6 @@
 import { phaseCallLimit, LEARNING_BUDGET_PHASES } from './learning-runtime-policy.js';
 import { modelConfigurationVersion } from './ai-providers/free-model-presets.js';
-import { assertWorkflowReservation } from './learning-workflow.js';
+import { assertWorkflowReservation, WORKFLOW_VALIDATION_PATHS } from './learning-workflow.js';
 import crypto from 'node:crypto';
 import { DEV_TEST } from './build-channel.js';
 import {
@@ -31,6 +31,8 @@ const VALIDATION_FIELDS = new Set(
   )
 );
 export function modelValidationPath(code: unknown, path: unknown) {
+  if (code === 'WORKFLOW_INVALID')
+    return typeof path === 'string' && WORKFLOW_VALIDATION_PATHS.includes(path) ? path : null;
   if (
     (code !== 'COACH_INVALID' && code !== 'INTAKE_INVALID' && code !== 'INVALID_STRUCTURE') ||
     typeof path !== 'string' ||

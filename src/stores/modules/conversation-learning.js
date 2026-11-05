@@ -574,6 +574,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   // Device-only presentation. Provisional text never enters the event repository.
   const reply = ref(null);
   const workflowContinuation = shallowRef(null);
+  const workflowReceipt = shallowRef(null);
   let replyController = null;
   let retryOperation = 0;
   const sending = new Map();
@@ -736,6 +737,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   function resetModelResources() {
     modelWorkflowAvailable = false;
     workflowContinuation.value = null;
+    workflowReceipt.value = null;
     cancelModelReads(undefined, 'CONTEXT_CHANGED');
     modelIntakeAvailable = false;
     modelCoachMethods = [];
@@ -3709,6 +3711,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
             });
       assertCurrent();
       streamPreview.value = '';
+      if (request.workflowContract) keepWorkflowReport(result, id);
       if (mode === 'local' && result.success && localConnection.value) localConnection.value.status = 'model_verified';
       if (!result.success) {
         error.value = publicError(result);
@@ -3944,6 +3947,27 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     return event.data;
   });
   const singleQuestionRetries = new Map();
+  function keepWorkflowReport(result, requestId) {
+    const request = state.value.events.find((event) => event.id === `${requestId}:request`)?.data;
+    workflowReceipt.value =
+      request?.workflowContract === LEARNING_WORKFLOW_CONTRACT && result.workflowReport?.parentId === requestId
+        ? { context: recordContext(), request, report: result.workflowReport }
+        : null;
+  }
+  const workflowReport = computed(() => {
+    const saved = workflowReceipt.value;
+    return saved &&
+      saved.context === recordContext() &&
+      selectedMode.value === 'cloud' &&
+      modelId.value === saved.request.modelId &&
+      selectedConversationId.value === saved.request.conversationId &&
+      workflowRecoveryContextMatches(state.value, saved.request)
+      ? saved.report
+      : null;
+  });
+  watch([() => recordContext(), selectedConversationId, selectedMode, modelId], () => (workflowReceipt.value = null), {
+    flush: 'sync'
+  });
   const workflowCanContinue = computed(
     () =>
       !active.value?.stopped &&
@@ -4086,6 +4110,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
             )
           : await fetchLearningResult(pending.requestId, recoveryOptions);
       assertRecovery();
+      keepWorkflowReport(result, pending.requestId);
       workflowContinuation.value = result.workflowCanContinue
         ? { context: recordContext(), requestId: pending.requestId }
         : null;
@@ -4128,6 +4153,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   }
   function cancel() {
     workflowContinuation.value = null;
+    workflowReceipt.value = null;
     const wasPending = Boolean(controller || replyController);
     retryOperation++;
     visualRequest.value = null;
@@ -5911,6 +5937,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     reply,
     recoverableRequest,
     workflowCanContinue,
+    workflowReport,
     recoverModelResult,
     retrySingleQuestion,
     localConnection,

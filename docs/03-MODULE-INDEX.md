@@ -1,5 +1,7 @@
 # 源码导航
 
+分工失败与结果回执（S54）：[固定结构诊断位置](../laf-backend/functions/_shared/learning-workflow.js)经[账户白名单](../laf-backend/functions/_shared/learning-account.ts)保存到既有validationPath，旧无诊断失败不补判。[客户端只读回执](../src/services/learning/learning-workflow.js)只呈现已核对关联的阶段结果，原Store绑定当前账户／记录／对话／模型，由[现有反馈区](../src/components/business/learning/muse-model-feedback.vue)明确展开；未查询依赖保持未核对，无自动重试或事实写入。[诊断／调度](../tests/unit/learning-workflow.spec.js)、[Store边界](../tests/unit/byok-store.spec.js)与[回执组件](../tests/unit/byok-frontend.spec.js)仅运行新增S54用例。
+
 受保护分工（S52）：[共享任务图与关联校验](../laf-backend/functions/_shared/learning-workflow.js)和[客户端调度／只读恢复](../src/services/learning/learning-workflow.js)沿既有proxy、账户CAS、费用与单题答疑接入；主模型拆分、最多两路独立上下文、依赖与最终汇总均绑定原请求。取消在预留CAS阻止后续调用；[任务图／费用／恢复专项](../tests/unit/learning-workflow.spec.js)，接口与Store专项仍在原测试文件。
 
 Goal生命周期恢复（S53）：同一客户端模块只对原只读分工识别已保存的暂停／继续／结束／重开，原问题与其余上下文门禁保持；暂停／结束只读，缺失步骤须恢复目标并再次明确授权。原Goal／task事件与普通工具恢复不改；[Store衔接与拒绝边界](../tests/unit/byok-store.spec.js)使用新S53用例，旧专项不重跑。

@@ -10,7 +10,13 @@ import {
   parseWorkflowAgent,
   cancelWorkflowCalls
 } from '../../laf-backend/functions/_shared/learning-workflow.js';
-import { newAccount, reserveCall, settleCall, cancelCall } from '../../laf-backend/functions/_shared/learning-account';
+import {
+  newAccount,
+  reserveCall,
+  settleCall,
+  cancelCall,
+  modelValidationPath
+} from '../../laf-backend/functions/_shared/learning-account';
 import { createLearningWorkflowRunner } from '@/services/learning/learning-workflow.js';
 import { PRESENTATION_CONTRACT } from '../../laf-backend/functions/_shared/learning-content-blocks.js';
 
@@ -402,5 +408,144 @@ describe('S52 client workflow scheduling and recovery', () => {
     f.payload.shareConsent = true;
     f.saved.get(workflowRequestId(identity.requestId, 'tone')).data.workflowReceipt.planDigest = 'wrong';
     await expect(f.run({ workflowMode: 'read' })).rejects.toMatchObject({ code: 'CONTEXT_CHANGED' });
+  });
+});
+
+describe('S54 bounded workflow diagnostics and read-only result handoff', () => {
+  it.each([
+    ['{broken', 'workflow.agent.json'],
+    [JSON.stringify({ message: '分析', question: null, tools: [], extra: 'DO_NOT_SAVE_FIELD' }), 'workflow.agent.root'],
+    [JSON.stringify({ message: 'x'.repeat(2001), question: null, tools: [] }), 'workflow.agent.message'],
+    [JSON.stringify({ message: '分析', question: { prompt: '不应出题' }, tools: [] }), 'workflow.agent.question'],
+    [
+      JSON.stringify({ message: '分析', question: null, tools: [{ name: 'plan', arguments: {} }] }),
+      'workflow.agent.tools'
+    ]
+  ])('retains rejection and a fixed safe coordinate for invalid worker output %#', (raw, path) => {
+    expect(() => parseWorkflowAgent(raw)).toThrow(expect.objectContaining({ code: 'WORKFLOW_INVALID', path }));
+    expect(modelValidationPath('WORKFLOW_INVALID', path)).toBe(path);
+    expect(path).not.toContain('DO_NOT_SAVE_FIELD');
+  });
+
+  it('distinguishes invalid plan JSON from task graph rejection without changing either acceptance rule', () => {
+    expect(() => parseWorkflowPlan('{broken', rootContext(), identity)).toThrow(
+      expect.objectContaining({ code: 'WORKFLOW_INVALID', path: 'workflow.plan.json' })
+    );
+    expect(() => parseWorkflowPlan(rawPlan({ tasks: [plan.tasks[0]] }), rootContext(), identity)).toThrow(
+      expect.objectContaining({ code: 'WORKFLOW_INVALID', path: 'workflow.plan.tasks' })
+    );
+    expect(parseWorkflowPlan(rawPlan(), rootContext(), identity).workflow.plan).toEqual(plan);
+  });
+
+  it('keeps only an allowed coordinate on a newly failed call and leaves old failures unknown', () => {
+    let account = rootAccount();
+    const context = workflowStageContext(account.calls, envelope('agent', 'tone'), stageIdentity('tone'));
+    account = reserveCall(account, reservation(stageIdentity('tone').requestId, context.metadata)).account;
+    const rootBefore = structuredClone(account.calls[0]);
+    const failed = settleCall(account, stageIdentity('tone').requestId, {
+      success: false,
+      actualCost: null,
+      usage,
+      errorCode: 'WORKFLOW_INVALID',
+      validationPath: 'workflow.agent.tools'
+    });
+    expect(failed.call.validationPath).toBe('workflow.agent.tools');
+    expect(failed.call.result).toBeNull();
+    expect(failed.call.costStatus).toBe('pending');
+    expect(failed.account.calls[0]).toEqual(rootBefore);
+    expect(modelValidationPath('WORKFLOW_INVALID', 'workflow.agent.DO_NOT_SAVE_FIELD')).toBeNull();
+    const unknown = settleCall(account, stageIdentity('tone').requestId, {
+      success: false,
+      actualCost: null,
+      usage,
+      errorCode: 'WORKFLOW_INVALID'
+    });
+    expect(unknown.call).not.toHaveProperty('validationPath');
+  });
+
+  function partial() {
+    const f = runnerFixture();
+    f.saved.set(identity.requestId, f.data({ ...f.payload, learningContext: { workflow: envelope('plan') } }));
+    f.saved.set(
+      workflowRequestId(identity.requestId, 'tone'),
+      f.data({
+        ...f.payload,
+        requestId: workflowRequestId(identity.requestId, 'tone'),
+        learningContext: { workflow: envelope('agent', 'tone') }
+      })
+    );
+    f.saved.set(workflowRequestId(identity.requestId, 'coverage'), {
+      success: false,
+      code: 503,
+      status: 'failed',
+      error: 'WORKFLOW_INVALID'
+    });
+    return f;
+  }
+
+  it('hands off accepted analysis and the retained failure without inferring unqueried dependencies or invoking a model', async () => {
+    const f = partial(),
+      before = JSON.stringify([...f.saved]);
+    const result = await f.run({ workflowMode: 'read' });
+    expect(result.success).toBe(false);
+    expect(result.workflowReport).toMatchObject({
+      version: 1,
+      parentId: identity.requestId,
+      planDigest: workflowPlanDigest(plan),
+      status: 'incomplete',
+      tasks: [
+        { id: 'tone', status: 'completed', message: '分析 tone' },
+        { id: 'coverage', status: 'failed', errorCode: 'WORKFLOW_INVALID' },
+        { id: 'check', status: 'unchecked' }
+      ],
+      final: { status: 'unchecked' }
+    });
+    expect(result.workflowReport.tasks[1]).not.toHaveProperty('validationPath');
+    expect(f.generate).not.toHaveBeenCalled();
+    expect(f.read.mock.calls.map(([id]) => id)).not.toContain(workflowRequestId(identity.requestId, 'check'));
+    expect(JSON.stringify([...f.saved])).toBe(before);
+  });
+
+  it('passes only fixed new failure coordinates and excludes arbitrary server text from the receipt', async () => {
+    const f = partial(),
+      key = workflowRequestId(identity.requestId, 'coverage');
+    f.saved.set(key, {
+      success: false,
+      code: 503,
+      status: 'failed',
+      error: 'WORKFLOW_INVALID',
+      validationPath: 'workflow.agent.json'
+    });
+    expect((await f.run({ workflowMode: 'read' })).workflowReport.tasks[1].validationPath).toBe('workflow.agent.json');
+    f.saved.set(key, {
+      success: false,
+      code: 503,
+      status: 'failed',
+      error: 'RAW_SECRET',
+      message: 'RAW_SECRET',
+      validationPath: 'workflow.agent.RAW_SECRET'
+    });
+    expect(JSON.stringify((await f.run({ workflowMode: 'read' })).workflowReport)).not.toContain('RAW_SECRET');
+    expect(f.generate).not.toHaveBeenCalled();
+  });
+
+  it('does not hand off partial analysis after an authorization failure or a changed result binding', async () => {
+    const f = partial();
+    f.saved.set(workflowRequestId(identity.requestId, 'coverage'), { success: false, code: 403, error: 'FORBIDDEN' });
+    expect(await f.run({ workflowMode: 'read' })).not.toHaveProperty('workflowReport');
+    f.saved.get(workflowRequestId(identity.requestId, 'tone')).data.requestBinding = 'another-binding';
+    await expect(f.run({ workflowMode: 'read' })).rejects.toMatchObject({ code: 'CONTEXT_CHANGED' });
+    expect(f.generate).not.toHaveBeenCalled();
+  });
+
+  it('marks the result handoff complete only after the original final result has passed its binding checks', async () => {
+    const f = runnerFixture(),
+      result = await f.run();
+    expect(result.success).toBe(true);
+    expect(result.data.workflowReceipt.stage).toBe('complete');
+    expect(result.workflowReport.status).toBe('complete');
+    expect(result.workflowReport.tasks.every((task) => task.status === 'completed')).toBe(true);
+    expect(result.workflowReport.final.status).toBe('completed');
+    expect(result.data).not.toHaveProperty('workflowReport');
   });
 });

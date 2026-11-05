@@ -681,3 +681,60 @@ it('S53 observes a saved pause during child calls, then reuses those results aft
   expect(await store.recoverModelResult({ continueWorkflow: true })).toMatchObject({ success: true });
   expect(generateLearningTurn.mock.calls.map(([body]) => body.learningContext.workflow.stage)).toEqual(['final']);
 });
+
+it('S54 reads a partial workflow receipt without consent, learning writes or model retries and hides it after switching models', async () => {
+  await prepareWorkflowStore();
+  const saved = installWorkflowReplies({ losePlanReply: true });
+  await store.send(workflowQuestion, { chatEntry: true, discussionOnly: true });
+  const root = store.recoverableRequest.requestId,
+    parent = saved.get(root).data;
+  const first = workflowPlan.tasks[0],
+    second = workflowPlan.tasks[1];
+  saved.set(root + ':wf:' + first.id, {
+    success: true,
+    data: {
+      ...parent,
+      requestId: root + ':wf:' + first.id,
+      message: '已保存的原分析A',
+      workflowReceipt: {
+        contract: LEARNING_WORKFLOW_CONTRACT,
+        stage: 'agent',
+        parentId: root,
+        taskId: first.id,
+        planDigest: workflowPlanDigest(workflowPlan)
+      }
+    }
+  });
+  saved.set(root + ':wf:' + second.id, { success: false, code: 503, status: 'failed', error: 'WORKFLOW_INVALID' });
+  store.sharingAllowed = false;
+  vi.mocked(generateLearningTurn).mockClear();
+  const before = store.exportData();
+  expect((await store.recoverModelResult()).success).toBe(false);
+  expect(store.workflowReport.tasks).toMatchObject([
+    { status: 'completed', message: '已保存的原分析A' },
+    { status: 'failed' }
+  ]);
+  expect(store.workflowCanContinue).toBe(false);
+  expect(store.exportData()).toBe(before);
+  expect(generateLearningTurn).not.toHaveBeenCalled();
+  store.modelId = 'another-connection';
+  expect(store.workflowReport).toBeNull();
+  store.modelId = parent.modelId;
+  expect(store.workflowReport).toBeNull();
+});
+it('S54 hides a saved receipt as soon as an unrelated message changes the original workflow context', async () => {
+  await prepareWorkflowStore();
+  const saved = installWorkflowReplies({ losePlanReply: true });
+  await store.send(workflowQuestion, { chatEntry: true, discussionOnly: true });
+  store.sharingAllowed = false;
+  await store.recoverModelResult();
+  expect(store.workflowReport).not.toBeNull();
+  store.commit(
+    'message.add',
+    { conversationId: store.active.id, role: 'user', content: '另一个新问题' },
+    's54-other-user'
+  );
+  expect(store.workflowReport).toBeNull();
+  expect(saved.size).toBe(1);
+  expect(vi.mocked(generateLearningTurn).mock.calls).toHaveLength(1);
+});

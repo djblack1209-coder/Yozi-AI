@@ -124,6 +124,7 @@
       <MuseModelFeedback
         :failure="modelFailure"
         :state="learning.retryState"
+        :workflow="learning.workflowReport"
         :busy="learning.busy"
         @action="handleModelAction"
       />

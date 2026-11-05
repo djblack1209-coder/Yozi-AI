@@ -2,9 +2,19 @@ import { historyChecksum } from './learning-history.js';
 
 export const LEARNING_WORKFLOW_CONTRACT = 'learning-workflow-v1';
 export const LEARNING_WORKFLOW_CONCURRENCY = 2;
-const fail = (condition, code, message) => {
-  if (!condition) throw Object.assign(new Error(message), { code });
+const fail = (condition, code, message, path) => {
+  if (!condition) throw Object.assign(new Error(message), { code, ...(path ? { path } : {}) });
 };
+export const WORKFLOW_VALIDATION_PATHS = [
+  'workflow.plan.json',
+  'workflow.plan.root',
+  'workflow.plan.tasks',
+  'workflow.agent.json',
+  'workflow.agent.root',
+  'workflow.agent.message',
+  'workflow.agent.question',
+  'workflow.agent.tools'
+];
 const object = (value, keys) =>
   value &&
   typeof value === 'object' &&
@@ -219,7 +229,7 @@ export function parseWorkflowPlan(raw, context, identity) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    fail(false, 'WORKFLOW_INVALID', '分工回复不是完整JSON，未启动子任务');
+    fail(false, 'WORKFLOW_INVALID', '分工回复不是完整JSON，未启动子任务', 'workflow.plan.json');
   }
   fail(
     object(parsed, ['message', 'question', 'tools', 'workflow']) &&
@@ -228,9 +238,16 @@ export function parseWorkflowPlan(raw, context, identity) {
       Array.isArray(parsed.tools) &&
       parsed.tools.length === 0,
     'WORKFLOW_INVALID',
-    '分工回复超出只读权限，未启动子任务'
+    '分工回复超出只读权限，未启动子任务',
+    'workflow.plan.root'
   );
-  const plan = normalizeWorkflowPlan(parsed.workflow);
+  let plan;
+  try {
+    plan = normalizeWorkflowPlan(parsed.workflow);
+  } catch (error) {
+    if (error.code === 'WORKFLOW_INVALID') error.path = 'workflow.plan.tasks';
+    throw error;
+  }
   return {
     message: parsed.message,
     question: null,
@@ -252,16 +269,21 @@ export function parseWorkflowAgent(raw) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    fail(false, 'WORKFLOW_INVALID', '子任务回复不是完整JSON，未采用分析');
+    fail(false, 'WORKFLOW_INVALID', '子任务回复不是完整JSON，未采用分析', 'workflow.agent.json');
   }
   fail(
-    object(parsed, ['message', 'question', 'tools']) &&
-      text(parsed.message, 2000) &&
-      parsed.question === null &&
-      Array.isArray(parsed.tools) &&
-      parsed.tools.length === 0,
+    object(parsed, ['message', 'question', 'tools']),
     'WORKFLOW_INVALID',
-    '子任务只能返回分析，未执行工具或写入学习事实'
+    '子任务只能返回分析，未执行工具或写入学习事实',
+    'workflow.agent.root'
+  );
+  fail(text(parsed.message, 2000), 'WORKFLOW_INVALID', '子任务分析正文不合法', 'workflow.agent.message');
+  fail(parsed.question === null, 'WORKFLOW_INVALID', '子任务不创建题目', 'workflow.agent.question');
+  fail(
+    Array.isArray(parsed.tools) && parsed.tools.length === 0,
+    'WORKFLOW_INVALID',
+    '子任务不执行工具或写入学习事实',
+    'workflow.agent.tools'
   );
   return { message: parsed.message, question: null, tools: [], structured: true };
 }

@@ -3,7 +3,8 @@ import {
   LEARNING_WORKFLOW_CONCURRENCY,
   normalizeWorkflowPlan,
   workflowPlanDigest,
-  workflowRequestId
+  workflowRequestId,
+  WORKFLOW_VALIDATION_PATHS
 } from '../../../laf-backend/functions/_shared/learning-workflow.js';
 import { SINGLE_QUESTION_CONTRACT } from '../../../laf-backend/functions/_shared/learning-intake.js';
 import { fetchLearningResult, generateLearningTurn } from '../api/domains/learning.api.js';
@@ -167,6 +168,36 @@ export function createLearningWorkflowRunner({ read, generate }) {
       digest = workflowPlanDigest(plan),
       done = new Set();
     const stageResults = new Map();
+    const observations = new Map();
+    let finalStatus = 'unchecked';
+    const withReport = (result) => {
+      current();
+      if (!result.success && [401, 403].includes(result.code)) return result;
+      return {
+        ...result,
+        workflowReport: {
+          version: 1,
+          parentId: payload.requestId,
+          planDigest: digest,
+          status: result.success ? 'complete' : 'incomplete',
+          tasks: plan.tasks.map((task) => ({
+            id: task.id,
+            title: task.title,
+            ...(observations.get(task.id) || { status: 'unchecked' })
+          })),
+          final: { status: finalStatus }
+        }
+      };
+    };
+    const failureObservation = (result) => ({
+      status: result.status === 'failed' ? 'failed' : result.status === 'cancelled' ? 'cancelled' : 'unavailable',
+      errorCode: ['WORKFLOW_INVALID', 'MODEL_FAILED', 'CANCELLED', 'MODEL_TIMEOUT', 'INVALID_STRUCTURE'].includes(
+        result.error
+      )
+        ? result.error
+        : 'MODEL_FAILED',
+      ...(WORKFLOW_VALIDATION_PATHS.includes(result.validationPath) ? { validationPath: result.validationPath } : {})
+    });
     report('agents', 0, plan.tasks.length);
     // Explicit dependency waves, two at a time. A failed wave is fully observed before returning.
     while (done.size < plan.tasks.length) {
@@ -183,24 +214,35 @@ export function createLearningWorkflowRunner({ read, generate }) {
         }
         const result = observed.value;
         if (!result.success) {
+          observations.set(ready[index].id, failureObservation(result));
           failure ||= result.code === 404 && mode === 'read' ? incomplete() : result;
           continue;
         }
         requireValue(result.data.workflowReceipt.planDigest === digest, '子任务属于另一份分工计划');
         done.add(ready[index].id);
         stageResults.set(ready[index].id, result);
+        observations.set(ready[index].id, {
+          status: 'completed',
+          ...(typeof result.data.message === 'string' && result.data.message.length <= 2000
+            ? { message: result.data.message }
+            : {})
+        });
       }
       if (failure) {
         if (failure instanceof Error) throw failure;
-        return failure;
+        return withReport(failure);
       }
       report('agents', done.size, plan.tasks.length);
     }
     report('synthesis', done.size, plan.tasks.length);
     const final = await invoke('final');
-    if (!final.success) return final.code === 404 && mode === 'read' ? incomplete() : final;
+    if (!final.success) {
+      finalStatus = failureObservation(final).status;
+      return withReport(final.code === 404 && mode === 'read' ? incomplete() : final);
+    }
     requireValue(final.data.workflowReceipt.planDigest === digest, '汇总属于另一份分工计划');
-    return {
+    finalStatus = 'completed';
+    return withReport({
       ...final,
       data: {
         ...final.data,
@@ -216,7 +258,7 @@ export function createLearningWorkflowRunner({ read, generate }) {
           reusedTasks: [...stageResults.values()].filter((result) => result.reused).length
         }
       }
-    };
+    });
   };
 }
 

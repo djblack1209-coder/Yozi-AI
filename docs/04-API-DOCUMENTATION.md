@@ -10,6 +10,8 @@
 
 现有 `learning-models/result` 按阶段只读取，不启动缺失步骤；主编号仍返回原计划，客户端沿固定子编号核回终稿，再关联回原对话，真实汇总调用仍记在 `父编号:wf:final`。中断后先读取，缺失步骤由「继续分工」明确接续且重新检查共享、身份、上下文及原连接；失败／已取消请求不自动重放，原费用保持。父请求取消后保留原结果和费用、标记 `workflowCancelledAt`，向现有子请求逐一传播取消，阻止未来预留；查询主计划附 `workflowCancelled:true`。缓存已释放、过期、删除或配置变化时拒绝续跑，不以当前内容替换原计划。
 
+S54沿用分工失败响应／账本／result读取的可选validationPath，仅WORKFLOW_INVALID可保存固定workflow.plan.json／root／tasks与workflow.agent.json／root／message／question／tools位置。检查拒绝条件不放宽，任意字段名或模型正文不进入位置；旧无位置失败保持未知。客户端workflowReport是原读取结果组成的临时展示，不进入HTTP请求、学习事件或工具；已验证完成项可回看分析，失败与未核对项分开，终稿只有通过原关联检查后才称已汇总。
+
 ## 阶段13：对话辅导协议（2026-10-18，源码合同）
 
 `question-bank` 保留认证、归属与限流检查，所有已退役题库动作通过现有响应封装返回 `success:false / code:410 / QUESTION_BANK_RETIRED`，不再查询或写入公共题库。客户端公共题库方法直接返回相同语义，不发送题库请求。数据库保留，不部署服务器。
