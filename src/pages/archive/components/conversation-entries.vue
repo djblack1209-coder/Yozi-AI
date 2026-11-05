@@ -42,7 +42,15 @@
           ><text class="entry-label">{{ statuses[item.status] }}</text></view
         >
         <text v-if="selected === 'Memory'" class="entry-label">用户确认 · {{ item.field }}</text>
-        <text v-if="selected === 'Reminder'" class="entry-label">已保存 · 通知送达未确认</text></view
+        <text v-if="selected === 'Reminder'" class="entry-label">已保存 · 通知送达未确认</text>
+        <BaseButton
+          v-if="selected === 'Goal' && item.status === 'paused'"
+          variant="quiet"
+          data-test="goal-lifecycle"
+          :disabled="learning.busy"
+          @tap="continueGoal(item)"
+          >继续目标</BaseButton
+        ></view
       >
       <BaseButton
         variant="quiet"
@@ -60,7 +68,16 @@
       <view v-for="item in archived" :key="item.id" class="entry-card"
         ><text class="entry-text">{{ item.text }}</text
         ><text class="entry-label">{{ statuses[item.status] }}</text
-        ><BaseButton variant="quiet" @tap="source(item.conversationId, item.sourceRefs)">查看来源</BaseButton></view
+        ><view class="entry-actions"
+          ><BaseButton
+            v-if="selected === 'Goal' && ['completed', 'archived'].includes(item.status)"
+            variant="quiet"
+            data-test="goal-lifecycle"
+            :disabled="learning.busy"
+            @tap="continueGoal(item)"
+            >重开目标</BaseButton
+          ><BaseButton variant="quiet" @tap="source(item.conversationId, item.sourceRefs)">查看来源</BaseButton></view
+        ></view
       >
       <view v-for="plan in unclassified" :key="plan.id" class="entry-card"
         ><text class="entry-label">未归类计划 · {{ plan.day }}</text
@@ -101,7 +118,9 @@ const statuses = {
 };
 const ids = computed(() => new Set(context.state.value.conversations.map((c) => c.id)));
 const all = computed(() =>
-  entryObjects(learning.state, selected.value, learning.calendarTime).filter((e) => ids.value.has(e.conversationId))
+  entryObjects(learning.state, selected.value, learning.calendarTime)
+    .filter((e) => ids.value.has(e.conversationId))
+    .map((item) => ({ ...item, recordContext: learning.recordContext() }))
 );
 const visible = computed(() => all.value.filter((e) => ['active', 'paused', 'kept'].includes(e.status)));
 const archived = computed(() => all.value.filter((e) => !['active', 'paused', 'kept', 'pending'].includes(e.status)));
@@ -164,6 +183,32 @@ function resolve(item, accept) {
           `${item.id}:dismiss`
         );
     }
+  } catch (e) {
+    error.value = e.message;
+  }
+}
+function continueGoal(item) {
+  if (learning.busy) return;
+  try {
+    error.value = '';
+    learning.refresh();
+    const current = entryObjects(learning.state, 'Goal', learning.calendarTime).find((entry) => entry.id === item.id);
+    if (
+      selected.value !== 'Goal' ||
+      !item.recordContext ||
+      item.recordContext !== learning.recordContext() ||
+      current?.conversationId !== item.conversationId ||
+      current?.basis !== item.basis ||
+      current?.status !== item.status ||
+      !['paused', 'completed', 'archived'].includes(item.status)
+    ) {
+      error.value = '目标状态已变化，请重新读取。';
+      return;
+    }
+    learning.commit(item.status === 'paused' ? 'goal.resume' : 'goal.reopen', {
+      conversationId: current.conversationId,
+      explicit: true
+    });
   } catch (e) {
     error.value = e.message;
   }
