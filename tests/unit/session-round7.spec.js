@@ -154,6 +154,8 @@ it('regress-7-02: every exported action has an explicit effect classification', 
   expect(table.openRecord).toBe('read');
   expect(table.locateConversation).toBe('read');
   expect(table.cancelModelIntake).toBe('read');
+  expect(table.setLibraryUse).toBe('write');
+  expect(table.setPersonalCorpusAllowed).toBe('write');
 });
 const connection = () => ({
   endpoint: 'http://127.0.0.1:8765/parse',
