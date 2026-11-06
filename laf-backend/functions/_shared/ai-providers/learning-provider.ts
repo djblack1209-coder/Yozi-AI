@@ -1189,10 +1189,12 @@ export function syntaxAgreement(sentence: string, parse: any, note: string) {
       .slice(0, m.index)
       .split(/[。；;\n]/u)
       .at(-1)!;
-    // A separately named phrase modifier is not an assertion about this relative clause.
+    // A separately named phrase modifier or frequency adverb is not an assertion about this relative clause.
     // Keep unqualified legacy "修饰X" claims, and still check any explicit relative-clause claim.
     if (
-      /(?:过去|现在)?分词(?:短语)?|介词短语|不定式短语|(?:时间|地点|方式)状语/u.test(block) &&
+      /(?:过去|现在)?分词(?:短语)?|介词短语|不定式短语|副词(?:短语)?|(?:时间|地点|方式|频率)状语|(?<![A-Za-z])(?:often|usually|always|sometimes|never|rarely|seldom)\s*$/iu.test(
+        block
+      ) &&
       !/定语从句|该从句/u.test(block) &&
       !new RegExp(`(?<![A-Za-z])${pronoun}(?![A-Za-z])`, 'iu').test(block)
     )

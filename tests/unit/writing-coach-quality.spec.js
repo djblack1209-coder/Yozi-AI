@@ -2081,6 +2081,29 @@ describe('摸底错误合并复核一次：讲解题只删不加，单词填空�
       claims: { target: target === 'curator' }
     });
   });
+  it.each([
+    ['often', 'Students', true],
+    ['副词 often', 'Students', true],
+    ['频率状语 often', 'Students', true],
+    ['often', 'errors', false],
+    ['副词 often', 'errors', false]
+  ])('独立的%s修饰判断不冒充定语从句修饰对象：%s', (modifier, target, agreed) => {
+    const result = syntaxAgreement(
+      'Students who review their writing mistakes after each practice test often make fewer grammar errors in the final exam.',
+      parsed(
+        's1',
+        'Students',
+        'make',
+        'who review their writing mistakes after each practice test',
+        'Students',
+        'who',
+        'review',
+        '主语'
+      ),
+      `主干：Students make fewer grammar errors。Students 是主语，make 是谓语，fewer grammar errors 是宾语，${modifier} 修饰 make。who review their writing mistakes after each practice test 是修饰 ${target} 的限制性定语从句；who 在从句中作主语，review 是谓语，their writing mistakes 是宾语，after each practice test 是从句中的时间状语。in the final exam 是主句的时间状语。`
+    );
+    expect(result).toMatchObject({ valid: true, agreed, claims: { target: agreed } });
+  });
   it('主干删去形容词后冠词随之改变（an→a）仍算一致', () => {
     expect(
       syntaxAgreement(

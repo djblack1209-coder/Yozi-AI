@@ -82,7 +82,7 @@ describe('personal progress workspace', () => {
     render(false);
     await flushPromises();
     expect(mocks.read).not.toHaveBeenCalled();
-    expect(wrapper.text()).toContain('Sign in to see your saved learning progress.');
+    expect(wrapper.text()).toContain('登录后查看已保存的学习进度。');
     await wrapper.get('.portal-empty button').trigger('tap');
     expect(wrapper.emitted('login')).toHaveLength(1);
     expect(wrapper.find('.portal-metrics').exists()).toBe(false);
@@ -98,7 +98,7 @@ describe('personal progress workspace', () => {
     mocks.read.mockResolvedValue(state);
     render(true);
     await flushPromises();
-    expect(wrapper.get('.portal-metrics').text()).toContain('Saved answers2');
+    expect(wrapper.get('.portal-metrics').text()).toContain('已保存作答2');
     expect(mocks.read.mock.calls[0][0].session.owner).toBe('u1');
     mocks.hide[0]();
     await flushPromises();
@@ -128,7 +128,7 @@ describe('personal progress workspace', () => {
     finish(old);
     await flushPromises();
     expect(wrapper.find('.portal-metrics').exists()).toBe(false);
-    expect(wrapper.text()).toContain('No synced learning records yet.');
+    expect(wrapper.text()).toContain('还没有同步的学习记录。');
     expect(wrapper.text()).not.toContain('99');
   });
 });

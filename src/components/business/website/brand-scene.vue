@@ -1,10 +1,19 @@
 <template>
   <view class="brand-scene" aria-hidden="true">
-    <image class="brand-scene__media" :src="POSTER" mode="aspectFill" alt="" />
+    <img
+      v-if="WEBSITE_MODE"
+      class="brand-scene__media"
+      :src="'/public/visual/nomi/kitten-960.webp'"
+      width="960"
+      height="543"
+      alt=""
+      decoding="async"
+    />
+    <image v-else class="brand-scene__media" :src="POSTER" mode="aspectFill" alt="" />
     <!-- #ifdef H5 -->
     <component
       :is="'video'"
-      v-if="enabled"
+      v-if="enabled && !WEBSITE_MODE"
       ref="video"
       class="brand-scene__media"
       muted
@@ -17,17 +26,24 @@
     />
     <!-- #endif -->
     <view class="brand-scene__brand"
-      ><image src="/static/images/logo.png" mode="aspectFit" alt="" /><text>Yozi AI</text></view
+      ><image
+        :src="WEBSITE_MODE ? '/static/brand/mascot-256.webp' : '/static/images/logo.png'"
+        mode="aspectFit"
+        alt=""
+      /><text>Yozi AI</text></view
     >
     <view class="brand-scene__copy"
-      ><text>A little clearer.</text><text>Every day.</text
-      ><text class="brand-scene__caption">Your personal AI learning coach.</text></view
+      ><text lang="en">A little clearer.</text><text lang="en">Every day.</text
+      ><text class="brand-scene__caption">{{
+        WEBSITE_MODE ? '你的考研英语写作教练。' : 'Your personal AI learning coach.'
+      }}</text></view
     >
   </view>
 </template>
 <script setup>
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { onHide, onShow } from '@dcloudio/uni-app';
+import { WEBSITE_MODE } from '@/config/website.js';
 const POSTER = '/public/visual/nomi/kitten.png',
   VIDEO = '/public/visual/nomi/kitten.mp4';
 const video = ref(null),
@@ -36,6 +52,7 @@ let query,
   pageVisible = true;
 function sync() {
   // #ifdef H5
+  if (WEBSITE_MODE) return;
   enabled.value = !query?.matches;
   nextTick(() => {
     const node = video.value;
@@ -48,6 +65,7 @@ function sync() {
 }
 onMounted(() => {
   // #ifdef H5
+  if (WEBSITE_MODE) return;
   query = window.matchMedia?.('(prefers-reduced-motion: reduce)');
   query?.addEventListener('change', sync);
   document.addEventListener('visibilitychange', sync);

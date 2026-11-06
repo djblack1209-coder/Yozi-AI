@@ -1,113 +1,141 @@
 <template>
-  <section class="hero" aria-label="Yozi AI — English writing coach">
-    <component
-      :is="'video'"
-      ref="heroVideo"
-      class="hero__media"
-      :autoplay="!reducedMotion"
-      muted
-      loop
-      playsinline
-      preload="auto"
-      :controls="false"
-      disablepictureinpicture
-      disableremoteplayback
-      controlslist="nodownload nofullscreen noremoteplayback"
-      tabindex="-1"
-      aria-hidden="true"
-      poster="/public/visual/nomi/kitten.png"
-    >
-      <source src="/public/visual/nomi/kitten.mp4" type="video/mp4" />
-    </component>
+  <main class="public-home">
+    <section class="hero" aria-label="Yozi AI · 考研英语写作教练">
+      <img
+        class="hero__media"
+        :src="'/public/visual/nomi/kitten-1600.webp'"
+        :srcset="'/public/visual/nomi/kitten-960.webp 960w, /public/visual/nomi/kitten-1600.webp 1600w'"
+        sizes="100vw"
+        width="1600"
+        height="905"
+        fetchpriority="high"
+        decoding="async"
+        alt=""
+      />
 
-    <header id="nav" ref="navRoot" class="nav" :class="{ 'is-open': menuOpen }">
-      <a class="nav__logo" href="#" aria-label="Yozi AI 首页" @click.prevent="closeMenu()">
-        <img :src="BRAND.icon" alt="" width="48" height="48" />
-      </a>
-      <BaseButton
-        id="navToggle"
-        ref="navToggle"
-        class="nav__toggle"
-        variant="quiet"
-        :label="menuOpen ? '关闭菜单' : '打开菜单'"
-        :aria-expanded="menuOpen"
-        aria-controls="navLinks"
-        @tap="menuOpen = !menuOpen"
-        ><span></span
-      ></BaseButton>
-      <ul id="navLinks" class="nav__links" aria-label="学习导航">
-        <li v-for="item in navigation" :key="item.id">
-          <BaseButton variant="quiet" @tap="open(item.id)">{{ item.label }}</BaseButton>
-        </li>
-      </ul>
-    </header>
+      <header id="nav" ref="navRoot" class="nav" :class="{ 'is-open': menuOpen }">
+        <a class="nav__logo" href="#" aria-label="Yozi AI 首页" @click.prevent="closeMenu()">
+          <img :src="BRAND.mark" alt="" width="48" height="48" />
+        </a>
+        <BaseButton
+          id="navToggle"
+          ref="navToggle"
+          class="nav__toggle"
+          variant="quiet"
+          :label="menuOpen ? '关闭菜单' : '打开菜单'"
+          :aria-expanded="menuOpen"
+          aria-controls="navLinks"
+          @tap="menuOpen = !menuOpen"
+          ><span></span
+        ></BaseButton>
+        <ul id="navLinks" class="nav__links" aria-label="学习导航">
+          <li v-for="item in navigation" :key="item.id">
+            <BaseButton variant="quiet" @tap="open(item.id)">{{ item.label }}</BaseButton>
+          </li>
+        </ul>
+      </header>
 
-    <h1 class="hero__title">
-      <span class="sr-only">Yozi AI — English Writing Coach</span>
-      <svg viewBox="0 0 132 46" shape-rendering="crispEdges" aria-hidden="true">
-        <path
-          d="M0 0h3v3h-3zM12 0h3v3h-3zM0 3h3v3h-3zM12 3h3v3h-3zM3 6h3v3h-3zM9 6h3v3h-3zM6 9h3v3h-3zM6 12h3v3h-3zM6 15h3v3h-3zM6 18h3v3h-3zM22 0h3v3h-3zM25 0h3v3h-3zM28 0h3v3h-3zM19 3h3v3h-3zM22 3h3v3h-3zM28 3h3v3h-3zM31 3h3v3h-3zM19 6h3v3h-3zM31 6h3v3h-3zM19 9h3v3h-3zM31 9h3v3h-3zM19 12h3v3h-3zM31 12h3v3h-3zM19 15h3v3h-3zM22 15h3v3h-3zM28 15h3v3h-3zM31 15h3v3h-3zM22 18h3v3h-3zM25 18h3v3h-3zM28 18h3v3h-3zM38 0h3v3h-3zM41 0h3v3h-3zM44 0h3v3h-3zM47 0h3v3h-3zM50 0h3v3h-3zM47 3h3v3h-3zM50 3h3v3h-3zM44 6h3v3h-3zM47 6h3v3h-3zM41 9h3v3h-3zM44 9h3v3h-3zM38 12h3v3h-3zM41 12h3v3h-3zM38 15h3v3h-3zM38 18h3v3h-3zM41 18h3v3h-3zM44 18h3v3h-3zM47 18h3v3h-3zM50 18h3v3h-3zM57 0h3v3h-3zM60 0h3v3h-3zM63 0h3v3h-3zM60 3h3v3h-3zM60 6h3v3h-3zM60 9h3v3h-3zM60 12h3v3h-3zM60 15h3v3h-3zM57 18h3v3h-3zM60 18h3v3h-3zM63 18h3v3h-3zM6 25h3v3h-3zM3 28h3v3h-3zM6 28h3v3h-3zM9 28h3v3h-3zM0 31h3v3h-3zM3 31h3v3h-3zM9 31h3v3h-3zM12 31h3v3h-3zM0 34h3v3h-3zM12 34h3v3h-3zM0 37h3v3h-3zM3 37h3v3h-3zM6 37h3v3h-3zM9 37h3v3h-3zM12 37h3v3h-3zM0 40h3v3h-3zM12 40h3v3h-3zM0 43h3v3h-3zM12 43h3v3h-3zM19 25h3v3h-3zM22 25h3v3h-3zM25 25h3v3h-3zM22 28h3v3h-3zM22 31h3v3h-3zM22 34h3v3h-3zM22 37h3v3h-3zM22 40h3v3h-3zM19 43h3v3h-3zM22 43h3v3h-3zM25 43h3v3h-3zM44 25h3v3h-3zM47 25h3v3h-3zM50 25h3v3h-3zM41 28h3v3h-3zM44 28h3v3h-3zM50 28h3v3h-3zM53 28h3v3h-3zM41 31h3v3h-3zM41 34h3v3h-3zM41 37h3v3h-3zM41 40h3v3h-3zM44 40h3v3h-3zM50 40h3v3h-3zM53 40h3v3h-3zM44 43h3v3h-3zM47 43h3v3h-3zM50 43h3v3h-3zM63 25h3v3h-3zM66 25h3v3h-3zM69 25h3v3h-3zM60 28h3v3h-3zM63 28h3v3h-3zM69 28h3v3h-3zM72 28h3v3h-3zM60 31h3v3h-3zM72 31h3v3h-3zM60 34h3v3h-3zM72 34h3v3h-3zM60 37h3v3h-3zM72 37h3v3h-3zM60 40h3v3h-3zM63 40h3v3h-3zM69 40h3v3h-3zM72 40h3v3h-3zM63 43h3v3h-3zM66 43h3v3h-3zM69 43h3v3h-3zM85 25h3v3h-3zM82 28h3v3h-3zM85 28h3v3h-3zM88 28h3v3h-3zM79 31h3v3h-3zM82 31h3v3h-3zM88 31h3v3h-3zM91 31h3v3h-3zM79 34h3v3h-3zM91 34h3v3h-3zM79 37h3v3h-3zM82 37h3v3h-3zM85 37h3v3h-3zM88 37h3v3h-3zM91 37h3v3h-3zM79 40h3v3h-3zM91 40h3v3h-3zM79 43h3v3h-3zM91 43h3v3h-3zM101 25h3v3h-3zM104 25h3v3h-3zM107 25h3v3h-3zM98 28h3v3h-3zM101 28h3v3h-3zM107 28h3v3h-3zM110 28h3v3h-3zM98 31h3v3h-3zM98 34h3v3h-3zM98 37h3v3h-3zM98 40h3v3h-3zM101 40h3v3h-3zM107 40h3v3h-3zM110 40h3v3h-3zM101 43h3v3h-3zM104 43h3v3h-3zM107 43h3v3h-3zM117 25h3v3h-3zM129 25h3v3h-3zM117 28h3v3h-3zM129 28h3v3h-3zM117 31h3v3h-3zM129 31h3v3h-3zM117 34h3v3h-3zM120 34h3v3h-3zM123 34h3v3h-3zM126 34h3v3h-3zM129 34h3v3h-3zM117 37h3v3h-3zM129 37h3v3h-3zM117 40h3v3h-3zM129 40h3v3h-3zM117 43h3v3h-3zM129 43h3v3h-3z"
-        />
-      </svg>
-    </h1>
+      <h1 class="hero__title">
+        <span class="sr-only">Yozi AI · 考研英语写作教练</span>
+        <svg viewBox="0 0 132 46" shape-rendering="crispEdges" aria-hidden="true">
+          <path
+            d="M0 0h3v3h-3zM12 0h3v3h-3zM0 3h3v3h-3zM12 3h3v3h-3zM3 6h3v3h-3zM9 6h3v3h-3zM6 9h3v3h-3zM6 12h3v3h-3zM6 15h3v3h-3zM6 18h3v3h-3zM22 0h3v3h-3zM25 0h3v3h-3zM28 0h3v3h-3zM19 3h3v3h-3zM22 3h3v3h-3zM28 3h3v3h-3zM31 3h3v3h-3zM19 6h3v3h-3zM31 6h3v3h-3zM19 9h3v3h-3zM31 9h3v3h-3zM19 12h3v3h-3zM31 12h3v3h-3zM19 15h3v3h-3zM22 15h3v3h-3zM28 15h3v3h-3zM31 15h3v3h-3zM22 18h3v3h-3zM25 18h3v3h-3zM28 18h3v3h-3zM38 0h3v3h-3zM41 0h3v3h-3zM44 0h3v3h-3zM47 0h3v3h-3zM50 0h3v3h-3zM47 3h3v3h-3zM50 3h3v3h-3zM44 6h3v3h-3zM47 6h3v3h-3zM41 9h3v3h-3zM44 9h3v3h-3zM38 12h3v3h-3zM41 12h3v3h-3zM38 15h3v3h-3zM38 18h3v3h-3zM41 18h3v3h-3zM44 18h3v3h-3zM47 18h3v3h-3zM50 18h3v3h-3zM57 0h3v3h-3zM60 0h3v3h-3zM63 0h3v3h-3zM60 3h3v3h-3zM60 6h3v3h-3zM60 9h3v3h-3zM60 12h3v3h-3zM60 15h3v3h-3zM57 18h3v3h-3zM60 18h3v3h-3zM63 18h3v3h-3zM6 25h3v3h-3zM3 28h3v3h-3zM6 28h3v3h-3zM9 28h3v3h-3zM0 31h3v3h-3zM3 31h3v3h-3zM9 31h3v3h-3zM12 31h3v3h-3zM0 34h3v3h-3zM12 34h3v3h-3zM0 37h3v3h-3zM3 37h3v3h-3zM6 37h3v3h-3zM9 37h3v3h-3zM12 37h3v3h-3zM0 40h3v3h-3zM12 40h3v3h-3zM0 43h3v3h-3zM12 43h3v3h-3zM19 25h3v3h-3zM22 25h3v3h-3zM25 25h3v3h-3zM22 28h3v3h-3zM22 31h3v3h-3zM22 34h3v3h-3zM22 37h3v3h-3zM22 40h3v3h-3zM19 43h3v3h-3zM22 43h3v3h-3zM25 43h3v3h-3zM44 25h3v3h-3zM47 25h3v3h-3zM50 25h3v3h-3zM41 28h3v3h-3zM44 28h3v3h-3zM50 28h3v3h-3zM53 28h3v3h-3zM41 31h3v3h-3zM41 34h3v3h-3zM41 37h3v3h-3zM41 40h3v3h-3zM44 40h3v3h-3zM50 40h3v3h-3zM53 40h3v3h-3zM44 43h3v3h-3zM47 43h3v3h-3zM50 43h3v3h-3zM63 25h3v3h-3zM66 25h3v3h-3zM69 25h3v3h-3zM60 28h3v3h-3zM63 28h3v3h-3zM69 28h3v3h-3zM72 28h3v3h-3zM60 31h3v3h-3zM72 31h3v3h-3zM60 34h3v3h-3zM72 34h3v3h-3zM60 37h3v3h-3zM72 37h3v3h-3zM60 40h3v3h-3zM63 40h3v3h-3zM69 40h3v3h-3zM72 40h3v3h-3zM63 43h3v3h-3zM66 43h3v3h-3zM69 43h3v3h-3zM85 25h3v3h-3zM82 28h3v3h-3zM85 28h3v3h-3zM88 28h3v3h-3zM79 31h3v3h-3zM82 31h3v3h-3zM88 31h3v3h-3zM91 31h3v3h-3zM79 34h3v3h-3zM91 34h3v3h-3zM79 37h3v3h-3zM82 37h3v3h-3zM85 37h3v3h-3zM88 37h3v3h-3zM91 37h3v3h-3zM79 40h3v3h-3zM91 40h3v3h-3zM79 43h3v3h-3zM91 43h3v3h-3zM101 25h3v3h-3zM104 25h3v3h-3zM107 25h3v3h-3zM98 28h3v3h-3zM101 28h3v3h-3zM107 28h3v3h-3zM110 28h3v3h-3zM98 31h3v3h-3zM98 34h3v3h-3zM98 37h3v3h-3zM98 40h3v3h-3zM101 40h3v3h-3zM107 40h3v3h-3zM110 40h3v3h-3zM101 43h3v3h-3zM104 43h3v3h-3zM107 43h3v3h-3zM117 25h3v3h-3zM129 25h3v3h-3zM117 28h3v3h-3zM129 28h3v3h-3zM117 31h3v3h-3zM129 31h3v3h-3zM117 34h3v3h-3zM120 34h3v3h-3zM123 34h3v3h-3zM126 34h3v3h-3zM129 34h3v3h-3zM117 37h3v3h-3zM129 37h3v3h-3zM117 40h3v3h-3zM129 40h3v3h-3zM117 43h3v3h-3zM129 43h3v3h-3z"
+          />
+        </svg>
+      </h1>
 
-    <p class="bubble" aria-label="Small steps today. Stronger writing tomorrow.">
-      Small steps today.<br />Stronger writing tomorrow.<span class="bubble__cursor" aria-hidden="true"></span>
-      <svg class="bubble__tail" viewBox="0 0 6 6" shape-rendering="crispEdges" aria-hidden="true">
-        <path fill="#e7e7e7" d="M1 0h4v1h-1v1h-1v1h-1v1h-1z" />
-        <path fill="#050505" d="M0 0h1v5h-1zM1 4h1v1h-1zM2 3h1v1h-1zM3 2h1v1h-1zM4 1h1v1h-1zM5 0h1v1h-1z" />
-      </svg>
-    </p>
-
-    <div class="hero__body">
-      <p class="hero__lede">
-        Your AI coach for postgraduate English writing.<br />
-        Daily practice, guided writing, and review. In the app.
+      <p class="bubble" lang="en">
+        Small steps today.<br />Stronger writing tomorrow.<span class="bubble__cursor" aria-hidden="true"></span>
+        <svg class="bubble__tail" viewBox="0 0 6 6" shape-rendering="crispEdges" aria-hidden="true">
+          <path fill="#e7e7e7" d="M1 0h4v1h-1v1h-1v1h-1v1h-1z" />
+          <path fill="#050505" d="M0 0h1v5h-1zM1 4h1v1h-1zM2 3h1v1h-1zM3 2h1v1h-1zM4 1h1v1h-1zM5 0h1v1h-1z" />
+        </svg>
       </p>
-      <div class="hero__actions">
-        <BaseButton class="btn" variant="primary" label="下载 APP" @tap="open('downloads')">下载 APP</BaseButton>
-        <BaseButton class="link" variant="quiet" label="注册账户" @tap="open('register')">
-          注册账户
-          <svg viewBox="0 0 5 8" aria-hidden="true"><path d="M.8.8 4 4 .8 7.200" /></svg>
-        </BaseButton>
+
+      <div class="hero__body">
+        <p class="hero__lede">
+          你的考研英语写作教练。<br />
+          每天练一点，一段一段写，学过的按时复习。
+        </p>
+        <div class="hero__actions">
+          <BaseButton class="btn" variant="primary" label="下载 Mac 版" @tap="open('downloads')"
+            >下载 Mac 版</BaseButton
+          >
+          <BaseButton class="link" variant="quiet" label="注册账户" @tap="open('register')">
+            注册账户
+            <svg viewBox="0 0 5 8" aria-hidden="true"><path d="M.8.8 4 4 .8 7.200" /></svg>
+          </BaseButton>
+        </div>
+        <ul class="hero__stats" aria-label="学习范围">
+          <li>考研英语一 / 二</li>
+          <li>每日练习</li>
+          <li>自己的学习资料</li>
+        </ul>
       </div>
-      <ul class="hero__stats" aria-label="Yozi AI at a glance">
-        <li>English I &amp; II</li>
-        <li>Daily practice</li>
-        <li>Your own materials</li>
-      </ul>
-    </div>
-  </section>
-  <section id="downloads" class="download-section" aria-label="Download Yozi AI">
-    <div>
-      <p class="download-eyebrow">YOUR NEXT CHAPTER</p>
-      <h2>A coach that<br />stays with you.</h2>
-      <p>Build your writing routine in Yozi AI.<br />See your saved progress here, whenever you need it.</p>
-    </div>
-    <article class="download-card">
-      <img :src="BRAND.icon" alt="" width="80" height="80" />
-      <h3>Yozi AI for Mac</h3>
-      <p>{{ MAC_DOWNLOAD.platform }} · {{ MAC_DOWNLOAD.version }}</p>
-      <a :href="MAC_DOWNLOAD.url" download>下载 Mac 版</a
-      ><BaseButton variant="quiet" @tap="open('progress')">查看学习数据</BaseButton>
-    </article>
-  </section>
+    </section>
+    <section id="features" class="features-section" aria-labelledby="features-title">
+      <h2 id="features-title">把今天的练习，<br />变成明天的进步。</h2>
+      <div class="features-grid">
+        <article>
+          <h3>每天，有题可练。</h3>
+          <p>围绕你的目标练搭配、翻译短句与长难句，接着已保存的进度继续学。</p>
+        </article>
+        <article>
+          <h3>写作，一段一段来。</h3>
+          <p>英语一、英语二，应用文与大作文。从审题到逐段带写，获得 AI 反馈，再动笔改写。</p>
+        </article>
+        <article>
+          <h3>学过的，再见一面。</h3>
+          <p>把句式和搭配存进自己的库，按复习安排再练一次，让积累用到下一篇里。</p>
+        </article>
+        <article>
+          <h3>进步，有迹可循。</h3>
+          <p>回看练习、作文与薄弱点。登录官网，查看本人已同步的学习记录。</p>
+          <BaseButton class="feature-progress" variant="quiet" @tap="open('progress')">查看学习数据</BaseButton>
+        </article>
+      </div>
+    </section>
+    <section id="downloads" class="download-section" aria-label="下载 Yozi AI">
+      <div>
+        <h2>在 Mac 上，<br />开始今天的学习。</h2>
+        <p>接入你自己的 AI API，开始练习与带写。<br />目前仅提供 macOS 版下载。</p>
+      </div>
+      <article class="download-card">
+        <img :src="BRAND.mark" alt="" width="80" height="80" />
+        <h3>Yozi AI {{ MAC_DOWNLOAD.version }}</h3>
+        <p>{{ MAC_DOWNLOAD.platform }}</p>
+        <a :href="MAC_DOWNLOAD.url" download>下载 Mac 版</a
+        ><BaseButton variant="quiet" @tap="open('progress')">查看学习数据</BaseButton>
+      </article>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <a class="footer-brand" href="/" aria-label="Yozi AI 首页"
+      ><img :src="BRAND.mark" alt="" width="40" height="40" />Yozi AI</a
+    >
+    <nav aria-label="网站信息">
+      <a href="/#/pages/settings/terms">用户协议</a>
+      <a href="/#/pages/settings/privacy">隐私政策</a>
+      <a :href="WEBSITE_CONTACT.url">联系我们</a>
+    </nav>
+    <p>© {{ new Date().getFullYear() }} Yozi AI</p>
+  </footer>
 </template>
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { onHide, onShow } from '@dcloudio/uni-app';
 import BaseButton from '@/components/base/base-button/base-button.vue';
-import { MAC_DOWNLOAD } from '@/config/website.js';
+import { MAC_DOWNLOAD, WEBSITE_CONTACT, WEBSITE_TITLE } from '@/config/website.js';
 import { BRAND } from '@/config/brand.js';
 
 const emit = defineEmits(['open']);
 const menuOpen = ref(false);
 const navRoot = ref(null);
 const navToggle = ref(null);
-const heroVideo = ref(null);
 const reducedMotion = ref(false);
 const navigation = [
+  { id: 'features', label: '功能' },
   { id: 'downloads', label: '下载 APP' },
   { id: 'progress', label: '学习数据' },
   { id: 'login', label: '登录' },
@@ -115,7 +143,6 @@ const navigation = [
 ];
 let motionQuery;
 let navigationElement;
-let pageVisible = true;
 
 function closeMenu(restoreFocus = false) {
   menuOpen.value = false;
@@ -123,8 +150,8 @@ function closeMenu(restoreFocus = false) {
 }
 function open(target) {
   closeMenu();
-  if (target === 'downloads') {
-    document.getElementById('downloads')?.scrollIntoView?.({ behavior: reducedMotion.value ? 'instant' : 'smooth' });
+  if (target === 'downloads' || target === 'features') {
+    document.getElementById(target)?.scrollIntoView?.({ behavior: reducedMotion.value ? 'instant' : 'smooth' });
     return;
   }
   emit('open', target);
@@ -137,34 +164,25 @@ function onNavigationKeydown(event) {
 }
 function syncMotion() {
   reducedMotion.value = Boolean(motionQuery?.matches);
-  const video = heroVideo.value;
-  if (!video) return;
-  video.muted = true;
-  if (reducedMotion.value || document.hidden || !pageVisible) video.pause();
-  else video.play()?.catch(() => undefined);
 }
 onMounted(() => {
+  document.title = WEBSITE_TITLE;
+  document.getElementById('website-first-paint')?.remove();
   navigationElement = navRoot.value?.$el || navRoot.value;
   navigationElement?.addEventListener('keydown', onNavigationKeydown);
   motionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
   motionQuery?.addEventListener('change', syncMotion);
-  document.addEventListener('visibilitychange', syncMotion);
   syncMotion();
 });
 onHide(() => {
-  pageVisible = false;
   closeMenu();
-  heroVideo.value?.pause();
 });
 onShow(() => {
-  pageVisible = true;
   syncMotion();
 });
 onBeforeUnmount(() => {
   navigationElement?.removeEventListener('keydown', onNavigationKeydown);
   motionQuery?.removeEventListener('change', syncMotion);
-  document.removeEventListener('visibilitychange', syncMotion);
-  heroVideo.value?.pause();
 });
 </script>
 
@@ -199,8 +217,8 @@ onBeforeUnmount(() => {
   --paper: #e7e7e7;
   --vs: max(calc(100vw / 1920), calc(100vh / 1080));
   position: relative;
-  height: 100vh;
-  min-height: 460px;
+  height: 100svh;
+  min-height: 640px;
   width: 100%;
   overflow: hidden;
   isolation: isolate;
@@ -303,7 +321,7 @@ onBeforeUnmount(() => {
 }
 .hero__lede {
   font-size: calc(var(--u) * 13.3);
-  line-height: calc(var(--u) * 17);
+  line-height: 1.8;
   margin-bottom: calc(var(--u) * 46);
 }
 .hero__actions {
@@ -313,7 +331,7 @@ onBeforeUnmount(() => {
 }
 .hero__actions :deep(.base-button) {
   min-width: 0;
-  min-height: calc(var(--u) * 31);
+  min-height: 44px;
   height: calc(var(--u) * 31);
   padding: 0 calc(var(--u) * 19);
   border: 0;
@@ -383,7 +401,7 @@ onBeforeUnmount(() => {
 .bubble {
   --b: max(2px, calc(var(--u) * 2));
   position: absolute;
-  left: calc((100vw - 1920 * var(--vs)) * 0.62 + 1920 * var(--vs) * 0.7);
+  right: var(--gutter);
   top: calc((100vh - 1080 * var(--vs)) * 0.5 + 1080 * var(--vs) * 0.24);
   transform: translateY(calc(-100% - var(--u) * 12));
   padding: calc(var(--u) * 11) calc(var(--u) * 15);
@@ -596,33 +614,113 @@ onBeforeUnmount(() => {
 </style>
 
 <style scoped>
+.public-home,
+.site-footer {
+  color: #161615;
+  background: #f6f6f3;
+  font-family:
+    'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'PingFang SC', 'Microsoft YaHei', monospace;
+}
+.features-section {
+  padding: 100px max(32px, calc((100vw - 1100px) / 2));
+}
+.features-section h2,
+.download-section h2 {
+  font-family: inherit;
+  font-size: clamp(30px, 3.5vw, 48px);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: -0.03em;
+  margin: 0 0 48px;
+}
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 48px 80px;
+}
+.features-grid article {
+  border-top: 1px solid #c6c6bf;
+  padding-top: 24px;
+}
+.features-grid h3 {
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 500;
+  margin: 0 0 16px;
+}
+.features-grid p {
+  color: #52524d;
+  font-size: 15px;
+  line-height: 1.9;
+  max-width: 35em;
+  margin: 0;
+}
+.feature-progress {
+  margin-top: 12px;
+  padding-left: 0;
+  color: #161615;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 5px;
+}
+.site-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px 40px;
+  padding: 36px max(32px, calc((100vw - 1100px) / 2));
+  border-top: 1px solid #c6c6bf;
+  font-size: 12px;
+}
+.site-footer a {
+  color: inherit;
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.footer-brand {
+  gap: 10px;
+  margin-right: auto;
+  font-size: 16px;
+}
+.site-footer nav {
+  display: flex;
+  gap: 24px;
+}
+.site-footer p {
+  margin: 0;
+  color: #52524d;
+}
+.site-footer a:hover {
+  text-decoration: underline;
+  text-underline-offset: 5px;
+}
+.public-home :deep(a:focus-visible),
+.site-footer a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 5px;
+}
+.public-home ::selection,
+.site-footer ::selection {
+  color: #f6f6f3;
+  background: #161615;
+}
 .download-section {
   display: grid;
   grid-template-columns: 1fr 360px;
   align-items: center;
   gap: 80px;
   padding: 110px max(32px, calc((100vw - 1100px) / 2));
-  background: #f6f6f3;
+  border-top: 1px solid #c6c6bf;
+  background: #e7e7e7;
   color: #161615;
   font-family: 'IBM Plex Mono', monospace;
-}
-.download-eyebrow {
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  margin: 0 0 24px;
-}
-.download-section h2 {
-  font-family: inherit;
-  font-size: clamp(32px, 4vw, 54px);
-  font-weight: 400;
-  line-height: 1.15;
-  letter-spacing: -0.055em;
-  margin: 0 0 28px;
 }
 .download-section p {
   font-size: 13px;
   line-height: 1.8;
-  color: #696962;
+  color: #52524d;
 }
 .download-card {
   display: flex;
@@ -630,10 +728,11 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   background: white;
   border: 1px solid #deded7;
-  border-radius: 20px;
+  border-radius: 4px;
   padding: 32px;
 }
 .download-card h3 {
+  font-family: inherit;
   font-size: 20px;
   font-weight: 500;
   margin: 24px 0 8px;
@@ -648,7 +747,7 @@ onBeforeUnmount(() => {
   background: #111110;
   color: #fff;
   text-decoration: none;
-  border-radius: 8px;
+  border-radius: 2px;
   font-size: 14px;
   margin: 20px 0 12px;
 }
@@ -662,6 +761,21 @@ onBeforeUnmount(() => {
   outline-offset: 4px;
 }
 @media (max-width: 720px) {
+  .features-section {
+    padding: 64px 24px;
+  }
+  .features-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+  .site-footer {
+    padding: 28px 24px;
+    gap: 16px;
+  }
+  .site-footer nav {
+    width: 100%;
+    gap: 24px;
+  }
   .download-section {
     grid-template-columns: minmax(0, 1fr);
     padding: 64px 24px;

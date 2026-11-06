@@ -175,31 +175,10 @@ const en = {
 };
 registerMessages('login', { 'zh-CN': zh, en });
 
-// The public website keeps its English presentation and Chinese controls in either app language.
-const websiteControls = new Set([
-  'back',
-  'apple',
-  'google',
-  'wechat',
-  'email',
-  'phone',
-  'providerClosed',
-  'continue',
-  'submit',
-  'other',
-  'showPassword',
-  'hidePassword',
-  'register',
-  'existing',
-  'create',
-  'privacy',
-  'terms',
-  'signInAgain',
-  'send'
-]);
+// Website copy is Chinese regardless of the App's saved language preference.
 export function websiteLoginText(key, values = {}) {
   const name = key.replace(/^login\./, '');
-  const text = (websiteControls.has(name) ? zh[name] : en[name]) ?? t(key, values);
+  const text = zh[name] ?? t(key, values);
   return text.replace(/\{(\w+)\}/g, (match, value) => values[value] ?? match);
 }
 

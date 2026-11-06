@@ -64,10 +64,9 @@
         ><AnimatedAvatar :size="56" :business="avatarBusiness" />
       </header>
       <section v-if="panel === 'progress'" class="portal-content">
-        <text class="portal-eyebrow">YOUR LEARNING, IN VIEW</text>
-        <h1>A little progress.<br />Every single day.</h1>
+        <h1>你的学习，<br />有迹可循。</h1>
         <view class="portal-toolbar"
-          ><text>Saved in your app. Visible here.</text
+          ><text>查看 App 已同步的学习记录</text
           ><BaseButton variant="quiet" icon="refresh" :loading="loading" loading-text="正在刷新" @tap="reload"
             >刷新数据</BaseButton
           ></view
@@ -85,7 +84,7 @@
             </article></view
           >
           <article class="portal-activity">
-            <h2>Your last seven days</h2>
+            <h2>最近七天</h2>
             <view class="portal-bars" aria-label="最近七天的已保存活动"
               ><view v-for="day in progress.days" :key="day.day" class="portal-day"
                 ><text>{{ day.count }}</text
@@ -94,23 +93,22 @@
                   :style="{ height: Math.max(3, (day.count / maxActivity) * 120) + 'px' }"
                 /><text>{{ day.day.slice(5) }}</text></view
               ></view
-            ><text>{{ progress.timezone }} · Saved activity only</text>
+            ><text>{{ progress.timezone }} · 仅统计已保存的活动</text>
           </article>
           <view class="portal-note"
-            ><text>Writing feedback is AI assessment. Familiarity is self-reported.</text
-            ><text v-if="progress.daysToExam !== null">{{ progress.daysToExam }} days to your exam</text></view
+            ><text>写作反馈为 AI 评估，熟悉度由本人记录。</text
+            ><text v-if="progress.daysToExam !== null">距离考试还有 {{ progress.daysToExam }} 天</text></view
           >
         </template>
         <ProgressOverview v-if="progress && !loading && !failed" :model="progress.learningProgress" :openable="false" />
       </section>
       <section v-else-if="panel === 'downloads'" class="portal-content">
-        <text class="portal-eyebrow">TAKE YOUR COACH WITH YOU</text>
-        <h1>Learning lives<br />in the app.</h1>
-        <p>Daily practice, writing guidance, your materials, and review — all in one place.</p>
+        <h1>在 Mac 上，<br />继续学习。</h1>
+        <p>每日练习、写作带练与复习，在 App 中完成。目前仅提供 macOS 版。</p>
         <article class="portal-download">
           <AnimatedAvatar :size="64" /><view
-            ><h2>Yozi AI for Mac</h2>
-            <text>{{ MAC_DOWNLOAD.platform }} · {{ MAC_DOWNLOAD.version }}</text></view
+            ><h2>Yozi AI {{ MAC_DOWNLOAD.version }}</h2>
+            <text>{{ MAC_DOWNLOAD.platform }}</text></view
           ><a class="portal-download-link" :href="MAC_DOWNLOAD.url" download>下载 Mac 版</a>
         </article>
       </section>
@@ -120,11 +118,8 @@
         <BaseButton variant="quiet" @tap="policy('terms')">用户协议</BaseButton>
       </section>
       <section v-else class="portal-content">
-        <text class="portal-eyebrow">YOUR ACCOUNT</text>
-        <h1>One account.<br />Your own progress.</h1>
-        <p>
-          Your website view includes only records saved to your signed-in account. Keep studying and syncing in the app.
-        </p>
+        <h1>你的账户，<br />你的学习记录。</h1>
+        <p>官网仅展示当前账户已同步的记录。在 App 中继续学习并同步后，可在这里查看。</p>
         <BaseButton variant="secondary" @tap="panel = 'downloads'">下载 APP</BaseButton
         ><view class="portal-policies"
           ><BaseButton variant="quiet" @tap="policy('privacy')">隐私政策</BaseButton
@@ -179,10 +174,10 @@ const maxActivity = computed(() => Math.max(1, ...(progress.value?.days || []).m
 const metrics = computed(() =>
   progress.value
     ? [
-        { label: 'Study days', value: progress.value.studyDays },
-        { label: 'Saved answers', value: progress.value.answers },
-        { label: 'Essays written', value: progress.value.essays },
-        { label: 'Familiar phrases', value: progress.value.familiar }
+        { label: '学习天数', value: progress.value.studyDays },
+        { label: '已保存作答', value: progress.value.answers },
+        { label: '已写作文', value: progress.value.essays },
+        { label: '熟悉句式', value: progress.value.familiar }
       ]
     : []
 );
@@ -200,7 +195,7 @@ async function reload() {
     session = captureSession();
   failed.value = false;
   if (!props.signedIn || !session || session.owner === 'guest') {
-    status.value = 'Sign in to see your saved learning progress.';
+    status.value = '登录后查看已保存的学习进度。';
     return;
   }
   if (!config.api.baseUrl) {
@@ -209,19 +204,17 @@ async function reload() {
   }
   controller = new AbortController();
   loading.value = true;
-  status.value = 'Loading your saved progress…';
+  status.value = '正在读取学习进度…';
   try {
     const state = await readLearningSnapshot({ session, signal: controller.signal });
     if (!active || version !== generation || checkSession(session) !== 'current') return;
     progress.value = websiteProgress(state);
     completionId.value = `progress-${generation}-${state.revision}`;
-    status.value = progress.value.hasRecords
-      ? ''
-      : 'No synced learning records yet. Your next chapter starts in the app.';
+    status.value = progress.value.hasRecords ? '' : '还没有同步的学习记录。在 App 中开始学习并同步后，即可在这里查看。';
   } catch {
     if (active && version === generation && checkSession(session) === 'current') {
       failed.value = true;
-      status.value = 'Your progress could not be loaded. Please try again.';
+      status.value = '学习进度暂时无法读取，请重试。';
     }
   } finally {
     if (version === generation) {

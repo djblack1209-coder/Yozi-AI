@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="{{htmlLang}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>{{title}}</title>
+  <meta name="description" content="{{description}}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{{title}}">
+  <meta property="og:description" content="{{description}}">
+  <meta property="og:locale" content="{{locale}}">
+  <meta property="og:url" content="{{canonical}}">
+  <link rel="canonical" href="{{canonical}}">
+  <link rel="alternate" hreflang="zh-CN" href="https://yozi.bot.cd/zh/">
+  <link rel="alternate" hreflang="en" href="https://yozi.bot.cd/en/">
+  <link rel="alternate" hreflang="x-default" href="https://yozi.bot.cd/">
+  <link rel="icon" href="{{base}}/brand/kitten.png">
+  <link rel="preload" href="{{base}}/fonts/ReadexPro-Variable.ttf" as="font" type="font/ttf" crossorigin>
+  <style>{{styles}}</style>
+  <script>{{bootstrap}}</script>
+</head>
+<body id="top">
+  {{symbols}}
+  <a class="skip" href="#product">{{skip}}</a>
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <video id="hero-video" class="hero-film" muted loop playsinline preload="metadata" poster="{{base}}/media/yozi-learning-poster.jpg" data-src="{{base}}/media/yozi-learning-motion-v1.mp4" aria-hidden="true"></video>
+      <header class="mast">
+        <nav class="navigation" {{navLabel}}>
+          <a class="brand-pill" href="#top" {{homeLabel}}><img src="{{base}}/brand/kitten.png" width="28" height="28" alt=""><span>yozi</span></a>
+          <div class="nav-links"><a href="#product">{{navProduct}}</a><a href="#principles">{{navPrinciples}}</a><a href="#pricing">{{navPricing}}</a><a href="#faq">{{navFaq}}</a></div>
+          <div class="nav-tools">
+            <a class="language-button" href="../en/" data-language-link {{languageLabel}}>{{ilanguage}}<span>{{languageText}}</span></a>
+            <a class="button primary nav-download" href="#download">{{navDownload}}</a>
+            <button class="menu-button" type="button" aria-controls="mobile-navigation" aria-expanded="false" {{menuLabel}}>{{imenu}}</button>
+          </div>
+        </nav>
+        <nav id="mobile-navigation" class="mobile-navigation" {{navLabel}} hidden><a href="#product">{{navProduct}}</a><a href="#principles">{{navPrinciples}}</a><a href="#pricing">{{navPricing}}</a><a href="#faq">{{navFaq}}</a></nav>
+      </header>
+      <h1 id="hero-title" class="hero-title"><span class="hero-word word-one">{{heroOne}}</span><span class="hero-word word-two">{{heroTwo}}</span><span class="hero-word word-three">{{heroThree}}</span></h1>
+      <p class="hero-description">{{heroBody}}</p>
+      <div class="hero-stat stat-version"><div><i></i><strong>2.2.0</strong></div><p>{{versionLabel}}</p></div>
+      <div class="hero-stat stat-key"><div><strong>BYOK</strong><i></i></div><p>{{keyLabel}}</p></div>
+      <div class="hero-stat stat-daily"><div><i></i><strong>{{daily}}</strong></div><p>{{dailyLabel}}</p></div>
+      <button class="media-button" type="button" data-media-toggle aria-pressed="false" {{playLabel}}><span class="play-icon">{{iplay}}</span><span class="pause-icon" hidden>{{ipause}}</span></button>
+      <div class="hero-bottom" aria-hidden="true"></div>
+    </section>
+    <section class="features section" id="product" aria-labelledby="features-title">
+      <div class="wide">
+        <div class="features-heading reveal"><h2 id="features-title">{{featuresTitle}}</h2><p>{{featuresBody}}</p></div>
+        <div class="feature-grid">{{featureCards}}</div>
+        <div class="feature-controls"><p>{{demoLabel}}</p><button class="button secondary" data-demo-toggle type="button" aria-pressed="false"><span data-before-label>{{demoBefore}}</span><span data-after-label hidden>{{demoAfter}}</span>{{iright}}</button></div>
+      </div>
+    </section>
+    <section class="principles section" id="principles" aria-labelledby="principles-title">
+      <div class="wide"><div class="principles-heading reveal"><h2 id="principles-title">{{principlesTitle}}</h2><p>{{principlesNote}}</p></div><div class="divider"></div>
+        <div class="principle-carousel" aria-live="polite" aria-atomic="true">{{principleSlides}}</div>
+        <div class="divider"></div><div class="principle-bottom"><div class="principle-authors">{{principleAuthors}}</div><div class="carousel-controls"><span class="slide-count" aria-hidden="true"><span data-slide-number>01</span> / 03</span><div><button type="button" class="circle-button" data-prev {{previousLabel}}>{{ileft}}</button><button type="button" class="circle-button" data-next {{nextLabel}}>{{iright}}</button></div></div></div>
+      </div>
+    </section>
+    <section class="pricing section" id="pricing" aria-labelledby="pricing-title">
+      <div class="contained"><div class="section-heading reveal"><h2 id="pricing-title">{{pricingTitle}}</h2><p>{{pricingIntro}}</p></div>
+        <div class="price-grid">
+          <article class="price-frame spotlight"><div class="price-card"><h3 class="reveal" data-delay="0">{{appName}}</h3><div class="price-rule"></div><p class="price-value reveal" data-delay="100">{{appPrice}}</p><p class="price-description reveal" data-delay="200">{{appCostBody}}</p><a class="button secondary reveal" data-delay="300" href="#download">{{navDownload}}{{iarrow}}</a><ul class="reveal" data-delay="400">{{appFeatures}}</ul></div></article>
+          <article class="price-frame spotlight"><div class="price-card featured"><h3 class="reveal" data-delay="0">{{keyName}}</h3><div class="price-rule"></div><p class="price-value reveal" data-delay="100">BYOK</p><p class="price-description reveal" data-delay="200">{{keyCostBody}}</p><a class="button primary reveal" data-delay="300" href="#faq" data-faq-link="models">{{keyAction}}{{iarrow}}</a><ul class="reveal" data-delay="400">{{keyFeatures}}</ul></div></article>
+        </div><p class="pricing-notice">{{pricingNotice}}</p>
+      </div>
+    </section>
+    <section class="faq section" id="faq" aria-labelledby="faq-title">
+      <div class="contained"><div class="section-heading reveal"><h2 id="faq-title">{{faqTitle}}</h2><p>{{faqIntro}}</p></div>
+        <div class="faq-grid"><aside class="faq-sidebar"><div class="category-list spotlight" role="tablist" {{faqLabel}}>{{faqCategories}}</div><div class="faq-help spotlight"><h3>{{faqHelp}}</h3><p>{{faqHelpBody}}</p><a href="#download">{{navDownload}}{{iarrow}}</a></div></aside><div class="faq-panels spotlight">{{faqPanels}}</div></div>
+      </div>
+    </section>
+    <section class="download section" id="download" aria-labelledby="download-title">
+      <div class="cta-viewport"><div class="cta-canvas">
+        <div class="download-heading"><h2 id="download-title"><span>{{downloadTitle}}</span></h2><p>{{downloadIntro}}</p></div>
+        <div class="download-grid">
+          <a class="download-card download-mac" href="{{archive}}" download><div class="horizon" aria-hidden="true"></div><div class="card-icon">{{imonitor}}</div><span class="glass-pill card-tag">macOS 14+</span><span class="glass-pill card-tag-right">Apple silicon</span><span class="glass-pill mac-version"><i class="signal-dot"></i>2.2.0</span><div class="download-card-copy"><h3>{{downloadMac}}{{iarrow}}</h3></div></a>
+          <a class="download-card download-model" href="#pricing"><div class="card-icon">{{ikey}}</div><span class="card-site">yozi</span><div class="model-orbit" aria-hidden="true"><i></i><i></i><i></i></div><div class="model-sphere" aria-hidden="true"></div><span class="glass-pill flow-one" aria-hidden="true"><i class="signal-dot"></i><span data-scramble="API">API</span></span><span class="glass-pill flow-two" aria-hidden="true"><span data-scramble="model">model</span></span><span class="glass-pill flow-three" aria-hidden="true"><span data-scramble="practice">practice</span></span><div class="download-card-copy"><h3>{{downloadKey}}</h3><p>{{downloadKeyBody}}</p></div></a>
+          <article class="download-card download-platform" tabindex="0"><div class="card-icon">{{ilayers}}</div><div class="status-band" aria-hidden="true"></div><div class="platform-status"><span><i class="signal-dot"></i>Windows <em>{{platformPending}}</em></span><span><i class="signal-dot"></i>iOS / Android <em>{{platformPending}}</em></span></div><div class="download-card-copy"><h3>{{platformTitle}}</h3></div></article>
+        </div>
+      </div></div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="footer-dots" aria-hidden="true"><div></div></div>
+    <div class="footer-inner"><div class="footer-top"><h2>{{footerTitle}}</h2><nav {{footerProduct}}><a href="#product">{{navProduct}}</a><a href="#principles">{{navPrinciples}}</a><a href="#pricing">{{navPricing}}</a></nav><nav {{footerUse}}><a href="#download">{{downloadMac}}</a><a href="#faq" data-faq-link="models">BYOK</a><a href="#faq">{{navFaq}}</a></nav><nav {{footerDetails}}><a href="#faq" data-faq-link="privacy">{{footerPrivacy}}</a><a href="#top">{{footerBack}}{{iarrow}}</a></nav></div>
+      <a class="footer-brand" href="#top" {{homeLabel}}><img src="{{base}}/brand/kitten.png" width="100" height="100" alt=""><span>yozi ai</span></a>
+      <div class="footer-legal"><p>© 2026 Yozi</p><a href="#faq" data-faq-link="privacy">{{footerPrivacy}}</a><a href="#pricing">{{navPricing}}</a><span>v2.2.0</span></div>
+    </div>
+  </footer>
+  <script>{{script}}</script>
+</body>
+</html>

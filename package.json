@@ -33,6 +33,7 @@
     "test:cloud:smoke:release": "node scripts/build/live-cloud-smoke.mjs --fail-on-skipped",
     "build:mp-qq": "uni build -p mp-qq",
     "build:h5": "uni build -p h5 && node scripts/build/copy-cdn-to-h5.mjs",
+    "build:website": "node scripts/build/website-launch.mjs",
     "audit:mobile:h5-viewports": "node scripts/build/mobile-viewport-smoke.mjs",
     "audit:mobile:inventory": "node scripts/build/mobile-module-inventory.mjs --output data/mobile-module-inventory.json",
     "audit:mobile:baseline": "npm run build:app && npm run audit:app:artifacts && npm run audit:mobile:inventory && npm run build:h5 && npm run audit:mobile:h5-viewports",

@@ -1,5 +1,6 @@
 /* global __YOZI_WEBSITE__ */
 export const WEBSITE_MODE = typeof __YOZI_WEBSITE__ !== 'undefined' && __YOZI_WEBSITE__ === true;
+export const WEBSITE_TITLE = 'Yozi AI 1.0 · 考研英语写作教练';
 export const WEBSITE_ROUTES = Object.freeze([
   'pages/index/index',
   'pages/login/index',
@@ -27,7 +28,9 @@ export function installWebsiteRouteFallback(target) {
 }
 export const MAC_DOWNLOAD = Object.freeze({
   url: '/downloads/Yozi-AI-2.2.0-macOS-arm64.zip',
-  version: '2.2.0',
-  platform: 'macOS 14+ · Apple silicon',
+  // Public launch label only. The existing archive and its embedded 2.2.0 stay unchanged.
+  version: '1.0',
+  platform: 'macOS 14 及以上 · Apple 芯片',
   channel: 'macOS'
 });
+export const WEBSITE_CONTACT = Object.freeze({ url: '/contact.html' });

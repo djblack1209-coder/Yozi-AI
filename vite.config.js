@@ -3,6 +3,7 @@ import { readYoziTokens, readYoziNativeTheme } from './scripts/build/read-yozi-t
 import { publicImageMatch, publicFontMatch, appShellNavigationAllowlist } from './scripts/build/pwa-cache-policy.mjs';
 import { websiteRoutes } from './scripts/build/website-routes.mjs';
 import { appBootPlugin } from './scripts/build/app-boot.mjs';
+import { websiteLaunchPlugin, WEBSITE_TITLE } from './scripts/build/website-launch.mjs';
 import { defineConfig, loadEnv } from 'vite';
 import uniModule from '@dcloudio/vite-plugin-uni';
 import path from 'path';
@@ -347,6 +348,7 @@ export default defineConfig(({ command, mode }) => {
       guardYoziPreviewRoute(enablePreview, isH5 && !isDesktop),
       adaptH5SlotFlags(isH5),
       appBootPlugin(isDesktop),
+      websiteLaunchPlugin(isH5 && !isDesktop),
       guardRuntimeBuildDependencies(),
       uni(),
       copyCustomTabBar(),
@@ -366,24 +368,18 @@ export default defineConfig(({ command, mode }) => {
                 'static/pwa-icons/icon-512x512-maskable.png'
               ],
               manifest: {
-                name: BRAND.title,
+                name: WEBSITE_TITLE,
                 short_name: BRAND.name,
-                description: BRAND.description,
+                description: '每日练习、逐段带写与复习，你的考研英语写作教练。',
                 lang: 'zh-CN',
-                theme_color: BRAND.themeColor,
-                background_color: BRAND.themeColor,
+                theme_color: '#e7e7e7',
+                background_color: '#e7e7e7',
                 display: 'standalone',
                 scope: '/',
                 start_url: '/',
                 icons: [
-                  { src: '/static/pwa-icons/icon-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-                  { src: '/static/pwa-icons/icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-                  {
-                    src: '/static/pwa-icons/icon-512x512-maskable.png',
-                    sizes: '512x512',
-                    type: 'image/png',
-                    purpose: 'maskable'
-                  }
+                  { src: '/website/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+                  { src: '/website/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' }
                 ]
               },
               workbox: {

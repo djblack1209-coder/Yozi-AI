@@ -10,10 +10,10 @@
   <slot></slot>
 </template>
 <script setup>
-import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { defineAsyncComponent, onMounted, onBeforeUnmount, ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import NomiLanding from '../learning/nomi-landing.vue';
-import PortalWorkspace from './website-workspace.vue';
+const PortalWorkspace = defineAsyncComponent(() => import('./website-workspace.vue'));
 import { readSessionSnapshot } from '@/services/auth-storage.js';
 import { safeNavigateTo } from '@/utils/safe-navigate.js';
 import { storageService } from '@/services/storageService.js';
@@ -38,6 +38,7 @@ function signedOut() {
   refreshIdentity();
 }
 onMounted(() => {
+  document.getElementById('website-first-paint')?.remove();
   refreshIdentity();
   unsubscribe = storageService.onIdentityChange(refreshIdentity);
 });

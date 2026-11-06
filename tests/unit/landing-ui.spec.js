@@ -63,14 +63,14 @@ describe('landing language, entry and mascot behavior', () => {
     expect(wrapper.text()).toContain('Start learning');
     expect(wrapper.find('.playful-footer, .future-landing').exists()).toBe(false);
   });
-  it('Nomi homepage keeps English project copy and Chinese controls in both learning languages', async () => {
+  it('Nomi homepage keeps Chinese copy and controls in both learning languages', async () => {
     render(NomiLanding);
     for (const language of ['zh-CN', 'en']) {
       setLanguage(language);
       await nextTick();
-      expect(wrapper.get('h1').text()).toBe('Yozi AI — English Writing Coach');
-      expect(wrapper.get('.hero__lede').text()).toContain('postgraduate English writing');
-      expect(wrapper.get('.hero__stats').text()).toContain('English I & II');
+      expect(wrapper.get('h1').text()).toBe('Yozi AI · 考研英语写作教练');
+      expect(wrapper.get('.hero__lede').text()).toContain('你的考研英语写作教练');
+      expect(wrapper.get('.hero__stats').text()).toContain('考研英语一 / 二');
       expect(
         wrapper
           .findAll('button')
@@ -83,7 +83,10 @@ describe('landing language, entry and mascot behavior', () => {
     render(NomiLanding);
     await wrapper.get('#navToggle').trigger('tap');
     expect(wrapper.get('#navToggle').attributes('aria-expanded')).toBe('true');
-    await wrapper.findAll('#navLinks button')[1].trigger('tap');
+    await wrapper
+      .findAll('#navLinks button')
+      .find((button) => button.text() === '学习数据')
+      .trigger('tap');
     expect(wrapper.emitted('open')).toEqual([['progress']]);
     expect(wrapper.get('#navToggle').attributes('aria-expanded')).toBe('false');
     await wrapper.get('#navToggle').trigger('tap');

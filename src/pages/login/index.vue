@@ -28,11 +28,9 @@
         <view class="login-content">
           <view v-if="step === 'methods' || WEBSITE_MODE" class="login-hero"
             ><AnimatedAvatar :size="56" /><text class="login-title">{{
-              WEBSITE_MODE ? (isRegister ? 'Your next chapter.' : 'Welcome back.') : loginPresentation.title
+              WEBSITE_MODE ? (isRegister ? '创建你的账户' : '欢迎回来') : loginPresentation.title
             }}</text
-            ><text class="login-subtitle">{{
-              WEBSITE_MODE ? 'One account. Your progress, together.' : loginPresentation.subtitle
-            }}</text></view
+            ><text v-if="!WEBSITE_MODE" class="login-subtitle">{{ loginPresentation.subtitle }}</text></view
           >
           <BaseCard surface="glass" class="login-panel">
             <view v-if="!methods.length" class="login-stack" role="status">{{ t('login.providerClosed') }}</view>

@@ -86,10 +86,10 @@ describe('public website boundary', () => {
       )
     ).toBe(true);
   });
-  it('keeps Chinese actions with English field and presentation copy', () => {
+  it('keeps website actions and form fields in Chinese', () => {
     expect(websiteLoginText('login.submit')).toBe('登录');
     expect(websiteLoginText('login.register')).toBe('注册');
-    expect(websiteLoginText('login.emailAddress')).toBe('Email address');
+    expect(websiteLoginText('login.emailAddress')).toBe('邮箱地址');
     expect(websiteLoginText('login.providerClosed')).toBe('登录服务暂时不可用，请稍后再试');
   });
 });

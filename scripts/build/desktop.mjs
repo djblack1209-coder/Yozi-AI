@@ -7,6 +7,10 @@ import { existsSync, lstatSync, mkdirSync, realpathSync, renameSync } from 'node
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const action = process.argv[2];
 if (!['web', 'build', 'dev'].includes(action)) throw new Error('desktop action must be web, build or dev');
+// Keep even an in-progress macOS bundle out of application search. Cargo's
+// existing cache remains reusable through an explicit CARGO_TARGET_DIR.
+if (action === 'build' && process.platform === 'darwin')
+  process.env.CARGO_TARGET_DIR ||= resolve(root, 'tmp/desktop-native-target.noindex');
 let child;
 let signal;
 const forward = (value) => {
@@ -28,7 +32,10 @@ async function run(script, args, env = process.env) {
 
 async function shelterBundle() {
   if (process.platform !== 'darwin') return;
-  const source = resolve(root, 'src-tauri/target/release/bundle/macos/Yozi AI.app');
+  const target = process.env.CARGO_TARGET_DIR
+    ? resolve(root, 'src-tauri', process.env.CARGO_TARGET_DIR)
+    : resolve(root, 'src-tauri/target');
+  const source = resolve(target, 'release/bundle/macos/Yozi AI.app');
   if (!existsSync(source)) return;
   if (lstatSync(source).isSymbolicLink() || realpathSync(source) !== source)
     throw new Error('Bundle path must be local');
@@ -59,16 +66,32 @@ async function shelterBundle() {
       !process.env.APPLE_SIGNING_IDENTITY &&
       (await native('/usr/bin/codesign', ['--verify', '--deep', '--strict', source]))
     ) {
-      if (await native('/usr/bin/codesign', ['--force', '--sign', '-', '--timestamp=none', source]))
+      if (await native('/usr/bin/codesign', ['--force', '--sign', '-', '--options', 'runtime', '--timestamp=none', source]))
         throw new Error('Local candidate signing failed');
     }
     if (await native('/usr/bin/codesign', ['--verify', '--deep', '--strict', source]))
       throw new Error('Candidate signature verification failed');
     // Unregister while the bundle exists: lsregister cannot resolve a moved path.
-    code = await native(
+    const unregister = spawn(
       '/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister',
-      ['-u', source]
+      ['-u', source],
+      { stdio: ['ignore', 'pipe', 'pipe'] }
     );
+    child = unregister;
+    let output = '';
+    for (const stream of [unregister.stdout, unregister.stderr])
+      stream.on('data', (data) => (output += data));
+    code = await new Promise((res, rej) => {
+      unregister.once('error', rej);
+      unregister.once('exit', (status) => res(status ?? 1));
+    });
+    child = null;
+    // A fresh .noindex bundle normally has no Launch Services registration.
+    // Preserve failures other than this exact application-not-found response.
+    if (code === 1 && output.includes(`failed to scan ${source}: -10814`)) {
+      console.info('[desktop] Candidate has no prior Launch Services registration.');
+      code = 0;
+    } else if (output) process.stderr.write(output);
   } finally {
     // Retain the bundle in .noindex even if the system registration service fails.
     renameSync(source, resolve(directory, 'Yozi AI.app'));

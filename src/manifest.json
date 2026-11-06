@@ -2,8 +2,8 @@
   "name": "Yozi AI",
   "appid": "__UNI__8601AE2",
   "description": "从一个问题开始，在对话中理解、练习和复习。",
-  "versionName": "1.0.0",
-  "versionCode": "100",
+  "versionName": "2.2.0",
+  "versionCode": "20200",
   "transformPx": false,
   "app-plus": {
     "usingComponents": true,
@@ -41,7 +41,40 @@
         },
         "dSYMs": false
       },
-      "sdkConfigs": {}
+      "sdkConfigs": {},
+      "icons": {
+        "android": {
+          "mdpi": "static/brand/native-icons/android-48.png",
+          "hdpi": "static/brand/native-icons/android-72.png",
+          "xhdpi": "static/brand/native-icons/android-96.png",
+          "xxhdpi": "static/brand/native-icons/android-144.png",
+          "xxxhdpi": "static/brand/native-icons/android-192.png"
+        },
+        "ios": {
+          "appstore": "static/brand/native-icons/ios-1024.png",
+          "iphone": {
+            "app@2x": "static/brand/native-icons/ios-120.png",
+            "app@3x": "static/brand/native-icons/ios-180.png",
+            "spotlight@2x": "static/brand/native-icons/ios-80.png",
+            "spotlight@3x": "static/brand/native-icons/ios-120.png",
+            "settings@2x": "static/brand/native-icons/ios-58.png",
+            "settings@3x": "static/brand/native-icons/ios-87.png",
+            "notification@2x": "static/brand/native-icons/ios-40.png",
+            "notification@3x": "static/brand/native-icons/ios-60.png"
+          },
+          "ipad": {
+            "app": "static/brand/native-icons/ios-76.png",
+            "app@2x": "static/brand/native-icons/ios-152.png",
+            "proapp@2x": "static/brand/native-icons/ios-167.png",
+            "spotlight": "static/brand/native-icons/ios-40.png",
+            "spotlight@2x": "static/brand/native-icons/ios-80.png",
+            "settings": "static/brand/native-icons/ios-29.png",
+            "settings@2x": "static/brand/native-icons/ios-58.png",
+            "notification": "static/brand/native-icons/ios-20.png",
+            "notification@2x": "static/brand/native-icons/ios-40.png"
+          }
+        }
+      }
     },
     "darkmode": true,
     "themeLocation": "theme.json"
