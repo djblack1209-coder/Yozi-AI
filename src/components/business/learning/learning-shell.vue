@@ -448,6 +448,7 @@ import { bindBusinessMotion } from '@/design/business-motion.js';
 import { BRAND } from '@/config/brand.js';
 import { publicError, t } from '@/i18n/index.js';
 import { bindMessageFollow } from './message-follow.js';
+import { isDesktopRuntime } from '@/services/desktop/runtime.js';
 import { isDesktopSettingsWindow } from '@/services/desktop/windows.js';
 import {
   shellNavigation,
@@ -564,12 +565,14 @@ const closeButton = ref(null);
 const searchInput = ref(null);
 const nativeSettings = isDesktopSettingsWindow();
 const sidebar = readSidebar();
-const menuOpen = ref(
-  props.active === 'learning' &&
-    !nativeSettings &&
-    !sidebar.collapsed &&
-    (typeof window !== 'undefined' ? window.innerWidth : uni.getWindowInfo?.().windowWidth || 1024) > 760
+const viewportWidth = ref(
+  typeof window !== 'undefined' ? window.innerWidth : uni.getWindowInfo?.().windowWidth || 1024
 );
+const directoryAutoOpenWidth = isDesktopRuntime() ? 800 : 760;
+const canRestoreDirectory = computed(
+  () => props.active === 'learning' && !nativeSettings && viewportWidth.value > directoryAutoOpenWidth
+);
+const menuOpen = ref(canRestoreDirectory.value && !sidebar.collapsed);
 const navigationConfig = shellNavigation();
 const navigationSnapshot = ref(navigationConfig.snapshot());
 function applyNavigation(value) {
@@ -578,7 +581,6 @@ function applyNavigation(value) {
 const searchOnOpen = ref(false);
 const directoryOptions = ref(false);
 const panelPinned = ref(true);
-const viewportWidth = ref(1024);
 const compactHeader = computed(() => props.active === 'learning' && viewportWidth.value <= 480);
 const headerActionsOpen = ref(false);
 const headerActionsButton = ref(null);
@@ -807,11 +809,10 @@ function updateDockMetrics(event) {
       : event?.size || uni.getWindowInfo?.();
   if (info?.windowHeight) viewportHeight.value = info.windowHeight;
   if (info?.windowWidth) {
-    const wasNarrow = viewportWidth.value <= 760;
+    const couldRestoreDirectory = canRestoreDirectory.value;
     viewportWidth.value = info.windowWidth;
-    if (wasNarrow !== viewportWidth.value <= 760 && !searchOnOpen.value)
-      menuOpen.value =
-        props.active === 'learning' && viewportWidth.value > 760 && !nativeSettings && !readSidebar().collapsed;
+    if (couldRestoreDirectory !== canRestoreDirectory.value && !searchOnOpen.value)
+      menuOpen.value = canRestoreDirectory.value && !readSidebar().collapsed;
   }
 }
 let releaseViewport = () => undefined;
@@ -873,7 +874,7 @@ watch(menuOpen, async (open) => {
 async function closeMenu() {
   directoryOptions.value = false;
   const wasSearch = searchOnOpen.value;
-  menuOpen.value = wasSearch && props.active === 'learning' && viewportWidth.value > 760 && !readSidebar().collapsed;
+  menuOpen.value = wasSearch && canRestoreDirectory.value && !readSidebar().collapsed;
   searchOnOpen.value = false;
   if (!wasSearch) persistSidebar();
   await nextTick();
@@ -1091,7 +1092,6 @@ function outsideDirectory(event) {
 }
 onMounted(() => {
   updateDockMetrics();
-  if (viewportWidth.value <= 760 || nativeSettings) menuOpen.value = false;
   uni.$on('shellNavigationChanged', applyNavigation);
   syncLogin();
   releaseIdentity = storageService.onIdentityChange(syncLogin);

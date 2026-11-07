@@ -370,6 +370,10 @@
   align-items: center;
   gap: 8px;
 }
+/* Keep composer dialogs above the docked directory and inside the shell theme. */
+.desktop-overlay .is-chat.has-directory .muse-composer-dock {
+  z-index: 32;
+}
 .muse-composer-dock > * {
   width: 100%;
   max-width: 768px;
