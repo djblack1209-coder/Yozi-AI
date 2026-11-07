@@ -166,7 +166,7 @@ describe('Muse library keeps selection and private reading local', () => {
       } else {
         await wrapper
           .findAll('.library-filter button')
-          .find((node) => node.text() === '全部类型')
+          .find((node) => node.text() === '全部学习内容')
           .trigger('tap');
         await wrapper
           .findAll('.library-filter button')
@@ -204,14 +204,8 @@ describe('Muse library keeps selection and private reading local', () => {
   });
   it('keeps type navigation visible, previews saved text, and does not fabricate empty media or write facts', async () => {
     const before = JSON.stringify(harness.store.state);
-    expect(wrapper.findAll('.library-type').map((node) => node.text())).toEqual([
-      '全部学习内容',
-      '文档',
-      '交互学习内容',
-      '图片',
-      '视频',
-      '音频'
-    ]);
+    const types = ['全部学习内容', '文档', '交互学习内容', '图片', '视频', '音频'];
+    expect(wrapper.findAll('.library-type').map((node) => node.text())).toEqual(types);
     await wrapper
       .findAll('.library-type')
       .find((node) => node.text() === '文档')
@@ -225,6 +219,15 @@ describe('Muse library keeps selection and private reading local', () => {
       .trigger('tap');
     expect(wrapper.findAll('.artifact')).toHaveLength(0);
     expect(wrapper.get('.library-empty').text()).toContain('没有匹配的资料');
+    await wrapper.get('[aria-label="筛选资料"]').trigger('tap');
+    const filters = wrapper.findAll('.library-filter button');
+    expect(filters.slice(0, 7).map((node) => node.text())).toEqual([...types, '原始资料']);
+    await filters.find((node) => node.text() === '原始资料').trigger('tap');
+    expect(wrapper.get('.library-title').text()).toBe('原始资料');
+    expect(wrapper.findAll('.artifact')).toHaveLength(2);
+    await filters.find((node) => node.text() === '音频').trigger('tap');
+    expect(wrapper.get('.library-title').text()).toBe('音频');
+    expect(wrapper.findAll('.artifact')).toHaveLength(0);
     expect(JSON.stringify(harness.store.state)).toBe(before);
   });
   it('带练成果使用已保存的学习日期，避免 UTC 零点显示成前一天', async () => {

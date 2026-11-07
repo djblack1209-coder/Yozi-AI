@@ -87,7 +87,7 @@
           icon="folder"
           align="start"
           :aria-current="section === 'files' ? 'page' : undefined"
-          @tap="section = 'files'"
+          @tap="chooseFilter('files')"
           >原始资料</BaseButton
         ></view
       >
@@ -147,38 +147,39 @@
             :key="filter.value"
             variant="quiet"
             align="start"
-            :selected="kind === filter.value"
-            @tap="kind = filter.value"
+            :selected="filter.value === 'files' ? section === 'files' : section !== 'files' && kind === filter.value"
+            @tap="chooseFilter(filter.value)"
             >{{ filter.label }}</BaseButton
           ><text class="library-filter-label">排序</text
           ><BaseButton variant="quiet" align="start" :selected="!oldest" @tap="oldest = false">最近优先</BaseButton
           ><BaseButton variant="quiet" align="start" :selected="oldest" @tap="oldest = true">最早优先</BaseButton
+          ><view class="library-compact-sections">
+            <text class="library-filter-label">分类</text>
+            <BaseButton
+              v-for="item in mobileFilterSections"
+              :key="item.id"
+              variant="quiet"
+              align="start"
+              :selected="section === item.id"
+              @tap="chooseSection(item.id)"
+              >{{ item.label }}{{ item.count !== undefined ? ` (${item.count})` : '' }}</BaseButton
+            ><BaseButton
+              v-for="item in savedViews"
+              :key="item.id"
+              class="library-saved-view"
+              variant="quiet"
+              align="start"
+              :icon="item.icon"
+              @tap="openSavedView(item.id)"
+              >{{ item.label }}</BaseButton
+            ></view
           ><BaseButton variant="quiet" @tap="closeFilter">完成</BaseButton></view
         >
       </view>
-      <view class="library-context"><MuseConversationFilter /></view>
-      <view class="library-mobile-filters" role="group" aria-label="资料库分类"
-        ><BaseButton
-          v-for="item in mobileFilterSections"
-          :key="item.id"
-          variant="quiet"
-          :selected="
-            (item.id === 'all' || item.id === 'unclassified' || item.id.startsWith('conversation:')
-              ? context.id.value
-              : section) === item.id
-          "
-          @tap="chooseSection(item.id)"
-          >{{ item.label }}{{ item.count !== undefined ? ` (${item.count})` : '' }}</BaseButton
-        ><BaseButton
-          v-for="item in savedViews"
-          :key="item.id"
-          class="library-saved-view"
-          variant="quiet"
-          :icon="item.icon"
-          @tap="openSavedView(item.id)"
-          >{{ item.label }}</BaseButton
-        ><BaseInput v-model="query" label="搜索资料库" placeholder="搜索资料库" hide-label maxlength="120"
-      /></view>
+      <view class="library-context">
+        <MuseConversationFilter />
+        <BaseInput v-model="query" label="搜索资料库" placeholder="搜索资料库" hide-label maxlength="120" />
+      </view>
       <view v-if="pinError" class="library-pin-error" role="alert">
         <text class="library-pin-error-copy">{{ pinError }}</text>
         <BaseButton class="library-pin-retry" data-library-pin-retry variant="quiet" @tap="readPins">{{
@@ -332,21 +333,6 @@ const sectionTitle = computed(() =>
         : mobileSections.value.find((item) => item.id === (section.value === 'all' ? context.id.value : section.value))
             ?.label || '全部学习内容'
 );
-const kindFilters = [
-  { value: 'all', label: '全部类型' },
-  { value: 'note', label: '对话内容' },
-  { value: 'material', label: '私人资料' },
-  { value: 'practice', label: '答题卡' },
-  { value: 'writing', label: '写作成果' },
-  { value: 'summary', label: '小结' },
-  { value: 'document', label: '文档' },
-  { value: 'image', label: '图片' },
-  { value: 'video', label: '视频' },
-  { value: 'audio', label: '音频' },
-  { value: 'presentation', label: 'PPT' },
-  { value: 'animation', label: '动画' },
-  { value: 'web', label: '交互学习内容' }
-];
 const typeGroups = [
   {
     id: 'artifacts',
@@ -367,10 +353,30 @@ const typeGroups = [
     ]
   }
 ];
+const kindFilters = [
+  ...typeGroups.flatMap((group) => group.items),
+  { value: 'files', label: '原始资料' },
+  { value: 'note', label: '对话内容' },
+  { value: 'material', label: '私人资料' },
+  { value: 'practice', label: '答题卡' },
+  { value: 'writing', label: '写作成果' },
+  { value: 'summary', label: '小结' },
+  { value: 'presentation', label: 'PPT' },
+  { value: 'animation', label: '动画' }
+];
 function chooseKind(value) {
   section.value = 'all';
   kind.value = value;
   filterOpen.value = false;
+}
+function chooseFilter(value) {
+  if (value === 'files') {
+    section.value = 'files';
+    kind.value = 'all';
+    return;
+  }
+  if (value === 'all' || section.value === 'files') section.value = 'all';
+  kind.value = value;
 }
 const matchesKind = (item) =>
   kind.value === 'all' ||
@@ -697,6 +703,7 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   color: var(--ink);
 }
 .library-sidebar-footer {
+  flex: none;
   padding: 18px 12px;
 }
 .library-main {
@@ -762,7 +769,7 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
 .library-filter {
   position: absolute;
   right: 28px;
-  top: 78px;
+  top: 100%;
   z-index: 12;
   width: 220px;
   max-height: min(60vh, 440px);
@@ -785,7 +792,7 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   color: var(--ink-3);
   font-size: 11px;
 }
-.library-mobile-filters {
+.library-compact-sections {
   display: none;
 }
 .library-scroll {
@@ -1081,9 +1088,25 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   white-space: nowrap;
 }
 @media (min-width: 978px) and (pointer: fine) {
+  .library-sidebar-search {
+    height: 52px;
+  }
+  .lib-section {
+    margin-bottom: 4px;
+  }
+  .library-type-heading {
+    padding: 8px 10px 4px;
+  }
+  .lib-section-head {
+    height: 32px;
+    min-height: 32px;
+  }
   .library-sidebar .lib-nav {
-    min-height: 36px;
+    min-height: 34px;
     padding: 4px 8px;
+  }
+  .library-sidebar-footer {
+    padding: 8px 12px;
   }
 }
 .library-sidebar :deep(.base-icon),
@@ -1151,31 +1174,25 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
     padding-right: 28px;
   }
   .library-context {
-    display: block;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .library-context > :deep(.conversation-context) {
+    max-width: 50%;
+  }
+  .library-context > :deep(.base-field) {
+    flex: 1;
+    min-width: 0;
   }
   .library-sidebar {
     display: none;
   }
-  .library-mobile-filters {
-    max-height: 144px;
-    overflow-y: auto;
-    flex: none;
-    display: flex;
-    gap: 4px;
-    padding: 0 28px 12px;
-    flex-wrap: wrap;
-  }
-  .library-mobile-filters .base-button {
-    border-radius: 999px;
-    font-size: 12px;
-    min-height: 44px;
-    padding: 0 10px;
-  }
-  .library-mobile-filters > :deep(.base-field) {
-    width: 100%;
+  .library-compact-sections {
+    display: block;
   }
 }
-@media (max-width: 820px) {
+@media (max-width: 640px) {
   .library-head {
     flex-direction: column;
     align-items: stretch;
@@ -1209,9 +1226,6 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   .library-scroll {
     padding: 0 16px 24px;
   }
-  .library-mobile-filters {
-    padding: 0 16px 12px;
-  }
   .lib-action {
     padding: 0 12px;
     font-size: 13px;
@@ -1221,7 +1235,6 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   }
   .library-filter {
     right: 16px;
-    top: 126px;
   }
   .recent-preview {
     padding: 22px 20px;
