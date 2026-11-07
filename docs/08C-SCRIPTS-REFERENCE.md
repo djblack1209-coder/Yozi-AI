@@ -1,5 +1,11 @@
 # 脚本与依赖维护
 
+2026-11-06 Wave3：macOS `build:desktop` 默认 Cargo 输出为 `tmp/desktop-native-target.noindex`，兼容显式 `CARGO_TARGET_DIR`；构建中的 App 与交付候选均处于 `.noindex`。本地补签启用 Hardened Runtime，`lsregister` 对新候选的精确 `-10814` 按未注册处理，其他失败保留；实际重新打包 exit0。Mac 原生学习／复习／同步／重开与各端覆盖见[结果](../YOZI-WAVE3-RESULT-2026-11-06.md)。
+
+Windows 本轮使用项目内 cargo-xwin 0.24.0（官方固定提交 `e152e8fac67e977df9cf8e832c6045e5262fee1a`，支持含空格路径）、NSIS 3.13 与已确认许可的微软 SDK／CRT；沿 Tauri 默认静态 VCRUNTIME＋系统 UCRT，不另加 `+crt-static`。Tauri 自动封装会移除 `NSISDIR`，本轮直接用正式生成的 `installer.nsi` 和项目内 `NSISDIR` 调用原版 makensis，exit0；没有改上游或伪造 PATH 命令。完整命令与过程失败保留在资源记录／日志；[上游封装实现](https://github.com/tauri-apps/tauri/blob/dev/crates/tauri-bundler/src/bundle/windows/nsis/mod.rs)。
+
+手机原生图标在 `src/static/brand/native-icons/`，`src/manifest.json` 已绑定 23 个平台尺寸引用，18 张独立 PNG 已随 5.31 共享资源构建；iOS 全部去 alpha。离线原生工程仍须在匹配 SDK 就绪后接入这些图标，不把共享资源 ZIP 当 APK／IPA。
+
 ## 当前 App 验收范围（2026-11-02 裁定）
 
 研发主线只做桌面与手机 App。小程序功能、界面适配、构建和验证全部暂停；保留既有小程序代码、依赖、脚本及构建产物，禁止以清理或构建前置准备为由删除／覆盖它们。下方历史微信步骤和大小回执只作历史记录，不构成当前工单。
@@ -82,6 +88,8 @@ QA实际完成月历、日期依据/待核对、未来复习禁用、专项原�
 本文记录命令的副作用、隔离构建约定和可选本机服务。各阶段的候选目录、测试数量和资源回收明细属于历史记录，见 [12](12-CHANGELOG.md) 与 git 历史（2026-10-10 精简前完整版本见提交 `77093a22`）。
 
 ## 名称与兼容边界（2026-10-16）
+
+2026-11-03 百度备份位置维护：退役源目录 `/apps/考研大师/` 已整体归入 `02-Yozi-AI`。三个 raw-pdf 分组现场均为空。下表及历史题源／测试中的旧路径用于溯源，恢复网盘导入以本机根目录 `BAIDU-BACKUP.md` 的现行位置为准。
 
 项目与 npm 包使用 `yozi-ai`，桌面 Cargo 包为 `yozi-ai-desktop`，原生源码目录为 `nativeplugins/Yozi-Connector/`，Java 命名空间为 `cn.yozi.connector`、类名为 `YoziConnector*` / `YoziMaterial*`。本地 Nginx 配置文件为 `deploy/tencent/nginx/yozi-ai.conf` 与 `conf.d/yozi-ai-h5.conf`；后端包为 `yozi-ai-backend` / `yozi-ai-standalone`，本地 file-type 适配包为 `@yozi-ai/file-type-compat`。这些名称不改变已部署资源或安装身份。
 
@@ -430,6 +438,7 @@ App连接器新增两个命令（运行条件/SDK边界见[09C](09C-APP-CONNECTO
 | `test:cloud:smoke:release`           | `node scripts/build/live-cloud-smoke.mjs --fail-on-skipped`                                                                                                                                                                                                                                                                                                                                                             | 外部/设备/业务验收；不得直接用生产       |
 | `build:mp-qq`                        | `uni build -p mp-qq`                                                                                                                                                                                                                                                                                                                                                                                                    | 本地检查或产物；审查源码与输出路径       |
 | `build:h5`                           | `uni build -p h5 && node scripts/build/copy-cdn-to-h5.mjs`                                                                                                                                                                                                                                                                                                                                                              | 本地检查或产物；审查源码与输出路径       |
+| `build:website` | `node scripts/build/website-launch.mjs [输出目录]` | 从 `website/` 生成中英静态首页和 404，带同源字体、小猫母版与仓库内已获准发布的 `public/downloads/Yozi-AI-2.2.0-macOS-arm64.zip`。干净克隆可直接构建。默认输出 `dist/website`，隔离候选可指定输出目录。发布沿用受保护流程。 |
 | `audit:mobile:h5-viewports`          | `node scripts/build/mobile-viewport-smoke.mjs`                                                                                                                                                                                                                                                                                                                                                                          | 外部/设备/业务验收；不得直接用生产       |
 | `audit:mobile:inventory`             | `node scripts/build/mobile-module-inventory.mjs --output data/mobile-module-inventory.json`                                                                                                                                                                                                                                                                                                                             | 本地检查或产物；审查源码与输出路径       |
 | `audit:mobile:baseline`              | `npm run build:app && npm run audit:app:artifacts && npm run audit:mobile:inventory && npm run build:h5 && npm run audit:mobile:h5-viewports`                                                                                                                                                                                                                                                                           | 本地检查或产物；审查源码与输出路径       |

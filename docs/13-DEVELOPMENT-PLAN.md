@@ -45,13 +45,15 @@
 
 | 项 | 当前值 |
 | --- | --- |
-| 源码基线 | S56后端e583f818；App前端沿S55的7431b3f0，本批无前端行为改动，不重复桌面打包。两项缺陷沿b183cd05／d0ddf328，S55/S54原提交保留。 |
-| 最新候选 | 日常及签名候选仍为 tmp/uiux-shell-20261102.noindex/local-feature-completion-resume-candidate.noindex/Yozi AI.app（2.2.0、c63a62c9…、App7431b3f0）；配对S56后端tmp/local-workflow-continuation-backend（e583f818）。前端既有实开采信，真实新后端完整分工通过，不冒称新桌面构建或完整UI验收。 |
-| 测试后端 | tmp/yozi-candidate-build/backend配tmp/local-workflow-continuation-backend（e583f818）；仅proxy-ai及learning-workflow两个运行模块更新，无活跃消费者时应用。S56共18笔／36819 tokens／pending，修复后完整链19334 tokens、唯一返修成功。两段后端正常退出并回收，4382空闲。 |
-| S55回退 | 原日常完整包tmp/uiux-shell-20261102.noindex/daily-before-feature-completion.noindex/Yozi AI.app（322438f2…）及S55后端tmp/local-feature-completion-resume-backend（7431b3f0）均保留。程序正常退出后克隆到.noindex暂存、原子交换并仅注册完整日常路径；后端停用后换回旧配对模块，不恢复学习数据库或抹掉新付费回执。S53及更早指定回退保持。 |
-| S53配对恢复 | S52签名App tmp/uiux-shell-20261102.noindex/local-closure-learning-agent-workflow-candidate.noindex/Yozi AI.app（2387b4c0…、App源码3e47fbb7）配工作树 tmp/local-closure-learning-agent-workflow-backend（8f0323c6）及原账号65／1522前态502fc12c…。S53不新增事件格式，旧程序仍不具备本批生命周期恢复／目标入口修复，不声称已重验旧App或完整续接新现场；回退保留新版状态、原指令／请求／计划、失败／费用、草稿／待确认／资料和文档，不恢复数据库。S52、S51及更早配对材料继续保留。 |
-| 日常入口 | /Users/blackdj/Applications/Yozi AI.app（2.2.0、c63a62c9…、前端7431b3f0）保持S55已验更新；S56只配对后端e583f818，不重复启动或改WebKit、登录状态与学习记录。唯一注册入口与S55原生启动结论采信；本批网络证据是实际隔离API链，不冒充新增原生登录实测。 |
-| 索引与保留 | [resources.json](../tmp/uiux-shell-20261102.noindex/resources.json) 保留候选、恢复与盘点；原账号快照、S39 导出、S53／S54 快照、历史指定签名 App 和配对后端原位保留。S19 固定音频、S22 原失败现场与 S54 在途候选不清理。 |
+| 源码基线 | 当前本机App为Wave3冻结源码77c0a94d（本地v2.0.0标签、包2.2.0）；本次仅沿原日常身份／资料UUID重包，产品代码不改。S56后端e583f818及两项缺陷b183cd05／d0ddf328为既有历史基线，原提交保留；本轮不部署后端。 |
+| 最新候选 | Wave3冻结源码77c0a94d／本地注释标签v2.0.0（包2.2.0）；正式通用包在release/yozi-wave3-20261106.noindex。本次依客户要求，以相同已验桌面前端和原生源码、保留日常标识／资料UUID重包，已安装唯一日常入口（7dfb1bff…）；未改后端或生产。 |
+| S56 测试后端（历史） | `tmp/yozi-candidate-build/backend` not present (checked 2026-11-07)。`tmp/local-workflow-continuation-backend`（e583f818）not present (checked 2026-11-07)。执行记录见 §3 已验批次。 |
+| S55 回退（历史） | `tmp/uiux-shell-20261102.noindex/daily-before-feature-completion.noindex/Yozi AI.app`（322438f2…）not present (checked 2026-11-07)。`tmp/local-feature-completion-resume-backend`（7431b3f0）not present (checked 2026-11-07)。 |
+| S53 配对恢复（历史） | `tmp/uiux-shell-20261102.noindex/local-closure-learning-agent-workflow-candidate.noindex/Yozi AI.app`（2387b4c0…、源码3e47fbb7）not present (checked 2026-11-07)。`tmp/local-closure-learning-agent-workflow-backend`（8f0323c6）not present (checked 2026-11-07)。 |
+| 日常入口 | /Users/blackdj/Applications/Yozi AI.app（2.2.0、7dfb1bff…、源码77c0a94d）已依客户2026-11-06授权更新并实开。原应用标识、两处学习资料及8项账号／会话键逐项核对一致。账户核对明细见本机 `YOZI-GOAL-CLOSEOUT-RESULT-2026-11-06.md`。 |
+| 日常本次回退 | `tmp/wave3-20261106.noindex/daily-update.noindex/before.noindex/Yozi AI.app`（原c63a62c9…）在本机，完整克隆已试还原并通过严格签名。同目录 private 保存原 WebKit 与偏好。回退只换程序，保留届时最新学习资料。 |
+| 官网本次回退 | 远端回退根 `yozi-reference-fix-20261106-105fd3d8c9a0`。当前发布根 `yozi-yoga-cursor-20261106-e855b03f9a5b`。发布与回退记录见[保护发布回执](../tmp/website-redesign-20261106/resources.json)。 |
+| 历史索引 | `tmp/uiux-shell-20261102.noindex/` not present (checked 2026-11-07)。`tmp/uiux-shell-20261102.noindex/resources.json` not present (checked 2026-11-07)。`tmp/muse-survey.noindex/` not present (checked 2026-11-07)。 |
 | 静态输出 | 当前S55桌面／共享输出、S53／S54与原失败现场保留；本批只将被已核验回退覆盖的原子交换旧副本正常入篓，4文件／19,383,238逻辑字节。C1的14份历史静态输出仍在废纸篓，未清空，不计为物理空间释放。 |
 
 ## 2. 已锁定、不再讨论的边界
@@ -67,15 +69,28 @@
 
 | 状态 | 范围 | 当前安排 |
 | --- | --- | --- |
+| 已验（2026-11-07） | R1 发布源码归位 | `v2.0.0`（77c0a94d）已快进纳入 `main`。官网提交 `1d9f5a4d` 的干净克隆执行一次 `npm run build:website`，37 个文件与已上线快照逐路径、逐字节一致。四个官网测试文件与 Wave 3 批改回归共 235 项通过。§1 缺失路径已标记，客户资料仅留本机未跟踪，`git diff --check` 通过。[已核验的变更前备份](../tmp/yozi-r1-20261107.noindex/before-r1.tar.gz)。 |
+| 已更新／供客户体验 | 日常App交付 | 已验源码77c0a94d按原日常身份重包2.2.0并原子安装；签名与实际打开通过，两处学习状态及8项账号键与私有备份完全一致。保留旧程序回退与原资料，系统搜索仅日常入口，程序留开；生产、官网与通用发行包不改。 |
+| 本轮范围已完成／后置材料保持 | Goal closeout 本地发布记录 | 注释标签v2.0.0指向77c0a94d（包仍2.2.0）；207项、类型及源码复建通过。获准沿用付费DeepSeek后，原生从零完成17条评估、错题复习、完整成文、66新事件同步／重开及800×600入口；Windows原有内嵌CRC与结构／载荷核对通过，未实开。23笔账本／100,871已知tokens、1笔缺用量、费用pending；移动SDK／签名、公证／商店和审美保持后置，见[结果](../YOZI-GOAL-CLOSEOUT-RESULT-2026-11-06.md)。 |
+| 本机闭环已验／移动原生待材料 | Wave3 桌面与手机打包 | Mac 安装候选实开，Windows 安装器／便携包已生成；18 条作答、两项重练、完整成文、69 事件同步与重开通过。修复副词修饰误扣档；移动 5.31 共享资源及新图标就绪，原生待 SDK／签名，Windows 实开待本机环境。日常／生产／官网保持，见[结果](../YOZI-WAVE3-RESULT-2026-11-06.md)。 |
 | 已完成 | C1 一次清理 | 四类盘点、限定清单回收及唯一一次门禁完成；产品源码和两项缺陷未动，本地单一清理提交。 |
 | 已完成／待冻结 | S56功能补齐 | 修复后真实主计划、A／B、依赖与最终汇总完成，唯一返修有效，门禁exit0／登记缺陷0；两项缺陷与日常入口沿S55采信。当前不再追加模型请求，等待客户确认功能冻结。 |
+| 已上线 | 官网 Yoga Coach／Cursor Follow 重设计 | 八份原词齐备；浅蓝体系、指针拖动视频与两幕叠卡完成，中英桌面／390px本机及公网主流程、原2.2.0 ZIP实下与新站/auth 404通过。guardian b1310c5947d34f8a943388ae93a0309d accepted；最终输出 `dist/website`，即时回退 `yozi-reference-fix-20261106-105fd3d8c9a0`，见[结果](../YOZI-WEBSITE-REDESIGN-RESULT-2026-11-06.md)。App不变。 |
+| 已替代 | 官网指定参考返修（2.2.0） | 八份原词重读并逐段对照旧线上；Hero 自制近景循环片／Readex、四卡实播、白底弹簧引用区、费用／FAQ／固定 CTA／粗体页脚已补齐。中英桌面／375px本机及公网实操、真实下载与受保护发布通过；具体拍摄素材仍有差异，见[返修结论](../WEBSITE-REFERENCE-REBUILD-RESULT-2026-11-06.md#fix-round--self-analysis-and-conclusions)。当时输出 `dist/website`，App 不变。 |
+| 已替代 | 原官网 v3 与首轮参考候选 | [唯一阶段备份](../tmp/website-reference-20261106/fix/before-fix-stage.tar.gz)含返修前源码／线上产物，内部 `preserved-earlier-source-stage.tar.gz` 完整保留早先未提交 v3 源码及更早线上构建；核验后原独立重复档入篓。原恢复记录见[记录](../tmp/website-reference-20261106/resources.json)；当前生产回退以[本轮记录](../tmp/website-redesign-20261106/resources.json)为准。 |
 | 待办 | 四项材料与固定音频 | 下节列条件；不阻塞独立功能，已验批次不重跑。 |
-| 后置 | UI 与完整验收 | 功能完成并冻结后再安排；当前不开始。 |
+| 后置 | 桌面／手机 App UI 与完整验收 | 功能完成并冻结后再安排；本轮官网发布不更新日常 App 或安装包。 |
 
 ### 已验批次表（只采信，不重跑）
 
 | 状态 | 范围 | 已有回执或剩余条件 |
 | --- | --- | --- |
+| 已验／已上线 | 官网 Yoga Coach／Cursor Follow | 采信34项定向检查；1次独立官网构建，本机／公网各4组中英1440×900／390×844主流程通过，320px、减少动态、无脚本基础路径与/auth 404通过。原12,397,807字节Mac ZIP实下完全一致。目录定位错误首轮已回滚，修正后b1310c5947d34f8a943388ae93a0309d accepted；[完整回执及适配差异](../YOZI-WEBSITE-REDESIGN-RESULT-2026-11-06.md)。 |
+| 已验（限定本机范围） | Wave3 构建与学习闭环 | Mac App／ZIP／DMG、Windows PE／NSIS／便携 ZIP、手机共享资源及 18 张图标的配置／公开产物检查通过；207 项定向测试与后端类型通过。原生完整学习／复习／同步／重开通过，0 新增模型账本；原失败保留，44 笔全 pending。移动原生及 Windows 实开未覆盖；[产物、源码修复、截图与恢复](../YOZI-WAVE3-RESULT-2026-11-06.md)。 |
+| 已验／素材有差异 | 官网指定参考返修 | 34 项定向检查、一次独立官网构建；本机及公网各 4 组中英 1440×900／375×844 实操通过，零控制台错误／失败请求／溢出；四卡真实视频、4.5s淡化、轮播／FAQ／CTA、切语言视频重载0、减少动态、持久化、404及原Mac包实下通过。首发图片未完成即判坏图导致保护回滚，修正验收等待后完整重跑，d8ed4ac7a48645b0a06cdaaaaf2ffef6 accepted；原实拍以自制学习片替代，具体差异见结果，不以功能通过证明视觉保真。 |
+| 历史功能已验／视觉未达标 | 官网指定参考首轮 | 34项与本机／公网四组功能回执保留，b5ef9c0a617a41e293832426f919ac65曾 accepted；客户明确否定视觉效果。旧片、字体、四卡媒体、白底引用区及 CTA 等细节简化已在返修纠正，旧功能检查不构成参考保真证据。 |
+| 已验 | 官网重建（2.2.0） | 独立官网构建、30项定向测试、受保护发布 accepted；公网1440×900／375×844／早帧已实看，双视口解码帧推进、循环／暂停／菜单／减少动态、双字体、零控制台错误／失败请求、真实404及原12,397,807字节Mac包一致通过；自评均分8.5、最低8。旧官网缓存退役保留身份存储；不将示意准确率当真实掌握数据。 |
+| 历史已验／已退役 | 官网 1.0 | 官网定向30项通过；既有build:h5及受保护部署accepted，公网1440／390px截图、功能／下载导航、登录／注册入口、游客进度门禁、法律／联系页、favicon／OG与真实404通过。单次冷访问FCP桌面872ms／窄屏660ms、CLS均0；原2.2.0包实下核对不变；域名邮箱仍待DNS权限和收信验证。 |
 | 已验 | S56完整真实分工 | 226项受影响检查、唯一App门禁7278通过／6跳过／0失败；修复后主计划与4个真实子任务、唯一返修、最终4卡及只读重新取回通过。18笔／36819 tokens／全pending，原2失败不改写；主账户不变、无UI或完整验收。 |
 | 有限已验 | S55缺陷与日常入口 | 定向回执3／21／2／4／1项通过、真实同编号删除重试通过；App门禁一次登记缺陷0，另1超时单项原阈值通过。7431b3f0日常App实开／原会话／正常退出／唯一注册通过；付费分工B及唯一返修失败，完整Y-G8未通过。 |
 | 已验 | S53 Goal生命周期恢复 | 18项唯一新增检查、明确暂停／结束／重开／恢复、原指令重试、正常重开只读0调用与390px通过；5付费记录4完成／1失败，B失败与3620 tokens费用pending保留，完整分工仍未验证。 |

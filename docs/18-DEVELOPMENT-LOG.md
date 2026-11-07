@@ -99,3 +99,9 @@ S52 及以前的完整回执见[历史归档](archive/18-DEVELOPMENT-LOG-until-S
 - 复用腾讯现有nginx，仅将两个旧hostname的HTTPS网站虚拟主机改为HTTP410，禁止缓存与搜索索引；HTTP跳转、在用API、Yozi的8113入口、3002后端及DNS／Tunnel保持。`yozi.bot.cd` 的CNAME仍依赖 `exam.245334.xyz`，因此保留DNS兼容链。现有受保护文件事务 `84d6a8bb87b14fcab029e419b837c675` accepted、业务后检通过、独立观察者verified；原文件及元数据私存Mac，支持独立恢复。
 - 同一现有健康timer仅切换base URL至 `https://yozi.bot.cd/exam-master`，事务 `1cba0846fe3743969736becbc7fca518` accepted／verified，实际oneshot状态success、三项HTTP200／日志ok，timer仍active／enabled。首次前检因文本截取多带一个换行而未通过，生产文件未写入；改为读取原始字节后完成。源检查脚本同步当前端口3002及TLS校验，未重启后端。
 - 执行证据：原生事务 `nginx -t` 通过；证书校验开启的公网curl实测新官网首页200、标题「Yozi AI · 对话学习空间」、入口JS／CSS200、health为ok；受保护learning-models返回JSON401，共享API健康200；两个旧站的首页及health均410。`YOZI_ISOLATED_BUILD=1 npm test -- tests/unit/client-ip-nginx.spec.ts --maxWorkers=1` 3／3通过；文档链接与diff检查通过。主账户与数据未操作、0模型调用；S56及四项非阻塞待办沿用原结论，仅本地提交、不推送。
+
+## Repository residue cleanup — stopped (2026-11-06)
+
+- Inventory found 0 proven eligible files outside protected/current/recovery scope; 0 files / 0 bytes deleted, so no deletion backup or restore. Original v3/Muse/App/BYOK source and prior edits retained.
+- Existing gate suite: 7,281 passed / 6 skipped / 2 failed (auth-failure.spec.js:237 owner u1 instead of guest; learning-ui.spec.js:2627 timer 1 instead of 0); stopped without fixes/retries. Website source built and local live-output/v3 renders observed; retained 2.2.0 native app boot/saved cards observed, no new native study submission claimed.
+- Test app, browser tab and preview servers closed; task-generated duplicate build/cache removed, failure evidence retained. No push/deploy/App update. Full inventory, actual coverage and backup status: [cleanup result](../YOZI-REPO-CLEANUP-RESULT-2026-11-06.md).
