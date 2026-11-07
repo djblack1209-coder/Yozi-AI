@@ -213,6 +213,22 @@ describe('DeepSeek intake receipt and request recovery', () => {
     expect(calls).toHaveLength(count);
     expect(modelCalls()).toHaveLength(2);
   });
+  it('shows a provider outage and retries the saved intake answer', async () => {
+    await greeting();
+    queue.push({ success: false, code: 503, error: 'UPSTREAM_FAILED', upstreamStatus: 500, status: 'failed' });
+    await store.answerModelIntake('考研');
+    const turns = copy(store.state.intake.turns);
+    panel();
+    expect(wrapper.text()).toContain('模型供应商服务异常，原回答已保留');
+    expect(wrapper.text()).not.toContain('查询原请求');
+    queue.push(deepseekIntakeReceipt);
+    const retry = wrapper.findAllComponents({ name: 'BaseButton' }).find((button) => button.text() === '重新建档');
+    expect(retry).toBeDefined();
+    await retry.vm.$emit('tap');
+    await flushPromises();
+    expect(modelCalls().at(-1).intake.turns).toEqual(turns);
+    expect(store.state.intake.status).toBe('ready');
+  });
   it('ends a malformed cached result and rejects a receipt belonging to a different request', async () => {
     await greeting();
     queue.push({ success: false, code: 503 });
@@ -239,7 +255,9 @@ describe('DeepSeek intake receipt and request recovery', () => {
       await store.recoverModelIntake();
       expect(store.state.intake.finalFailure).toBe(true);
       panel();
-      expect(wrapper.text()).toContain('查询已结束');
+      expect(wrapper.text()).toContain('原回答已保留');
+      expect(wrapper.text()).toContain('重新建档');
+      expect(wrapper.text()).not.toContain('查询原请求');
       expect(wrapper.text()).toContain(store.state.intake.requestId);
       const count = calls.length;
       await store.recoverModelIntake();

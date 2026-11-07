@@ -118,6 +118,16 @@ it('shows running, success and failure feedback without exposing raw response te
   await wrapper.setProps({ state: { phase: 'failed', errorCode: 'KEY_INVALID' } });
   expect(wrapper.text()).toContain('密钥无效');
 });
+it.each([
+  ['UPSTREAM_FAILED', 500, '模型供应商服务异常'],
+  ['INVALID_RESPONSE', undefined, '模型供应商的回复格式无效']
+])('shows the provider cause while allowing a saved-answer retry for %s', (error, upstreamStatus, reason) => {
+  wrapper = mount(Feedback, {
+    props: { failure: { error, upstreamStatus, status: 'failed' }, state: { operation: 'requestCoach' } }
+  });
+  expect(wrapper.text()).toContain(`${reason}，原答已保留，可重新评估`);
+  expect(wrapper.get('button').text().trim()).toBe('重新评估');
+});
 
 describe('BYOK verification script with an in-memory transport only', () => {
   const env = {

@@ -37,6 +37,7 @@ defineEmits(['action']);
 const labels = {
   open_connectors: '打开 AI 连接器',
   query_result: '查询原请求',
+  retry_discovery: '重新读取型号',
   retry: '重新评估',
   manual_model: '手填型号'
 };

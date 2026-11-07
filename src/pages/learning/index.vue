@@ -4627,8 +4627,15 @@ onShow(() => {
   });
 });
 onHide(() => {
+  // WKWebView also fires this hook when another app covers the window.
+  const backgroundModelWork =
+    desktopHost &&
+    document.visibilityState === 'hidden' &&
+    window.location.hash.split('?')[0] === '#/pages/learning/index' &&
+    ((learning.busy && learning.reply?.kind === 'coach') ||
+      (learning.intakeBusy && learning.reply?.kind === 'intake'));
   try {
-    const leave = learningLeaveOperation(learning.state, learning.active?.id);
+    const leave = !backgroundModelWork && learningLeaveOperation(learning.state, learning.active?.id);
     if (leave) learning.commit(leave.type, leave.data, leave.id);
   } catch {
     // Locked/stale sessions do not write an observation or claim it was saved.
@@ -4652,8 +4659,10 @@ onHide(() => {
   materialToken.value = '';
   learning.localConnection = null;
   learning.materialConnection = null;
-  learning.sharingAllowed = false;
-  learning.cancel();
+  if (!backgroundModelWork) {
+    learning.sharingAllowed = false;
+    learning.cancel();
+  }
   learning.cancelMaterial();
   learning.cancelSync({ clearFeedback: true });
 });

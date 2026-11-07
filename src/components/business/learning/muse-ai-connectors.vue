@@ -250,9 +250,10 @@ const savedEndpoint = computed(() => connectionEndpoint(current.value?.saved?.en
 function connectionLabel(saved) {
   if (saved.requiresModelSelection) return '待选择型号';
   if (!saved.configured) return '待填写密钥';
-  if (saved.connectionStatus === 'failed') return modelErrorPresentation({ error: saved.lastError }).message;
-  if (!saved.requiresModelSelection && !(saved.capabilityCheck?.tools && saved.capabilityCheck?.structured))
-    return '教学能力待检查';
+  const teachingReady = saved.capabilityCheck?.tools && saved.capabilityCheck?.structured;
+  if (saved.connectionStatus === 'failed')
+    return modelErrorPresentation({ error: saved.lastError, savingModel: !teachingReady }).message;
+  if (!teachingReady) return '教学能力待检查';
   return { connected: '连接正常', stale: '需要重新测试', untested: '尚未测试' }[saved.connectionStatus] || '尚未测试';
 }
 function close() {
@@ -367,7 +368,7 @@ async function chooseModels() {
     const result = await learning.loadModelDiscovery({ profileId: id, refresh: true });
     if (context !== learning.recordContext() || current.value !== target) return;
     if (!result.success) {
-      failure.value = result;
+      failure.value = { ...result, discovery: true };
       manual.value = true;
       return;
     }
@@ -381,7 +382,7 @@ async function chooseModels() {
     }
   } catch (error) {
     if (context === learning.recordContext() && current.value === target) {
-      failure.value = { error: error.code || 'METADATA_UNAVAILABLE' };
+      failure.value = { error: error.code || 'METADATA_UNAVAILABLE', discovery: true };
       manual.value = true;
     }
   } finally {
@@ -394,7 +395,11 @@ async function saveSelectedModel() {
   const result = await perform(() =>
     learning.saveModel(profile({ model: draft.value.model.trim(), requiresModelSelection: false }), true)
   );
-  if (!result?.success || current.value !== target) return;
+  if (current.value !== target) return;
+  if (!result?.success) {
+    if (failure.value) failure.value = { ...failure.value, savingModel: true };
+    return;
+  }
   choosing.value = false;
   current.value = {
     ...target,
@@ -435,6 +440,7 @@ async function disconnect() {
   }
 }
 function errorAction(action) {
+  if (action.type === 'retry_discovery') return chooseModels();
   if (action.type === 'manual_model') {
     manual.value = true;
     choosing.value = true;

@@ -9,6 +9,8 @@ import {
   workflowRepairable
 } from './_shared/learning-workflow.js';
 import {
+  DEEPSEEK_PRO_INTAKE_TIMEOUT_MS,
+  isDeepSeekProByok,
   learningBudgetPhase,
   learningTimeout,
   coachVerificationBudget,
@@ -57,6 +59,8 @@ import {
   writingFeedbackContext,
   prepareWritingFeedbackModel,
   prepareCoachFeedbackModel,
+  deepSeekProWritingLimits,
+  writingVerificationTimeout,
   validateWritingFeedbackOutput,
   validateCoachSchema,
   decodeCoachResponse,
@@ -256,6 +260,29 @@ export function costFromUsage(usage: any, model: ModelConfig): number | null {
     return null;
   return (usage.prompt_tokens * model.inputPerMillion! + usage.completion_tokens * model.outputPerMillion!) / 1000000;
 }
+function failedWritingVerification(receipt: any, message: string, path: string) {
+  const failure = receipt?.failure;
+  const code = [
+    'TIMEOUT',
+    'CANCELLED',
+    'RATE_LIMITED',
+    'UPSTREAM_QUOTA',
+    'KEY_REJECTED',
+    'UPSTREAM_FAILED',
+    'INVALID_RESPONSE',
+    'NETWORK_FAILED',
+    'TLS_FAILED'
+  ].includes(failure)
+    ? failure
+    : 'COACH_INVALID';
+  return Object.assign(new ProviderError(code, message), {
+    path,
+    repairForbidden: true,
+    verificationIncomplete: true,
+    ...(Number.isInteger(receipt?.upstreamStatus) ? { upstreamStatus: receipt.upstreamStatus } : {})
+  });
+}
+
 export async function runLearningModelTask(
   ctx: any,
   options: {
@@ -462,12 +489,15 @@ export async function runLearningModelTask(
     if ((model as any).requiresModelSelection)
       return { code: 422, success: false, error: 'MODEL_SELECTION_REQUIRED', message: '请在 AI 连接器选择型号后保存' };
     const connectionVersion = modelConfigurationVersion(model);
+    const proIntake = intake && isDeepSeekProByok(model);
     model = { ...model, timeoutMs: learningTimeout(context) };
-    if (coach || intake) model = { ...model, timeoutMs: coach ? learningTimeout({ coach }) : 60000 };
+    if (coach) model = { ...model, timeoutMs: learningTimeout({ coach }) };
+    if (intake) model = { ...model, timeoutMs: proIntake ? DEEPSEEK_PRO_INTAKE_TIMEOUT_MS : 60000 };
     if (model.source === 'platform' && process.env.LEARNING_PLATFORM_CALLS_ENABLED !== 'true') {
       return { code: 503, success: false, error: 'NEEDS_CONNECTION', message: '请先在 AI 连接器接入自己的 API' };
     }
-    if (options.capabilityProbe) model = { ...model, capabilityProbe: options.capabilityProbe, timeoutMs: 30000 };
+    if (options.capabilityProbe)
+      model = { ...model, capabilityProbe: options.capabilityProbe, timeoutMs: isDeepSeekProByok(model) ? 60000 : 30000 };
     else if (
       model.source === 'byok' &&
       (!model.capabilityCheck || !model.capabilityCheck.tools || !model.capabilityCheck.structured)
@@ -544,8 +574,11 @@ export async function runLearningModelTask(
         timeoutMs: learningTimeout({ coach }),
         ...(!nativeCoachOutput ? { plainCoachRequest: body.requestId } : {})
       };
+    const proWritingLimits = deepSeekProWritingLimits(model);
+    if (proWritingLimits) model = { ...model, timeoutMs: proWritingLimits.initialMs };
     // 未具备宿主阶段绑定的旧适配器沿用60秒，不落到其普通30秒通道。
-    if (
+    else if (
+      !proIntake &&
       model.timeoutMs > 60000 &&
       !(
         model.writingOutput?.feedbackVersion === 2 &&
@@ -878,14 +911,14 @@ export async function runLearningModelTask(
     let verificationSources: any[] = [];
     const verify = async (verifier: any, verifierMessages: LearningMessage[]) => {
       // 混合摸底共用120秒；复核最多60秒且不超过初评后的剩余总额。
-      const verificationBudget = coachVerificationBudget({ coach });
+      const verificationBudget = proWritingLimits?.totalMs || coachVerificationBudget({ coach });
       const remaining = verificationBudget - (Date.now() - upstreamAt);
       if (remaining < 8000) throw new ProviderError('TIMEOUT', '复核时间不足，初评未采用');
       const verification = await callWithDevPaidFallback(
         (target, messages, targetOrigins) => {
           const left = verificationBudget - (Date.now() - upstreamAt);
           if (left < 8000) throw new ProviderError('TIMEOUT', '复核时间不足，初评未采用');
-          const ceiling = target.writingOutput?.contract === 'writing-error-verification-v2' ? 60000 : 30000;
+          const ceiling = writingVerificationTimeout(target);
           const deadline = new AbortController();
           const timer = setTimeout(
             () => deadline.abort(new ProviderError('TIMEOUT', '复核总时间已用尽，初评未采用')),
@@ -953,11 +986,7 @@ export async function runLearningModelTask(
         // Preserve known primary/verification usage without pretending the failed check cost nothing.
         if (verificationUsage)
           observedResponse.usage = { ...(response.usage || {}), verification: coachVerification.usage };
-        throw Object.assign(new ProviderError('COACH_INVALID', '批改复核未完成，初评未采用；原答已保留'), {
-          path: 'coachVerification',
-          repairForbidden: true,
-          verificationIncomplete: true
-        });
+        throw failedWritingVerification(coachVerification, '批改复核未完成，初评未采用；原答已保留', 'coachVerification');
       }
     }
     let probeOutput: any = null;
@@ -1020,11 +1049,7 @@ export async function runLearningModelTask(
       if (exerciseCalibration && verificationPaid) exerciseCalibration.sources = verificationSources;
       if (!exerciseCalibration || exerciseCalibration.status !== 'completed' || exerciseCalibration.passes !== 2) {
         if (verificationUsage) observedResponse.usage = { ...(response.usage || {}), calibration: verificationUsage };
-        throw Object.assign(new ProviderError('COACH_INVALID', '练习核对未完成，题目未下发；请稍后重试'), {
-          path: 'exerciseCalibration',
-          repairForbidden: true,
-          verificationIncomplete: true
-        });
+        throw failedWritingVerification(exerciseCalibration, '练习核对未完成，题目未下发；请稍后重试', 'exerciseCalibration');
       }
     }
     const output = redactModelValue(parsedOutput, model.apiKey);

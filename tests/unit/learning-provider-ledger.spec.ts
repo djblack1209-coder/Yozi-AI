@@ -355,6 +355,14 @@ it('received nonstream failures keep shape, usage and duration without reply or 
       }
       expect(JSON.stringify(error.observed)).not.toMatch(/private_fixture|fixture-private-key/);
     }
+    responseText = invalidContent;
+    const withoutDiagnostics = await callLearningProvider(config, [], ['https://model.example']).catch((e) => e);
+    expect(withoutDiagnostics).toMatchObject({
+      code: 'INVALID_RESPONSE',
+      observed: { actualModel: config.model, usage: { prompt_tokens: 12, completion_tokens: 9 } }
+    });
+    expect(withoutDiagnostics.observed).not.toHaveProperty('responseDiagnostics');
+    expect(JSON.stringify(withoutDiagnostics)).not.toContain('private_fixture_reasoning');
     // A received native-coach reply without the required tool must retain its
     // usage even when optional diagnostics are off; raw content stays absent.
     responseText = JSON.stringify({
@@ -382,10 +390,6 @@ it('received nonstream failures keep shape, usage and duration without reply or 
     });
     expect(toolFailure.observed).not.toHaveProperty('content');
     expect(JSON.stringify(toolFailure.observed)).not.toMatch(/private_fixture|fixture-private-key/);
-    responseText = invalidContent;
-    const unchanged = await callLearningProvider(config, [], ['https://model.example']).catch((e) => e);
-    expect(unchanged.code).toBe('INVALID_RESPONSE');
-    expect(unchanged.observed).toBeUndefined();
     responseStatus = 401;
     responseText = JSON.stringify({ error: { code: config.apiKey } });
     const rejected = await callLearningProvider(
@@ -415,7 +419,11 @@ it('received nonstream failures keep shape, usage and duration without reply or 
     responseText = invalidEnvelope;
     const timers = vi.spyOn(globalThis, 'setTimeout');
     try {
-      for (const [contract, requestedTimeout, binding, feedbackVersion, expectedTimeout] of [
+      const deepSeekPro = {
+        model: 'deepseek-v4-pro',
+        endpoint: 'https://api.deepseek.com/chat/completions'
+      };
+      for (const [contract, requestedTimeout, binding, feedbackVersion, expectedTimeout, connection] of [
         ['writing-error-verification-v2', 45000, null, null, 45000],
         ['writing-exercise-calibration-v3', 45000, null, null, 30000],
         ['ordinary-call', 45000, null, null, 30000],
@@ -423,24 +431,28 @@ it('received nonstream failures keep shape, usage and duration without reply or 
         ['kaoyan-writing-coach-v1', 90000, { kind: 'feedback', target: 'diagnostic' }, 2, 90000],
         ['kaoyan-writing-coach-v1', 110000, { kind: 'feedback', target: 'diagnostic' }, 2, 110000],
         ['kaoyan-writing-coach-v1', 90000, { kind: 'feedback', target: 'card-c1' }, 2, 30000],
-        ['kaoyan-writing-coach-v1', 90000, { kind: 'feedback', target: 'diagnostic' }, 1, 30000]
+        ['kaoyan-writing-coach-v1', 90000, { kind: 'feedback', target: 'diagnostic' }, 1, 30000],
+        ['kaoyan-writing-coach-v1', 110000, { kind: 'essay', target: 'essay' }, 2, 90000, deepSeekPro],
+        ['kaoyan-writing-coach-v1', 60000, { kind: 'feedback', target: 'paragraph-1' }, 2, 60000, deepSeekPro],
+        ['kaoyan-writing-coach-v1', 60000, { kind: 'essay', target: 'essay' }, 2, 60000, { ...deepSeekPro, model: 'deepseek-flash' }]
       ] as const) {
         timers.mockClear();
         await callLearningProvider(
           {
             ...config,
+            ...connection,
             timeoutMs: requestedTimeout,
             writingOutput: {
               contract,
               ...(binding ? { responseBinding: binding } : {}),
               ...(feedbackVersion ? { feedbackVersion } : {}),
-              inferencePolicy: 'native-coach-tools-v1',
+              inferencePolicy: connection ? 'native-coach-json-v1' : 'native-coach-tools-v1',
               schema: { type: 'object' },
               schemaDigest: 'fixture'
             }
           },
           [],
-          ['https://model.example']
+          [new URL(connection?.endpoint || config.endpoint).origin]
         ).catch(() => {});
         expect(timers.mock.calls.map((call) => call[1])).toContain(expectedTimeout);
       }

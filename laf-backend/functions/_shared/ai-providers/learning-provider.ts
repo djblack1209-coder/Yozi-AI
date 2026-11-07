@@ -1,4 +1,11 @@
-import { MODEL_TOOL_NAMES, learningTimeout } from '../learning-runtime-policy.js';
+import {
+  DEEPSEEK_PRO_ESSAY_TIMEOUT_MS,
+  DEEPSEEK_PRO_INTAKE_TIMEOUT_MS,
+  DEEPSEEK_PRO_WRITING_TOTAL_MS,
+  MODEL_TOOL_NAMES,
+  isDeepSeekProByok,
+  learningTimeout
+} from '../learning-runtime-policy.js';
 import { ENTRY_TOOL_NAMES, validateEntryCall, validateEntrySchema } from '../learning-entries.js';
 import { normalizeContentBlocks } from '../learning-content-blocks.js';
 import https from 'node:https';
@@ -1170,16 +1177,27 @@ export function syntaxAgreement(sentence: string, parse: any, note: string) {
   if (!valid) return { valid: false, agreed: false, claims: {} };
   // 笔记里的断言：主干/主句后的英文、以关系词开头的从句原文、「修饰X」、关系词作某词的某成分、是否非限制性。
   const claims: Record<string, boolean> = {};
-  const trunk = note.match(/(?:主干|主句)(?:是|为|[:：])?\s*([A-Za-z][A-Za-z' ,-]*)/u);
+  const trunk = note.match(
+    /(?:主干|主句)(?:是|为|[:：])?\s*([A-Za-z](?:[A-Za-z' ,-]|[（(]\s*(?:主句)?(?:主语|谓语|宾语|表语|补语|状语)\s*[）)])*)/u
+  );
   if (trunk) {
     // 删去形容词后 an 变 a 很常见，冠词不计入主干比对。
     const bare = (list: string[]) => list.filter((w) => !['a', 'an', 'the'].includes(w));
     const T = bare(words(trunk[1])),
       rest = bare(S.filter((_, i) => i < start || i >= end));
+    const subjectHead = words(parse.mainSubject).at(-1)!,
+      mainVerb = words(parse.mainVerb);
+    const labelsAgree = Array.from(
+      trunk[1].matchAll(/([A-Za-z][A-Za-z' ,-]*)[（(]\s*(?:主句)?(主语|谓语|宾语|表语|补语|状语)\s*[）)]/gu)
+    ).every(([, fragment, label]) => {
+      const part = words(fragment);
+      const subject = part.includes(subjectHead),
+        predicate = find(part, mainVerb).length > 0;
+      return subject === (label === '主语') && predicate === (label === '谓语');
+    });
     let k = 0;
     for (const w of rest) if (w === T[k]) k++;
-    claims.trunk =
-      k === T.length && T.includes(words(parse.mainSubject).at(-1)!) && find(T, words(parse.mainVerb)).length > 0;
+    claims.trunk = k === T.length && T.includes(subjectHead) && find(T, mainVerb).length > 0 && labelsAgree;
   }
   const after = trunk ? note.slice(trunk.index! + trunk[0].length) : note;
   const quoted = after.match(new RegExp(`(?<![A-Za-z])${pronoun}(?![A-Za-z])[A-Za-z' ,-]*`, 'iu'));
@@ -1189,12 +1207,19 @@ export function syntaxAgreement(sentence: string, parse: any, note: string) {
       .slice(0, m.index)
       .split(/[。；;\n]/u)
       .at(-1)!;
-    // A separately named phrase modifier or frequency adverb is not an assertion about this relative clause.
+    const modifier = block.trim().match(/(?:^|[^A-Za-z])([A-Za-z]+)$/u)?.[1]?.toLowerCase();
+    const mainClauseAdverb = modifier?.endsWith('ly') && outside([modifier]).length > 0;
+    const pair = block.match(/(?:^|[^A-Za-z])([A-Za-z]+)\s*(?:和|与|\band\b)\s*([A-Za-z]+)\s*$/iu);
+    const mainClauseAdjectives =
+      pair && outside([pair[1].toLowerCase(), 'and', pair[2].toLowerCase(), ...words(m[1])]).length > 0;
+    // Named modifiers outside the relative clause are separate claims.
     // Keep unqualified legacy "修饰X" claims, and still check any explicit relative-clause claim.
     if (
-      /(?:过去|现在)?分词(?:短语)?|介词短语|不定式短语|副词(?:短语)?|(?:时间|地点|方式|频率)状语|(?<![A-Za-z])(?:often|usually|always|sometimes|never|rarely|seldom)\s*$/iu.test(
-        block
-      ) &&
+      (mainClauseAdverb ||
+        mainClauseAdjectives ||
+        /(?:过去|现在)?分词(?:短语)?|介词短语|不定式短语|副词(?:短语)?|(?:时间|地点|方式|频率)状语|(?<![A-Za-z])(?:often|usually|always|sometimes|never|rarely|seldom)\s*$/iu.test(
+          block
+        )) &&
       !/定语从句|该从句/u.test(block) &&
       !new RegExp(`(?<![A-Za-z])${pronoun}(?![A-Za-z])`, 'iu').test(block)
     )
@@ -1292,7 +1317,7 @@ async function askVerifierTwice<T>(ask: () => Promise<T>, malformed: string) {
       failure = error?.code || malformed;
       failurePath = typeof error?.path === 'string' ? error.path.slice(0, 160) : null;
       if (failure !== 'COACH_INVALID' && failure !== malformed)
-        return { value: null, attempts: attempt, failure, failurePath };
+        return { value: null, attempts: attempt, failure, failurePath, upstreamStatus: error.upstreamStatus };
     }
   }
   return { value: null, attempts: 2, failure, failurePath };
@@ -1528,6 +1553,7 @@ export async function verifyCoachErrors(
         status: 'failed',
         checked,
         failure: asked.failure,
+        ...(asked.upstreamStatus ? { upstreamStatus: asked.upstreamStatus } : {}),
         ...(asked.failurePath ? { failurePath: asked.failurePath } : {}),
         attempts: asked.attempts,
         reviews: []
@@ -1916,6 +1942,7 @@ export async function calibrateCoachExercises(
       status: 'failed',
       checked: blanks.length,
       failure: first.failure,
+      ...(first.upstreamStatus ? { upstreamStatus: first.upstreamStatus } : {}),
       ...(first.failurePath ? { failurePath: first.failurePath } : {}),
       attempts: first.attempts
     };
@@ -1943,6 +1970,7 @@ export async function calibrateCoachExercises(
       passes: 1,
       attempts,
       failure: second.failure,
+      ...(second.upstreamStatus ? { upstreamStatus: second.upstreamStatus } : {}),
       ...(second.failurePath ? { failurePath: second.failurePath } : {})
     };
   // 复核员逐个判过的候选词里，判为能填的才计数。只让它自由列词时常常只列一个，开放空被当成固定搭配放行。
@@ -2302,6 +2330,32 @@ export function learningResponseShape(raw: any) {
   }
   return shape;
 }
+export function writingVerificationTimeout(config: ModelConfig) {
+  const contract = config.writingOutput?.contract;
+  return contract === 'writing-error-verification-v2' ||
+    (contract === 'writing-exercise-calibration-v3' && isDeepSeekProByok(config))
+    ? 60000
+    : 30000;
+}
+
+export function deepSeekProWritingLimits(config: ModelConfig) {
+  const output = config.writingOutput;
+  const binding = output?.responseBinding;
+  if (
+    !isDeepSeekProByok(config) ||
+    output?.contract !== WRITING_COACH_CONTRACT ||
+    output.inferencePolicy !== 'native-coach-json-v1' ||
+    !binding ||
+    binding.kind !== binding.target
+  )
+    return null;
+  if (binding.kind === 'essay')
+    return { initialMs: DEEPSEEK_PRO_ESSAY_TIMEOUT_MS, totalMs: DEEPSEEK_PRO_WRITING_TOTAL_MS };
+  if (output.responseMode === 'generation' && ['diagnostic', 'daily'].includes(binding.kind))
+    return { initialMs: 60000, totalMs: DEEPSEEK_PRO_WRITING_TOTAL_MS };
+  return null;
+}
+
 export async function callLearningProvider(
   config: ModelConfig,
   messages: LearningMessage[],
@@ -2342,11 +2396,15 @@ export async function callLearningProvider(
     config.writingOutput.feedbackVersion === 2 &&
     config.writingOutput.responseBinding?.kind === 'feedback' &&
     config.writingOutput.responseBinding.target === 'diagnostic';
-  const ceiling = mixedInitial
-    ? learningTimeout({ coach: { phase: 'feedback', target: 'diagnostic', feedbackVersion: 2 } })
-    : config.timeoutMs === 60000 || config.writingOutput?.contract === 'writing-error-verification-v2'
-      ? 60000
-      : 30000;
+  const ceiling =
+    deepSeekProWritingLimits(config)?.initialMs ||
+    (config.timeoutMs === DEEPSEEK_PRO_INTAKE_TIMEOUT_MS && isDeepSeekProByok(config)
+      ? DEEPSEEK_PRO_INTAKE_TIMEOUT_MS
+      : mixedInitial
+      ? learningTimeout({ coach: { phase: 'feedback', target: 'diagnostic', feedbackVersion: 2 } })
+      : config.timeoutMs === 60000
+        ? 60000
+        : writingVerificationTimeout(config));
   const timeoutMs = Math.min(ceiling, Math.max(5000, config.timeoutMs || 30000));
   const traceSafeModel =
     DEV_TEST &&
@@ -2604,6 +2662,18 @@ export async function callLearningProvider(
       error.observed = redactModelValue({ ...observed, durationMs: Date.now() - started }, config.apiKey);
     throw error;
   });
+  const receivedError = (error: ProviderError) => {
+    error.observed = redactModelValue(
+      {
+        ...(observed || {}),
+        usage: raw?.usage || null,
+        actualModel: typeof raw?.model === 'string' ? raw.model : config.model,
+        durationMs: Date.now() - started
+      },
+      config.apiKey
+    );
+    return error;
+  };
   if (config.capabilityProbe?.stage === 'tool') {
     const calls = raw?.choices?.[0]?.message?.tool_calls;
     const call = calls?.[0];
@@ -2623,7 +2693,7 @@ export async function callLearningProvider(
       argumentsValue?.nonce !== config.capabilityProbe.nonce ||
       Object.keys(argumentsValue).length !== 1
     )
-      throw new ProviderError('TOOLS_UNSUPPORTED', '此型号未完成工具调用测试，不能进入教学');
+      throw receivedError(new ProviderError('TOOLS_UNSUPPORTED', '此型号未完成工具调用测试，不能进入教学'));
     return {
       content: JSON.stringify(argumentsValue),
       capabilityToolCall: call,
@@ -2639,16 +2709,7 @@ export async function callLearningProvider(
   } catch (error: any) {
     // An HTTP response can arrive without the required teaching tool. Preserve
     // its usage so the bounded repair is billed and the failed result stays empty.
-    error.observed = redactModelValue(
-      {
-        ...(observed || {}),
-        usage: raw?.usage || null,
-        actualModel: typeof raw?.model === 'string' ? raw.model : config.model,
-        durationMs: Date.now() - started
-      },
-      config.apiKey
-    );
-    throw error;
+    throw receivedError(error);
   }
   const content = stream ? raw.content : (functionContent ?? raw?.choices?.[0]?.message?.content);
   if (typeof content !== 'string' || !content.trim() || content.length > 30000) {
@@ -2658,9 +2719,8 @@ export async function callLearningProvider(
         expectedType: 'string',
         actualType: observed.responseDiagnostics.contentType
       });
-      error.observed = redactModelValue({ ...observed, durationMs: Date.now() - started }, config.apiKey);
     }
-    throw error;
+    throw receivedError(error);
   }
   // 原始 usage 保存全部账单字段；无法确认用量时保持 pending，不按零成本结算。
   const usage = raw.usage && typeof raw.usage === 'object' ? raw.usage : null;

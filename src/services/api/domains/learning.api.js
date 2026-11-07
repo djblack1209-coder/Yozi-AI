@@ -2,7 +2,12 @@ import config from '../../../config/index.js';
 import { captureSession, sessionForRequest } from '../../auth-storage.js';
 import { generateLearningTurnStream } from '../../learning/learning-stream.js';
 import { reportAuthenticationFailure, isAuthenticationFailure } from '../../auth-failure.js';
-import { coachVerificationBudget } from '../../../../laf-backend/functions/_shared/learning-runtime-policy.js';
+import {
+  DEEPSEEK_PRO_INTAKE_TIMEOUT_MS,
+  DEEPSEEK_PRO_WRITING_TOTAL_MS,
+  coachVerificationBudget,
+  isDeepSeekProByok
+} from '../../../../laf-backend/functions/_shared/learning-runtime-policy.js';
 
 export const learningModelDiscoveryEnabled = () => true;
 const discoveryDisabled = () => ({ success: false, code: 503, errorCode: 'DISCOVERY_DISABLED' });
@@ -54,20 +59,21 @@ export function learningRequest(path, body, options = {}) {
       return resolve(failure(error));
     }
     if (!snapshot.token) return finish({ success: false, code: 401, message: '登录后可连接云模型；本地学习无需登录' });
-    const token = snapshot.token;
+    const coach = body.learningContext?.coach;
+    const intake = body.learningContext?.intake || body.intake;
+    const proTurn = path === '/proxy-ai' && isDeepSeekProByok(options.model);
+    let timeout = coach || body.intake || body.feedbackAttemptId ? 70000 : 65000;
+    if (path === '/learning-models' && ['save', 'test'].includes(body.action)) timeout = 130000;
+    else if (proTurn && intake) timeout = DEEPSEEK_PRO_INTAKE_TIMEOUT_MS + 5000;
+    else if (proTurn && coach && coach.phase === coach.target && ['essay', 'diagnostic', 'daily'].includes(coach.phase))
+      timeout = DEEPSEEK_PRO_WRITING_TOTAL_MS + 5000;
+    else if (coachVerificationBudget(body.learningContext) > 65000) timeout = 125000;
     const task = uni.request({
       url: `${config.api.baseUrl}${path}`,
       method: 'POST',
       data: body,
-      timeout:
-        path === '/learning-models' && ['save', 'test'].includes(body.action)
-          ? 130000
-          : coachVerificationBudget(body.learningContext) > 65000
-            ? 125000
-            : body.learningContext?.coach || body.intake || body.feedbackAttemptId
-              ? 70000
-              : 65000,
-      header: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      timeout,
+      header: { Authorization: `Bearer ${snapshot.token}`, 'Content-Type': 'application/json' },
       success: (res) =>
         finish(
           res.data && typeof res.data === 'object'

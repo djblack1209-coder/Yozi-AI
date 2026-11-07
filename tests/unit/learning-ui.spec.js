@@ -1928,6 +1928,39 @@ describe('模型读取的页内状态与离开保护', () => {
       transport.mockRestore();
     }
   });
+  it('桌面窗口暂时隐藏时保留在途带练，离开学习页仍取消并清除共享', async () => {
+    vi.stubGlobal('__YOZI_DESKTOP__', true);
+    const native = Object.getOwnPropertyDescriptor(window, '__TAURI_INTERNALS__');
+    Object.defineProperty(window, '__TAURI_INTERNALS__', { configurable: true, value: { invoke: vi.fn() } });
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    const oldUrl = location.href;
+    history.replaceState(null, '', '#/pages/learning/index');
+    const { transport, store, wrapper } = page();
+    const cancel = vi.spyOn(store, 'cancel');
+    try {
+      await flushPromises();
+      store.sharingAllowed = true;
+      store.busy = true;
+      store.reply = { kind: 'coach', pending: true };
+      loadHooks.hideCallbacks.at(-1)();
+      expect(cancel).not.toHaveBeenCalled();
+      expect(store.sharingAllowed).toBe(true);
+      history.replaceState(null, '', '#/pages/profile/index');
+      loadHooks.hideCallbacks.at(-1)();
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(store.sharingAllowed).toBe(false);
+    } finally {
+      wrapper.unmount();
+      store.$dispose();
+      cancel.mockRestore();
+      transport.mockRestore();
+      visibility.mockRestore();
+      history.replaceState(null, '', oldUrl);
+      if (native) Object.defineProperty(window, '__TAURI_INTERNALS__', native);
+      else delete window.__TAURI_INTERNALS__;
+      vi.unstubAllGlobals();
+    }
+  });
   it('未登录就近提供登录入口，记录返回模型面板的位置且不发起模型请求', async () => {
     const { requests, transport, store, wrapper } = page();
     try {

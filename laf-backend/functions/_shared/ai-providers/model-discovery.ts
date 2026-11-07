@@ -239,7 +239,7 @@ async function readJson(response: MetadataResponse, controller: AbortController)
     if (response.status !== 200)
       fail(
         response.status === 429
-          ? 'RATE_LIMITED'
+          ? 'DISCOVERY_UPSTREAM_RATE_LIMITED'
           : response.status === 401 || response.status === 403
             ? 'DISCOVERY_AUTH_REJECTED'
             : [404, 405, 410, 501].includes(response.status)
@@ -275,7 +275,7 @@ async function readJson(response: MetadataResponse, controller: AbortController)
 type Resource = {
   scope: string;
   value?: any;
-  failed?: boolean;
+  errorCode?: string;
   refreshAfter: number;
   promise?: Promise<any>;
   controller?: AbortController;
@@ -292,7 +292,8 @@ export function createModelDiscovery(deps: Dependencies) {
         key,
         scope: value.scope,
         value: value.value,
-        failed: value.failed,
+        // Reserve room for the longest bounded error while retaining a stale snapshot.
+        errorCode: 'DISCOVERY_UPSTREAM_RATE_LIMITED',
         refreshAfter: value.refreshAfter,
         consumers: value.consumers
       })
@@ -383,11 +384,20 @@ export function createModelDiscovery(deps: Dependencies) {
       if (state) touch(key, state);
       if (!body.refresh)
         return state?.value
-          ? { success: true, code: 0, data: publicValue(state.value, state.failed) }
+          ? { success: true, code: 0, data: publicValue(state.value, Boolean(state.errorCode)) }
           : { success: false, code: 503, errorCode: 'METADATA_UNAVAILABLE' };
       if (!state?.promise) {
-        if ([...resources.values()].some((item) => item.scope === scope && item.refreshAfter > now()))
-          fail('RATE_LIMITED');
+        if ([...resources.values()].some((item) => item.scope === scope && item.refreshAfter > now())) {
+          // Reopening the picker during cooldown can use the same configuration's fresh directory.
+          const cached = state?.value && publicValue(state.value, Boolean(state.errorCode));
+          if (cached?.cacheState === 'fresh') return { success: true, code: 0, data: cached };
+          return {
+            success: false,
+            code: 503,
+            errorCode: state?.errorCode || 'DISCOVERY_COOLDOWN',
+            ...(cached ? { data: cached } : {})
+          };
+        }
         if (!deps.readCredential) fail('UNSUPPORTED_DISCOVERY_AUTH');
         state ||= { scope, refreshAfter: 0, consumers: 0 };
         state.refreshAfter = now() + DISCOVERY_LIMITS.cooldownMs;
@@ -444,10 +454,10 @@ export function createModelDiscovery(deps: Dependencies) {
               current!.configured !== profile!.configured
             )
               fail('CONTEXT_CHANGED');
-            const next = { ...entry, value: mapped, failed: false };
+            const next = { ...entry, value: mapped, errorCode: undefined };
             if (!fit(key, next)) fail('METADATA_LIMIT');
             entry.value = mapped;
-            entry.failed = false;
+            entry.errorCode = undefined;
             return { success: true, code: 0, data: publicValue(mapped) };
           } catch (error) {
             const errorCode =
@@ -458,7 +468,7 @@ export function createModelDiscovery(deps: Dependencies) {
                   : 'METADATA_UNAVAILABLE';
             // Invalidate the snapshot without dropping this profile's refresh cooldown.
             if (errorCode === 'CONTEXT_CHANGED') entry.value = undefined;
-            entry.failed = true;
+            entry.errorCode = errorCode;
             entry.refreshAfter = Math.max(entry.refreshAfter, now() + DISCOVERY_LIMITS.cooldownMs);
             return {
               success: false,

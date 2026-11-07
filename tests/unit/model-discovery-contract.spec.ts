@@ -209,11 +209,12 @@ describe('默认关闭discover与只读owner投影离线接缝', () => {
       availability: 'listed',
       contextWindowTokens: 10000
     });
+    expect(await f.discover(runtime.owner, body(), true)).toEqual(cached);
     expect(f.fetcher).toHaveBeenCalledTimes(1);
     expect((await f.discover('other-owner', body({ refresh: false }), true)).success).toBe(false);
     f.state.version++;
     expect((await f.discover(runtime.owner, body({ refresh: false }), true)).success).toBe(false);
-    expect((await f.discover(runtime.owner, body(), true)).errorCode).toBe('RATE_LIMITED');
+    expect((await f.discover(runtime.owner, body(), true)).errorCode).toBe('DISCOVERY_COOLDOWN');
     f.state.clock += 60001;
     expect((await f.discover(runtime.owner, body(), true)).success).toBe(true);
     expect(f.fetcher).toHaveBeenCalledTimes(2);
@@ -236,7 +237,7 @@ describe('默认关闭discover与只读owner投影离线接缝', () => {
     release(response(payload()));
     expect(await pending).toMatchObject({ success: false, errorCode: 'CONTEXT_CHANGED' });
     expect(await f.discover(runtime.owner, body({ refresh: false }), true)).not.toHaveProperty('data');
-    expect((await f.discover(runtime.owner, body(), true)).errorCode).toBe('RATE_LIMITED');
+    expect((await f.discover(runtime.owner, body(), true)).errorCode).toBe('DISCOVERY_COOLDOWN');
   });
 
   it('拒绝跳转／非JSON／压缩，流式到2MiB中止且不跟随外部URL', async () => {
@@ -271,11 +272,18 @@ describe('默认关闭discover与只读owner投影离线接缝', () => {
   });
 
   it('401/403不重试，404/410不换资源，429冷却，网络失败旧快照为stale', async () => {
-    for (const status of [401, 403, 404, 410, 429]) {
+    for (const [status, errorCode] of [
+      [401, 'DISCOVERY_AUTH_REJECTED'],
+      [403, 'DISCOVERY_AUTH_REJECTED'],
+      [404, 'UNSUPPORTED_DISCOVERY'],
+      [410, 'UNSUPPORTED_DISCOVERY'],
+      [429, 'DISCOVERY_UPSTREAM_RATE_LIMITED']
+    ] as const) {
       const f = fixture();
       f.state.status = status;
-      expect((await f.discover(runtime.owner, body(), true)).success).toBe(false);
-      expect((await f.discover(runtime.owner, body(), true)).errorCode).toBe('RATE_LIMITED');
+      const first = await f.discover(runtime.owner, body(), true);
+      expect(first).toMatchObject({ success: false, errorCode });
+      expect(await f.discover(runtime.owner, body(), true)).toEqual(first);
       expect(f.fetcher).toHaveBeenCalledTimes(1);
     }
     const f = fixture();
@@ -346,7 +354,7 @@ describe('默认关闭discover与只读owner投影离线接缝', () => {
     late(discarded);
     await Promise.resolve();
     expect(await stopped.discover(runtime.owner, body({ refresh: false }), true)).not.toHaveProperty('data');
-    expect((await stopped.discover(runtime.owner, body(), true)).errorCode).toBe('RATE_LIMITED');
+    expect((await stopped.discover(runtime.owner, body(), true)).errorCode).toBe('CONTEXT_CHANGED');
   });
 });
 

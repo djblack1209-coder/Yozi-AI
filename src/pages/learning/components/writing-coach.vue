@@ -92,7 +92,7 @@
     <MuseModelControl @connect="openConnections" />
     <MuseModelFeedback
       :failure="modelFailure"
-      :state="learning.retryState"
+      :state="coachModelFeedbackState"
       :busy="learning.busy || learning.intakeBusy"
       @action="handleModelAction"
     />
@@ -704,6 +704,7 @@
           modelErrorPresentation({
             error: learning.retryState?.errorCode,
             status: learning.retryState?.status,
+            upstreamStatus: learning.retryState?.upstreamStatus,
             retryAllowed: true
           }).message
         }}</text></BaseCard
@@ -1035,6 +1036,11 @@ const usesModelIntake = computed(
       learning.modelIntakeContract === MODEL_INTAKE_V2_CONTRACT ||
       learning.state.intake?.contract === MODEL_INTAKE_V2_CONTRACT)
 );
+const coachModelFeedbackState = computed(() => {
+  const state = learning.retryState;
+  if (usesModelIntake.value && ['recoverModelIntake', 'restartModelIntake'].includes(state?.operation)) return;
+  return state;
+});
 const composerDraft = computed({
   get: () => (answerTarget.value?.kind === 'foundation' ? profile.foundation : coach.value ? answer.value : goal.value),
   set: (value) => {

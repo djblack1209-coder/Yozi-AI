@@ -11,6 +11,19 @@ export const MODEL_TOOL_NAMES = Object.freeze([
   'entry.aggregate'
 ]);
 export const LEARNING_BUDGET_PHASES = Object.freeze(['diagnostic', 'practice', 'writing', 'review', 'ideas']);
+export const DEEPSEEK_PRO_ESSAY_TIMEOUT_MS = 90000;
+export const DEEPSEEK_PRO_INTAKE_TIMEOUT_MS = 90000;
+export const DEEPSEEK_PRO_WRITING_TOTAL_MS = 110000;
+
+export function isDeepSeekProByok(config) {
+  return (
+    config?.source === 'byok' &&
+    config.model === 'deepseek-v4-pro' &&
+    typeof config.endpoint === 'string' &&
+    config.endpoint.startsWith('https://api.deepseek.com/')
+  );
+}
+
 export function learningBudgetPhase(context = {}) {
   const request = context.coach;
   if (context.ideas) return 'ideas';

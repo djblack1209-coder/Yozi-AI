@@ -697,7 +697,7 @@ it('评估未知时仅查询，确认失败后次日点击重新评估才调用�
     const retryAction = vi.spyOn(store, 'requestCoach');
     wrapper = mount(WritingCoach, { global: { stubs: { BaseIcon: true, PrivacyPopup: true } } });
     await flushPromises();
-    expect(wrapper.get('[role="alert"]').text()).toContain('原请求已失败，原答已保留，可重新评估');
+    expect(wrapper.get('[role="alert"]').text()).toContain('模型响应超时，原答已保留，可重新评估');
     expect(wrapper.findAll('button').some((button) => button.text().trim() === '查询原请求')).toBe(false);
     await wrapper
       .findAll('button')

@@ -35,6 +35,7 @@ export function modelErrorPresentation(input = {}) {
     QUOTA_EXHAUSTED: ['可用额度已用尽，请检查用量或手动切换连接', connector],
     TIMEOUT: ['响应超时，原答已保留，请先查询原请求', { type: 'query_result' }],
     NETWORK_OR_TLS: ['网络或安全连接失败，请先查询原请求', { type: 'query_result' }],
+    INVALID_RESPONSE: ['模型供应商的回复格式无效，请先查询原请求', { type: 'query_result' }],
     ADDRESS_INVALID: ['API 地址不合法或未获允许，请检查连接', connector],
     COACH_INVALID: ['回复校验未通过，原答已保留，可重新评估', { type: 'retry' }],
     COST_PENDING: ['用量待确认，请先查询原请求', { type: 'query_result' }],
@@ -45,9 +46,30 @@ export function modelErrorPresentation(input = {}) {
     UNSUPPORTED_DISCOVERY: ['供应商不支持读取型号，请手填型号', { type: 'manual_model' }]
   };
   const pending = typeof input === 'object' && ['reserved', 'pending'].includes(input.status);
+  const retryReason = {
+    TIMEOUT: '模型响应超时',
+    INVALID_RESPONSE: '模型供应商的回复格式无效',
+    RATE_LIMITED: input.upstreamStatus === 429 ? '模型供应商限流' : '请求太频繁',
+    NETWORK_OR_TLS: input.upstreamStatus >= 500 ? '模型供应商服务异常' : '模型连接失败'
+  }[code];
   let [message, action] = pending
     ? ['原请求仍在处理，请查询结果', { type: 'query_result' }]
     : messages[code] || ['请求未完成，原答已保留，请先查询原请求', { type: 'query_result' }];
+  if (input.discovery && action?.type === 'query_result') {
+    message =
+      {
+        DISCOVERY_COOLDOWN: '型号读取间隔太短，请稍后重试',
+        DISCOVERY_UPSTREAM_RATE_LIMITED: '模型供应商限制了型号读取，请稍后重试',
+        RATE_LIMITED: '型号读取次数过多，请稍后重试',
+        TIMEOUT: '模型供应商的型号列表响应超时',
+        NETWORK_OR_TLS: '无法安全读取模型供应商的型号列表'
+      }[code] || '暂时无法读取型号';
+    action = { type: 'retry_discovery' };
+  }
+  if (input.savingModel && !pending && action?.type === 'query_result') {
+    message = `${retryReason || '连接检查未完成'}，请重试`;
+    action = null;
+  }
   if (
     typeof input === 'object' &&
     input.retryAllowed === true &&
@@ -55,7 +77,8 @@ export function modelErrorPresentation(input = {}) {
     action?.type === 'query_result' &&
     code !== 'COST_PENDING'
   ) {
-    message = `原请求已${input.status === 'cancelled' ? '取消' : '失败'}，原答已保留，可重新评估`;
+    const reason = input.status === 'cancelled' ? '原请求已取消' : retryReason || '原请求已失败';
+    message = input.intake ? `${reason}，原回答已保留，可重新建档` : `${reason}，原答已保留，可重新评估`;
     action = { type: 'retry' };
   }
   return { code, message, action };

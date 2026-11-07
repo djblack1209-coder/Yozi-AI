@@ -2050,6 +2050,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
         expectedOwner: owner,
         signal: requestController.signal,
         assertCurrent,
+        model: models.value.find((item) => item.id === request.modelId),
         stream: streamEnabled.value,
         onPreview: (text) => {
           assertCurrent();
@@ -2096,6 +2097,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           requestId: request.id,
           status: result.status,
           errorCode: result.error || result.errorCode || String(result.code),
+          upstreamStatus: result.upstreamStatus,
           message: modelErrorPresentation({ ...result, retryAllowed: true }).message
         };
         coachError.value =
@@ -4601,6 +4603,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
                 },
                 {
                   ...options,
+                  model: models.value.find((item) => item.id === id),
                   signal: globalThis.AbortSignal.any([options.signal, control.signal])
                 }
               )
@@ -4677,7 +4680,11 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     if ([failure?.code, failure?.error].includes('INTAKE_INVALID'))
       return '模型回复格式不完整，未采用该回复。可重新建档；原回答已保留，请用请求编号反馈问题。';
     if ([404, 410].includes(failure?.code)) return '原请求没有可恢复的回复，查询已结束。可重新建档；原回答已保留。';
-    if (final) return '原请求已失败或取消，查询已结束。可查看模型用量后重新建档；原回答已保留。';
+    if (final) {
+      const feedback = modelErrorPresentation({ ...failure, retryAllowed: true, intake: true });
+      if (feedback.action?.type === 'retry') return feedback.message;
+      return '原请求已失败，原回答已保留，可重新建档。';
+    }
     if (failure?.status === 'reserved') return '模型仍在处理，可稍后查询原请求；查询不会再次调用模型。';
     return `${publicError(failure)} 可查询原请求，查询不会再次调用模型。`;
   }

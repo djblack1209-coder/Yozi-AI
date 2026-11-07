@@ -248,17 +248,26 @@ describe('模型列表与用量读取的实际请求生命周期', () => {
       cost: { spent: 0, reserved: 0, pending: 0 }
     }
   };
+  const deepSeekPro = {
+    source: 'byok',
+    model: 'deepseek-v4-pro',
+    endpoint: 'https://api.deepseek.com/chat/completions'
+  };
   it.each([
-    [{ phase: 'feedback', target: 'diagnostic', feedbackVersion: 2 }, 125000],
-    [{ phase: 'feedback', target: 'card-c1', feedbackVersion: 2 }, 70000],
-    [{ phase: 'diagnostic', target: 'diagnostic', feedbackVersion: 2 }, 70000]
-  ])('实际请求等待与当前教练阶段一致：%j', async (coach, timeout) => {
+    [{ coach: { phase: 'feedback', target: 'diagnostic', feedbackVersion: 2 } }, 125000],
+    [{ coach: { phase: 'feedback', target: 'card-c1', feedbackVersion: 2 } }, 70000],
+    [{ coach: { phase: 'diagnostic', target: 'diagnostic' } }, 70000],
+    [{ coach: { phase: 'diagnostic', target: 'diagnostic' } }, 115000, deepSeekPro],
+    [{ coach: { phase: 'essay', target: 'essay' } }, 70000, { ...deepSeekPro, endpoint: 'https://example.test/v1' }],
+    [{ intake: { turns: [] } }, 95000, deepSeekPro],
+    [{ intake: { turns: [] } }, 65000, { ...deepSeekPro, model: 'deepseek-flash' }]
+  ])('实际请求等待与当前学习阶段及模型一致：%j', async (learningContext, timeout, model) => {
     const pending = requests();
     const { learningRequest } = await import('@/services/api/domains/learning.api.js');
     const reading = learningRequest(
       '/proxy-ai',
-      { learningContext: { coach } },
-      { session: captureSession(), expectedOwner: 'synthetic-crosswindow-owner' }
+      { learningContext },
+      { session: captureSession(), expectedOwner: 'synthetic-crosswindow-owner', model }
     );
     expect(pending).toHaveLength(1);
     expect(pending[0].timeout).toBe(timeout);

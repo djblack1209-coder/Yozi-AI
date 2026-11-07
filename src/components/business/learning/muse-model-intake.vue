@@ -182,7 +182,7 @@ async function act(action) {
     operation = learning.reply?.operationId !== previous ? learning.reply?.operationId : null;
     const result = await pending;
     if (!current()) return result;
-    if (result?.success === false) failure.value = result;
+    if (result?.success === false && !learning.intakeError) failure.value = result;
     return result;
   } catch (failure) {
     if (!current()) return;
