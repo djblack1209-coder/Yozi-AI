@@ -2560,12 +2560,14 @@ it.each(['calibrated', 'bad-then-good', 'bad-twice', 'verifier-fails', 'second-r
     expect(blanks.map((blank: any) => blank.task)).toEqual(english.slice(0, 3));
     if (mode === 'verifier-fails' || mode === 'second-rate-limited') {
       expect([generations, calibrations]).toEqual([1, 2]);
-      expect(result).toMatchObject({ success: false, error: 'COACH_INVALID' });
+      const errorCode = mode === 'second-rate-limited' ? 'RATE_LIMITED' : 'COACH_INVALID';
+      expect(result).toMatchObject({ success: false, error: errorCode });
       expect(result).not.toHaveProperty('data.coach');
       const ledger = [...mock.rows.values()].find((row: any) => row.user_id === 'u1' && row.calls);
       expect(ledger.calls).toHaveLength(1);
       expect(ledger.calls[0]).toMatchObject({
         status: 'failed',
+        errorCode,
         result: null,
         actualCost: null,
         costStatus: 'pending'
@@ -2729,7 +2731,8 @@ it.each(['timeout', 'bad-json'])('批改复核失败不保存初评或自动追�
     learningContext: { owner: 'u1', coach: mixedDiagnosticRequest() }
   };
   const result = await ai(context(body));
-  expect(result).toMatchObject({ success: false, error: 'COACH_INVALID' });
+  const errorCode = mode === 'timeout' ? 'TIMEOUT' : 'COACH_INVALID';
+  expect(result).toMatchObject({ success: false, error: errorCode });
   expect(result).not.toHaveProperty('data.coach');
   expect(result).not.toHaveProperty('repairRequestId');
   expect(checks).toBe(mode === 'timeout' ? 1 : 2);
@@ -2737,6 +2740,7 @@ it.each(['timeout', 'bad-json'])('批改复核失败不保存初评或自动追�
   expect(ledger.calls).toHaveLength(1);
   expect(ledger.calls[0]).toMatchObject({
     status: 'failed',
+    errorCode,
     result: null,
     actualCost: null,
     costStatus: 'pending',
