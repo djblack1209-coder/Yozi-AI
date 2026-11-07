@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { legalFooterLinks } from "./legal.mjs";
 
 const source = (name) => readFileSync(new URL(name, import.meta.url), "utf8");
 export const download = "Yozi-AI-2.2.0-macOS-arm64.zip";
@@ -410,6 +411,7 @@ export function renderHome(lang = "zh", root = false) {
       ["由提供方按用量计费", "provider bills for usage"],
     ]),
     archive: `/downloads/${download}`,
+    legalLinks: legalFooterLinks(),
     ...Object.fromEntries(Object.entries(words).map(([key, pair]) => [key, tr(...pair)])),
     ...Object.fromEntries(Object.entries(labels).map(([key, pair]) => [key, label(...pair)])),
     ...Object.fromEntries(Object.keys(paths).map((key) => ["i" + key, icon(key)])),

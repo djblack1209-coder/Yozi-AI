@@ -5,6 +5,9 @@ import { download as archiveName } from "../../website/render.mjs";
 
 assert(process.argv[2], "Pass the website base URL as the first argument");
 const base = new URL(process.argv[2]);
+// --only=download or --only=legal keeps each run inside one guardian probe deadline.
+const only = process.argv.find((arg) => arg.startsWith("--only="))?.slice(7);
+assert([undefined, "download", "legal"].includes(only), "Use --only=download or --only=legal");
 const archivePath = `/downloads/${archiveName}`;
 const expectedZip = await readFile(new URL(`../../public${archivePath}`, import.meta.url));
 const safari = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
@@ -22,8 +25,17 @@ const text = {
   },
 };
 
+const legalTitles = { zh: { privacy: "隐私政策", terms: "用户协议" }, en: { privacy: "Privacy Policy", terms: "Terms of Use" } };
+
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 try {
+  if (only !== "legal") await verifyDownloads();
+  if (only !== "download") for (const lang of ["zh", "en"]) for (const width of [1440, 390]) await verifyLegal(lang, width);
+} finally {
+  await browser.close();
+}
+
+async function verifyDownloads() {
   for (const lang of ["zh", "en"]) {
     await verifyPage(lang, 1440);
     await verifyPage(lang, 390, { userAgent: safari });
@@ -32,8 +44,6 @@ try {
   }
   await verifyPage("zh", 390, { userAgent: `${safari} xhsdiscover/8.96`, inApp: "Xiaohongshu" });
   await verifyPage("en", 320, { userAgent: androidWebView, inApp: "Android WebView", clipboardUnavailable: true });
-} finally {
-  await browser.close();
 }
 
 async function verifyPage(lang, width, { userAgent, inApp, clipboardUnavailable } = {}) {
@@ -150,4 +160,36 @@ async function verifyShareAssets(page) {
     assert.deepEqual(actual, [200, type, width, height], src);
   }
   console.log(`Share image and three icons decoded at their declared sizes. ZIP matched all ${expectedZip.length} bytes.`);
+}
+
+async function verifyLegal(lang, width) {
+  const phone = width < 700;
+  const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 }, isMobile: phone, hasTouch: phone, reducedMotion: "reduce" });
+  try {
+    const page = await context.newPage();
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    const open = (path) => page.goto(new URL(path, base).href, { waitUntil: "domcontentloaded", timeout: 45000 });
+    for (const doc of ["privacy", "terms"]) {
+      assert.equal((await open(`/${lang}/${doc}/`)).status(), 200);
+      assert.equal(await page.locator("html").getAttribute("lang"), lang === "zh" ? "zh-CN" : "en");
+      assert.equal(await page.locator("h1").textContent(), legalTitles[lang][doc]);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), width, "Horizontal overflow");
+      const footer = await page.locator(".legal-footer a").evaluateAll((links) => links.map((link) => new URL(link.href).pathname));
+      assert.deepEqual(footer, [`/${lang}/privacy/`, `/${lang}/terms/`]);
+      // The homepage footer line reaches this document in the same language.
+      await open(`/${lang}/`);
+      const link = page.locator(`.footer-legal a[href="/${lang}/${doc}/"]`);
+      assert.equal(await link.isVisible(), true);
+      await Promise.all([page.waitForURL(`**/${lang}/${doc}/`), link.click()]);
+      assert.equal(await page.locator("h1").textContent(), legalTitles[lang][doc]);
+    }
+    const other = lang === "zh" ? "en" : "zh";
+    await Promise.all([page.waitForURL(`**/${other}/terms/`), page.locator("[data-language-link]").click()]);
+    assert.equal(await page.evaluate(() => localStorage.getItem("yozi.website.language")), other);
+    assert.deepEqual(errors, []);
+    console.log(`${lang} ${width}px legal pages and footer links passed`);
+  } finally {
+    await context.close();
+  }
 }

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { download, renderHome, renderNotFound, WEBSITE_TITLE } from '../../website/render.mjs';
+import { LEGAL_DOCS, legalPath, legalStyles, renderLegal } from '../../website/legal.mjs';
 
 export { WEBSITE_TITLE };
 const project = path.resolve(fileURLToPath(new URL('../../', import.meta.url)));
@@ -32,6 +33,11 @@ export function buildWebsite(output = path.join(project, 'dist/website')) {
     fs.writeFileSync(path.join(destination, lang, 'index.html'), html);
   }
   fs.writeFileSync(path.join(destination, '404.html'), missing);
+  const legalCss = legalStyles();
+  for (const lang of languages) for (const doc of LEGAL_DOCS) {
+    fs.mkdirSync(path.join(destination, lang, doc), { recursive: true });
+    fs.writeFileSync(path.join(destination, lang, doc, 'index.html'), renderLegal(lang, doc, legalCss));
+  }
   fs.copyFileSync(path.join(website, 'favicon.svg'), path.join(destination, 'favicon.svg'));
   fs.cpSync(path.join(website, 'brand'), path.join(destination, 'brand'), { recursive: true });
   fs.copyFileSync(path.join(project, 'src/assets/brand/kitten-icon-master.png'), path.join(destination, 'brand/kitten.png'));
@@ -42,7 +48,7 @@ export function buildWebsite(output = path.join(project, 'dist/website')) {
   fs.cpSync(path.join(website, 'media'), path.join(destination, 'media'), { recursive: true });
   fs.writeFileSync(path.join(destination, 'sw.js'), retirementWorker);
   fs.writeFileSync(path.join(destination, 'robots.txt'), 'User-agent: *\nAllow: /\nDisallow: /exam-master/\nSitemap: https://yozi.bot.cd/sitemap.xml\n');
-  const routes = ['', ...languages.map(lang => lang + '/')];
+  const routes = ['', ...languages.map(lang => lang + '/'), ...languages.flatMap(lang => LEGAL_DOCS.map(doc => legalPath(lang, doc).slice(1)))];
   fs.writeFileSync(path.join(destination, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${routes.map(route => `<url><loc>https://yozi.bot.cd/${route}</loc></url>`).join('')}</urlset>\n`);
   fs.mkdirSync(path.join(destination, 'downloads'), { recursive: true });
   fs.copyFileSync(archive, path.join(destination, 'downloads', download));
@@ -58,7 +64,11 @@ export function websiteLaunchPlugin(enabled) {
       server.middlewares.use((req, res, next) => {
         const route = (req.url || '').split('?')[0];
         const lang = languages.find(item => route === '/' + item + '/' || route === '/' + item + '/index.html');
-        if (lang || route === '/404.html') {
+        const legal = languages.flatMap(item => LEGAL_DOCS.map(doc => [item, doc])).find(([item, doc]) => route === legalPath(item, doc) || route === legalPath(item, doc) + 'index.html');
+        if (legal) {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.end(renderLegal(...legal, legalStyles()));
+        } else if (lang || route === '/404.html') {
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.end(lang ? renderHome(lang) : renderNotFound());
         } else if (route === '/fonts/inter-latin-300-500.woff2' || route === '/favicon.svg') {

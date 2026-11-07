@@ -52,7 +52,7 @@
 | S53 配对恢复（历史） | `tmp/uiux-shell-20261102.noindex/local-closure-learning-agent-workflow-candidate.noindex/Yozi AI.app`（2387b4c0…、源码3e47fbb7）not present (checked 2026-11-07)。`tmp/local-closure-learning-agent-workflow-backend`（8f0323c6）not present (checked 2026-11-07)。 |
 | 日常入口 | /Users/blackdj/Applications/Yozi AI.app（2.2.0、7dfb1bff…、源码77c0a94d）已依客户2026-11-06授权更新并实开。原应用标识、两处学习资料及8项账号／会话键逐项核对一致。账户核对明细见本机 `YOZI-GOAL-CLOSEOUT-RESULT-2026-11-06.md`。 |
 | 日常本次回退 | `tmp/wave3-20261106.noindex/daily-update.noindex/before.noindex/Yozi AI.app`（原c63a62c9…）在本机，完整克隆已试还原并通过严格签名。同目录 private 保存原 WebKit 与偏好。回退只换程序，保留届时最新学习资料。 |
-| 官网本次回退 | 当前发布根 `yozi-r2-20261107-960deca8b477`，即时回退根 `yozi-yoga-cursor-20261106-e855b03f9a5b`。Guardian `96ba0ab828b14dabae8876fc1e086b87` 已接受并独立读回，本机保留独立回退备份。[上版发布回执](../tmp/website-redesign-20261106/resources.json)。 |
+| 官网本次回退 | 当前发布根 `yozi-r6-legal-v11-20261107-0e8de2d8a367`（法律页1.1），即时回退根 `yozi-r6-legal-20261107-fbfc749e55d4`（1.0，含已更正的日志期限行）；干净回退用 `yozi-r2-20261107-960deca8b477`（无法律页，42个文件已读回）。Guardian `9ca7390e133c4dcb8bf552dd14e45955` 与 `afe8358d77a24589af30797ddffa4f08` 均已接受并独立读回，本机保留独立回退备份。[本版发布回执](../tmp/yozi-r6-website-20261107/v1.1/deployment.json)。 |
 | 历史索引 | `tmp/uiux-shell-20261102.noindex/` not present (checked 2026-11-07)。`tmp/uiux-shell-20261102.noindex/resources.json` not present (checked 2026-11-07)。`tmp/muse-survey.noindex/` not present (checked 2026-11-07)。 |
 | 静态输出 | 当前S55桌面／共享输出、S53／S54与原失败现场保留；本批只将被已核验回退覆盖的原子交换旧副本正常入篓，4文件／19,383,238逻辑字节。C1的14份历史静态输出仍在废纸篓，未清空，不计为物理空间释放。 |
 
@@ -70,6 +70,7 @@
 | 状态 | 范围 | 当前安排 |
 | --- | --- | --- |
 | 已验（2026-11-07） | R1 发布源码归位 | `v2.0.0`（77c0a94d）已快进纳入 `main`。官网提交 `1d9f5a4d` 的干净克隆执行一次 `npm run build:website`，37 个文件与已上线快照逐路径、逐字节一致。四个官网测试文件与 Wave 3 批改回归共 235 项通过。§1 缺失路径已标记，客户资料仅留本机未跟踪，`git diff --check` 通过。[已核验的变更前备份](../tmp/yozi-r1-20261107.noindex/before-r1.tar.gz)。 |
+| 已上线 | R6 官网隐私政策与用户协议 | 中英 `/zh/privacy/`、`/en/privacy/`、`/zh/terms/`、`/en/terms/` 与首页页脚法律行上线（1.1）。对照 docs/14 补 7 条数据流，改正境内模型、境内存储与日志期限三处不实表述；联系邮箱与小红书未开通前不写地址。37 项官网测试、本机与公网中英 1440／390px 法律页 4 例及下载 10 例通过，/auth 仍 404。Guardian `9ca7390e133c4dcb8bf552dd14e45955` accepted，回退点见 §1。日志留存未达六个月等待客户事项见[结果](../YOZI-R6-WEBSITE-RESULT-2026-11-07.md)。 |
 | 已上线 | R2 官网首次访问 | Mac 下载卡提供中英 Gatekeeper 指引；手机优先复制当前语言下载页；内嵌浏览器提示在浏览器中打开并提供复制操作。中英 1440／390／320px 加微信、小红书及 Android WebView 模拟共 10 例，Chrome 本地和公网实操通过，内嵌场景无 ZIP 请求。分享图 HTTP 200（1200×630），180／192／512px 图标可读，公网 Mac ZIP 12,397,807 字节与发布前一致。38 项相关测试通过。[复验入口](../scripts/build/verify-website-download.mjs)。 |
 | 已验（2026-11-07） | R3 付费 DeepSeek 学习闭环 | 定位型号发现误报为 Yozi 刷新间隔，修复并通过四次首次读取。隔离 macOS App 与本机后端跑完 v4 Pro 三轮、Flash 一轮的注册至同步与重开。四轮共恢复 266 条学习事件，93 笔账本均为待结算，其中两笔缺用量。两次本机测试中断从已保存状态续跑，一次 Flash 格式错误经原有返修恢复。复验产品侧失败 0，11 个相关测试文件共 693 项通过。[验收回执](../tmp/yozi-r3-20261107.noindex/evidence/) · [隔离验收包](../tmp/yozi-r3-20261107.noindex/macos-p2-latest.noindex/)。 |
 | 已更新／供客户体验 | 日常App交付 | 已验源码77c0a94d按原日常身份重包2.2.0并原子安装；签名与实际打开通过，两处学习状态及8项账号键与私有备份完全一致。保留旧程序回退与原资料，系统搜索仅日常入口，程序留开；生产、官网与通用发行包不改。 |
@@ -87,6 +88,7 @@
 
 | 状态 | 范围 | 已有回执或剩余条件 |
 | --- | --- | --- |
+| 已验／已上线 | R6 官网法律页 | 采信 website-legal 等 5 个文件 37 项及 `verify-website-download.mjs` 的 `--only=legal`、`--only=download` 本机／公网 14 例；只有法律文本、页脚或该校验脚本改动时重跑。 |
 | 已验／已上线 | 官网 Yoga Coach／Cursor Follow | 采信34项定向检查；1次独立官网构建，本机／公网各4组中英1440×900／390×844主流程通过，320px、减少动态、无脚本基础路径与/auth 404通过。原12,397,807字节Mac ZIP实下完全一致。目录定位错误首轮已回滚，修正后b1310c5947d34f8a943388ae93a0309d accepted；[完整回执及适配差异](../YOZI-WEBSITE-REDESIGN-RESULT-2026-11-06.md)。 |
 | 已验（限定本机范围） | Wave3 构建与学习闭环 | Mac App／ZIP／DMG、Windows PE／NSIS／便携 ZIP、手机共享资源及 18 张图标的配置／公开产物检查通过；207 项定向测试与后端类型通过。原生完整学习／复习／同步／重开通过，0 新增模型账本；原失败保留，44 笔全 pending。移动原生及 Windows 实开未覆盖；[产物、源码修复、截图与恢复](../YOZI-WAVE3-RESULT-2026-11-06.md)。 |
 | 已验／素材有差异 | 官网指定参考返修 | 34 项定向检查、一次独立官网构建；本机及公网各 4 组中英 1440×900／375×844 实操通过，零控制台错误／失败请求／溢出；四卡真实视频、4.5s淡化、轮播／FAQ／CTA、切语言视频重载0、减少动态、持久化、404及原Mac包实下通过。首发图片未完成即判坏图导致保护回滚，修正验收等待后完整重跑，d8ed4ac7a48645b0a06cdaaaaf2ffef6 accepted；原实拍以自制学习片替代，具体差异见结果，不以功能通过证明视觉保真。 |
