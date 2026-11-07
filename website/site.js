@@ -22,6 +22,38 @@
   root.classList.toggle("motion-paused", !motionEnabled);
   const currentLanguage = () => (root.lang === "en" ? "en" : "zh");
 
+  const macCard = document.querySelector(".mac-card");
+  const copyLink = macCard.querySelector("[data-copy-link]");
+  const copyFallback = macCard.querySelector("[data-copy-fallback]");
+  const copySuccess = macCard.querySelector("[data-copy-success]");
+  const copyManually = macCard.querySelector("[data-copy-manually]");
+  // Embedded browsers control external navigation through their own menus.
+  const inAppBrowser = /MicroMessenger|xhsdiscover|XiaoHongShu|Aweme|Douyin|Weibo|AlipayClient|DingTalk|\bQQ\/|Instagram|FBAN\/|FBAV\/|;\s*wv\b/i;
+  if (inAppBrowser.test(navigator.userAgent)) {
+    macCard.dataset.inAppBrowser = "";
+    macCard.querySelector(".download-mac").removeAttribute("href");
+    macCard.querySelector("[data-download-title]").hidden = true;
+    macCard.querySelector("#gatekeeper-hint").hidden = true;
+    macCard.querySelector("[data-open-in-browser]").hidden = false;
+  }
+  copyLink.hidden = false;
+  copyLink.addEventListener("click", async () => {
+    const url = new URL(`/${currentLanguage()}/#download`, location.origin).href;
+    copySuccess.hidden = true;
+    try {
+      await navigator.clipboard.writeText(url);
+      copySuccess.hidden = false;
+      copyManually.hidden = true;
+      copyFallback.hidden = true;
+    } catch {
+      copyFallback.value = url;
+      copyManually.hidden = false;
+      copyFallback.hidden = false;
+      copyFallback.focus();
+      copyFallback.select();
+    }
+  });
+
   function updateLabels() {
     const lang = currentLanguage();
     document

@@ -277,6 +277,14 @@ const words = {
     "start with English writing. let today’s practice inform the next.",
   ],
   downloadMac: ["下载 Mac 版", "download for Mac"],
+  gatekeeperHint: [
+    "首次打开被拦截：系统设置 › 隐私与安全性 › 仍要打开",
+    "Blocked on first open: System Settings › Privacy &amp; Security › Open Anyway",
+  ],
+  openInBrowser: ["在浏览器中打开以下载", "Open in your browser to download"],
+  copyLink: ["复制链接", "Copy link"],
+  linkCopied: ["链接已复制", "Link copied"],
+  copyManually: ["请手动复制下方链接", "Copy the link below"],
   downloadSpec: ["2.2.0 · macOS 14+ · Apple 芯片", "2.2.0 · macOS 14+ · Apple silicon"],
   downloadKey: ["连接你的模型", "connect your model"],
   downloadKeyBody: ["接入 API，再选择型号。", "add your API. choose your model."],
@@ -306,6 +314,7 @@ const labels = {
   footerProduct: ["产品链接", "product links"],
   footerUse: ["使用链接", "getting started links"],
   footerDetails: ["了解更多", "more information"],
+  copyFallbackLabel: ["下载页面链接", "Download page link"],
 };
 function fill(template, slots) {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
@@ -400,7 +409,7 @@ export function renderHome(lang = "zh", root = false) {
       ["由你选择可用型号", "choose an available model"],
       ["由提供方按用量计费", "provider bills for usage"],
     ]),
-    archive: `${base}/downloads/${download}`,
+    archive: `/downloads/${download}`,
     ...Object.fromEntries(Object.entries(words).map(([key, pair]) => [key, tr(...pair)])),
     ...Object.fromEntries(Object.entries(labels).map(([key, pair]) => [key, label(...pair)])),
     ...Object.fromEntries(Object.keys(paths).map((key) => ["i" + key, icon(key)])),

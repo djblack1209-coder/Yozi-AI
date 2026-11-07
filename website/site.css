@@ -967,12 +967,17 @@ html:not([lang="en"]) [data-copy="en"] {
   letter-spacing: -0.95px;
   color: var(--cream);
 }
-.download-mac h3 {
-  display: flex;
+.mac-card .download-card-copy {
+  top: auto;
+  bottom: 88px;
+}
+.download-mac {
+  display: inline-flex;
   align-items: center;
   gap: 12px;
+  min-height: 52px;
 }
-.download-mac h3 > .icon {
+.download-mac > .icon {
   width: 22px;
   height: 22px;
 }
@@ -982,6 +987,50 @@ html:not([lang="en"]) [data-copy="en"] {
   font-size: 16px;
   line-height: 25px;
   letter-spacing: -0.3px;
+}
+.mac-card .download-card-copy p {
+  margin: 0;
+  color: var(--cream);
+  line-height: 1.45;
+}
+.mac-card .download-card-copy .mac-browser-prompt {
+  font-size: 19px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+.mac-copy-link {
+  min-height: 52px;
+  background: var(--sky-mid);
+  color: var(--navy);
+  font-weight: 500;
+}
+.mac-copy-link:hover {
+  background: var(--cream);
+}
+.mac-copy-status {
+  font-size: 14px;
+  line-height: 1.4;
+}
+.mac-copy-status > span:not([hidden]) {
+  display: block;
+  margin-top: 8px;
+}
+.mac-copy-fallback {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 6px;
+  padding-inline: 10px;
+  border: 1px solid var(--sky-mid);
+  border-radius: 6px;
+  background: var(--navy);
+  color: var(--cream);
+  font: inherit;
+  font-size: 14px;
+}
+@media (min-width: 700px) and (pointer: fine) {
+  .mac-card:not([data-in-app-browser]) .mac-copy-link {
+    display: none;
+  }
 }
 .horizon {
   position: absolute;
@@ -1011,8 +1060,8 @@ html:not([lang="en"]) [data-copy="en"] {
     0 -9px 24px #1572ff44,
     inset 0 8px 22px #4ec9ff33;
 }
-.download-mac:hover .horizon,
-.download-mac:focus-visible .horizon {
+.mac-card:hover .horizon,
+.mac-card:focus-within .horizon {
   transform: scaleY(1.075);
   filter: brightness(1.08) contrast(1.04);
 }
@@ -1666,8 +1715,12 @@ html:not([lang="en"]) [data-copy="en"] {
   .download-model .download-card-copy p {
     font-size: 14px;
   }
-  .download-mac .download-card-copy {
+  .mac-card .download-card-copy {
     bottom: 28px;
+  }
+  .mac-copy-link,
+  .download-mac {
+    min-height: 44px;
   }
 }
 @keyframes orbitMobile {
@@ -1855,7 +1908,7 @@ html:not([lang="en"]) [data-copy="en"] {
     left: 30px;
     top: 395px;
   }
-  .download-mac h3 {
+  .mac-card h3 {
     font-size: 25px;
   }
   .download-platform h3 {

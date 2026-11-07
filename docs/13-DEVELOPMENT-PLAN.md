@@ -52,7 +52,7 @@
 | S53 配对恢复（历史） | `tmp/uiux-shell-20261102.noindex/local-closure-learning-agent-workflow-candidate.noindex/Yozi AI.app`（2387b4c0…、源码3e47fbb7）not present (checked 2026-11-07)。`tmp/local-closure-learning-agent-workflow-backend`（8f0323c6）not present (checked 2026-11-07)。 |
 | 日常入口 | /Users/blackdj/Applications/Yozi AI.app（2.2.0、7dfb1bff…、源码77c0a94d）已依客户2026-11-06授权更新并实开。原应用标识、两处学习资料及8项账号／会话键逐项核对一致。账户核对明细见本机 `YOZI-GOAL-CLOSEOUT-RESULT-2026-11-06.md`。 |
 | 日常本次回退 | `tmp/wave3-20261106.noindex/daily-update.noindex/before.noindex/Yozi AI.app`（原c63a62c9…）在本机，完整克隆已试还原并通过严格签名。同目录 private 保存原 WebKit 与偏好。回退只换程序，保留届时最新学习资料。 |
-| 官网本次回退 | 远端回退根 `yozi-reference-fix-20261106-105fd3d8c9a0`。当前发布根 `yozi-yoga-cursor-20261106-e855b03f9a5b`。发布与回退记录见[保护发布回执](../tmp/website-redesign-20261106/resources.json)。 |
+| 官网本次回退 | 当前发布根 `yozi-r2-20261107-960deca8b477`，即时回退根 `yozi-yoga-cursor-20261106-e855b03f9a5b`。Guardian `96ba0ab828b14dabae8876fc1e086b87` 已接受并独立读回，本机保留独立回退备份。[上版发布回执](../tmp/website-redesign-20261106/resources.json)。 |
 | 历史索引 | `tmp/uiux-shell-20261102.noindex/` not present (checked 2026-11-07)。`tmp/uiux-shell-20261102.noindex/resources.json` not present (checked 2026-11-07)。`tmp/muse-survey.noindex/` not present (checked 2026-11-07)。 |
 | 静态输出 | 当前S55桌面／共享输出、S53／S54与原失败现场保留；本批只将被已核验回退覆盖的原子交换旧副本正常入篓，4文件／19,383,238逻辑字节。C1的14份历史静态输出仍在废纸篓，未清空，不计为物理空间释放。 |
 
@@ -70,6 +70,7 @@
 | 状态 | 范围 | 当前安排 |
 | --- | --- | --- |
 | 已验（2026-11-07） | R1 发布源码归位 | `v2.0.0`（77c0a94d）已快进纳入 `main`。官网提交 `1d9f5a4d` 的干净克隆执行一次 `npm run build:website`，37 个文件与已上线快照逐路径、逐字节一致。四个官网测试文件与 Wave 3 批改回归共 235 项通过。§1 缺失路径已标记，客户资料仅留本机未跟踪，`git diff --check` 通过。[已核验的变更前备份](../tmp/yozi-r1-20261107.noindex/before-r1.tar.gz)。 |
+| 已上线 | R2 官网首次访问 | Mac 下载卡提供中英 Gatekeeper 指引；手机优先复制当前语言下载页；内嵌浏览器提示在浏览器中打开并提供复制操作。中英 1440／390／320px 加微信、小红书及 Android WebView 模拟共 10 例，Chrome 本地和公网实操通过，内嵌场景无 ZIP 请求。分享图 HTTP 200（1200×630），180／192／512px 图标可读，公网 Mac ZIP 12,397,807 字节与发布前一致。38 项相关测试通过。[复验入口](../scripts/build/verify-website-download.mjs)。 |
 | 已更新／供客户体验 | 日常App交付 | 已验源码77c0a94d按原日常身份重包2.2.0并原子安装；签名与实际打开通过，两处学习状态及8项账号键与私有备份完全一致。保留旧程序回退与原资料，系统搜索仅日常入口，程序留开；生产、官网与通用发行包不改。 |
 | 本轮范围已完成／后置材料保持 | Goal closeout 本地发布记录 | 注释标签v2.0.0指向77c0a94d（包仍2.2.0）；207项、类型及源码复建通过。获准沿用付费DeepSeek后，原生从零完成17条评估、错题复习、完整成文、66新事件同步／重开及800×600入口；Windows原有内嵌CRC与结构／载荷核对通过，未实开。23笔账本／100,871已知tokens、1笔缺用量、费用pending；移动SDK／签名、公证／商店和审美保持后置，见[结果](../YOZI-GOAL-CLOSEOUT-RESULT-2026-11-06.md)。 |
 | 本机闭环已验／移动原生待材料 | Wave3 桌面与手机打包 | Mac 安装候选实开，Windows 安装器／便携包已生成；18 条作答、两项重练、完整成文、69 事件同步与重开通过。修复副词修饰误扣档；移动 5.31 共享资源及新图标就绪，原生待 SDK／签名，Windows 实开待本机环境。日常／生产／官网保持，见[结果](../YOZI-WAVE3-RESULT-2026-11-06.md)。 |

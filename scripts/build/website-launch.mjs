@@ -33,8 +33,9 @@ export function buildWebsite(output = path.join(project, 'dist/website')) {
   }
   fs.writeFileSync(path.join(destination, '404.html'), missing);
   fs.copyFileSync(path.join(website, 'favicon.svg'), path.join(destination, 'favicon.svg'));
-  fs.mkdirSync(path.join(destination, 'brand'), { recursive: true });
+  fs.cpSync(path.join(website, 'brand'), path.join(destination, 'brand'), { recursive: true });
   fs.copyFileSync(path.join(project, 'src/assets/brand/kitten-icon-master.png'), path.join(destination, 'brand/kitten.png'));
+  fs.copyFileSync(path.join(website, 'manifest.webmanifest'), path.join(destination, 'manifest.webmanifest'));
   fs.cpSync(path.join(website, 'fonts'), path.join(destination, 'fonts'), { recursive: true });
   for (const file of additionalFonts) fs.copyFileSync(path.join(project, 'public/fonts', file), path.join(destination, 'fonts', file));
   // The existing public media URL may still have consumers outside the homepage.
