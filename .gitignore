@@ -232,5 +232,6 @@ asset-inbox/
 # Temporary local rendering / PDF inspection artifacts
 tmp/
 
-# Built application downloads are packaged locally, not source assets.
+# Keep only the approved website download available in a clean clone.
 /public/downloads/*.zip
+!/public/downloads/Yozi-AI-2.2.0-macOS-arm64.zip
