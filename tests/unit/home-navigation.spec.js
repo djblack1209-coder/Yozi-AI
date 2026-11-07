@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getCurrentRoute, isHomeRoute, openHomeTab, openLearningEntry } from '@/utils/home-navigation.js';
-import { safeNavigateBack } from '@/utils/safe-navigate.js';
+import { safeNavigateBack, safeNavigateTo } from '@/utils/safe-navigate.js';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { runInNewContext } from 'node:vm';
@@ -46,6 +46,19 @@ describe('home-navigation', () => {
   });
 
   const runImmediately = (callback) => callback();
+
+  it('opens the reset confirmation in the native main window', () => {
+    const invoke = vi.fn();
+    vi.stubGlobal('__YOZI_DESKTOP__', true);
+    vi.stubGlobal('__TAURI_INTERNALS__', { invoke, metadata: { currentWindow: { label: 'main' } } });
+    try {
+      safeNavigateTo('/pages/profile/index?panel=reset');
+      expect(uni.navigateTo).toHaveBeenCalledWith(expect.objectContaining({ url: '/pages/profile/index?panel=reset' }));
+      expect(invoke).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 
   it.each([
     ['openLearningEntry', 'redirectTo', 'pages/learning/index'],

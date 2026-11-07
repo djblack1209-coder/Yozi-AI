@@ -78,7 +78,7 @@ const SETTINGS_SIZE: (f64, f64) = (520.0, 680.0);
 #[tauri::command]
 pub async fn open_desktop_settings(app: AppHandle, window: WebviewWindow, state: State<'_, SettingsRefresh>, panel: String) -> Result<(), String> {
     main_only(&window)?;
-    if !["settings", "connectors", "profile"].contains(&panel.as_str()) { return Err("设置分组不合法".into()); }
+    if !["settings", "connectors", "profile", "legal"].contains(&panel.as_str()) { return Err("设置分组不合法".into()); }
     // Serialize the lookup and build: two rapid invokes must share one native webview.
     let _opening = state.1.lock().map_err(|_| "设置窗口正在打开")?;
     if let Some(settings) = app.get_webview_window("settings") {
@@ -155,6 +155,10 @@ pub async fn open_desktop_workspace(app: AppHandle, window: WebviewWindow, state
             return Err("模型尚未启用，请在主窗口查看错误后重试；连接配置已保留".into());
         }
     } else {
+        let route = match route.as_str() {
+            "/pages/settings/privacy" | "/pages/settings/terms" => format!("{route}?fromSettings=1"),
+            _ => route,
+        };
         main.emit("desktop-workspace-route", route).map_err(|_| "无法返回工作区")?;
     }
     main.show().map_err(|_| "无法返回工作区")?;

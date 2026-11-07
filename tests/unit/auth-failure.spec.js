@@ -233,6 +233,7 @@ it('the website returns to its visitor view after a deleted-account response, no
     }
   });
   try {
+    await vi.dynamicImportSettled();
     await flushPromises();
     expect(captureSession().owner).toBe('guest');
     expect(page.find('[data-test="visitor"]').exists()).toBe(true);

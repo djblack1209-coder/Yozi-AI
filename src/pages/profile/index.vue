@@ -209,7 +209,13 @@
             /></view>
             <text class="settings-label">本机数据</text>
             <view class="settings-group reset-group">
-              <BaseListRow label="清除本机数据" value="退出并重置" :disabled="resetBusy" @tap="handleLocalReset" />
+              <BaseListRow
+                class="reset-action"
+                label="清除本机数据"
+                value="退出并重置"
+                :disabled="resetBusy"
+                @tap="handleLocalReset"
+              />
               <text class="reset-scope"
                 >清除本机所有账户的学习记录、草稿、资料副本与缓存、AI
                 连接与密钥、界面偏好。云端账户、学习记录和保险库不变。</text
@@ -497,14 +503,13 @@ export default {
   methods: {
     setProfilePanel(panel) {
       const target = panel || consumeProfilePanel();
-      this.settingsMode = ['settings', 'connectors', 'reset'].includes(target);
+      this.settingsMode = ['settings', 'connectors', 'reset', 'legal'].includes(target);
       if (target === 'reset') {
         this.settingsSection = 'data';
         this.handleLocalReset();
       }
-      if (target === 'connectors') this.settingsSection = 'connectors';
-      else if (target === 'settings') this.settingsSection = 'general';
-      else if (target === 'profile') this.settingsSection = 'general';
+      if (['connectors', 'legal'].includes(target)) this.settingsSection = target;
+      else if (['settings', 'profile'].includes(target)) this.settingsSection = 'general';
       this.syncPanelTitle();
     },
     syncPanelTitle() {
@@ -903,6 +908,10 @@ export default {
   padding: 14px 16px;
   color: var(--ink-2);
   font-size: 14px;
+}
+.reset-action:not(.is-disabled) :deep(.base-list-row__label),
+.reset-action:not(.is-disabled) :deep(.base-list-row__value) {
+  color: var(--coral);
 }
 .reset-scope {
   display: block;

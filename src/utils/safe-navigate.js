@@ -76,14 +76,16 @@ export function safeNavigateTo(url, options = {}) {
     return;
   }
 
-  if (url.split('?')[0] === '/pages/profile/index') rememberSettingsFocus();
+  // The reset confirmation belongs to the main window, which owns the write lease.
+  const openProfile = url.split('?')[0] === '/pages/profile/index' && url !== '/pages/profile/index?panel=reset';
+  if (openProfile) rememberSettingsFocus();
 
   if (isDesktopRuntime()) {
     if (isDesktopSettingsWindow()) {
       void openDesktopWorkspace(url).catch(() => toast.info('无法返回工作区'));
       return;
     }
-    if (url.split('?')[0] === '/pages/profile/index') {
+    if (openProfile) {
       const panel = url.includes('connectors') ? 'connectors' : consumeProfilePanel() || 'settings';
       void openDesktopSettings(panel).catch(() => toast.info('设置窗口暂不可用'));
       return;

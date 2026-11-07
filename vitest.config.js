@@ -10,6 +10,7 @@ import { resolve } from 'path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'crypto';
 import { readYoziTokens } from './scripts/build/read-yozi-tokens.mjs';
+import { readAppLegal } from './scripts/build/read-app-legal.mjs';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 // Polyfill crypto.hash for Node < 20.12 (used by @vitejs/plugin-vue@6 internally)
@@ -25,7 +26,10 @@ export default defineConfig({
       ? resolve(__dirname, 'tmp/vitest-cache')
       : undefined,
   envDir: process.env.YOZI_ISOLATED_BUILD === '1' || process.env.WENLI_ISOLATED_BUILD === '1' ? false : undefined,
-  define: { __YOZI_TOKENS__: JSON.stringify(readYoziTokens()) },
+  define: {
+    __YOZI_TOKENS__: JSON.stringify(readYoziTokens()),
+    __YOZI_LEGAL__: JSON.stringify(readAppLegal())
+  },
   plugins: [vue()],
 
   test: {

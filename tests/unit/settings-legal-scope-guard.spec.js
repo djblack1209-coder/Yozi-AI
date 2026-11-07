@@ -6,15 +6,31 @@ import { createPinia } from 'pinia';
 import PrivacyPage from '@/pages/settings/privacy.vue';
 import TermsPage from '@/pages/settings/terms.vue';
 import { setLanguage } from '@/i18n/index.js';
+import { renderLegal } from '../../website/legal.mjs';
 
 const profileSource = readFileSync(resolve(process.cwd(), 'src/pages/profile/index.vue'), 'utf8');
-function policyText(page) {
-  setLanguage('zh-CN');
+function expectPublishedCopy(page, document, language, dateLine) {
+  setLanguage(language === 'zh' ? 'zh-CN' : 'en');
   const wrapper = mount(page, { global: { plugins: [createPinia()], stubs: { BaseIcon: true } } });
   try {
-    return wrapper.text();
+    const site = new DOMParser().parseFromString(renderLegal(language, document, ''), 'text/html');
+    const app = wrapper.get('.legal-copy').element.cloneNode(true);
+    app.querySelectorAll('.legal-marker').forEach((marker) => marker.remove());
+    const text = (node) => node.textContent.replace(/\s+/g, ' ').trim();
+    expect(wrapper.get('.update-date').text()).toBe(dateLine);
+    expect(wrapper.get('.update-date').text()).toBe(text(site.querySelector('.legal-meta')));
+    expect([...app.children].map(text)).toEqual(
+      [...site.querySelectorAll('#legal-text .legal-intro > *, #legal-text section > *')].map(text)
+    );
+    expect([...app.querySelectorAll('.legal-emphasis')].map(text)).toEqual(
+      [...site.querySelectorAll('#legal-text strong')].map(text)
+    );
+    expect([...app.querySelectorAll('[role="link"]')].map(text)).toEqual(
+      [...site.querySelectorAll('#legal-text p a, #legal-text section a')].map(text)
+    );
   } finally {
     wrapper.unmount();
+    setLanguage('zh-CN');
   }
 }
 
@@ -26,24 +42,16 @@ describe('settings legal and privacy scope', () => {
     expect(profileSource).toContain("t('dashboard.copy107')");
   });
 
-  it('keeps privacy policy aligned with the lightweight quiz product scope', () => {
-    const privacySource = policyText(PrivacyPage);
-    expect(privacySource).toContain('刷题记录、错题本、收藏和题库同步状态');
-    expect(privacySource).toContain('刷题、复习和结果回顾');
-    expect(privacySource).toContain('账号注销流程申请删除账号相关数据');
-    expect(privacySource).toContain('7天冷静期');
-    expect(privacySource).not.toContain('智能推荐题目');
-    expect(privacySource).not.toContain('院校招生信息');
-    expect(privacySource).not.toContain('升学保证');
+  it('shows the published 1.1 privacy policy in both languages', () => {
+    const policy = renderLegal('zh', 'privacy', '');
+    expect(policy).toContain('在 App 设置中申请注销');
+    expect(policy).toContain('申请后有7天冷静期');
+    expectPublishedCopy(PrivacyPage, 'privacy', 'zh', '版本 1.1 · 2026-11-07 更新 · 2026-11-07 生效');
+    expectPublishedCopy(PrivacyPage, 'privacy', 'en', 'Version 1.1 · updated 2026-11-07 · effective 2026-11-07');
   });
 
-  it('keeps user agreement aligned with current mini-program capabilities', () => {
-    const termsSource = policyText(TermsPage);
-    expect(termsSource).toContain('公共课真题练习、错题复习、收藏和学习进度管理');
-    expect(termsSource).toContain('学习辅助');
-    expect(termsSource).toContain('考试通过承诺');
-    expect(termsSource).not.toContain('择校分析');
-    expect(termsSource).not.toContain('智能辅导');
-    expect(termsSource).not.toContain('录取保证');
+  it('shows the published 1.1 terms of use in both languages', () => {
+    expectPublishedCopy(TermsPage, 'terms', 'zh', '版本 1.1 · 2026-11-07 更新 · 2026-11-07 生效');
+    expectPublishedCopy(TermsPage, 'terms', 'en', 'Version 1.1 · updated 2026-11-07 · effective 2026-11-07');
   });
 });

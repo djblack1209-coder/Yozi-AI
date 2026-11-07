@@ -1,5 +1,6 @@
 import { BRAND } from './src/config/brand.js';
 import { readYoziTokens, readYoziNativeTheme } from './scripts/build/read-yozi-tokens.mjs';
+import { readAppLegal } from './scripts/build/read-app-legal.mjs';
 import { publicImageMatch, publicFontMatch, appShellNavigationAllowlist } from './scripts/build/pwa-cache-policy.mjs';
 import { websiteRoutes } from './scripts/build/website-routes.mjs';
 import { appBootPlugin } from './scripts/build/app-boot.mjs';
@@ -441,6 +442,7 @@ export default defineConfig(({ command, mode }) => {
     // 环境变量定义
     define: {
       __YOZI_TOKENS__: JSON.stringify(readYoziTokens()),
+      __YOZI_LEGAL__: JSON.stringify(readAppLegal()),
       'import.meta.env.UNI_PLATFORM': JSON.stringify(platform),
       'process.env.NODE_ENV': JSON.stringify(mode),
       __YOZI_PREVIEW__: JSON.stringify(enablePreview),

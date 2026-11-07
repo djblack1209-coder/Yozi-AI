@@ -26,6 +26,7 @@ describe('public build guard', () => {
     ['route', 'platforms/h5/components', 'development-route'],
     ['copy', '开始本地演示', 'development-copy'],
     ['model-setup-copy', 'Model connections', 'development-copy'],
+    ['connect-model-copy', 'Connect a model', 'development-copy'],
     ['todo-copy', 'TODO: add sign-in', 'development-copy'],
     ['escaped-copy', '\\u6d4b\\u8bd5\\u8fde\\u63a5', 'development-copy'],
     ['seed', 'guest_demo', 'synthetic-data'],
@@ -76,6 +77,30 @@ describe('public build guard', () => {
       'const placeholder = "例如：我想复习方程"; const debug = false; const title="章节测试";'
     );
     expect(scanPublicBuild(directory).ok).toBe(true);
+  });
+  it('allows published connector references while still blocking setup labels in the same chunk', () => {
+    const file = path.join(directory, 'main.js');
+    fs.writeFileSync(
+      file,
+      JSON.stringify([
+        'If you connect a model service running on your own computer or local network,',
+        'Your identity, model connections and temporary credentials are cleared.'
+      ])
+    );
+    expect(scanPublicBuild(directory).ok).toBe(true);
+    fs.appendFileSync(file, 'const label = "Connect a model";');
+    expect(scanPublicBuild(directory).ok).toBe(false);
+  });
+  it('scans homepage output around the published download and connection copy', () => {
+    const file = path.join(directory, 'index.html');
+    fs.appendFileSync(file, [
+      '<span data-copy="en" lang="en">about model connections</span>',
+      '<span data-copy="en" lang="en">connect your model</span>',
+      '<span data-copy="zh" lang="zh-CN">Windows 与手机 App 正在规划开发中，尚未提供下载。</span>'
+    ].join(''));
+    expect(scanPublicBuild(directory).ok).toBe(true);
+    fs.appendFileSync(file, '<p>开发中</p>');
+    expect(scanPublicBuild(directory).ok).toBe(false);
   });
 });
 describe('public errors and statistics', () => {

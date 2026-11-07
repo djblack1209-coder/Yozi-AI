@@ -48,7 +48,7 @@ const PHASE4_SAFETY_EVIDENCE = [
     requiredSnippets: [
       "goTo('/pages/settings/privacy')",
       "goTo('/pages/settings/terms')",
-      '账号注销流程申请删除账号相关数据',
+      '在 App 设置中申请注销',
       '7天冷静期'
     ]
   },
