@@ -1,16 +1,21 @@
 # Yozi AI
 
-![Yozi AI 吉祥物](src/static/images/logo.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/mark-reverse.svg" />
+  <img src="docs/assets/brand/mark.svg" width="88" height="88" alt="Yozi AI 标志" />
+</picture>
 
-中国学生的 AI 学习教练，先从考研英语写作带练开始。一个对话窗口记住进度，安排每日训练、逐段写作和到期复习；可上传自己的资料。App 承载核心学习；官网提供下载、注册登录和个人同步进度，兼顾微信内置浏览器与 390px 窄屏。
+Yozi AI 是陪你学习、练习和复习的 AI 教练。你可以带着自己的资料开始对话，按反馈订正，再回顾到期内容。应用会记录练习进度，让你从上次的位置继续。
 
-当前公网官网：[yozi.bot.cd](https://yozi.bot.cd/)（2026-11-05 已实测）。原 `exam.245334.xyz`、`exam.blackdj.dpdns.org` 网站入口已停用并返回 HTTP 410；兼容 DNS 与在用 API 保留。
+**当前应用版本 2.2.0**。官网提供 macOS Apple 芯片版下载、注册登录和已同步的个人学习进度。[官网](https://yozi.bot.cd/) · [macOS Apple 芯片版](https://yozi.bot.cd/downloads/Yozi-AI-2.2.0-macOS-arm64.zip)
 
-## 当前用户路径
+## 开始学习
 
-注册 → 连接自己的 API → 对话建档 → 10 分钟摸底 → 到期复习 / 搭配 / 翻译 / 长难句 → 逐段带写 → 小结 → 次日接续 → 事实看板。选择仅改草稿，明确提交才保存；写作反馈标为 AI 评估，不冒充官方评分。
+1. 注册账号，在 AI 连接器添加自己的 API Key 并选择模型。
+2. 在对话中说明学习目标，按需上传资料，从摸底或练习开始。
+3. 提交作答后查看 AI 反馈和订正建议，再按到期计划复习。
 
-模型由用户自带 API 提供：注册后在 AI 连接器接入，型号实时读取，可接多个并按账号保存、重开恢复；当前型号不可用时明确提示并可切换。平台预配模型已移出主流程。朋友试用免费，收费、短信、生产部署均须另行授权；完整主线仍待当前批次验收。
+作答在明确提交后保存。写作反馈会标注为 AI 评估。
 
 ## 开发入口
 
