@@ -147,7 +147,9 @@ const windowWidth = ref(390),
   recordId = ref(''),
   sourceKey = ref('');
 const goal = computed(() =>
-  learning.recordReadState === 'ready' ? learning.state.conversations.find((session) => session.id === goalId.value) : null
+  learning.recordReadState === 'ready'
+    ? learning.state.conversations.find((session) => session.id === goalId.value)
+    : null
 );
 const allProgress = computed(() =>
   learningProgressReadModel(learning.recordReadState === 'ready' ? learning.state : { owner: learning.state.owner }, {

@@ -292,7 +292,7 @@ try {
         apiKey: 'sk-TEST-ONLY-invalid-key'
       }
     },
-    () => {}
+    () => undefined
   );
   await record('自带连接未通过能力检查', '/proxy-ai', modelCall('golden-byok-1', 'golden-byok'), (r) =>
     assert.equal(r.success, false)

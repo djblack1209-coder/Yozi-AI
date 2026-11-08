@@ -43,7 +43,10 @@ import BaseInput from '@/components/base/base-input/base-input.vue';
 import MuseFeedbackCard from './muse-feedback-card.vue';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { workspaceDrafts } from '@/services/learning/workspace-drafts.js';
-import { COACH_RECALL_CONTRACT, coachErrorReviews } from '../../../../laf-backend/functions/_shared/learning-coach-review.js';
+import {
+  COACH_RECALL_CONTRACT,
+  coachErrorReviews
+} from '../../../../laf-backend/functions/_shared/learning-coach-review.js';
 import { assert, dayKey } from '@/services/learning/learning-domain.js';
 import { publicError } from '@/i18n/index.js';
 
@@ -66,7 +69,10 @@ const reviews = computed(() => {
 const pending = computed(() => reviews.value.filter((row) => !row.completedBy && row.availableAt <= Date.now()));
 const recallLabels = { again: '还需复习', hard: '参考后完成', good: '本卡未查看参考，已通过复练' };
 const recentRecall = computed(() =>
-  reviews.value.reduce((latest, row) => (row.recall && (!latest || row.recall.at > latest.at) ? row.recall : latest), null)
+  reviews.value.reduce(
+    (latest, row) => (row.recall && (!latest || row.recall.at > latest.at) ? row.recall : latest),
+    null
+  )
 );
 const item = computed(() => {
   const opened = learning.state.events

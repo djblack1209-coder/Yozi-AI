@@ -253,7 +253,7 @@ function captureSelection() {
   const domRange = selection.getRangeAt(0);
   if (!element.contains(domRange.commonAncestorContainer)) return;
   const offset = (node, index) => {
-    const part = (node.nodeType === Node.TEXT_NODE ? node.parentElement : node).closest('[data-reading-offset]');
+    const part = (node.nodeType === window.Node.TEXT_NODE ? node.parentElement : node).closest('[data-reading-offset]');
     if (!part) return null;
     const prefix = document.createRange();
     prefix.setStart(part, 0);

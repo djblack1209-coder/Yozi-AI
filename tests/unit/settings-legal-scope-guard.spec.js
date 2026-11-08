@@ -18,14 +18,14 @@ function expectPublishedCopy(page, document, language, dateLine) {
     app.querySelectorAll('.legal-marker').forEach((marker) => marker.remove());
     const text = (node) => node.textContent.replace(/\s+/g, ' ').trim();
     expect(wrapper.get('.update-date').text()).toBe(dateLine);
-    expect(wrapper.get('.update-date').text()).toBe(text(site.querySelector('.legal-meta')));
+    expect(wrapper.get('.update-date').text()).toBe(text(site.querySelector('.legal-meta p')));
     expect([...app.children].map(text)).toEqual(
       [...site.querySelectorAll('#legal-text .legal-intro > *, #legal-text section > *')].map(text)
     );
     expect([...app.querySelectorAll('.legal-emphasis')].map(text)).toEqual(
       [...site.querySelectorAll('#legal-text strong')].map(text)
     );
-    expect([...app.querySelectorAll('[role="link"]')].map(text)).toEqual(
+    expect([...app.querySelectorAll('.legal-link')].map(text)).toEqual(
       [...site.querySelectorAll('#legal-text p a, #legal-text section a')].map(text)
     );
   } finally {
@@ -56,5 +56,17 @@ describe('settings legal and privacy scope', () => {
     expect(renderLegal('zh', 'terms', '')).toContain('对话回复和知识卡旁显示「AI 生成」');
     expectPublishedCopy(TermsPage, 'terms', 'zh', '版本 1.2 · 2026-11-08 更新 · 2026-11-08 生效');
     expectPublishedCopy(TermsPage, 'terms', 'en', 'Version 1.2 · updated 2026-11-08 · effective 2026-11-08');
+  });
+
+  it('copies the published contact email from the legal page', async () => {
+    const wrapper = mount(PrivacyPage, { global: { plugins: [createPinia()], stubs: { BaseIcon: true } } });
+    try {
+      const contact = wrapper.get('.legal-copy [role="button"]');
+      expect(contact.text()).toBe('yozi@245334.xyz');
+      await contact.trigger('keydown', { key: 'Enter' });
+      expect(uni.setClipboardData).toHaveBeenLastCalledWith(expect.objectContaining({ data: 'yozi@245334.xyz' }));
+    } finally {
+      wrapper.unmount();
+    }
   });
 });
