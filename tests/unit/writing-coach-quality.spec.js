@@ -1084,6 +1084,7 @@ describe('摸底错误合并复核一次：讲解题只删不加，单词填空�
   });
   const parsed = (id, mainSubject, mainVerb, clause, antecedent, clauseSubject, clauseVerb, pronounRole) => ({
     id,
+    hasRelativeClause: true,
     mainSubject,
     mainVerb,
     clause,
@@ -1983,6 +1984,29 @@ describe('摸底错误合并复核一次：讲解题只删不加，单词填空�
     expect(receipt).toMatchObject({ status: 'failed', failure: 'VERIFICATION_INCONCLUSIVE' });
     expect(JSON.parse(content).errors.map((e) => e.quoteId)).toEqual(['q2', 'q1']);
   });
+  it('盲析说明句中没有带关系词的定语从句时跳过这句，整次复核照常完成，初评错误保留', async () => {
+    const p = preparedFor(cycling()),
+      wire = mixedDiagnosticReply(p);
+    wire.errors.push(syntaxError('q1', 'which成分判断错误', 'which是定语从句主语'));
+    const { content, receipt } = await verifyCoachErrors(
+      p,
+      JSON.stringify(wire),
+      verdict({
+        blanks: [fill(['in'])],
+        syntax: [
+          {
+            ...parsed('s1', 'The workshop', 'starts', 'none', 'none', 'none', 'none', '其他'),
+            hasRelativeClause: false
+          },
+          parsed('s2', 'The coach', 'teaches', 'whom we met last week', 'coach', 'we', 'met', '宾语')
+        ]
+      })
+    );
+    expect(receipt.syntax[0]).toEqual({ quoteId: 'q1', valid: false, agreed: false, claims: {}, notApplicable: true });
+    expect(receipt.status).toBe('completed');
+    expect(receipt.failure).toBeUndefined();
+    expect(JSON.parse(content).errors.map((e) => e.quoteId)).toContain('q1');
+  });
   it('句法题要求翻译或没有定语从句时不做盲析；无初评错误也须盲析，漏答整次复核失败', async () => {
     const translate = syntaxRequest(
       '分析主干并翻译：The workshop which our teacher recommended starts tomorrow.',
@@ -2256,6 +2280,23 @@ describe('摸底错误合并复核一次：讲解题只删不加，单词填空�
       )
     ).toBe(true);
     expect(target('who take part in campus workshops 是定语从句，修饰 workshops。')).toBe(false);
+  });
+  it('别的从句的类型判断不算本从句的断言，把本从句说成别的类型仍不成立', () => {
+    const relative = (sentence, fields, note) => syntaxAgreement(sentence, parsed('s1', ...fields), note).claims.kind;
+    const workshops = [
+      'Students who take part in campus workshops often find that the skills prove useful.',
+      ['Students', 'find', 'who take part in campus workshops', 'Students', 'who', 'take', '主语']
+    ];
+    expect(relative(...workshops, 'who take part in campus workshops 是定语从句。宾语是 that 引导的宾语从句。')).toBe(
+      true
+    );
+    expect(relative(...workshops, 'who take part in campus workshops 是状语从句。')).toBe(false);
+    const tasks = [
+      'Teachers must design tasks that keep learners engaged and ensure that progress can be measured fairly.',
+      ['Teachers', 'must design', 'that keep learners engaged', 'tasks', 'that', 'keep', '主语']
+    ];
+    expect(relative(...tasks, 'that keep learners engaged 是定语从句。宾语是 that 引导的宾语从句。')).toBe(true);
+    expect(relative(...tasks, 'that progress can be measured fairly 是宾语从句。')).toBeUndefined();
   });
   it('形容词位的介词形词不当作后置修饰', () => {
     const sentence = 'We expect a change in the near future, which most people welcome.',
