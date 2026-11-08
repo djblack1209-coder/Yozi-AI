@@ -1,5 +1,6 @@
 import Observation
 import SwiftUI
+import UIKit
 import WatchConnectivity
 
 private struct Glance: Equatable {
@@ -98,6 +99,8 @@ private struct TodayView: View {
 @main
 struct YoziWatchApp: App {
     @State private var phone = PhoneGlance()
+    private static let kitten = Bundle.main.path(forResource: "Kitten", ofType: "png")
+        .flatMap { UIImage(contentsOfFile: $0) }
 
     var body: some Scene {
         WindowGroup {
@@ -106,10 +109,13 @@ struct YoziWatchApp: App {
                     TodayView(glance: glance)
                 } else {
                     VStack(spacing: 8) {
-                        Image(decorative: "Kitten")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 52, height: 52)
+                        if let kitten = Self.kitten {
+                            Image(uiImage: kitten)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 52, height: 52)
+                                .accessibilityHidden(true)
+                        }
                         Text("暂无同步数据").font(.headline)
                         Text("打开手机上的 Yozi AI").font(.caption).foregroundStyle(.secondary)
                     }
