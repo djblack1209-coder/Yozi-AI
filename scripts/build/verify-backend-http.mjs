@@ -3,10 +3,50 @@ import crypto from 'node:crypto';
 import { once } from 'node:events';
 import { writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import { summarizeLearning } from '../../laf-backend/functions/_shared/learning-domain.js';
 if (process.env.LEARNING_TEST_MONGO_URI !== 'mongodb://127.0.0.1:27189/exam_learning_isolated')
   throw new Error('Only the explicitly enabled fixed local test Mongo URI is accepted');
-const port = 4382;
+const port = Number(process.env.YOZI_HTTP_PORT || 4382);
+// Golden comparison of two backend builds: same requests, normalized responses and ledger.
+const goldenOut = process.env.YOZI_GOLDEN_OUT;
+const { MongoClient } = createRequire(new URL('../../laf-backend/standalone/package.json', import.meta.url))('mongodb');
+const withDatabase = async (work) => {
+  const client = await MongoClient.connect(process.env.LEARNING_TEST_MONGO_URI);
+  try {
+    return await work(client.db('exam_learning_isolated'));
+  } finally {
+    await client.close();
+  }
+};
+// Every model and sync route now requires an existing active account.
+const seedUsers = (...ids) =>
+  withDatabase((database) =>
+    Promise.all(
+      ids.map((id) =>
+        database.collection('users').updateOne({ _id: id }, { $set: { status: 'active' } }, { upsert: true })
+      )
+    )
+  );
+const serverEntry = process.env.YOZI_HTTP_SERVER || 'laf-backend/standalone/dist/standalone/server.js';
+const golden = { responses: {}, ledger: {} };
+const volatile =
+  /(^|_)(at|expiresAt|checkedAt|durationMs|capturedAt|resultCachedAt|resultExpiresAt|keyRef|fingerprint|configurationVersion|connectionVersion|requestId|timestamp)$|At$/i;
+const normalize = (value) =>
+  Array.isArray(value)
+    ? value.map(normalize)
+    : value && typeof value === 'object'
+      ? Object.fromEntries(
+          Object.entries(value)
+            .filter(([key]) => !volatile.test(key))
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([key, item]) => [key, normalize(item)])
+        )
+      : typeof value === 'string'
+        ? value
+            .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, '<uuid>')
+            .replace(/\b[0-9a-f]{24,}\b/g, '<hex>')
+        : value;
 const boundedFetch = (url, options = {}) => fetch(url, { ...options, signal: AbortSignal.timeout(5000) });
 const secret = 'TEST_ONLY_http_runtime_validation_no_production_key';
 const base = `http://127.0.0.1:${port}`;
@@ -19,7 +59,7 @@ const jwt = (userId) => {
   return `${header}.${payload}.${sig}`;
 };
 const results = [];
-const server = spawn(process.execPath, ['laf-backend/standalone/dist/standalone/server.js'], {
+const server = spawn(process.execPath, [serverEntry], {
   env: {
     PATH: process.env.PATH,
     NODE_ENV: 'test',
@@ -31,7 +71,24 @@ const server = spawn(process.execPath, ['laf-backend/standalone/dist/standalone/
     JWT_SECRET: secret,
     ALLOWED_ORIGINS: 'http://127.0.0.1:4210',
     LEARNING_PLATFORM_CALLS_ENABLED: 'false',
-    LEARNING_PAYMENT_SANDBOX_ENABLED: 'false'
+    LEARNING_PAYMENT_SANDBOX_ENABLED: 'false',
+    LEARNING_VAULT_KEY: 'c'.repeat(64),
+    LEARNING_ALLOWED_ORIGINS: 'https://api.deepseek.com',
+    GOLDEN_PLATFORM_KEY: 'TEST_ONLY_platform_key_never_sent',
+    LEARNING_PLATFORM_MODELS: JSON.stringify([
+      {
+        id: 'golden-platform',
+        provider: 'deepseek',
+        model: 'deepseek-flash',
+        endpoint: 'https://api.deepseek.com/chat/completions',
+        keyEnv: 'GOLDEN_PLATFORM_KEY',
+        maxOutput: 1000,
+        capabilities: { structured: true },
+        priceVersion: 'golden',
+        inputPerMillion: 1,
+        outputPerMillion: 2
+      }
+    ])
   },
   stdio: ['ignore', 'pipe', 'pipe']
 });
@@ -72,6 +129,7 @@ try {
       }
     }, 100);
   });
+  await seedUsers('maintenance-http-u1', 'golden-http-user');
   await check('health真实进程', async () => assert.equal((await boundedFetch(base + '/health')).status, 200));
   await check('缺JWT不得访问模型', async () =>
     assert.equal(
@@ -163,6 +221,7 @@ try {
     );
   let synced;
   const uid = `isolated-http-continuity-${crypto.randomUUID()}`;
+  await seedUsers(uid, `${uid}-other`);
   await check('真实JWT和Mongo：10任务6完成、6可靠首答2错', async () => {
     const result = await post('/learning-sync', { action: 'push', operations, timezone: 'Asia/Shanghai' }, uid);
     assert.equal(result.success, true);
@@ -195,6 +254,59 @@ try {
     assert.equal(current.data.state.conversations[0].goal, '合成计算题验收');
     assert.equal(current.data.state.events.length, operations.length);
   });
+  // Platform and BYOK requests the runtime check lacked. The BYOK key is invalid on purpose:
+  // the provider refuses it, so the ledger row is real and costs nothing.
+  const goldenUser = 'golden-http-user';
+  const modelCall = (requestId, modelId) => ({
+    requestId,
+    modelId,
+    shareConsent: true,
+    messages: [{ role: 'user', content: '合成数据' }]
+  });
+  const record = async (name, route, body, assertion) =>
+    check(`golden ${name}`, async () => {
+      const response = await post(route, body, goldenUser);
+      golden.responses[name] = normalize(response);
+      assertion(response);
+    });
+  await record('平台模型关闭', '/proxy-ai', modelCall('golden-platform-1', 'golden-platform'), (r) =>
+    assert.equal(r.error, 'NEEDS_CONNECTION')
+  );
+  await record('平台流式关闭', '/proxy-ai-stream', modelCall('golden-platform-2', 'golden-platform'), (r) =>
+    assert.equal(r.success, false)
+  );
+  await record('未知模型', '/proxy-ai', modelCall('golden-missing', 'no-such-model'), (r) =>
+    assert.equal(r.error, 'NEEDS_CONNECTION')
+  );
+  await record(
+    '自带连接保存',
+    '/learning-models',
+    {
+      action: 'save',
+      shareConsent: true,
+      profile: {
+        id: 'golden-byok',
+        provider: 'DeepSeek',
+        model: 'deepseek-chat',
+        endpoint: 'https://api.deepseek.com/chat/completions',
+        apiKey: 'sk-TEST-ONLY-invalid-key'
+      }
+    },
+    () => {}
+  );
+  await record('自带连接未通过能力检查', '/proxy-ai', modelCall('golden-byok-1', 'golden-byok'), (r) =>
+    assert.equal(r.success, false)
+  );
+  await record('自带连接重放', '/proxy-ai', modelCall('golden-byok-1', 'golden-byok'), (r) =>
+    assert.equal(r.success, false)
+  );
+  await record('用量', '/learning-models', { action: 'usage' }, (r) => assert.equal(r.code, 0));
+  await record('连接列表', '/learning-models', { action: 'list' }, (r) => assert.equal(r.code, 0));
+  if (goldenOut)
+    await withDatabase(async (database) => {
+      for (const name of ['learning_accounts', 'learning_billing_receipts'])
+        golden.ledger[name] = normalize(await database.collection(name).find({ user_id: goldenUser }).toArray());
+    });
   await check('stream非法输入在调用前拒绝', async () => assert.equal((await post('/proxy-ai-stream', {})).code, 400));
   await check('非法JSON如实400', async () =>
     assert.equal(
@@ -245,5 +357,6 @@ writeFileSync(
   'tmp/maintenance/http-runtime-report.json',
   JSON.stringify({ target: base, modelCalls: 0, payments: 0, results }, null, 2) + '\n'
 );
+if (goldenOut) writeFileSync(goldenOut, JSON.stringify(golden, null, 2) + '\n');
 console.log(JSON.stringify({ total: results.length, passed: results.filter((x) => x.passed).length }));
 if (results.some((x) => !x.passed)) process.exitCode = 1;

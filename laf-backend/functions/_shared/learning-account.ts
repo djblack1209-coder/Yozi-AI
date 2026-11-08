@@ -333,15 +333,27 @@ export function reserveCall(account: any, input: any, now = Date.now(), policy =
       // 旧周的在途预留不会消失；每条调用绑定自身的 entitlementWeek。
       result.entitlement = { ...result.entitlement, week, spent: 0, reserved: 0 };
     }
+    const credit = input.trialCredit;
+    if (credit) {
+      // 开关开启时试用额度代替周权益，开发通道也不绕过；未结算的预留继续占用额度。
+      const credits = result.trialCredits ?? { granted: 0, reserved: 0, spent: 0 };
+      requireValue(
+        credits.spent + credits.reserved < credit.granted,
+        'QUOTA_EXHAUSTED',
+        '试用额度已用完，可在 AI 连接器接入自己的 API 继续学习'
+      );
+      result.trialCredits = { ...credits, granted: credit.granted, reserved: credits.reserved + 1 };
+    } else
+      requireValue(
+        DEV_TEST ||
+          result.entitlement.spent + result.entitlement.reserved + (input.deliveryUnits ?? input.units) <=
+            result.entitlement.weeklyUnits,
+        'QUOTA_EXHAUSTED',
+        '本周平台模型额度不足，可主动选择自带 API 或本地连接'
+      );
     requireValue(
-      DEV_TEST ||
-        result.entitlement.spent + result.entitlement.reserved + (input.deliveryUnits ?? input.units) <=
-          result.entitlement.weeklyUnits,
-      'QUOTA_EXHAUSTED',
-      '本周平台模型额度不足，可主动选择自带 API 或本地连接'
-    );
-    requireValue(
-      result.cost.spent + result.cost.reserved + input.maxCost <= result.cost.hardLimit,
+      result.cost.spent + result.cost.reserved + input.maxCost <=
+        Math.max(result.cost.hardLimit, credit?.costLimit ?? 0),
       'COST_LIMIT',
       '平台模型成本硬预算不足'
     );
@@ -350,6 +362,7 @@ export function reserveCall(account: any, input: any, now = Date.now(), policy =
   }
   const call = {
     ...input,
+    ...(input.trialCredit ? { trialCredit: true } : {}),
     status: 'reserved',
     at: now,
     entitlementWeek: result.entitlement.week,
@@ -473,6 +486,11 @@ export function settleCall(
       }
     }
     call.entitlementCharged = successful ? call.units : 0; // 开发配置：失败/及时取消用户权益返还一次。
+    if (call.trialCredit && actualCost !== null) {
+      // 已发出的调用无论成败都消耗额度；从未发出的归还；成本未知的保持占用。
+      result.trialCredits.reserved = Math.max(0, result.trialCredits.reserved - 1);
+      if (settlement.executionStage !== 'not_called') result.trialCredits.spent += 1;
+    }
   } else call.entitlementCharged = 0;
   const maintained = maintainModelResources(result, now, policy);
   return {
