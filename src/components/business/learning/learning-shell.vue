@@ -19,7 +19,7 @@
       'is-desktop-settings': nativeSettings,
       'has-notice': !!notice,
       'has-composer': !!$slots.composer,
-      'has-artifact': !!artifactTarget
+      'has-artifact': !!artifactTarget || !!$slots.reader
     }"
     :style="[platformInsets, dockStyle, { '--muse-panel-width': `${panelWidth}px` }]"
   >
@@ -417,11 +417,13 @@
       </view>
       <MuseArtifactPanel
         v-if="artifactTarget"
+        v-show="!$slots.reader"
         :key="artifactTarget.id"
         ref="artifactPanel"
         :target="artifactTarget"
         @close="artifacts.target = null"
       />
+      <slot name="reader" />
     </view>
     <BaseEmpty v-if="error" class="shell-error" state="error" :title="learningText(error)" />
   </view>

@@ -18,9 +18,10 @@ export function coachSourcePassage(materials, source) {
   return {
     name: material.name,
     location: segment.page ? `第 ${segment.page} 页` : `第 ${Number(index) + 1} 段`,
-    before: passage.slice(0, quoteStart),
-    quote,
-    after: passage.slice(quoteStart + quote.length)
+    materialId,
+    segmentId: segment.id,
+    start: offset + quoteStart,
+    end: offset + (quote ? quoteStart + quote.length : passage.length)
   };
 }
 

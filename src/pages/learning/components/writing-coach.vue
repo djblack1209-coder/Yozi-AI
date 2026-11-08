@@ -17,6 +17,14 @@
     @connections="openConnections"
     @materials="showMaterials = !showMaterials"
   >
+    <template v-if="sourcePassage" #reader>
+      <MuseReadingPane
+        :key="openedSource.id"
+        :material="learning.state.materials.find((item) => item.id === sourcePassage.materialId)"
+        :anchor="sourcePassage"
+        @close="openedSource = null"
+      />
+    </template>
     <!-- #ifdef MP-WEIXIN -->
     <PrivacyPopup />
     <!-- #endif -->
@@ -97,22 +105,6 @@
       @action="handleModelAction"
     />
     <CustomModal
-      :visible="!!sourcePassage"
-      :title="sourcePassage ? `${sourcePassage.name} · ${sourcePassage.location}` : ''"
-      :is-dark="theme.isDark"
-      :show-actions="false"
-      close-button
-      mask-closable
-      @cancel="openedSource = null"
-    >
-      <scroll-view v-if="sourcePassage" class="coach-source-passage" scroll-y>
-        <text selectable
-          >{{ sourcePassage.before }}<text class="coach-source-quote">{{ sourcePassage.quote }}</text
-          >{{ sourcePassage.after }}</text
-        >
-      </scroll-view>
-    </CustomModal>
-    <CustomModal
       :visible="corpusItems.length > 0"
       title="个人句式参考"
       :is-dark="theme.isDark"
@@ -178,18 +170,25 @@
           <!-- #endif -->
           <text v-if="fileBusy">正在设备内提取文字…</text>
           <view class="coach-material-list">
-            <BaseCheckbox
-              v-for="material in learning.state.materials"
-              :key="material.id"
-              :model-value="
-                materials.some((item) => item.id === material.id) || materialSelection.includes(material.id)
-              "
-              :disabled="
-                fileBusy || learning.busy || !coach?.profile || materials.some((item) => item.id === material.id)
-              "
-              @update:model-value="toggleMaterial(material.id)"
-              >{{ material.name }}</BaseCheckbox
-            >
+            <view v-for="material in learning.state.materials" :key="material.id" class="coach-material-row">
+              <BaseCheckbox
+                :model-value="
+                  materials.some((item) => item.id === material.id) || materialSelection.includes(material.id)
+                "
+                :disabled="
+                  fileBusy || learning.busy || !coach?.profile || materials.some((item) => item.id === material.id)
+                "
+                @update:model-value="toggleMaterial(material.id)"
+                >{{ material.name }}</BaseCheckbox
+              >
+              <BaseButton
+                v-if="material.segments?.length"
+                variant="quiet"
+                :label="`阅读${material.name}`"
+                @tap="readMaterial(material.id)"
+                >阅读</BaseButton
+              >
+            </view>
           </view>
           <BaseButton
             v-if="materialSelection.length"
@@ -769,6 +768,7 @@ import MuseRichText from '@/components/business/learning/muse-rich-text.vue';
 import MuseWritingCard from '@/components/business/learning/muse-writing-card.vue';
 import MusePracticeSheet from '@/pages/learning/components/muse-practice-sheet.vue';
 import MuseCoachCitation from './muse-coach-citation.vue';
+import MuseReadingPane from './muse-reading-pane.vue';
 import MuseFeedbackCard from '@/components/business/learning/muse-feedback-card.vue';
 import MuseErrorReview from '@/components/business/learning/muse-error-review.vue';
 import { useConversationLearningStore, learningId } from '@/stores/modules/conversation-learning.js';
@@ -808,7 +808,24 @@ const modelFailure = ref(null);
 const theme = useThemeStore(),
   materialSelection = ref([]);
 const openedSource = ref(null);
-const sourcePassage = computed(() => coachSourcePassage(learning.state.materials, openedSource.value));
+const sourcePassage = computed(() => {
+  const target = openedSource.value;
+  if (!target || target.kind === 'private_material') return coachSourcePassage(learning.state.materials, target);
+  const material = learning.state.materials.find((item) => item.id === target.materialId);
+  const position = material?.reading?.position;
+  const segment =
+    material?.segments.find(
+      (item) => item.id === position?.segmentId && (item.extractionEventId ?? null) === position.version
+    ) || material?.segments[0];
+  if (!segment) return null;
+  const lineBreak = segment.content.indexOf('\n');
+  return {
+    materialId: material.id,
+    segmentId: segment.id,
+    start: 0,
+    end: lineBreak > 0 ? lineBreak : segment.content.length
+  };
+});
 const profileStep = ref(0);
 const composerHeight = ref(60);
 const intakePanel = ref(null);
@@ -1428,6 +1445,10 @@ function toggleMaterial(id) {
     ? materialSelection.value.filter((value) => value !== id)
     : [...materialSelection.value, id];
 }
+function readMaterial(id) {
+  showMaterials.value = false;
+  openedSource.value = { id, materialId: id };
+}
 function useMaterials() {
   if (fileBusy.value || learning.busy || !coach.value?.profile) return;
   act(() => {
@@ -1472,15 +1493,6 @@ function login() {
 }
 </script>
 <style scoped>
-.coach-source-passage {
-  max-height: 52vh;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.coach-source-quote {
-  background: var(--violet-soft);
-  color: var(--ink);
-}
 .coach-connection-label {
   max-width: 250px;
   overflow: hidden;
@@ -1739,5 +1751,11 @@ function login() {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+.coach-material-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 </style>
