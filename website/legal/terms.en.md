@@ -98,4 +98,4 @@ We send notices through in-app messages, pop-ups, website announcements or your 
 
 1. When these terms change, we publish the new version in the app and on the website. **For changes that significantly affect your rights, we will tell you prominently, for example with a pop-up, and you can decline and stop using the service.** For other changes, continuing to use the service after they take effect means you accept them.
 2. If any provision of these terms is held invalid, the rest remain in force.
-3. The operator's details and contact information are the same as in [section 10 of the Privacy Policy](/en/privacy/#contact).
+3. The operator's details and contact information are the same as in [section 10 of the Privacy Policy](/en/privacy/#contact). Contact email: yozi@245334.xyz.

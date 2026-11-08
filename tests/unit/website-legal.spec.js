@@ -16,11 +16,10 @@ describe('website legal pages', () => {
     expect(shape(legalBlocks('en', doc))).toEqual(shape(legalBlocks('zh', doc)));
   });
 
-  it.each(LEGAL_DOCS)('%s publishes no placeholder and no unverified address', (doc) => {
+  it.each(LEGAL_DOCS)('%s publishes no placeholder and has a canonical URL', (doc) => {
     for (const lang of LEGAL_LANGUAGES) {
       const html = renderLegal(lang, doc, '');
       expect(html).not.toMatch(/【|待填|TODO/);
-      expect(html).not.toMatch(/[\w.+-]+@[\w-]+\.[a-z]{2,}/i);
       expect(html).toContain(`<link rel="canonical" href="https://yozi.bot.cd${legalPath(lang, doc)}">`);
     }
   });

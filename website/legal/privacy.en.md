@@ -184,5 +184,5 @@ You can exercise these rights in the app, or through the contact details in sect
 ## 10. Contact us {#contact}
 
 - Operator: the Yozi AI team. Once the operating company is registered, we will publish its full name and registered address on this page.
-- Our personal information contact email and Xiaohongshu account will be published on this page once they open.
+- Our personal information contact email is yozi@245334.xyz. Our Xiaohongshu account will be published on this page once it opens.
 - Until then, you can exercise the rights in section 7 directly in the app: access, export, correction, deletion, withdrawal of consent and account deletion.
