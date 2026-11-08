@@ -16,7 +16,8 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { closeDb, runWithResponse } from './cloud-shim.js';
+import { closeDb, getDb, runWithResponse } from './cloud-shim.js';
+import { createSecurityAudit } from './security-audit.js';
 import { DEV_TEST } from '../functions/_shared/build-channel.js';
 
 Object.defineProperty(globalThis, '__YOZI_DEV_TEST__', { value: DEV_TEST });
@@ -30,6 +31,7 @@ const FUNCTIONS_DIR = path.resolve(__dirname, '../functions');
 const STORAGE_DIR = process.env.STORAGE_DIR || '/app/storage';
 
 const app = express();
+const securityAudit = createSecurityAudit(getDb);
 
 // Compile once before listening; reject invalid or hop-count configuration at startup.
 app.set('trust proxy', compileTrustedProxies());
@@ -241,6 +243,7 @@ async function registerFunctions() {
       // 使用 AsyncLocalStorage 隔离并发请求，避免 SSE 数据发送到错误客户端
       try {
         const result = await runWithResponse(res, () => mod.default(ctx));
+        securityAudit.record(funcName, res.statusCode, result?.code);
 
         // 如果函数已经通过 cloud.res 发送了响应 (SSE), 不再发送
         if (res.headersSent) return;
@@ -345,6 +348,7 @@ async function main() {
   const shutdown = async (signal: string) => {
     console.log(`\n[shutdown] Received ${signal}, graceful shutdown...`);
     server.close(async () => {
+      await securityAudit.flush();
       await closeDb();
       console.log('[shutdown] Server closed');
       process.exit(0);
