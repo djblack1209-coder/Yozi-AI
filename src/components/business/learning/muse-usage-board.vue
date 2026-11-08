@@ -15,7 +15,7 @@
     <view class="artifact-body"
       ><view class="quota-canvas">
         <view class="quota-head"
-          ><image :src="BRAND.mark" mode="aspectFit" alt="" /><text class="quota-title">使用情况</text
+          ><image :src="theme.isDark ? BRAND.markOnDark : BRAND.mark" mode="aspectFit" alt="" /><text class="quota-title">使用情况</text
           ><text class="quota-stamp" role="status">{{ refreshed }}</text></view
         >
         <MuseConversationFilter />
@@ -108,9 +108,11 @@ import { getToken } from '@/services/auth-storage.js';
 import '@/i18n/muse.js';
 import { publicError, t } from '@/i18n/index.js';
 import { BRAND } from '@/config/brand.js';
+import { useThemeStore } from '@/stores/modules/theme.js';
 import BaseButton from '@/components/base/base-button/base-button.vue';
 defineEmits(['close']);
 const learning = useConversationLearningStore(),
+  theme = useThemeStore(),
   refreshed = ref('');
 const context = workspaceConversationContext(learning);
 const data = computed(() => museUsage(context.state.value, learning.calendarTime));

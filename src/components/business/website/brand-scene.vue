@@ -27,7 +27,7 @@
     <!-- #endif -->
     <view class="brand-scene__brand"
       ><image
-        :src="WEBSITE_MODE ? '/static/brand/mascot-256.webp' : '/static/images/logo.png'"
+        :src="BRAND.mark"
         mode="aspectFit"
         alt=""
       /><text>Yozi AI</text></view
@@ -44,6 +44,7 @@
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { onHide, onShow } from '@dcloudio/uni-app';
 import { WEBSITE_MODE } from '@/config/website.js';
+import { BRAND } from '@/config/brand.js';
 const POSTER = '/public/visual/nomi/kitten.png',
   VIDEO = '/public/visual/nomi/kitten.mp4';
 const video = ref(null),

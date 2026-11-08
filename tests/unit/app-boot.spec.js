@@ -11,7 +11,7 @@ describe('App entrance before the page bundle loads', () => {
   it('paints the approved transparent brand on the Muse surface without another script or caption', () => {
     const result = appBootPlugin(true).transformIndexHtml.handler(document);
     expect(result).toContain('data-yozi-app');
-    expect(result).toContain('src="/static/images/logo.png"');
+    expect(result).toContain('src="/static/brand/kitten-avatar.png"');
     expect(result).toContain('#181819');
     expect(result).toContain('#fcfcfc');
     expect(result).not.toContain('<script');

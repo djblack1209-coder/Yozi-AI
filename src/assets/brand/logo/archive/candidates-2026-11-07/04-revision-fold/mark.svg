@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Yozi AI — Revision Fold</title>
+  <desc id="desc">Two faces of a folded sheet surround an open seam that turns from vertical to diagonal.</desc>
+  <path fill="#11243D" d="
+    M 18 34 Q 18 27 25 25 L 66 16 Q 73 14 73 21 V 44 Q 73 48 70 51
+    L 42 78 Q 38 82 38 87 V 101 Q 38 108 32 105 L 23 100 Q 18 97 18 92 Z
+    M 90 30 Q 90 24 95 27 L 105 33 Q 111 37 111 44 V 93 Q 111 100 104 102
+    L 62 112 Q 55 114 55 107 V 92 Q 55 88 58 85 L 86 58 Q 90 54 90 49 Z"/>
+</svg>

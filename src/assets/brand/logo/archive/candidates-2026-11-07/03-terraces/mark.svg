@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Yozi AI — Terraces</title>
+  <desc id="desc">Three bands of increasing length share a right edge and form a stepped profile.</desc>
+  <path fill="#11243D" d="
+    M 69 20 H 106 Q 111 20 111 25 V 35 Q 111 40 106 40 H 58
+    Q 53 40 56 35 L 64 23 Q 66 20 69 20 Z
+    M 50 54 H 106 Q 111 54 111 59 V 69 Q 111 74 106 74 H 39
+    Q 34 74 37 69 L 45 57 Q 47 54 50 54 Z
+    M 31 88 H 106 Q 111 88 111 93 V 103 Q 111 108 106 108 H 20
+    Q 15 108 18 103 L 26 91 Q 28 88 31 88 Z"/>
+</svg>

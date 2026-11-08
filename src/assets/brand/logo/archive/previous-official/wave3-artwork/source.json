@@ -1,0 +1,52 @@
+{
+  "scope": "Wave3 release icons and store artwork only",
+  "source": "logo-candidates-2026-11-06/06-event-cat/mark-primary.svg",
+  "wordmark": "logo-candidates-2026-11-06/06-event-cat/lockup-primary.svg",
+  "constructionSource": "logo-candidates-2026-11-06/source/build.mjs",
+  "selection": "06 Event Cat proposed; optional owner question unanswered; provisional for this candidate",
+  "derivedBy": {
+    "icons": "existing @tauri-apps/cli 2.12.2 icon command",
+    "listing": "existing client-bundled sharp 0.35.5; no installed dependency"
+  },
+  "backgrounds": {
+    "macOS": "solid white per project rule",
+    "iOS": "opaque white with no alpha for all native iOS icons and store icon",
+    "Windows": "transparent",
+    "AndroidLegacyAndStore": "transparent"
+  },
+  "productMascot": "existing event-driven runtime unchanged; no redesign or cosmetic state changes",
+  "newDownloads": 0,
+  "newGPLComponents": 0,
+  "nativeIconConfiguration": "src/manifest.json app-plus.distribute.icons",
+  "nativeIconFiles": "src/static/brand/native-icons",
+  "iosOpacity": "All native iOS icon exports have no alpha, per official DCloud/App Store packaging format; other non-macOS/non-iOS marks stay transparent.",
+  "iosFormatSource": "https://uniapp.dcloud.io/tutorial/app-icons",
+  "listingFiles": {
+    "app-icon-transparent-1024.png": {
+      "bytes": 31451,
+      "width": 1024,
+      "height": 1024,
+      "alpha": true
+    },
+    "ios-store-1024.png": {
+      "bytes": 31393,
+      "width": 1024,
+      "height": 1024,
+      "alpha": false
+    },
+    "android-store-512.png": {
+      "bytes": 12760,
+      "width": 512,
+      "height": 512,
+      "alpha": true
+    },
+    "android-feature-1024x500.png": {
+      "bytes": 18329,
+      "width": 1024,
+      "height": 500,
+      "alpha": false
+    }
+  },
+  "featureGraphicFormat": "Removed unused alpha channel only; RGB pixels unchanged, 24-bit PNG",
+  "featureGraphicFormatSource": "https://support.google.com/googleplay/android-developer/answer/9866151?hl=en"
+}

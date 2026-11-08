@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Yozi AI — Traverse</title>
+  <desc id="desc">A broad switchback route that forms a Z and ends in a level landing.</desc>
+  <path fill="#11243D" d="
+    M 27 19 H 89 C 103 19 112 28 112 40 C 112 48 108 55 101 59 L 53 88 H 99
+    C 107 88 112 93 112 100 C 112 107 107 111 100 111 H 38
+    C 24 111 16 102 16 90 C 16 82 20 76 27 72 L 75 42 H 27
+    C 20 42 16 37 16 30 C 16 23 20 19 27 19 Z"/>
+</svg>

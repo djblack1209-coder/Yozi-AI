@@ -30,7 +30,7 @@ export function appBootPlugin(enabled) {
           .muse-launch__poster { width: 64px; height: 64px; object-fit: contain; }
           ${motion}
         </style>`;
-        const placeholder = `<div id="yozi-app-boot" class="muse-launch" aria-hidden="true"><div class="muse-launch__ring"></div><img class="muse-launch__poster" src="/static/images/logo.png" alt="" /></div><div id="app"></div>`;
+        const placeholder = `<div id="yozi-app-boot" class="muse-launch" aria-hidden="true"><div class="muse-launch__ring"></div><img class="muse-launch__poster" src="/static/brand/kitten-avatar.png" alt="" /></div><div id="app"></div>`;
         return html
           .replace('<html ', '<html data-yozi-app ')
           .replace('</head>', `${style}</head>`)

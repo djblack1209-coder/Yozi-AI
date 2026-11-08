@@ -163,4 +163,4 @@ export const AVATAR_MEDIA = Object.freeze(
     ])
   )
 );
-export const AVATAR_STATIC = '/static/images/logo.png';
+export const AVATAR_STATIC = '/static/brand/kitten-avatar.png';

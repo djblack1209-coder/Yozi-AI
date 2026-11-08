@@ -96,7 +96,7 @@
                 <view class="force-axis" />
                 <image
                   class="force-character"
-                  :src="BRAND.mark"
+                  :src="mascotFrames['00-reference-front']"
                   mode="aspectFit"
                   :style="{ left: forcePosition(index ? frame.comparisonPosition : frame.position) }"
                 />
@@ -196,7 +196,7 @@
               />
               <image
                 class="scene-character"
-                :src="BRAND.mark"
+                :src="mascotFrames['00-reference-front']"
                 mode="aspectFit"
                 :style="{
                   left: `${recipe.direction === 'left' ? 92 - (84 * frame.position) / recipe.outward : 8 + (84 * frame.position) / recipe.outward}%`
@@ -803,7 +803,7 @@ import BaseChip from '@/components/base/base-chip/base-chip.vue';
 import BaseInput from '@/components/base/base-input/base-input.vue';
 
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { BRAND } from '@/config/brand.js';
+import mascotFrames from '@/components/base/yozi-mascot/mascot-frames.js';
 import { bindLearningKeyboard } from '@/services/learning/keyboard-controls.js';
 import DiagramConditions from '@/components/business/learning/diagram-conditions.vue';
 import VelocityTimeGraph from '@/components/business/learning/velocity-time-graph.vue';

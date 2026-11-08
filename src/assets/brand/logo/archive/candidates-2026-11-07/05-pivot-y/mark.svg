@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Yozi AI — Pivot Y</title>
+  <desc id="desc">An asymmetric Y with raised right arm, rounded junction and diagonal stem foot.</desc>
+  <path fill="#11243D" d="
+    M 18 31 Q 19 26 24 26 H 41 Q 46 26 49 30 L 63 52 Q 66 57 69 52
+    L 86 23 Q 88 19 93 19 H 108 Q 115 19 112 25 L 80 77 V 100
+    Q 80 105 75 107 L 60 113 Q 54 115 54 109 V 82 Q 54 78 51 74 L 20 37 Q 17 34 18 31 Z"/>
+</svg>

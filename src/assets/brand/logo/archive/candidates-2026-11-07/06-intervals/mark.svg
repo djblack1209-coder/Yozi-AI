@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Yozi AI — Intervals</title>
+  <desc id="desc">Two open rings with offset exits represent successive returns to the same topic.</desc>
+  <path fill="#11243D" d="
+    M 16 68 C 16 39 36 18 65 18 C 93 18 112 38 112 65 C 112 92 93 110 67 110
+    C 55 110 44 106 35 100 L 46 84 C 51 89 59 92 67 92 C 82 92 94 80 94 65
+    C 94 49 82 36 65 36 C 47 36 34 48 34 68 Q 34 75 37 81 L 20 89 Q 16 80 16 68 Z
+    M 44 66 C 44 54 53 45 65 45 C 76 45 84 54 84 65 C 84 75 76 83 66 83
+    H 62 V 72 H 65 C 69 72 72 69 72 65 C 72 61 69 58 65 58 C 60 58 57 62 57 66
+    V 73 H 44 Z"/>
+</svg>

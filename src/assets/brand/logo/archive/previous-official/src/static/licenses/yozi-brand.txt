@@ -1,0 +1,30 @@
+Yozi AI brand update — 2026-10-20
+
+Current logo: customer-selected option 03, the curious tilted-head kitten, newly drawn from the website monochrome scanline kitten identity. The sole design master is src/assets/brand/kitten-icon-master.png, copied unchanged from the selected transparent PNG. Website, App and mini-program logos, default avatars, PWA and Windows exports retain genuine alpha and show only the kitten. Only macOS Dock ICNS frames are composited on opaque pure #FFFFFF. The avatar widget has no circular plate, border or inset shadow. Its original locally authored breathing, sway and one-shot motions use standard H.264 MP4 with color and grayscale alpha in the same frame; Canvas restores transparency and preserves white fur. Transparent WebP posters remain the static fallback. Built-in image_gen created the selected design; existing local canvas, FFmpeg and native tooling export it, with no new dependencies. The pre-existing reference background video stays as the scene; its public redistribution license remains unverified.
+
+Exact selected logo generation prompt:
+Use case: logo-brand.
+Asset type: one standalone square logo candidate for Yozi AI, a Chinese learning coach.
+Reference image: /Users/blackdj/Desktop/Yozi AI/public/visual/nomi/kitten.png is ONLY a reference for the kitten's identity and monochrome horizontal scanline character, NOT a pose to copy or a background to reproduce.
+Primary request: newly design the recognizable little kitten into a polished, appealing, exceptionally legible logo. Keep a very round broad face, triangular kitten ears with black interiors, very large expressive black oval eyes with small white highlights, a tiny black nose and a small friendly mouth. The kitten is white with a confident clean black outline and a few purposeful horizontal black scanline bands INSIDE its silhouette, especially at temples, cheek edges or chest. Never stripe over its eyes. Newly drawn minimal vector-like flat artwork with rounded, even, clean contours. Calm and friendly, suitable for a student learning coach. Pure black and white only.
+Background: GENUINE TRANSPARENT ALPHA, no painted white background, no checkerboard pixels. The white face and white body remain opaque inside their black outlines. Outside the kitten is entirely transparent, including space between its limbs and tail if present.
+Composition: exactly ONE complete kitten logo centered on a 1:1 square canvas with generous even safety margin (about 12%); ears and paws not cut off; large dominant head. No circular or square badge, no container, no plate, no ground, no cast shadow, no halo. No letters, words, numbers, accessories, props, book, graduation cap, watermark, mockup or multiple variations. Never a four-legged crawling/crouching/lying pose. Preserve upright frontal orientation. No gray or colored background, no gradients, no fur texture, no photographic rendering, no 3D. Deliver a finished isolated transparent PNG logo.
+Pose and design variant 03: CURIOUS TILTED HEAD PORTRAIT. Oversized round kitten head tilted about 12 degrees to the viewer's right above a very tiny upright chest; uneven ear heights created naturally by the tilt. Big alert open eyes gazing at the viewer, tiny curious closed mouth. A few horizontal scanline bands kept truly horizontal rather than rotated. Distinct lively tilted silhouette without props or gestures.
+
+Still-used learning illustration and teaching media:
+The former Future welcome illustration and its mini export were retired during the Muse 2 App redesign. They are not shipped or used as a design source.
+distance-return.mp4 is original local teaching geometry rendered using Blender/FFmpeg; it is teaching content, not a retired UI asset.
+
+Official login brand marks (unmodified shapes and original official colors):
+WeChat and Apple: Simple Icons, CC0-1.0, https://github.com/simple-icons/simple-icons (icons/wechat.svg and icons/apple.svg).
+WeChat uses its official #07C160; Apple is the official monochrome silhouette in black/white button contexts.
+Google colored G: gilbarbara/logos, CC0-1.0, https://github.com/gilbarbara/logos (logos/google-icon.svg).
+The original SVGs provided for this task are shipped under src/static/brand/{wechat,apple,google-g}.svg.
+CC0 dedication: https://creativecommons.org/publicdomain/zero/1.0/
+These marks identify their respective providers; the trademark rights remain with the brand owners.
+
+2026-11-02 小猫表演道具
+客户在本批对话中确认十态概念方向后，用内置 imagegen 独立生成笔记本与坐垫；无 Muse 提取素材。
+正式派生文件：src/assets/brand/kitten-laptop.webp、kitten-cushion.webp（透明、无底板）。
+原提示词：仅从已确认概念分别重画笔记本／空坐垫，黑白粗线、白色实心、透明背景、无角色与文字；完整生成记录在本轮 Codex 对话。
+小猫仍由现有分部位画布重画；Logo 母版和安装图标未改。

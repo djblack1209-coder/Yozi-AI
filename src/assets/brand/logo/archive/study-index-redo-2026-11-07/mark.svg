@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Yozi AI — Study Index</title>
+  <desc id="desc">A stepped knowledge field with a diamond-shaped opening at the current study point.</desc>
+  <path fill="#11243D" fill-rule="evenodd" d="
+    M 17 62 Q 17 54 25 54 H 39 Q 43 54 43 50 V 29 Q 43 21 51 21 H 85
+    Q 90 21 94 25 L 108 39 Q 112 43 112 49 V 98 Q 112 106 104 106 H 25
+    Q 17 106 17 98 Z
+    M 74 45 Q 77 42 80 45 L 94 59 Q 97 62 94 65 L 80 79 Q 77 82 74 79
+    L 60 65 Q 57 62 60 59 Z"/>
+</svg>
