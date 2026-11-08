@@ -73,17 +73,21 @@ private struct TodayView: View {
                 }
                 Label("待复习 \(glance.due)", systemImage: "books.vertical")
                 if let date = glance.reminder, date > .now {
+                    let time = date.formatted(
+                        .dateTime.month().day().hour().minute().locale(Locale(identifier: "zh_CN"))
+                    )
                     Label {
-                        Text(date.formatted(.dateTime.month().day().hour().minute()))
+                        Text(time)
                     } icon: {
                         Image(systemName: "bell")
                     }
                     .accessibilityLabel(reminderLabel)
-                    .accessibilityValue(date.formatted())
+                    .accessibilityValue(time)
                     Text(reminderLabel).font(.caption2).foregroundStyle(.secondary)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
         }
     }
 
