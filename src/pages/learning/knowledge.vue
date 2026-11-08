@@ -6,7 +6,7 @@
     </view>
     <view class="knowledge-title">
       <text role="heading" aria-level="1">{{ graph.title }}</text>
-      <text class="knowledge-subtitle">成人考研 · 英语一／英语二</text>
+      <text class="knowledge-subtitle">{{ goal?.goal || '成人考研 · 英语一／英语二' }}</text>
     </view>
     <ProgressOverview
       v-if="overview"
@@ -141,12 +141,18 @@ import {
 const theme = useThemeStore();
 const learning = useConversationLearningStore();
 const windowWidth = ref(390),
+  goalId = ref(''),
   selectedId = ref(''),
   mapView = ref('framework'),
   recordId = ref(''),
   sourceKey = ref('');
+const goal = computed(() =>
+  learning.recordReadState === 'ready' ? learning.state.conversations.find((session) => session.id === goalId.value) : null
+);
 const allProgress = computed(() =>
-  learningProgressReadModel(learning.recordReadState === 'ready' ? learning.state : { owner: learning.state.owner })
+  learningProgressReadModel(learning.recordReadState === 'ready' ? learning.state : { owner: learning.state.owner }, {
+    conversationId: goalId.value
+  })
 );
 const progress = computed(() => {
   const model = allProgress.value;
@@ -227,7 +233,8 @@ const nodeStyle = (node) => ({
   width: `${node.width}px`,
   height: `${node.height}px`
 });
-onLoad(() => {
+onLoad((options) => {
+  goalId.value = options?.goal || '';
   windowWidth.value = uni.getWindowInfo?.().windowWidth || uni.getSystemInfoSync().windowWidth || 390;
 });
 onResize((event) => {

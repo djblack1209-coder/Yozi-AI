@@ -137,6 +137,13 @@
               <view class="goal-tracking-copy">
                 <text class="goal-name">{{ goalTitle(goal) }}</text>
                 <text class="hero-copy">{{ goalMeta(goal) }} · {{ goal.next }}</text>
+                <BaseButton
+                  v-if="EXAM_NAMES[goal.coach.profile?.exam]"
+                  variant="quiet"
+                  :label="`查看${goalTitle(goal)}的知识路线`"
+                  @tap="safeNavigateTo(`/pages/learning/knowledge?goal=${encodeURIComponent(goal.id)}`)"
+                  >知识路线</BaseButton
+                >
               </view>
               <text class="goal-progress"
                 >{{ goal.completedDays }}{{ goal.totalDays ? ` / ${goal.totalDays}` : '' }} 天</text

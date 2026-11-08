@@ -138,8 +138,9 @@ function nodeProjection(evidence) {
 
 // Pure projection: current canonical originals/feedback only; never replay historical
 // payloads to resurrect deleted or superseded student records, or issue any writes.
-export function learningProgressReadModel(state = {}) {
-  const sessions = new Map(list(state.conversations).map((session) => [session.id, session]));
+export function learningProgressReadModel(state = {}, { conversationId } = {}) {
+  const conversations = list(state.conversations).filter((session) => !conversationId || session.id === conversationId);
+  const sessions = new Map(conversations.map((session) => [session.id, session]));
   const questions = new Map(list(state.questions).map((question) => [questionKey(question), question]));
   const events = new Map(list(state.events).map((event) => [event.id, event]));
   const evidence = new Map();
@@ -342,7 +343,7 @@ export function learningProgressReadModel(state = {}) {
     // No selected/frozen platform reference model or predictive validation yet.
     // Personal BYOK observations, unknown IDs and local grades never enter it.
     platformReference: { status: 'insufficient', percentage: null, evidenceIds: [] },
-    predictionAudit: writingPredictionAudit(state),
+    predictionAudit: writingPredictionAudit(conversationId ? { ...state, conversations } : state),
     mindMap: {
       id: writingSubject,
       label: '考研英语写作',
