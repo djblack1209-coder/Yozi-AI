@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { emptyLearningState, applyLearningOperation, dayKey } from '@/services/learning/learning-domain.js';
-import { coachMaterialContext } from '@/services/learning/coach-material-context.js';
+import { coachMaterialContext, coachSourcePassage } from '@/services/learning/coach-material-context.js';
 import { museLearningInsights } from '@/services/learning/muse-learning-insights.js';
 import { museGoals, museHistory } from '@/services/learning/muse-workspace-data.js';
 import {
@@ -18,6 +18,34 @@ import {
 } from '../../laf-backend/functions/_shared/learning-writing-coach.js';
 
 const start = Date.parse('2026-10-17T12:00:00Z');
+
+it('来源跳到实际检索的页内片段，资料被修改或删除后不跳到同名文件', () => {
+  const quote = '下一段才开始解释先入先出。';
+  const material = {
+    id: 'book',
+    name: '私人资料',
+    segments: [{ page: 7, content: `${'甲'.repeat(1140)}${quote}后文` }]
+  };
+  const [source] = coachMaterialContext(
+    { materials: [material] },
+    { coach: { materialIds: ['book'] } },
+    { input: quote },
+    1
+  );
+  const reference = { ...source, kind: 'private_material', quote };
+  expect(source.id).toBe('book:page:7:0:1000');
+  expect(coachSourcePassage([material], reference)).toEqual({
+    name: material.name,
+    location: '第 7 页',
+    before: '甲'.repeat(140),
+    quote,
+    after: '后文'
+  });
+  expect(coachSourcePassage([{ ...material, id: 'other' }], reference)).toBeNull();
+  expect(
+    coachSourcePassage([{ ...material, segments: [{ page: 7, content: '乙'.repeat(1200) }] }], reference)
+  ).toBeNull();
+});
 
 it('薄弱点看板复用证据过滤且保留较早的有效记录，不改写历史', () => {
   const labels = Array.from({ length: 9 }, (_, i) => `合成观察${i}`);

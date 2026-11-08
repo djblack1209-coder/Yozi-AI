@@ -97,6 +97,22 @@
       @action="handleModelAction"
     />
     <CustomModal
+      :visible="!!sourcePassage"
+      :title="sourcePassage ? `${sourcePassage.name} · ${sourcePassage.location}` : ''"
+      :is-dark="theme.isDark"
+      :show-actions="false"
+      close-button
+      mask-closable
+      @cancel="openedSource = null"
+    >
+      <scroll-view v-if="sourcePassage" class="coach-source-passage" scroll-y>
+        <text selectable
+          >{{ sourcePassage.before }}<text class="coach-source-quote">{{ sourcePassage.quote }}</text
+          >{{ sourcePassage.after }}</text
+        >
+      </scroll-view>
+    </CustomModal>
+    <CustomModal
       :visible="corpusItems.length > 0"
       title="个人句式参考"
       :is-dark="theme.isDark"
@@ -318,8 +334,12 @@
             }}</text>
             <BaseBubble v-if="record.prompt || record.source" avatar rich class="coach-agent-turn">
               <MuseRichText v-if="record.prompt" :content="record.prompt" />
-              <text v-if="record.source" class="coach-muted">{{ sourceLabel(record.source) }}</text>
-              <text v-if="record.source?.quote" class="coach-muted" selectable>{{ record.source.quote }}</text>
+              <MuseCoachCitation
+                v-if="record.source"
+                :source="record.source"
+                :materials="learning.state.materials"
+                @open="openedSource = $event"
+              />
             </BaseBubble>
             <BaseBubble author="user" avatar :avatar-src="userAvatar" class="coach-user-turn"
               ><text selectable>{{ record.answer }}</text></BaseBubble
@@ -475,10 +495,12 @@
                   shared-input
                   :title="materialTrack || subjectMethod ? '资料摸底' : '十分钟摸底'"
                   :cards="coach.diagnostic.cards"
+                  :materials="learning.state.materials"
                   :answers="coach.diagnostic.answers"
                   :current-id="diagnosticCard?.id || ''"
                   :disabled="learning.busy"
                   @submit="submitCard($event, true)"
+                  @open-source="openedSource = $event"
                 />
                 <BaseButton
                   v-if="!diagnosticCard"
@@ -525,10 +547,12 @@
                     shared-input
                     title="今日训练"
                     :cards="day.pack.cards"
+                    :materials="learning.state.materials"
                     :answers="day.answers"
                     :current-id="trainingCard.id"
                     :disabled="learning.busy"
                     @submit="submitCard($event, false)"
+                    @open-source="openedSource = $event"
                   />
                   <text v-if="cardAnswer && !learning.busy" role="status">原答已保存，AI 评估待完成</text>
                   <BaseButton
@@ -549,7 +573,11 @@
                 </BaseCard>
                 <BaseCard v-else-if="!materialTrack && !day.analysis">
                   <text class="coach-title">先自己审题</text><text>{{ day.pack.writing.prompt }}</text
-                  ><text class="coach-muted">{{ sourceLabel(day.pack.writing.source) }}</text>
+                  ><MuseCoachCitation
+                    :source="day.pack.writing.source"
+                    :materials="learning.state.materials"
+                    @open="openedSource = $event"
+                  />
                   <BaseInput
                     v-for="field in analysisFields"
                     :key="field.key"
@@ -740,12 +768,14 @@ import { examScopeLabel } from '../../../../laf-backend/functions/_shared/learni
 import MuseRichText from '@/components/business/learning/muse-rich-text.vue';
 import MuseWritingCard from '@/components/business/learning/muse-writing-card.vue';
 import MusePracticeSheet from '@/pages/learning/components/muse-practice-sheet.vue';
+import MuseCoachCitation from './muse-coach-citation.vue';
 import MuseFeedbackCard from '@/components/business/learning/muse-feedback-card.vue';
 import MuseErrorReview from '@/components/business/learning/muse-error-review.vue';
 import { useConversationLearningStore, learningId } from '@/stores/modules/conversation-learning.js';
 import { dayKey } from '@/services/learning/learning-domain.js';
 import { getToken } from '@/services/auth-storage.js';
 import { readWritingMaterial } from '@/services/learning/writing-material.js';
+import { coachSourcePassage } from '@/services/learning/coach-material-context.js';
 import { resolveSkippedProfile } from '@/services/learning/coach-profile.js';
 import {
   COACH_MATERIAL_TRACK,
@@ -777,6 +807,8 @@ const presentation = props.presentation || useLearningPresentation(() => learnin
 const modelFailure = ref(null);
 const theme = useThemeStore(),
   materialSelection = ref([]);
+const openedSource = ref(null);
+const sourcePassage = computed(() => coachSourcePassage(learning.state.materials, openedSource.value));
 const profileStep = ref(0);
 const composerHeight = ref(60);
 const intakePanel = ref(null);
@@ -1158,6 +1190,7 @@ watch(
   () => [learning.recordContext(), learning.selectedConversationId, learningDay.value],
   ([context, id, day]) => {
     saveDraft();
+    openedSource.value = null;
     restoringDraft = true;
     draftBinding = { context, key: `coach:${id || 'new'}:${day}` };
     const saved = drafts.read(context, draftBinding.key);
@@ -1292,13 +1325,6 @@ function saveProfile(skip) {
           }
     })
   );
-}
-function sourceLabel(source) {
-  return source.materialUncovered
-    ? '资料未覆盖，模型自编'
-    : source.kind === 'private_material'
-      ? `${source.name}${source.page ? ` · 第${source.page}页` : ''} · 内容待核对`
-      : '模型生成 · 内容待核对';
 }
 function pendingCoachRequest(phase, target = phase) {
   return coach.value?.requests.find(
@@ -1446,6 +1472,15 @@ function login() {
 }
 </script>
 <style scoped>
+.coach-source-passage {
+  max-height: 52vh;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.coach-source-quote {
+  background: var(--violet-soft);
+  color: var(--ink);
+}
 .coach-connection-label {
   max-width: 250px;
   overflow: hidden;

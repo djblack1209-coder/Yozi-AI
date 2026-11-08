@@ -41,17 +41,7 @@
         :content="selected.example"
         class="practice-example"
       />
-      <text class="practice-source"
-        >{{
-          selected.source?.kind === 'private_material'
-            ? `${selected.source.name}${selected.source.page ? ` · 第${selected.source.page}页` : ''}`
-            : selected.source?.materialUncovered
-              ? '资料未覆盖，模型自编'
-              : '模型生成'
-        }}
-        · 内容待核对</text
-      >
-      <text v-if="selected.source?.quote" class="practice-source" selectable>{{ selected.source.quote }}</text>
+      <MuseCoachCitation :source="selected.source" :materials="materials" @open="$emit('open-source', $event)" />
       <template v-if="selected.options?.length">
         <BaseOptions
           v-model="choice"
@@ -94,16 +84,18 @@ import BaseOptions from '@/components/base/base-options/base-options.vue';
 import BaseIcon from '@/components/base/base-icon/base-icon.vue';
 import MuseRichText from '@/components/business/learning/muse-rich-text.vue';
 import MuseWritingCard from '@/components/business/learning/muse-writing-card.vue';
+import MuseCoachCitation from './muse-coach-citation.vue';
 const props = defineProps({
   title: { type: String, required: true },
   cards: { type: Array, required: true },
   answers: { type: Array, default: () => [] },
+  materials: { type: Array, default: () => [] },
   currentId: { type: String, default: '' },
   modelValue: { type: String, default: '' },
   sharedInput: Boolean,
   disabled: Boolean
 });
-const emit = defineEmits(['update:modelValue', 'submit']);
+const emit = defineEmits(['update:modelValue', 'submit', 'open-source']);
 const choice = ref('');
 const viewedId = ref(props.currentId);
 watch(
@@ -171,8 +163,7 @@ function submitChoice() {
   font-weight: 600;
   line-height: 26px;
 }
-.practice-count,
-.practice-source {
+.practice-count {
   font-size: 12px;
   color: var(--ink-3);
 }
