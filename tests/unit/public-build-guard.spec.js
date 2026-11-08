@@ -97,6 +97,7 @@ describe('public build guard', () => {
       file,
       [
         '<span data-copy="en" lang="en">about model connections</span>',
+        '<span data-copy="en" lang="en">About model connections</span>',
         '<span data-copy="en" lang="en">connect your model</span>',
         '<span data-copy="zh" lang="zh-CN">Windows 与手机 App 正在规划开发中，尚未提供下载。</span>'
       ].join('')

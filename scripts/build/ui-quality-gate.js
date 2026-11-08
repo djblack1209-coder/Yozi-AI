@@ -91,7 +91,7 @@ export function scanPublicBuild(directory) {
       // The website's published connection instructions and download availability are real copy.
       if (/^(?:(?:en|zh)\/)?index\.html(?:\.(?:gz|br))?$/.test(relative)) {
         text = text
-          .replaceAll('data-copy="en" lang="en">about model connections</span>', 'site-connector-reference')
+          .replace(/data-copy="en" lang="en">[Aa]bout model connections<\/span>/g, 'site-connector-reference')
           .replaceAll('data-copy="en" lang="en">connect your model</span>', 'site-connector-instructions')
           .replaceAll('Windows 与手机 App 正在规划开发中，尚未提供下载。</span>', 'site-download-availability');
       }
