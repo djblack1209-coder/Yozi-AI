@@ -1446,6 +1446,13 @@
   min-height: 32px;
   height: 32px;
 }
+@media (max-width: 760px) {
+  .directory-top .directory-search .base-field__input {
+    font-size: 16px;
+    min-height: 44px;
+    height: 44px;
+  }
+}
 .sidebar-options {
   width: 44px;
   height: 44px;
