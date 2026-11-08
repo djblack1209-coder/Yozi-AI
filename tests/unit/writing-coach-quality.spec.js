@@ -2233,6 +2233,25 @@ describe('摸底错误合并复核一次：讲解题只删不加，单词填空�
         .trunk
     ).toBe(false);
   });
+  it('先行词带后置修饰时按中心词核对修饰对象，指错对象仍不成立', () => {
+    const sentence =
+        "Although many students spend hours memorizing word lists, the ability to use a phrase correctly in context, which depends on repeated practice, matters far more than the mere size of one's vocabulary.",
+      phrase = 'the ability to use a phrase correctly in context',
+      fields = [phrase, 'matters', 'which depends on repeated practice', phrase, 'which', 'depends', '主语'],
+      target = (object) =>
+        syntaxAgreement(sentence, parsed('s1', ...fields), `which depends on repeated practice 修饰 ${object}。`).claims
+          .target;
+    expect(target('the ability')).toBe(true);
+    expect(target(phrase)).toBe(true);
+    expect(target('context')).toBe(false);
+  });
+  it('形容词位的介词形词不当作后置修饰', () => {
+    const sentence = 'We expect a change in the near future, which most people welcome.',
+      fields = ['We', 'expect', 'which most people welcome', 'the near future', 'most people', 'welcome', '宾语'];
+    expect(
+      syntaxAgreement(sentence, parsed('s1', ...fields), 'which most people welcome 修饰 future。').claims.target
+    ).toBe(true);
+  });
   it('笔记读不出主干时不删错', () => {
     expect(
       syntaxAgreement(

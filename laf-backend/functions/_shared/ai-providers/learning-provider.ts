@@ -1140,11 +1140,17 @@ const COACH_VERIFICATION_PROMPT =
 // 句法讲解题的盲析结果先过宿主自洽检查，再与学生笔记里能读出的每项断言逐项比对。
 // 自洽：各片段都出自原句；从句以关系词开头、紧跟在先行词之后、在原句中只出现一次；
 // 主句主语和谓语落在从句之外；关系词成分与从句主谓位置一致。不自洽就不拿来删错。
-const SUBJECT_POSTMODIFIERS = new Set(
+const NOUN_POSTMODIFIERS = new Set(
   'of in on at for with from to by about over under between among during through without within against across behind beyond after before around near inside outside like'.split(
     ' '
   )
 );
+const DETERMINERS = new Set('a an the this that these those my our your their his her its'.split(' '));
+// 介词或不定式短语是后置修饰，中心词在它前面；紧跟限定词的 near、outside 是形容词（the near future）。
+const headNoun = (phrase: string[]): string => {
+  const cut = phrase.findIndex((w, i) => i > 0 && NOUN_POSTMODIFIERS.has(w) && !DETERMINERS.has(phrase[i - 1]));
+  return cut > 0 ? phrase[cut - 1] : phrase.at(-1)!;
+};
 
 export function syntaxAgreement(sentence: string, parse: any, note: string) {
   const words = (text: string): string[] => text.toLowerCase().match(/[a-z]+(?:'[a-z]+)?/g) || [];
@@ -1192,10 +1198,7 @@ export function syntaxAgreement(sentence: string, parse: any, note: string) {
     const bare = (list: string[]) => list.filter((w) => !['a', 'an', 'the'].includes(w));
     const T = bare(words(trunk[1])),
       rest = bare(S.filter((_, i) => i < start || i >= end));
-    // 介词短语是后置修饰，中心词在它前面：the habit of setting aside… 的中心词是 habit。
-    const subjectWords = words(parse.mainSubject),
-      postmodifier = subjectWords.findIndex((w, i) => i > 0 && SUBJECT_POSTMODIFIERS.has(w)),
-      subjectHead = postmodifier > 0 ? subjectWords[postmodifier - 1] : subjectWords.at(-1)!,
+    const subjectHead = headNoun(words(parse.mainSubject)),
       mainVerb = words(parse.mainVerb);
     const labelsAgree = Array.from(
       trunk[1].matchAll(/([A-Za-z][A-Za-z' ,-]*)[（(]\s*(?:主句)?(主语|谓语|宾语|表语|补语|状语)\s*[）)]/gu)
@@ -1246,7 +1249,7 @@ export function syntaxAgreement(sentence: string, parse: any, note: string) {
     const target = words(m[1]).at(-1),
       own = new RegExp(`(?<![A-Za-z])${pronoun}\\s*$`, 'iu').test(note.slice(0, m.index));
     if (own) claims.role = (claims.role ?? true) && role === '定语' && target === C[1];
-    else claims.target = (claims.target ?? true) && target === A.at(-1);
+    else claims.target = (claims.target ?? true) && headNoun(words(m[1])) === headNoun(A);
   }
   const stated = new RegExp(
     `(?<![A-Za-z])${pronoun}(?![A-Za-z])\\s*(?:在从句中)?\\s*(?:作|做|是|为|充当)\\s*(?:([A-Za-z]+)\\s*的|从句的?)?\\s*(主语|宾语|定语)`,
