@@ -1,5 +1,5 @@
 // Verifies /account/ in a real browser: zh and en, 1280 and 390, normal and WeChat user agents.
-// usage: YOZI_ACCOUNT_EMAIL=… YOZI_ACCOUNT_PASSWORD=… node scripts/build/verify-website-account.mjs <base-url>
+// usage: YOZI_ACCOUNT_EMAIL=… YOZI_ACCOUNT_PASSWORD=… [YOZI_ACCOUNT_B_EMAIL=… YOZI_ACCOUNT_B_PASSWORD=…] node scripts/build/verify-website-account.mjs <base-url>
 //          [--serve=dist/website --proxy=127.0.0.1:4382] [--evidence=<dir>]
 // --serve hosts a build the way nginx does (try_files, then 404; /exam-master/ proxied same-origin).
 // Prints JSON and exits non-zero on any failure. Credentials never reach the output.
@@ -232,6 +232,94 @@ async function runAccount(browser, spec) {
   return run;
 }
 
+// Two accounts in one tab, then the backend asked directly: B's session must never reach A's records.
+async function runIsolation(browser, other) {
+  const run = { id: 'isolation', checks: {} };
+  const post = async (route, body, token) => {
+    const response = await fetch(new URL(`/exam-master${route}`, base), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(body)
+    });
+    return { status: response.status, value: await response.json().catch(() => null) };
+  };
+  const signIn = async (address, secret) => {
+    const { value } = await post('/login', { region: 'CN', type: 'email', email: address, password: secret });
+    return { token: value?.data?.token, owner: String(value?.data?.userId ?? value?.data?.userInfo?.id) };
+  };
+  const outcome = ({ status, value }) => ({
+    status,
+    code: value?.code ?? null,
+    success: value?.success ?? null,
+    error: value?.error ?? null,
+    message: value?.message ?? null
+  });
+  const a = await signIn(email, password);
+  const b = await signIn(other.email, other.password);
+  check(run, 'two different accounts', Boolean(a.token && b.token) && a.owner !== b.owner);
+  const pulledA = await post('/learning-sync', { action: 'pull', timezone: 'Asia/Shanghai' }, a.token);
+  const generation = pulledA.value?.data?.history?.generation ?? 'no-history';
+  const page = { action: 'page', revision: pulledA.value?.data?.revision ?? 0, generation, offset: 0, count: 3 };
+  const crossed = await post('/learning-sync', page, b.token);
+  run.crossAccountPage = outcome(crossed);
+  check(run, "B's session is refused A's history", !crossed.value?.success && crossed.value?.data === undefined);
+  const named = await post(
+    '/learning-sync',
+    { action: 'pull', timezone: 'Asia/Shanghai', owner: a.owner, user_id: a.owner, userId: a.owner },
+    b.token
+  );
+  run.pullNamingA = { ...outcome(named), owner: named.value?.data?.state?.owner ?? named.value?.data?.history?.owner };
+  check(run, "naming A in B's pull still returns B", run.pullNamingA.owner === b.owner, run.pullNamingA.owner);
+  const anonymous = await post('/learning-sync', { action: 'pull', timezone: 'Asia/Shanghai' });
+  run.noSession = outcome(anonymous);
+  check(
+    run,
+    'no session is refused',
+    !anonymous.value?.success && (anonymous.status === 401 || anonymous.value?.code === 401)
+  );
+
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, userAgent: safariDesktop });
+  const tab = await context.newPage();
+  const settled = () =>
+    tab.waitForFunction(() => {
+      const status = document.querySelector('[data-progress-status]');
+      return (
+        !document.querySelector('[data-progress-content]').hidden || (!status.hidden && !/…$/.test(status.textContent))
+      );
+    });
+  const enter = async (address, secret) => {
+    await tab.locator('input[name="email"]').fill(address);
+    await tab.locator('input[name="password"]').fill(secret);
+    await tab.locator('[data-signin-submit]').click();
+    await settled();
+    return {
+      answers: await tab.locator('[data-stat="answers"]').textContent(),
+      weaknesses: await tab.locator('[data-weaknesses] li').allTextContents()
+    };
+  };
+  await tab.goto(new URL('/account/', base).href, { waitUntil: 'load' });
+  run.first = await enter(email, password);
+  await tab.locator('[data-sign-out]').click();
+  await tab.locator('[data-signin-form]').waitFor({ state: 'visible' });
+  check(run, 'sign-out left no figures', (await tab.locator('[data-stat="answers"]').textContent()) === '');
+  await capture(tab, run, 'after-sign-out');
+  run.second = await enter(other.email, other.password);
+  await capture(tab, run, 'second-account');
+  check(
+    run,
+    'second account shows no first-account weak point',
+    !run.second.weaknesses.some((item) => run.first.weaknesses.includes(item)) || run.first.weaknesses.length === 0
+  );
+  check(
+    run,
+    'second account shows its own count',
+    run.second.answers !== run.first.answers,
+    `${run.first.answers}/${run.second.answers}`
+  );
+  await context.close();
+  return run;
+}
+
 async function run() {
   const server = option('serve')
     ? await serve(option('serve'), option('proxy') || '127.0.0.1:4382', Number(base.port))
@@ -251,6 +339,11 @@ async function run() {
       if (index && paceMs) await new Promise((resolve) => setTimeout(resolve, paceMs));
       report.runs.push(await runAccount(browser, spec));
     }
+    if (process.env.YOZI_ACCOUNT_B_EMAIL && process.env.YOZI_ACCOUNT_B_PASSWORD)
+      report.isolation = await runIsolation(browser, {
+        email: process.env.YOZI_ACCOUNT_B_EMAIL,
+        password: process.env.YOZI_ACCOUNT_B_PASSWORD
+      });
     const routes = { checks: {}, id: 'routes' };
     for (const route of ['/auth', '/auth/']) {
       const status = (await fetch(new URL(route, base), { redirect: 'manual' })).status;
