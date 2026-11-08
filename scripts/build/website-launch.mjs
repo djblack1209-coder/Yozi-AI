@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { download, renderHome, renderNotFound, WEBSITE_TITLE } from '../../website/render.mjs';
+import { download, renderAccount, renderHome, renderNotFound, WEBSITE_TITLE } from '../../website/render.mjs';
 import { LEGAL_DOCS, legalPath, legalStyles, renderLegal } from '../../website/legal.mjs';
 import { BRAND_FILES, brandSource } from '../../website/brand.mjs';
 
@@ -34,6 +34,8 @@ export function buildWebsite(output = path.join(project, 'dist/website')) {
     fs.writeFileSync(path.join(destination, lang, 'index.html'), html);
   }
   fs.writeFileSync(path.join(destination, '404.html'), missing);
+  fs.mkdirSync(path.join(destination, 'account'), { recursive: true });
+  fs.writeFileSync(path.join(destination, 'account', 'index.html'), renderAccount());
   const legalCss = legalStyles();
   for (const lang of languages) for (const doc of LEGAL_DOCS) {
     fs.mkdirSync(path.join(destination, lang, doc), { recursive: true });
@@ -71,6 +73,9 @@ export function websiteLaunchPlugin(enabled) {
         if (legal) {
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.end(renderLegal(...legal, legalStyles()));
+        } else if (route === '/account/' || route === '/account/index.html') {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.end(renderAccount());
         } else if (lang || route === '/404.html') {
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.end(lang ? renderHome(lang) : renderNotFound());

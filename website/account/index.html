@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#d5effd">
+  <title>登录 · Yozi</title>
+  <link rel="icon" type="image/svg+xml" href="{{favicon}}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{appleTouchIcon}}">
+  <style>{{styles}}</style>
+  <script>{{bootstrap}}</script>
+</head>
+<body class="legal-page account-page">
+  {{symbols}}
+  <a class="skip" href="#account-main">{{skip}}</a>
+  <header class="legal-bar">
+    <a class="legal-brand" href="/" {{homeLabel}}><img src="{{brandMark}}" width="36" height="36" alt=""><span>Yozi AI</span></a>
+    <div class="account-tools">
+      <button class="legal-language" type="button" data-language-toggle {{languageLabel}}>{{ilanguage}}<span>{{languageText}}</span></button>
+      <button class="button secondary" type="button" data-sign-out hidden>{{signOut}}</button>
+    </div>
+  </header>
+  <main id="account-main" class="account-main">
+    <section class="account-signin" data-view="signin" aria-labelledby="signin-title">
+      <h1 id="signin-title" tabindex="-1">{{signInTitle}}</h1>
+      <form class="account-form" data-signin-form novalidate>
+        <label class="account-field"><span>{{email}}</span><input name="email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required></label>
+        <label class="account-field"><span>{{password}}</span><input name="password" type="password" autocomplete="current-password" required></label>
+        <p class="account-error" role="alert" data-signin-error hidden></p>
+        <button class="button primary account-submit" type="submit" data-signin-submit>{{signIn}}</button>
+      </form>
+    </section>
+    <section class="account-progress" data-view="progress" aria-labelledby="progress-title" hidden>
+      <h1 id="progress-title" tabindex="-1">{{progressTitle}}</h1>
+      <p class="account-status" role="status" data-progress-status hidden></p>
+      <button class="button secondary account-retry" type="button" data-retry hidden>{{retry}}</button>
+      <div class="account-content" data-progress-content hidden>
+        <dl class="account-stats">
+          <div><dt>{{studyDays}}</dt><dd data-stat="studyDays"></dd></div>
+          <div><dt>{{answers}}</dt><dd data-stat="answers"></dd></div>
+          <div><dt>{{essays}}</dt><dd data-stat="essays"></dd></div>
+          <div><dt>{{familiar}}</dt><dd data-stat="familiar"></dd></div>
+          <div><dt>{{learning}}</dt><dd data-stat="learning"></dd></div>
+          <div><dt>{{daysToExam}}</dt><dd data-stat="daysToExam"></dd></div>
+        </dl>
+        <p class="account-last">{{lastActivity}} <time data-stat="lastActivity"></time></p>
+        <section class="account-block" aria-labelledby="weakness-title">
+          <h2 id="weakness-title">{{weaknesses}}</h2>
+          <ul class="account-tags" data-weaknesses></ul>
+        </section>
+        <section class="account-block" aria-labelledby="subject-title">
+          <h2 id="subject-title">{{subjects}}</h2>
+          <ul class="account-rows" data-subjects></ul>
+        </section>
+        <section class="account-block" aria-labelledby="node-title">
+          <h2 id="node-title">{{nodes}} <small>{{aiAssessment}}</small></h2>
+          <div class="account-chapters" data-nodes></div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <script>{{script}}</script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { legalFooterLinks } from "./legal.mjs";
 import { brandUrl } from "./brand.mjs";
+import { buildSync } from "esbuild";
 
 const source = (name) => readFileSync(new URL(name, import.meta.url), "utf8");
 export const download = "Yozi-AI-2.2.0-macOS-arm64.zip";
@@ -212,6 +213,7 @@ const words = {
   navPricing: ["费用", "costs"],
   navFaq: ["常见问题", "FAQ"],
   navDownload: ["下载 App", "Get the App"],
+  navAccount: ["登录", "Sign in"],
   languageText: ["EN", "中"],
   heroOne: ["学懂，练会。", "Learn it today."],
   heroTwo: ["下次接着来。", "Pick up tomorrow."],
@@ -373,6 +375,58 @@ export function renderHome(lang = "zh", root = false) {
     ...Object.fromEntries(Object.entries(words).map(([key, pair]) => [key, tr(...pair)])),
     ...Object.fromEntries(Object.entries(labels).map(([key, pair]) => [key, label(lang, ...pair)])),
     ...Object.fromEntries(Object.keys(paths).map((key) => ["i" + key, icon(key)])),
+  });
+}
+const accountWords = {
+  skip: ["跳到主要内容", "Skip to content"],
+  languageText: ["EN", "中文"],
+  signOut: ["退出登录", "Sign out"],
+  signInTitle: ["登录 Yozi", "Sign in to Yozi"],
+  email: ["邮箱", "Email"],
+  password: ["密码", "Password"],
+  signIn: ["登录", "Sign in"],
+  progressTitle: ["我的学习进度", "My progress"],
+  retry: ["重试", "Retry"],
+  studyDays: ["学习天数", "Study days"],
+  answers: ["作答", "Answers"],
+  essays: ["作文", "Essays"],
+  familiar: ["已熟悉", "Familiar"],
+  learning: ["学习中", "Learning"],
+  daysToExam: ["距考试（天）", "Days to exam"],
+  lastActivity: ["最近学习", "Last activity"],
+  weaknesses: ["薄弱点", "Weak points"],
+  subjects: ["科目", "Subjects"],
+  nodes: ["知识点", "Topics"],
+  aiAssessment: ["AI 评估", "AI assessment"],
+};
+function accountScript() {
+  const entry = 'import { mountAccount } from "./app.js"; mountAccount();';
+  const directory = new URL("./account/", import.meta.url).pathname;
+  const { outputFiles } = buildSync({
+    stdin: { contents: entry, resolveDir: decodeURIComponent(directory), loader: "js" },
+    bundle: true,
+    minify: true,
+    format: "iife",
+    platform: "browser",
+    target: "es2020",
+    legalComments: "none",
+    write: false,
+  });
+  return outputFiles[0].text.replaceAll("</script", "<\\/script");
+}
+export function renderAccount() {
+  return fill(source("account/index.html"), {
+    favicon: brandUrl("favicon.svg"),
+    appleTouchIcon: brandUrl("brand/apple-touch-icon.png"),
+    brandMark: brandUrl("brand/mark.svg"),
+    styles: (["site.css", "legal.css", "account/account.css"].map(source).join("\n")).replaceAll("FONT_BASE", "/fonts"),
+    bootstrap: `(() => { let lang; try { lang = localStorage.getItem('yozi.website.language'); } catch {} document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN'; })();`,
+    homeLabel: label("zh", "返回首页", "Back to home"),
+    languageLabel: label("zh", "切换到英语", "Switch to Chinese"),
+    ilanguage: icon("language"),
+    symbols,
+    script: accountScript(),
+    ...Object.fromEntries(Object.entries(accountWords).map(([key, pair]) => [key, tr(...pair)])),
   });
 }
 export function renderNotFound() {
