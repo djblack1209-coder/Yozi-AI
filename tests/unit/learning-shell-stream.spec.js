@@ -130,6 +130,18 @@ describe('S2 continuous reply', () => {
     const source = readFileSync('src/components/business/learning/learning-shell.vue', 'utf8');
     expect(source).toContain('directoryDayLimit += 7');
   });
+  it('brings the conversation back when the student picks it from an open panel', async () => {
+    store.startCoach('考研英语二写作');
+    const dismissOverlay = vi.fn(() => true);
+    const wrapper = render(LearningShell, { LearningShell: false });
+    await wrapper.setProps({ dismissOverlay });
+    const locate = vi.spyOn(store, 'locateConversation').mockImplementation(() => {});
+    await wrapper.get('.recent-conversation [aria-label]').trigger('tap');
+    expect(dismissOverlay).toHaveBeenCalledTimes(1);
+    expect(locate).toHaveBeenCalledWith(store.active.id);
+    await wrapper.get('[aria-label="对话"]').trigger('tap');
+    expect(dismissOverlay).toHaveBeenCalledTimes(2);
+  });
   it.each(['chat', 'coach'])('S3 hides an empty stopped %s reply and retains partial text', async (kind) => {
     if (kind === 'coach') {
       store.startCoach('考研英语二写作');

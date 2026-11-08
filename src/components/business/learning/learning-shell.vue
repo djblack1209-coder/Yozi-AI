@@ -1060,6 +1060,7 @@ function openView(view) {
     return;
   }
   if (directoryModal.value) menuOpen.value = false;
+  if (view === 'learning') props.dismissOverlay?.();
   const target =
     SHELL_ROUTES[view] ||
     (['archive', 'phrases', 'plan', 'materials', 'usage'].includes(view)
@@ -1079,6 +1080,8 @@ function newSession() {
 }
 function resume(id) {
   if (learning.busy) return;
+  // The data and connection panels stand in for the conversation, so picking one has to bring it back.
+  props.dismissOverlay?.();
   learning.locateConversation(id);
   if (directoryModal.value) menuOpen.value = false;
   if (getCurrentPages().at(-1)?.route !== 'pages/learning/index') safeNavigateTo('/pages/learning/index');
