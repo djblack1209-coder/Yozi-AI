@@ -369,7 +369,9 @@
             />
             <view class="brand-label"
               ><text class="brand-name" :title="BRAND.name">{{ BRAND.name }}</text>
-              <text class="brand-status" role="status" :title="identityStatus">{{ identityStatus }}</text></view
+              <text v-if="identityStatus" class="brand-status" role="status" :title="identityStatus">{{
+                identityStatus
+              }}</text></view
             ></view
           >
           <BaseButton
@@ -514,7 +516,7 @@ const identityStatus = computed(() => {
       value.error || value.stopped || value.busy
         ? avatarStateFor(value)
         : avatarPresentation.value?.state || avatarStateFor(value);
-  if (!value.stopped && state === 'idle') return learning.active?.goal || props.title;
+  if (!value.stopped && state === 'idle') return learning.active?.goal || '';
   const key = value.stopped
     ? 'stopped'
     : value.busy && ['feedback', 'essay', 'daily', 'summary'].includes(value.activity)

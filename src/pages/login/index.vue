@@ -972,5 +972,38 @@ onMounted(async () => {
   .lazy-login .login-title {
     font-size: 30px;
   }
+  .lazy-login:not(.website-login) {
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .lazy-login:not(.website-login).theme-light {
+    background: var(--yozi-mobile-surface);
+    color: var(--yozi-mobile-ink);
+    --ink: var(--yozi-mobile-ink);
+    --ink-2: var(--yozi-mobile-muted);
+    --ink-3: var(--yozi-mobile-muted);
+  }
+  .lazy-login:not(.website-login) :deep(.brand-scene) {
+    min-height: 216px;
+    background: var(--yozi-mobile-sky);
+    color: var(--yozi-mobile-ink);
+  }
+  .lazy-login:not(.website-login) :deep(.brand-scene__media) {
+    left: 44%;
+    width: 56%;
+    object-position: 80% center;
+    mask-image: linear-gradient(to right, transparent, #000 22%);
+    mix-blend-mode: multiply;
+  }
+  .lazy-login:not(.website-login) :deep(.brand-scene__copy) {
+    right: 45%;
+    left: 20px;
+    font-size: clamp(21px, 6.5vw, 28px);
+  }
+  .lazy-login:not(.website-login) :deep(.base-button--primary:not([disabled])) {
+    background: var(--yozi-mobile-action);
+    border-color: var(--yozi-mobile-action);
+    color: var(--yozi-mobile-ink);
+  }
 }
 </style>

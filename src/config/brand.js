@@ -3,6 +3,7 @@ export const BRAND = Object.freeze({
   english: 'Yozi AI',
   chinese: 'Yozi AI',
   name: 'Yozi AI',
+  supportEmail: 'yozi@245334.xyz',
   title: 'Yozi AI · 对话学习空间',
   description: '从一个问题开始，在对话中理解、练习和复习。',
   // Study Index mark. Source: src/assets/brand/logo/current/ (mark.svg navy, mark-reverse.svg white).

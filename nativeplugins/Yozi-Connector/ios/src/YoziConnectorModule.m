@@ -1,6 +1,7 @@
 #import "YoziConnectorModule.h"
 #import "YoziConnectorTransport.h"
 #import "YoziMaterialFiles.h"
+#import "YoziStudyCompanion.h"
 @implementation YoziConnectorModule { YoziConnectorTransport *_transport;YoziMaterialFiles *_files;UIDocumentPickerViewController *_picker;NSString *_pickerId;UniModuleKeepAliveCallback _pickerCallback; }
 UNI_EXPORT_METHOD_SYNC(@selector(getCapabilities))
 UNI_EXPORT_METHOD(@selector(request:callback:))
@@ -10,6 +11,9 @@ UNI_EXPORT_METHOD(@selector(chooseMaterialFile:callback:))
 UNI_EXPORT_METHOD(@selector(readMaterialFile:callback:))
 UNI_EXPORT_METHOD(@selector(releaseMaterialFile:))
 UNI_EXPORT_METHOD(@selector(cancelFileOperation:))
+UNI_EXPORT_METHOD(@selector(studyNotificationPermission:callback:))
+UNI_EXPORT_METHOD(@selector(applyStudyCompanion:callback:))
+UNI_EXPORT_METHOD(@selector(openStudyNotificationSettings:callback:))
 - (instancetype)init {if((self=[super init])){_transport=[YoziConnectorTransport new];_files=[YoziMaterialFiles new];}return self;}
 - (NSDictionary *)getCapabilities {NSMutableDictionary *caps=[YoziConnectorTransport.capabilities mutableCopy];caps[@"file"]=YoziMaterialFiles.capabilities;return caps;}
 - (void)request:(NSDictionary *)options callback:(UniModuleKeepAliveCallback)callback {
@@ -20,6 +24,19 @@ UNI_EXPORT_METHOD(@selector(cancelFileOperation:))
 }
 - (void)cancel:(NSString *)identifier {[_transport cancel:identifier];}
 static void complete(UniModuleKeepAliveCallback callback,NSDictionary *value){dispatch_async(dispatch_get_main_queue(),^{if(callback)callback(value,NO);});}
+- (void)studyNotificationPermission:(NSDictionary *)options callback:(UniModuleKeepAliveCallback)callback {
+    BOOL request = [options isKindOfClass:NSDictionary.class] && [options[@"request"] isEqual:@YES];
+    [YoziStudyCompanion.shared permission:request completion:^(NSDictionary *value){complete(callback,value);}];
+}
+- (void)applyStudyCompanion:(NSDictionary *)options callback:(UniModuleKeepAliveCallback)callback {
+    [YoziStudyCompanion.shared apply:options completion:^(NSDictionary *value){complete(callback,value);}];
+}
+- (void)openStudyNotificationSettings:(NSDictionary *)options callback:(UniModuleKeepAliveCallback)callback {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [UIApplication.sharedApplication openURL:[NSURL URLWithString:UIApplicationOpenSettingsURLString]
+                                        options:@{} completionHandler:^(BOOL ok){complete(callback,@{@"ok":@(ok)});}];
+    });
+}
 static UIViewController *presenter(void){
     UIWindow *window=nil;
     if(@available(iOS 13.0,*)){for(UIScene *scene in UIApplication.sharedApplication.connectedScenes)if(scene.activationState==UISceneActivationStateForegroundActive && [scene isKindOfClass:UIWindowScene.class])for(UIWindow *candidate in ((UIWindowScene *)scene).windows)if(candidate.isKeyWindow)window=candidate;}

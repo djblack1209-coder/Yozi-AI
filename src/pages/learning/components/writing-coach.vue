@@ -289,7 +289,7 @@
             class="coach-reply"
             aria-live="polite"
           >
-            <LearningMessage :content="coachReply.content" :pending="coachReply.pending" />
+            <LearningMessage :content="coachReply.content" :pending="coachReply.pending" generated />
           </BaseBubble>
         </view>
 

@@ -1,5 +1,8 @@
 <template>
   <view class="learning-message-content">
+    <text v-if="generated && (content || validatedBlocks)" class="learning-message-origin">{{
+      t('learning.generatedLabel')
+    }}</text>
     <view v-if="pending && !content" class="reply-state" role="status">
       <view class="reply-dots" aria-hidden="true"><view /><view /><view /></view>
       <text class="reply-state__label">{{ pendingLabel || t('learning.replying') }}</text>
@@ -21,6 +24,7 @@ import { normalizeContentBlocks } from '../../../../laf-backend/functions/_share
 const props = defineProps({
   pendingLabel: { type: String, default: '' },
   pending: Boolean,
+  generated: Boolean,
   content: { type: String, default: '' },
   contentBlocks: { type: Object, default: null },
   presentation: { type: String, default: 'auto' }
@@ -40,6 +44,15 @@ const validatedBlocks = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+.learning-message-origin {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--paper-sunk);
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 18px;
 }
 .learning-card-placeholder {
   width: min(360px, 100%);

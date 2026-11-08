@@ -23,7 +23,7 @@ import {
 } from '@/services/desktop/windows.js';
 import { getCurrentRoute } from '@/utils/home-navigation.js';
 import { isDesktopRuntime } from '@/services/desktop/runtime.js';
-import { learningNotificationsFor } from '@/services/learning/learning-notifications.js';
+import { learningNotificationsFor, notificationChannel } from '@/services/learning/learning-notifications.js';
 import { clearFailedAuthentication } from '@/services/auth-failure.js';
 let notificationRuntime = null;
 let releaseDesktopWorkspace = () => undefined;
@@ -84,7 +84,7 @@ export default {
       const result = this.performSilentLogin();
       return result;
     });
-    if (isDesktopRuntime() || import.meta.env.VITE_ENABLE_LEGACY_LEARNING === 'true')
+    if (isDesktopRuntime() || notificationChannel() === 'ios' || import.meta.env.VITE_ENABLE_LEGACY_LEARNING === 'true')
       startup('notifications', () => {
         notificationRuntime ||= learningNotificationsFor(useConversationLearningStore(this.$pinia));
         return notificationRuntime.initialize().then(

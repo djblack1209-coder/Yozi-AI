@@ -133,7 +133,7 @@
           v-if="['pending', 'error'].includes(learning.accountRecordState)"
           :disabled="learning.syncBusy"
           variant="quiet"
-          @tap="run(readAccountRecords)"
+          @tap="run(restoreLearningSession)"
           >重试读取</BaseButton
         >
         <BaseButton v-if="learning.accountRecordState === 'remote'" variant="quiet" @tap="openAccountData">
@@ -508,6 +508,7 @@
             <LearningMessage
               v-else-if="message.role !== 'user'"
               :content-blocks="message.contentBlocks"
+              :generated="message.role === 'assistant' && message.id.endsWith(':reply')"
               :presentation="presentation.mode"
               :pending="!!message.pending"
               :content="message.role === 'notice' ? learningText(message.content) : message.content"
@@ -2720,9 +2721,12 @@ function openAccountData() {
   showConnections.value = true;
   showData.value = true;
 }
-async function readAccountRecords() {
+async function restoreLearningSession() {
+  learning.refresh();
   await learning.readAccountRecords();
   if (learning.accountRecordState === 'remote') openAccountData();
+  if (learning.accountRecordState === 'ready' && getToken() && !learning.intakeBusy && !learning.busy)
+    await learning.loadModels();
 }
 watch(showConnections, (open) => {
   if (!open) {
@@ -4619,12 +4623,7 @@ function removeConflict() {
 onShow(() => {
   labVisible.value = true;
   appPageVisible = true;
-  return run(async () => {
-    learning.refresh();
-    await readAccountRecords();
-    if (learning.accountRecordState !== 'ready') return;
-    if (getToken() && !learning.intakeBusy && !learning.busy) await learning.loadModels();
-  });
+  return run(restoreLearningSession);
 });
 onHide(() => {
   // WKWebView also fires this hook when another app covers the window.

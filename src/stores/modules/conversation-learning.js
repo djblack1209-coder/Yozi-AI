@@ -47,7 +47,7 @@ import {
 } from '../../../laf-backend/functions/_shared/learning-writing-coach.js';
 import { createNewCard, scheduleCard } from '@/services/fsrs-service.js';
 import { captureSession } from '@/services/auth-storage.js';
-import { learningWriteLease } from '@/services/learning/learning-write-lease.js';
+import { learningWriteLease, learningWriteProtectionSupported } from '@/services/learning/learning-write-lease.js';
 import { publicError, currentLanguage, t } from '@/i18n/index.js';
 import { defineStore } from 'pinia';
 import {
@@ -1941,7 +1941,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       const listed = await loadModels();
       assert(!requestController.signal.aborted, 'CANCELLED', '请求已取消');
       assert(recordContext() === context && active.value?.id === conversationId, 'CONTEXT_CHANGED', '当前学习已变化');
-      assert(listed.success, 'MODEL_DISABLED', listed.message || '平台模型暂不可用');
+      assert(listed.success, 'MODEL_DISABLED', listed.message || '模型列表暂不可用，请检查 AI 连接器');
       const model = modelId.value ? models.value.find((m) => m.id === modelId.value) : null;
       assert(
         model && (model.source !== 'platform' || listed.data.platformEnabled),
@@ -5637,7 +5637,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   async function readAccountRecords() {
     refresh();
     if (state.value.owner === 'guest' || state.value.revision > 0) return Promise.resolve(true);
-    if (DEV_TEST) {
+    if (DEV_TEST || learningWriteProtectionSupported) {
       const session = ensureSessionCurrent();
       await learningWriteLease.waitUntilWritable(state.value.owner);
       ensureSessionCurrent(session);

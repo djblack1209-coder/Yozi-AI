@@ -107,7 +107,7 @@ if (missing.length) {
     if (ios) {
       const objects = [];
       await mkdir(path.join(plugin, 'ios'));
-      for (const name of ['YoziConnectorTransport', 'YoziMaterialFiles', 'YoziConnectorModule']) {
+      for (const name of ['YoziConnectorTransport', 'YoziMaterialFiles', 'YoziStudyCompanion', 'YoziConnectorModule']) {
         const object = path.join(work, `${name}.o`);
         objects.push(object);
         run('xcrun', [

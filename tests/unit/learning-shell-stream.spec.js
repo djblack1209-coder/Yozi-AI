@@ -177,12 +177,14 @@ describe('S2 continuous reply', () => {
     expect(store.reply).toMatchObject({ pending: true, content: '' });
     await nextTick();
     const node = wrapper.get('[id="same-node:reply"]').element;
+    expect(node.querySelector('.learning-message-origin')).toBeNull();
     expect(wrapper.get('[data-avatar-state="working"]').exists()).toBe(true);
     await flushPromises();
     const [body, options] = generateLearningTurn.mock.calls.at(-1);
     options.onPreview('先区分');
     await nextTick();
     expect(wrapper.get('[id="same-node:reply"]').element).toBe(node);
+    expect(node.querySelector('.learning-message-origin')?.textContent.trim()).toBe('AI 生成');
     expect(wrapper.get('[data-avatar-state="making"]').exists()).toBe(true);
     expect(JSON.stringify(store.state)).not.toContain('先区分');
     wait.resolve(
@@ -207,6 +209,9 @@ describe('S2 continuous reply', () => {
     await nextTick();
     const reopenedIds = wrapper.findAll('.conversation-day .message').map((message) => message.attributes('id'));
     expect(reopenedIds.indexOf('same-node:reply')).toBe(reopenedIds.indexOf('same-node:message') + 1);
+    expect(wrapper.get('[id="same-node:reply"] .learning-message-origin').text()).toBe('AI 生成');
+    expect(wrapper.get('[id="same-node:reply"]').text()).toContain('观点');
+    expect(wrapper.get('[id="same-node:message"]').text()).not.toContain('AI 生成');
   });
   it.each(['failure', 'stop'])(
     '%s returns immediately to idle; late previews/results cannot save facts',

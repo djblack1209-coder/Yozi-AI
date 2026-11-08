@@ -44,7 +44,12 @@
             ><text class="settings-title" role="heading" aria-level="1">{{
               settingsSections.find((item) => item.id === settingsSection)?.label
             }}</text
-            ><BaseButton
+            ><BaseInput
+              v-model="settingsSection"
+              class="settings-section-picker"
+              :options="settingsSectionOptions"
+              :label="t('nav.settings')"
+              hide-label /><BaseButton
               v-if="!nativeSettings"
               class="settings-back"
               variant="quiet"
@@ -230,6 +235,15 @@
                 @tap="goTo('/pages/settings/terms')"
             /></view>
           </template>
+          <BaseButton
+            v-if="settingsSection === 'general' && isLoggedIn"
+            class="settings-logout settings-mobile-logout"
+            variant="quiet"
+            icon="arrow-right"
+            align="start"
+            @tap="handleLogout"
+            >{{ t('dashboard.copy110') }}</BaseButton
+          >
           <MuseAIConnectors v-if="settingsSection === 'connectors'" />
           <view v-if="settingsSection === 'support'" class="settings-group"
             ><BaseListRow :label="t('dashboard.copy108')" @tap="handleFeedback"
@@ -254,7 +268,9 @@
             ? t('dashboard.copy110')
             : dialog.kind === 'sync'
               ? '同步'
-              : t('dashboard.copy111')
+              : dialog.kind === 'feedback'
+                ? t('dashboard.copySupportEmail')
+                : t('dashboard.copy111')
       "
       @confirm="confirmDialog"
     />
@@ -276,6 +292,7 @@ import '@/i18n/messages/dashboard.js';
 import BaseListRow from '@/components/base/base-list-row/base-list-row.vue';
 import BaseStat from '@/components/base/base-stat/base-stat.vue';
 import BaseButton from '@/components/base/base-button/base-button.vue';
+import BaseInput from '@/components/base/base-input/base-input.vue';
 import BaseCheckbox from '@/components/base/base-checkbox/base-checkbox.vue';
 import { ideasModelEnabled, setIdeasModelEnabled } from '@/services/learning/muse-learning-ideas.js';
 import '@/styles/yozi-pages.scss';
@@ -290,7 +307,7 @@ import { safeNavigateTo, consumeProfilePanel } from '@/utils/safe-navigate';
 import { toast } from '@/utils/toast.js';
 import { logger } from '@/utils/logger.js';
 import CustomModal from '@/components/common/CustomModal.vue';
-import { DEFAULT_AVATAR } from '@/config/brand.js';
+import { BRAND, DEFAULT_AVATAR } from '@/config/brand.js';
 import { bindLearningKeyboard } from '@/services/learning/keyboard-controls.js';
 import { bindBusinessMotion } from '@/design/business-motion.js';
 import { currentLanguage, LANGUAGE_OPTIONS, setLanguage, initI18n, t, translateRegisteredText } from '@/i18n/index.js';
@@ -300,6 +317,7 @@ export default {
     MuseStudyReminders,
     MuseAIConnectors,
     BaseButton,
+    BaseInput,
     BaseStat,
     BaseListRow,
     BaseCheckbox,
@@ -325,7 +343,11 @@ export default {
       reducedMotion: true,
       showDialog: false,
       dialogSequence: 0,
-      dialog: { kind: 'feedback', title: t('dashboard.copy108'), content: t('dashboard.copy112') }
+      dialog: {
+        kind: 'feedback',
+        title: t('dashboard.copy108'),
+        content: t('dashboard.copy112', { email: BRAND.supportEmail })
+      }
     };
   },
 
@@ -341,6 +363,9 @@ export default {
         { id: 'support', icon: 'question', label: t('muse.support') },
         { id: 'legal', icon: 'shield', label: t('muse.legal') }
       ];
+    },
+    settingsSectionOptions() {
+      return this.settingsSections.map(({ id, label }) => ({ value: id, label }));
     },
     deviceLabel() {
       if (isDesktopRuntime()) return '桌面 App';
@@ -605,7 +630,11 @@ export default {
 
     handleFeedback() {
       this.dialogSequence++;
-      this.dialog = { kind: 'feedback', title: t('dashboard.copy108'), content: t('dashboard.copy112') };
+      this.dialog = {
+        kind: 'feedback',
+        title: t('dashboard.copy108'),
+        content: t('dashboard.copy112', { email: BRAND.supportEmail })
+      };
       this.showDialog = true;
     },
 
@@ -658,6 +687,13 @@ export default {
       this.showDialog = true;
     },
     confirmDialog() {
+      if (this.dialog.kind === 'feedback') {
+        uni.setClipboardData({
+          data: BRAND.supportEmail,
+          fail: () => toast.error(t('dashboard.copySupportFailed'))
+        });
+        return;
+      }
       if (this.dialog.kind === 'account') {
         this.showDialog = false;
         return;
@@ -812,10 +848,9 @@ export default {
 .space-light .settings-main {
   background: #fcfcfc;
 }
-@media (max-width: 760px) {
-  .settings-sidebar-title {
-    display: none;
-  }
+.settings-section-picker,
+.settings-mobile-logout {
+  display: none;
 }
 
 .settings-layout {
@@ -1031,31 +1066,24 @@ export default {
     display: flex;
     flex-direction: column;
   }
-  .settings-sidebar {
-    flex: none;
-    flex-direction: row;
-    align-items: center;
-    padding: 8px 12px;
-    padding-top: calc(8px + var(--space-status-top, env(safe-area-inset-top)));
-    overflow-x: auto;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .settings-sidebar .settings-nav {
-    padding: 8px 12px;
-    flex: none;
-    white-space: nowrap;
-  }
-  .settings-sidebar .settings-nav :deep(.base-icon),
-  .settings-spacer {
+  .muse-settings-page:not(.native-settings-page) .settings-sidebar {
     display: none;
   }
-  .settings-logout {
-    flex: none;
-  }
-  .settings-main {
+  .muse-settings-page:not(.native-settings-page) .settings-section-picker {
+    display: block;
     flex: 1;
-    padding: 24px 16px;
+    min-width: 0;
+  }
+  .muse-settings-page:not(.native-settings-page) .settings-mobile-logout {
+    display: flex;
+    margin-top: 18px;
+  }
+  .muse-settings-page:not(.native-settings-page) .settings-main {
+    flex: 1;
+    padding: calc(12px + var(--space-status-top, env(safe-area-inset-top))) 16px max(24px, env(safe-area-inset-bottom));
+  }
+  .muse-settings-page.space-light:not(.native-settings-page) .settings-main {
+    background: var(--yozi-mobile-surface);
   }
   .settings-heading {
     display: flex;
@@ -1066,13 +1094,20 @@ export default {
     margin-bottom: 18px;
   }
   .settings-heading .settings-back {
+    position: static;
+    flex: 0 0 44px;
     width: 44px;
     padding: 0;
     border-radius: 8px;
     color: var(--ink-3);
   }
-  .settings-title {
-    font-size: 24px;
+  .muse-settings-page:not(.native-settings-page) .settings-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .settings-group {
     padding: 0 16px;

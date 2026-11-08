@@ -16,6 +16,7 @@ vi.mock('@tauri-apps/api/event', () => ({
 }));
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { createLearningNotifications, learningNotificationsFor } from '@/services/learning/learning-notifications.js';
+import { EMPTY_WATCH_GLANCE, watchGlance } from '@/services/learning/apple-study-companion.js';
 import SplashPage from '@/pages/splash/index.vue';
 import { storageService } from '@/services/storageService.js';
 import { reminderInstant } from '../../laf-backend/functions/_shared/learning-reminders.js';
@@ -76,6 +77,33 @@ function setup() {
   return s;
 }
 describe('提醒日期、原任务、权限与回执', () => {
+  it('exposes only the current account’s saved counts and next authorized reminder to the watch', () => {
+    const now = Date.now();
+    const state = emptyLearningState('watch-owner', 'UTC');
+    const learning = {
+      state,
+      summary: { tasks: { numerator: 2, denominator: 3 }, due: [{ questionKey: 'private-question' }] },
+      recordReadState: 'ready',
+      accountRecordState: 'ready'
+    };
+    const jobs = [
+      { id: 'completed', kind: 'study', dueAt: now - 1000 },
+      { id: 'later', kind: 'recap', dueAt: now + 120000 },
+      { id: 'next', kind: 'review', dueAt: now + 60000 }
+    ];
+    const session = { owner: state.owner };
+    expect(watchGlance(learning, session, jobs, now)).toEqual({
+      contract: 'glance-v1',
+      available: true,
+      done: 2,
+      total: 3,
+      due: 1,
+      nextAt: now + 60000,
+      nextKind: 'review'
+    });
+    expect(watchGlance(learning, { owner: 'another-account' }, jobs, now)).toBe(EMPTY_WATCH_GLANCE);
+    expect(watchGlance({ ...learning, accountRecordState: 'loading' }, session, jobs, now)).toBe(EMPTY_WATCH_GLANCE);
+  });
   it('tests the OS channel without changing learning consent or replacing saved jobs', async () => {
     host.desktop = true;
     host.native = vi.fn(async (command) =>

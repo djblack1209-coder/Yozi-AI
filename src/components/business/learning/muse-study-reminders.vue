@@ -74,7 +74,7 @@ const target = computed(() => learning.state.conversations.find((item) => item.i
 const permissionLabel = computed(
   () =>
     ({
-      granted: controller.channel === 'macos' ? '已允许' : '已允许 · 页面打开时',
+      granted: controller.channel === 'web' ? '已允许 · 页面打开时' : '已允许',
       denied: '已关闭',
       default: '未开启',
       unsupported: '当前终端不支持',
@@ -181,7 +181,7 @@ function save() {
               .slice(0, 64)
               .at(-1)?.day || ''
           }`
-        : controller.channel === 'macos'
+        : ['macos', 'ios'].includes(controller.channel)
           ? '提醒已保存，当前没有待安排任务'
           : controller.channel === 'web'
             ? '提醒已保存 · 页面打开时提醒'

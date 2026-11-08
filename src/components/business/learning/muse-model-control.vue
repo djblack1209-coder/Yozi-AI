@@ -11,7 +11,9 @@
       :disabled="locked"
       @update:model-value="select"
     />
-    <BaseButton variant="quiet" :disabled="locked" @tap="$emit('connect')">AI 连接器</BaseButton>
+    <BaseButton v-if="!needsConnectionPrompt" variant="quiet" :disabled="locked" @tap="$emit('connect')"
+      >AI 连接器</BaseButton
+    >
     <text v-if="current?.connectionStatus === 'failed'" class="model-unavailable" role="status">{{
       modelErrorPresentation({ error: current.lastError }).message
     }}</text>
@@ -19,11 +21,7 @@
       >同意共享本次原答和必要资料片段</BaseCheckbox
     >
     <MuseModelFeedback
-      v-if="
-        failure ||
-        learning.modelListState?.selectionError ||
-        (learning.needsConnection && !['loading', 'error'].includes(learning.modelListState?.phase))
-      "
+      v-if="failure || learning.modelListState?.selectionError || needsConnectionPrompt"
       :failure="failure || { error: learning.modelListState?.selectionError || 'NEEDS_CONNECTION' }"
       :busy="locked"
       @action="$emit('connect')"
@@ -53,6 +51,9 @@ watch(
   { flush: 'sync' }
 );
 const locked = computed(() => saving.value || learning.busy || learning.intakeBusy);
+const needsConnectionPrompt = computed(
+  () => learning.needsConnection && !['loading', 'error'].includes(learning.modelListState?.phase)
+);
 const current = computed(() =>
   learning.models.find((model) => model.id === learning.modelId && model.source === 'byok')
 );

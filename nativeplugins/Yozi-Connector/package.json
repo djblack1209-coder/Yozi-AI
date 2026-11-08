@@ -32,7 +32,9 @@
       "integrateType": "library",
       "frameworks": [
         "Foundation.framework",
-        "UIKit.framework"
+        "UIKit.framework",
+        "UserNotifications.framework",
+        "WatchConnectivity.framework"
       ],
       "deploymentTarget": "11.0",
       "validArchitectures": [

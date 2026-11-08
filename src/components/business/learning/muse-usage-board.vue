@@ -1,7 +1,7 @@
 <template>
   <view class="muse-usage" aria-label="使用情况">
     <view class="artifact-bar"
-      ><BaseButton variant="quiet" icon="chevron-left" icon-only label="返回资料库" @tap="$emit('close')" /><text
+      ><BaseButton variant="quiet" icon="chevron-left" icon-only label="返回" @tap="$emit('close')" /><text
         role="heading"
         aria-level="1"
         >{{ t('muse.usage') }}</text
@@ -60,7 +60,7 @@
             ><text v-if="account.quota.week">{{ account.quota.week }}</text>
           </view>
         </view>
-        <text v-else class="quota-no-models">平台额度未同步</text>
+        <text v-else class="quota-no-models">账户总额度未同步</text>
         <view class="quota-models"
           ><view class="quota-models-head"
             ><text>{{ context.id.value === 'all' ? '第三方模型' : '当前对话的第三方模型回执' }}</text></view

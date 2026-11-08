@@ -261,6 +261,11 @@
 page {
   @include yozi-light;
   @include legacy.properties;
+  --yozi-mobile-sky: linear-gradient(165deg, #d5effd, #aedcf9 58%, #8cd0f7);
+  --yozi-mobile-ink: #11243d;
+  --yozi-mobile-muted: #385570;
+  --yozi-mobile-surface: #f3faff;
+  --yozi-mobile-action: #6fff00;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']),

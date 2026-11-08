@@ -67,4 +67,20 @@ const presentation = computed(() => {
 .is-guide {
   color: var(--blue);
 }
+@media (max-width: 760px) {
+  .model-feedback.is-guide {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--canvas);
+    color: var(--ink);
+  }
+  .model-feedback.is-guide .base-button:not([disabled]) {
+    border-radius: var(--r-sm);
+    background: var(--yozi-mobile-action);
+    color: var(--yozi-mobile-ink);
+  }
+}
 </style>

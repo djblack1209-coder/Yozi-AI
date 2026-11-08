@@ -11,9 +11,7 @@
       >
     </view>
     <template v-for="(turn, index) in intake?.turns || []" :key="index">
-      <BaseBubble avatar
-        ><text selectable>{{ turn.question }}</text></BaseBubble
-      >
+      <BaseBubble avatar><LearningMessage :content="turn.question" generated /></BaseBubble>
       <BaseBubble author="user" avatar :avatar-src="userAvatar"
         ><text selectable>{{ turn.answer }}</text></BaseBubble
       >
@@ -27,6 +25,7 @@
       :avatar-business="{ busy: learning.intakeBusy || !!learning.reply?.pending, producing: false }"
     >
       <LearningMessage
+        generated
         pending-label="正在等待回复…"
         :pending="learning.intakeBusy || !!learning.reply?.pending"
         :content="intake?.status === 'ready' ? reply?.message : ''"

@@ -691,17 +691,38 @@
   }
 }
 @media (max-width: 760px) {
+  .muse-space.space-light {
+    --canvas: var(--yozi-mobile-surface);
+    --ink: var(--yozi-mobile-ink);
+    --ink-2: var(--yozi-mobile-muted);
+    --paper: #fff;
+    --paper-sunk: #eaf5fc;
+    --line: #11243d18;
+    --line-strong: #11243d29;
+    --muse-nav-selected: #cbe7fa;
+    --muse-composer: #fff;
+  }
+  .muse-space.space-light.is-chat,
+  .muse-space.space-light.is-workspace {
+    background: var(--yozi-mobile-sky);
+  }
+  .muse-space.space-light.is-chat .space-header {
+    background: #d5effd;
+  }
+  .muse-space.space-light .muse-composer-dock {
+    background: var(--yozi-mobile-surface);
+  }
   .muse-rail {
     --dock-glyph: 20px;
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    height: calc(64px + env(safe-area-inset-bottom));
-    padding: 8px 8px env(safe-area-inset-bottom);
-    border-right: 0;
-    border-top: 1px solid var(--line);
+    bottom: calc(4px + env(safe-area-inset-bottom));
+    left: 8px;
+    right: 8px;
+    width: auto;
+    height: 56px;
+    padding: 0 4px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
     background: var(--canvas);
     flex-direction: row;
     justify-content: space-around;
@@ -809,6 +830,18 @@
   }
   .has-directory .muse-chat-identity {
     visibility: hidden;
+  }
+  .muse-chat-identity .brand-mark {
+    width: 40px;
+    height: 40px;
+  }
+}
+@media (max-width: 760px) and (pointer: coarse) {
+  .is-chat:has(.muse-composer textarea:focus) .muse-rail {
+    visibility: hidden;
+  }
+  .is-chat:has(.muse-composer textarea:focus) .space-main {
+    height: 100%;
   }
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {

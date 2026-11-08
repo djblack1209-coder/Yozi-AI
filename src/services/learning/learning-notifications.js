@@ -7,6 +7,7 @@ import { storageService } from '@/services/storageService.js';
 import { assert } from './learning-domain.js';
 import { safeNavigateTo } from '@/utils/safe-navigate.js';
 import { getCurrentRoute } from '@/utils/home-navigation.js';
+import { appleStudyBridge, EMPTY_WATCH_GLANCE, watchGlance } from './apple-study-companion.js';
 
 const CONSENT_KEY = 'learning_notification_consent_v1';
 const controllers = new WeakMap();
@@ -29,8 +30,9 @@ export function learningNotificationsFor(learning) {
   }
   return controller;
 }
-export function notificationChannel() {
+export function notificationChannel(phone = appleStudyBridge()) {
   if (isDesktopRuntime()) return 'macos';
+  if (phone) return 'ios';
   // #ifdef H5
   if (typeof window !== 'undefined' && typeof window.Notification === 'function') return 'web';
   // #endif
@@ -39,7 +41,8 @@ export function notificationChannel() {
 
 // 只在用户明确授权后使用。平台接纳不等于真实显示；web不提供退出应用后的调度。
 export function createLearningNotifications(learning, onOpen, native = invoke, canOpen = () => true) {
-  const channel = notificationChannel();
+  const phone = appleStudyBridge();
+  const channel = notificationChannel(phone);
   const settingsWindow = isDesktopSettingsWindow();
   let token = null,
     sequence = 0,
@@ -67,6 +70,7 @@ export function createLearningNotifications(learning, onOpen, native = invoke, c
     waiting.clear();
     delivered.clear();
     notificationSession = captureSession();
+    if (phone) clearPhone();
     if (active) tick();
     if (channel === 'macos' && token)
       native('replace_learning_notifications', { token, sequence: ++sequence, consent: false, jobs: [] }).catch(
@@ -126,6 +130,7 @@ export function createLearningNotifications(learning, onOpen, native = invoke, c
       const reply = await native('learning_notification_permission', { request, consent: request });
       return reply.permission;
     }
+    if (phone) return (await phone('studyNotificationPermission', { request })).permission;
     if (channel === 'web') return request ? window.Notification.requestPermission() : window.Notification.permission;
     return 'unsupported';
   }
@@ -150,6 +155,12 @@ export function createLearningNotifications(learning, onOpen, native = invoke, c
   function clearTimer() {
     if (timer !== null) clearTimeout(timer);
     timer = null;
+  }
+  function clearPhone() {
+    running = running
+      .catch(() => undefined)
+      .then(() => phone('applyStudyCompanion', { glance: EMPTY_WATCH_GLANCE }))
+      .catch(() => undefined);
   }
   function refresh() {
     const pending = running.catch(() => undefined).then(performRefresh);
@@ -195,6 +206,28 @@ export function createLearningNotifications(learning, onOpen, native = invoke, c
         );
         const actions = await native('take_learning_notification_actions');
         if (!disposed && context() === expected) actions.forEach(openNative);
+        return {
+          channel,
+          status: requested.length > 64 ? 'partial-scheduled' : jobs.length ? 'scheduled' : 'saved',
+          count: jobs.length,
+          total: requested.length
+        };
+      }
+      if (phone) {
+        const now = Date.now();
+        const requested = consent() ? learning.reminderQueue(now).filter((job) => job.dueAt > now + 1000) : [];
+        const jobs = requested.slice(0, 64);
+        const receipt = await phone('applyStudyCompanion', {
+          glance: watchGlance(learning, session, jobs, now),
+          language: currentLanguage.value,
+          jobs: jobs.map(({ id, dueAt, kind }) => ({ id, dueAt, kind }))
+        });
+        if (disposed || context() !== expected) return null;
+        assert(
+          receipt?.ok && jobs.every((job) => receipt.acceptedIds?.includes(job.id)),
+          'NOTIFICATION_FAILED',
+          '系统提醒尚未完整确认，请重试'
+        );
         return {
           channel,
           status: requested.length > 64 ? 'partial-scheduled' : jobs.length ? 'scheduled' : 'saved',
@@ -326,6 +359,7 @@ export function createLearningNotifications(learning, onOpen, native = invoke, c
     notices.forEach((n) => n.close());
     notices.clear();
     waiting.clear();
+    if (phone && learning.notificationContext() !== trustedIdentity) clearPhone();
     if (channel === 'macos' && token && learning.notificationContext() !== trustedIdentity) {
       native('replace_learning_notifications', { token, sequence: ++sequence, jobs: [], consent: false }).catch(
         () => undefined
@@ -340,6 +374,11 @@ export function createLearningNotifications(learning, onOpen, native = invoke, c
   }
   async function openSettings() {
     if (channel === 'macos') return native('open_learning_notification_settings');
+    if (phone) {
+      const receipt = await phone('openStudyNotificationSettings');
+      assert(receipt?.ok, 'NOTIFICATION_FAILED', '请在系统设置中允许 Yozi AI 通知');
+      return receipt;
+    }
     throw new Error('请在浏览器网站设置中允许通知');
   }
   async function testDelivered() {
