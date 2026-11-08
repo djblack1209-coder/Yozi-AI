@@ -59,11 +59,11 @@ docs/01 是一页产品定义；docs/13 只记录当前计划与待办；docs/12
 
 ## 界面
 
-面向真实用户：正式构建不含开发态文案、虚拟数据与开发入口；不用说明性长段落和重复副标题。常用设置优先给选项，非必填可跳过。选项只改草稿，作答明确提交、设置明确保存后才写事实。图标使用 Lucide 与官方品牌标志，不用文字、符号或表情充当图标。品牌以客户 2026-10-20 选定的第 03 款「好奇歪头」小猫为准：由官网背景里的黑白扫描线小猫重新创作，保留圆脸、大眼睛、猫耳与扫描线辨识特征，不采用低伏四足姿态。除 macOS Dock 图标单独使用不透明纯白底外，其他位置全部使用透明背景、只保留小猫，不加圆形或方形底板；所有导出只由选定母版派生。官网 Nomi 首页、Lazy AI 左动画右登录结构、Muse 工作区，按钮中文、展示文案英文并使用项目内容。动效机制见 docs/07；App 对话内容继续以卡片呈现。隐私、明确提交、安全与可访问性基础不让步。
+面向真实用户：正式构建不含开发态文案、虚拟数据与开发入口；不用说明性长段落和重复副标题。常用设置优先给选项，非必填可跳过。选项只改草稿，作答明确提交、设置明确保存后才写事实。图标使用 Lucide 与官方品牌标志，不用文字、符号或表情充当图标。品牌 Logo 以 Study Index 为正式母版（2026-11-07 起，源文件 src/assets/brand/logo/current/mark.svg，深色底用 mark-reverse.svg，规格见 src/assets/brand/logo/manifest.json）。客户 2026-10-20 选定的第 03 款「好奇歪头」小猫作为 Logo 已被取代并归档（src/assets/brand/logo/archive/previous-official/），现仅作默认头像、启动海报与动态陪伴角色：由官网背景里的黑白扫描线小猫重新创作，保留圆脸、大眼睛、猫耳与扫描线辨识特征，不采用低伏四足姿态。除 macOS Dock 图标单独使用不透明纯白底外，其他位置全部使用透明背景、只保留图形本身，不加圆形或方形底板；所有 Logo 导出只由 Study Index 母版派生。官网 Nomi 首页、Lazy AI 左动画右登录结构、Muse 工作区，按钮中文、展示文案英文并使用项目内容。动效机制见 docs/07；App 对话内容继续以卡片呈现。隐私、明确提交、安全与可访问性基础不让步。
 
 ## 不得放宽的边界
 
-当前设计与素材唯一入口是 docs/07-STYLING-SYSTEM.md、src/config/brand.js 和 src/assets/brand/kitten-icon-master.png。不得从 tmp、旧原型、历史截图或 Git 历史重新引用已退役的 Logo / UI 素材；必要回滚档只用于恢复，不是设计源。App / 小程序仍在调用的欢迎页资源按现行清单保留。
+当前设计与素材唯一入口是 docs/07-STYLING-SYSTEM.md、src/config/brand.js 和 src/assets/brand/logo/current/（Study Index 正式 Logo 母版，规格见 src/assets/brand/logo/manifest.json）；src/assets/brand/kitten-icon-master.png 已不是 Logo 源，仅作小猫角色素材来源。不得从 tmp、旧原型、历史截图或 Git 历史重新引用已退役的 Logo / UI 素材；必要回滚档只用于恢复，不是设计源。App / 小程序仍在调用的欢迎页资源按现行清单保留。
 
 保留 requireAuth、授权、限流、校验、用户隔离、SSRF、预算和幂等。密钥、JWT 签名材料、真实用户数据不得进入提交、前端变量、普通备份或日志。模型文本经结构与业务校验才执行工具，执行成功后才能宣称状态已变更。
 

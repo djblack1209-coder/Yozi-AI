@@ -1,12 +1,12 @@
 # Yozi AI 样式与语言规则
 
-2026-11-06 官网重设计以 Yoga Coach 完整原词为准：浅蓝渐变 `#d5effd → #aedcf9 → #8cd0f7`、本地 Anton 大字、Condiment 强调字与 Inter／中文字体；客户已撤销黑白禁令，按内容需要使用深浅色。Hero 采用 Cursor Follow 的暂停视频、相对指针拖动与连续定位，并提供键盘／触摸滑杆；Yoga 两幕切换、返回与叠卡保留，八区块组合后正常滚动。Interior Features 四卡、Arceage 理念轮播、Rocket 费用与分类 FAQ、Vela 三卡 CTA 和 Stark 页脚沿各自原词结构与交互接入统一体系。仅官网采用，App 规则不变；透明小猫母版、双语、真实 2.2.0 下载与权限／费用边界保持。参考角色影片未直接分发，使用项目自制的蓝色书页／铅笔场景；来源、适配差异、实际验证及发布状态见[本轮结果](../YOZI-WEBSITE-REDESIGN-RESULT-2026-11-06.md)。
+2026-11-06 官网重设计以 Yoga Coach 完整原词为准：浅蓝渐变 `#d5effd → #aedcf9 → #8cd0f7`、本地 Anton 大字、Condiment 强调字与 Inter／中文字体；客户已撤销黑白禁令，按内容需要使用深浅色。Hero 采用 Cursor Follow 的暂停视频、相对指针拖动与连续定位，并提供键盘／触摸滑杆；Yoga 两幕切换、返回与叠卡保留，八区块组合后正常滚动。Interior Features 四卡、Arceage 理念轮播、Rocket 费用与分类 FAQ、Vela 三卡 CTA 和 Stark 页脚沿各自原词结构与交互接入统一体系。仅官网采用，App 规则不变；透明品牌标记（2026-11-07 起为 Study Index，取代小猫母版）、双语、真实 2.2.0 下载与权限／费用边界保持。参考角色影片未直接分发，使用项目自制的蓝色书页／铅笔场景；来源、适配差异、实际验证及发布状态见[本轮结果](../YOZI-WEBSITE-REDESIGN-RESULT-2026-11-06.md)。
 
-2026-10-27 最新参照与排期口径：全部界面细节以本机 [Muse2-细节参照.md](</Users/blackdj/Desktop/Muse 2/Muse2-细节参照.md>) 为准，§9源码分析值优先于早期截图推断，形象依据§3.6；需要状态机细节时参阅 [avatar.md](</Users/blackdj/Desktop/Muse 2/Muse2/docs/avatar.md>) 的来源、媒体实测和实现说明。必须区分Muse原始证据与Muse2复刻实现参数，不能把复刻值或Yozi现值冒充原版源码值。无直接来源的值列为待校准，再沿参照核验，不凭感觉估算。小猫品牌造型／透明背景沿既定合同，耳尾爪与睡姿等动作按猫习性改编，避免机械循环。
+2026-10-27 最新参照与排期口径：全部界面细节以本机 [Muse2-细节参照.md](</Users/blackdj/Desktop/Muse 2/Muse2-细节参照.md>) 为准，§9源码分析值优先于早期截图推断，形象依据§3.6；需要状态机细节时参阅 [avatar.md](</Users/blackdj/Desktop/Muse 2/Muse2/docs/avatar.md>) 的来源、媒体实测和实现说明。必须区分Muse原始证据与Muse2复刻实现参数，不能把复刻值或Yozi现值冒充原版源码值。无直接来源的值列为待校准，再沿参照核验，不凭感觉估算。小猫角色造型／透明背景沿既定合同，耳尾爪与睡姿等动作按猫习性改编，避免机械循环。
 
 主页形象属于外壳支线，不占写作批改质量主线。下文72px、30fps等为现实现值，尚未逐项通过指定参照校准；已留七态实屏仅证明动作存在与状态可辨。支线完成相关参数／节奏调整后，须重新在主页逐个实际切换等待、思考、处理、完成、出错及就绪／恢复，核对动作、节奏和状态，再核对一次性回落及后台／减少动态门控，才记该支线完成；不以截图或单元帧差代替实际切换。
 
-2026-10-27 主页状态动效覆盖：主页／导航的`perceptible`小猫改用[分部位画布](../src/design/kitten-rig.js)，沿[当前透明母版](../src/assets/brand/kitten-icon-master.png)的圆脸、大眼睛、耳朵、歪头与黑白扫描线重画，身体、耳、尾、眼与爪分别运动，不改变Logo或安装图标。静候好奇歪头；等待团坐慢眨、尾巴收拢；思考托腮望上；处理左右爪交替踩奶、停顿错开；完成伸爪竖尾；出错压耳垂尾并收住爪子；恢复睁眼伸爪。动作节奏错开、有停顿，不整张图循环摇摆，完成／恢复只播一次。主页72px并持续显示简短真实状态，批改／编排／小结阶段文案细分；错误优先，不能被旧完成态遮住。沿共享时钟以30fps绘制，失焦／后台／不可见暂停，减少动态保持可辨姿态。旧视频仅保留其他展示／回退用途，下文旧六态／等待静止／整体摇摆描述不覆盖此新路径。
+2026-10-27 主页状态动效覆盖：主页／导航的`perceptible`小猫改用[分部位画布](../src/design/kitten-rig.js)，沿[小猫角色透明母版](../src/assets/brand/kitten-icon-master.png)的圆脸、大眼睛、耳朵、歪头与黑白扫描线重画，身体、耳、尾、眼与爪分别运动，不改变Logo或安装图标。静候好奇歪头；等待团坐慢眨、尾巴收拢；思考托腮望上；处理左右爪交替踩奶、停顿错开；完成伸爪竖尾；出错压耳垂尾并收住爪子；恢复睁眼伸爪。动作节奏错开、有停顿，不整张图循环摇摆，完成／恢复只播一次。主页72px并持续显示简短真实状态，批改／编排／小结阶段文案细分；错误优先，不能被旧完成态遮住。沿共享时钟以30fps绘制，失焦／后台／不可见暂停，减少动态保持可辨姿态。旧视频仅保留其他展示／回退用途，下文旧六态／等待静止／整体摇摆描述不覆盖此新路径。
 
 原生候选主页已通过仅外观入口逐个切换七态，动作与短语均实看，踩奶另核对连续三帧左右爪；[实际主页逐态截图](../tmp/writing-quality-20261027/avatar-final-native-states.png)。验收入口须同时为dev/test渠道及显式`VITE_AVATAR_QA=true`，只改组件呈现，不写学习事实、不开模型请求，默认构建不出现。此为开发侧状态可辨检查，不宣称用户偏好、手机实机或完整教学链验收。未引入Muse资产、远程字体、新依赖或收费生成服务。
 
@@ -25,11 +25,11 @@ Yozi AI 面向中国学生，先做考研英语写作带练。2026-10-20 起，�
 
 ## 2026-10-20 官网与动效覆盖规则
 
-2026-11-06 Wave3 安装候选按本轮任务采用[最新一轮 06 Event Cat](../logo-candidates-2026-11-06/06-event-cat/mark-primary.svg)导出 Tauri／手机原生图标与商店素材；编号尚未由客户最终选定，不改现役角色事件机制或日常 App。原生 iOS 图标按[DCloud 打包格式](https://uniapp.dcloud.io/tutorial/app-icons)统一白底、无 alpha，其他猫标透明规则继续；18 张手机原生图标已绑定 manifest。来源、平台例外与有限验证见[Wave3 结果](../YOZI-WAVE3-RESULT-2026-11-06.md)。
+2026-11-06 Wave3 安装候选按本轮任务采用[最新一轮 06 Event Cat](../logo-candidates-2026-11-06/06-event-cat/mark-primary.svg)导出 Tauri／手机原生图标与商店素材；编号尚未由客户最终选定，不改现役角色事件机制或日常 App。原生 iOS 图标按[DCloud 打包格式](https://uniapp.dcloud.io/tutorial/app-icons)统一白底、无 alpha，其他透明规则继续；18 张手机原生图标已绑定 manifest。来源、平台例外与有限验证见[Wave3 结果](../YOZI-WAVE3-RESULT-2026-11-06.md)。2026-11-08 起安装图标改由 Study Index 派生，Event Cat 候选已[归档](../src/assets/brand/logo/archive/previous-official/logo-candidates-2026-11-06/)，iOS 白底无 alpha 的平台要求不变。
 
 参考：官网沿已取得完整提示词的 [Nomi AI Agent](https://motionsites.ai/?prompt=nomi-ai-agent)；登录按客户指定的 Lazy AI 左动画右表单结构，登录后借鉴本机 Muse 的独立侧栏、宽松内容列和轻量控件。MotionSites 未检索到准确的 Lazy AI / Muse 条目；未将 Pixel Muse 等近似名称当作同一模板，也未声称取得这两套原始提示词。
 
-客户从 6 款中选定第 03 款「好奇歪头」小猫，透明母版为 `src/assets/brand/kitten-icon-master.png`：保留官网原型的圆脸、大眼睛、猫耳与黑白扫描线，正面直立，不直接抠取视频角色。官网、App、小程序、默认头像、PWA 与 Windows 图标均使用透明背景，只保留小猫，不加圆形或方形底板；只有 macOS Dock 图标单独派生不透明纯白底。动态头像沿选定母版生成轻微呼吸、摆动与一次性缩放；MP4 同帧保存颜色与透明度，Canvas 还原透明效果，白色面部保持完整。旧 pose、双层切换、共享时钟、减少动态与三级回退继续保留；静态角色保留 256px 与 512px 各一份。
+正式 Logo 母版自 2026-11-07 起为 Study Index（[深蓝透明](../src/assets/brand/logo/current/mark.svg)、[深色底反白](../src/assets/brand/logo/current/mark-reverse.svg)，规格见[资产清单](../src/assets/brand/logo/manifest.json)，2026-11-08 完成[接线](../YOZI-LOGO-WIRING-RESULT-2026-11-08.md)）。客户此前从 6 款中选定的第 03 款「好奇歪头」小猫作为 Logo 已被取代，旧标与派生文件见[归档](../src/assets/brand/logo/archive/previous-official/)；小猫继续作默认头像、启动海报与动态陪伴角色，角色透明母版为 `src/assets/brand/kitten-icon-master.png`：保留官网原型的圆脸、大眼睛、猫耳与黑白扫描线，正面直立，不直接抠取视频角色。官网、App、小程序、默认头像、PWA 与 Windows 图标均使用透明背景，只保留图形本身，不加圆形或方形底板；只有 macOS Dock 图标单独派生不透明纯白底。动态头像沿小猫角色母版生成轻微呼吸、摆动与一次性缩放；MP4 同帧保存颜色与透明度，Canvas 还原透明效果，白色面部保持完整。旧 pose、双层切换、共享时钟、减少动态与三级回退继续保留；静态角色保留 256px 与 512px 各一份。
 
 实现计划（6 项，零新增依赖）：
 
@@ -72,17 +72,17 @@ Yozi AI 面向中国学生，先做考研英语写作带练。2026-10-20 起，�
 
 ## 唯一素材入口与清理边界
 
-- Logo 母版：[kitten-icon-master.png](../src/assets/brand/kitten-icon-master.png)，客户选定的第 03 款「好奇歪头」透明 PNG；所有页面、默认头像和安装图标由此派生，只有 macOS Dock 导出保留纯白底，不从截图或旧投影图裁切。
+- Logo 母版：Study Index（[深蓝透明](../src/assets/brand/logo/current/mark.svg)、[深色底反白](../src/assets/brand/logo/current/mark-reverse.svg)，规格见[资产清单](../src/assets/brand/logo/manifest.json)）；所有页面标志和安装图标由此派生，只有 macOS Dock 导出保留纯白底，不从截图或旧投影图裁切。原第 03 款「好奇歪头」小猫已被取代并[归档](../src/assets/brand/logo/archive/previous-official/)，[kitten-icon-master.png](../src/assets/brand/kitten-icon-master.png) 仅作默认头像与角色素材来源。
 - 页面标志与默认头像：[brand.js](../src/config/brand.js)；256px 静态角色 [mascot-256.webp](../src/static/brand/mascot-256.webp)，大尺寸 [mascot-512.webp](../src/assets/brand/mascot-512.webp)。旧 pose 参数仅控制呈现，不再对应一套旧角色文件。
 - 官网与登录背景：`public/visual/nomi/kitten.{mp4,png}`；动态头像：`public/visual/avatar/`。两者均仍在使用。
 - App / 小程序欢迎页与主体统一使用下述 Muse 2 底座；两套旧欢迎页、天空动效与投影插画已退役。官网的 Nomi 与原登录页继续保留。
 - 官网与登录仍使用本地字体及现有许可；App 使用系统字体栈，不引入 Muse 提取字体或第三方品牌素材。
-- 官方 Apple / Google / WeChat 标志及其许可保留原样。素材来源与当前 Logo 生成提示词见 [品牌说明](../src/static/licenses/yozi-brand.txt)。
+- 官方 Apple / Google / WeChat 标志及其许可保留原样。素材来源与已被取代的小猫 Logo 生成提示词见 [品牌说明](../src/static/licenses/yozi-brand.txt)。
 - 已退役的原型、旧字标、姿势副本、无调用的位图插画 / 图标、旧眼睛追踪媒体和旧生成脚本不再进入源码或构建。Git 历史、历史验收记录及隔离回滚档仅供溯源恢复，不作为现行设计源。
 
 ## 2026-10-20 App：Muse 2 覆盖规则
 
-客户指定 `/Users/blackdj/Desktop/Muse 2` 为 App 唯一 UI / UX 参考；布局依据 `Muse2/src/styles/app.css`、`Rail`、`SidePanel`、`ChatView`、`Composer` 与 `SettingsWindow`，不混入旧 App 设计。官网、登录、名称与已选小猫母版保持。
+客户指定 `/Users/blackdj/Desktop/Muse 2` 为 App 唯一 UI / UX 参考；布局依据 `Muse2/src/styles/app.css`、`Rail`、`SidePanel`、`ChatView`、`Composer` 与 `SettingsWindow`，不混入旧 App 设计。官网、登录、名称与已选小猫角色母版保持（Logo 母版自 2026-11-07 起为 Study Index）。
 
 - 全屏底色深色 `#181819`、浅色 `#fcfcfc`；78px 图标导航，48×55px 导航触区，会话列表按设备恢复，首次默认展开、217px，180–420px 拖宽，⌘B／Ctrl+B 开合；普通侧栏不消费 Esc，搜索／弹层沿现有优先级关闭。217／180–420 为 Muse 2 实现参数（`sidebarPreferences.ts:5–8`），不冒充原版测量。
 - 顶部左侧会话胶囊、中央静态透明小猫与当前目标；动态头像仅在消息内。顶部 116px 避让放在滚动容器外（Muse 2 `app.css:91`），历史不会卷到标题牌下；图标只用现有 Lucide，常用动作最小 44px。App 没有额外副标题、动效说明或演示数据。
@@ -120,7 +120,7 @@ Yozi AI 面向中国学生，先做考研英语写作带练。2026-10-20 起，�
 
 额度看板沿 Muse2 结构，数据只读本人已保存请求：完成、待确认、已结束、七日分布与模型次数。没有服务端额度与账单快照时明确显示未同步，不复制 Claude / ChatGPT 示例数值。作品选择与筛选不改变学习事实。原始作答、暂停状态、草稿、账户隔离和全部后端合同沿用。 文档源尚未同步时，只读显示当前账户的本机原稿，不冒充云端版本；明确同意后复用学习同步，完成后重新打开文档以绑定新上下文。取消或失败保留原稿与重试入口，不绕过待确认保存／恢复收据。 Chat 把当前已保存反馈中的未解决错误列为待重练项，标明原日期与AI评估；查看不写事实，新答案明确提交后单独保存，原答与旧反馈继续回看。重练草稿独立于主输入区，分钟刷新不收起编辑器；反馈只绑定本次已保存重练，未知执行仍查询原请求。完成该项不表示已掌握。
 
-小猫继续使用唯一母版及已有六态透明媒体；非 H5 的 App / 小程序在同一静态角色上补呼吸、思考、输出、单次完成与恢复动作，等待时静止。减少动态停用装饰动画；不加入 Muse 原角色与第三方媒体。控件保留 44px 触区，中文操作标签、真实数据与原版示例文案/数据有意不同。
+小猫继续使用唯一角色母版及已有六态透明媒体；非 H5 的 App / 小程序在同一静态角色上补呼吸、思考、输出、单次完成与恢复动作，等待时静止。减少动态停用装饰动画；不加入 Muse 原角色与第三方媒体。控件保留 44px 触区，中文操作标签、真实数据与原版示例文案/数据有意不同。
 
 下一步内容取舍单独见[App 功能与设计介入清单](07A-APP-FUNCTION-INVENTORY.md)：按钮、看板字段及六个优先设计区域已列出；现有内容接线不等于客户已经确认其最终位置。语音、电脑控制、钱包和网盘等未开放能力不复制为失效控件。
 
