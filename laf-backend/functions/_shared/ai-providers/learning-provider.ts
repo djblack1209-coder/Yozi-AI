@@ -1065,7 +1065,8 @@ export function coachRepairFeedback(config: ModelConfig, error: any, content?: s
   try {
     if (content) previousResponse = JSON.parse(content);
   } catch {
-    // Missing/invalid JSON still gets the exact host rejection rule.
+    // 语法坏了也把原文交回：没有原文时返修只能从头重批，思考会把输出额度耗尽。
+    previousResponse = content;
   }
   const path = typeof error.path === 'string' ? error.path.slice(0, 160) : 'root';
   const key = path.match(/dimensionReviews\.(grammar|collocation|expression|task)/)?.[1];
@@ -1139,6 +1140,12 @@ const COACH_VERIFICATION_PROMPT =
 // 句法讲解题的盲析结果先过宿主自洽检查，再与学生笔记里能读出的每项断言逐项比对。
 // 自洽：各片段都出自原句；从句以关系词开头、紧跟在先行词之后、在原句中只出现一次；
 // 主句主语和谓语落在从句之外；关系词成分与从句主谓位置一致。不自洽就不拿来删错。
+const SUBJECT_POSTMODIFIERS = new Set(
+  'of in on at for with from to by about over under between among during through without within against across behind beyond after before around near inside outside like'.split(
+    ' '
+  )
+);
+
 export function syntaxAgreement(sentence: string, parse: any, note: string) {
   const words = (text: string): string[] => text.toLowerCase().match(/[a-z]+(?:'[a-z]+)?/g) || [];
   const find = (hay: string[], needle: string[]) =>
@@ -1185,7 +1192,10 @@ export function syntaxAgreement(sentence: string, parse: any, note: string) {
     const bare = (list: string[]) => list.filter((w) => !['a', 'an', 'the'].includes(w));
     const T = bare(words(trunk[1])),
       rest = bare(S.filter((_, i) => i < start || i >= end));
-    const subjectHead = words(parse.mainSubject).at(-1)!,
+    // 介词短语是后置修饰，中心词在它前面：the habit of setting aside… 的中心词是 habit。
+    const subjectWords = words(parse.mainSubject),
+      postmodifier = subjectWords.findIndex((w, i) => i > 0 && SUBJECT_POSTMODIFIERS.has(w)),
+      subjectHead = postmodifier > 0 ? subjectWords[postmodifier - 1] : subjectWords.at(-1)!,
       mainVerb = words(parse.mainVerb);
     const labelsAgree = Array.from(
       trunk[1].matchAll(/([A-Za-z][A-Za-z' ,-]*)[（(]\s*(?:主句)?(主语|谓语|宾语|表语|补语|状语)\s*[）)]/gu)
@@ -1227,6 +1237,12 @@ export function syntaxAgreement(sentence: string, parse: any, note: string) {
       !new RegExp(`(?<![A-Za-z])${pronoun}(?![A-Za-z])`, 'iu').test(block)
     )
       continue;
+    // 一句有两个定语从句时盲析只描述其中一个；学生对另一个从句的「修饰X」不是对本从句的断言。
+    const named = Array.from(
+      block.matchAll(/(?<![A-Za-z])(?:who|whom|whose|which|that)(?![A-Za-z])[A-Za-z' -]*/giu)
+    ).at(-1);
+    const quotedClause = named ? words(named[0]) : [];
+    if (quotedClause.some((word, i) => word !== C[i]) && outside(quotedClause).length > 0) continue;
     const target = words(m[1]).at(-1),
       own = new RegExp(`(?<![A-Za-z])${pronoun}\\s*$`, 'iu').test(note.slice(0, m.index));
     if (own) claims.role = (claims.role ?? true) && role === '定语' && target === C[1];
@@ -1247,10 +1263,16 @@ export function syntaxAgreement(sentence: string, parse: any, note: string) {
 
 // 要点与原答独立语义核对；原答证据逐字定位后，由宿主检查所在完整分句的否定语境。
 // 引用存在不替代语义判断；引用断章取义或核对不明时保留待核对，不按关键词推断漏项。
+// 身份设定和署名、地址约定不属于审题要列的体裁、对象、目的、内容与字数，不要求逐句列出。
+const OUTLINE_CONVENTION_SENTENCE =
+  /^(?:(?:suppose|imagine|assume)\s+(?:that\s+)?you\s+are|you\s+are)\b(?!.*\bwrite\b)|\b(?:do not|don['’]t|need not|no need to)\b.*\b(?:name|sign|signature|address)\b|^use\s+\S+(?:\s+\S+)?\s+instead\b/u;
+
 export function outlineAgreement(prompt: string, points: any[], answer: string) {
   const flat = (text: string) => text.toLowerCase().replace(/\s+/g, ' ').trim();
   const P = flat(prompt),
-    sentences = P.split(/(?<=[.!?])\s+/).filter(Boolean);
+    sentences = P.split(/(?<=[.!?])\s+/)
+      .filter(Boolean)
+      .filter((sentence: string) => !OUTLINE_CONVENTION_SENTENCE.test(sentence));
   const spans = points.map((point: any) => flat(point.span).replace(/[\s.!?,;:]+$/, ''));
   const delimiter = /[，,；;。.!！？?、\n\r]/u;
   const negative = /不|没|无需|无须|未|勿|\b(?:not|never|without)\b/iu;

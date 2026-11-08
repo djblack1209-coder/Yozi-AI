@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { download, renderHome, renderNotFound, WEBSITE_TITLE } from '../../website/render.mjs';
+import { download, renderAccount, renderHome, renderNotFound, WEBSITE_TITLE } from '../../website/render.mjs';
 import { LEGAL_DOCS, legalPath, legalStyles, renderLegal } from '../../website/legal.mjs';
+import { BRAND_FILES, brandSource } from '../../website/brand.mjs';
 
 export { WEBSITE_TITLE };
 const project = path.resolve(fileURLToPath(new URL('../../', import.meta.url)));
@@ -36,24 +37,25 @@ export function buildWebsite(output = path.join(project, 'dist/website')) {
     fs.writeFileSync(path.join(destination, lang, 'index.html'), html);
   }
   fs.writeFileSync(path.join(destination, '404.html'), missing);
+  fs.mkdirSync(path.join(destination, 'account'), { recursive: true });
+  fs.writeFileSync(path.join(destination, 'account', 'index.html'), renderAccount());
   const legalCss = legalStyles();
   for (const lang of languages)
     for (const doc of LEGAL_DOCS) {
       fs.mkdirSync(path.join(destination, lang, doc), { recursive: true });
       fs.writeFileSync(path.join(destination, lang, doc, 'index.html'), renderLegal(lang, doc, legalCss));
     }
-  fs.copyFileSync(path.join(website, 'favicon.svg'), path.join(destination, 'favicon.svg'));
-  fs.cpSync(path.join(website, 'brand'), path.join(destination, 'brand'), { recursive: true });
-  fs.copyFileSync(
-    path.join(project, 'src/assets/brand/kitten-icon-master.png'),
-    path.join(destination, 'brand/kitten.png')
-  );
   fs.copyFileSync(path.join(website, 'manifest.webmanifest'), path.join(destination, 'manifest.webmanifest'));
   fs.cpSync(path.join(website, 'fonts'), path.join(destination, 'fonts'), { recursive: true });
   for (const file of additionalFonts)
     fs.copyFileSync(path.join(project, 'public/fonts', file), path.join(destination, 'fonts', file));
   // The existing public media URL may still have consumers outside the homepage.
   fs.cpSync(path.join(website, 'media'), path.join(destination, 'media'), { recursive: true });
+  // Brand slots come from the official logo source (website/brand.mjs).
+  for (const published of Object.keys(BRAND_FILES)) {
+    fs.mkdirSync(path.dirname(path.join(destination, published)), { recursive: true });
+    fs.copyFileSync(brandSource(published), path.join(destination, published));
+  }
   fs.writeFileSync(path.join(destination, 'sw.js'), retirementWorker);
   fs.writeFileSync(
     path.join(destination, 'robots.txt'),
@@ -88,12 +90,21 @@ export function websiteLaunchPlugin(enabled) {
         if (legal) {
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.end(renderLegal(...legal, legalStyles()));
+        } else if (route === '/account/' || route === '/account/index.html') {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.end(renderAccount());
         } else if (lang || route === '/404.html') {
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.end(lang ? renderHome(lang) : renderNotFound());
-        } else if (route === '/fonts/inter-latin-300-500.woff2' || route === '/favicon.svg') {
-          res.setHeader('Content-Type', route.endsWith('.svg') ? 'image/svg+xml' : 'font/woff2');
+        } else if (route === '/fonts/inter-latin-300-500.woff2') {
+          res.setHeader('Content-Type', 'font/woff2');
           fs.createReadStream(path.join(website, route)).pipe(res);
+        } else if (BRAND_FILES[route.slice(1)]) {
+          res.setHeader(
+            'Content-Type',
+            { svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg' }[route.split('.').pop()]
+          );
+          fs.createReadStream(brandSource(route.slice(1))).pipe(res);
         } else next();
       });
     },

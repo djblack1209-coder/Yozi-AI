@@ -43,7 +43,7 @@ import {
 } from './_shared/learning-writing-coach.js';
 import { subjectCoachMethodByContract } from './_shared/learning-coach-methods.js';
 import { reservePlatformDay, settlePlatformDay } from './_shared/learning-daily-budget.js';
-import { assertTrialUser } from './_shared/learning-trial.js';
+import { assertTrialUser, trialCreditFor } from './_shared/learning-trial.js';
 import { DEV_TEST } from './_shared/build-channel.js';
 import { callWithDevPaidFallback, devPaidFallbackSettings } from './_shared/ai-providers/dev-paid-fallback.js';
 import { requireAuth, isAuthError } from './_shared/auth-middleware.js';
@@ -716,6 +716,8 @@ export async function runLearningModelTask(
         : costFromUsage({ prompt_tokens: inputByteBound, completion_tokens: model.maxOutput }, model);
     if (maxCost === null) throw new ProviderError('PRICE_UNCONFIRMED', '缺少完整价格版本，平台调用保持关闭');
     resultPolicy = modelResultPolicy();
+    const freeFriendTrial = process.env.LEARNING_FRIEND_TRIAL_ENABLED === 'true' && freeModelPricing(model!);
+    const trialCredit = model.source === 'platform' && !freeFriendTrial ? await trialCreditFor(db, auth.userId) : null;
     reservation = await mutateAccount(db, auth.userId, (a) =>
       reserveCall(
         refreshSubscriptionEntitlement(recoverStaleReservations(a).account, Date.now()),
@@ -737,12 +739,8 @@ export async function runLearningModelTask(
             : freeModelPricing(model!)?.priceVersion || model!.priceVersion || 'byok-upstream',
           maxCost,
           ...(options.repair ? { repairOf: options.repair.parentId } : {}),
-          units:
-            !options.repair &&
-            model!.source === 'platform' &&
-            !(process.env.LEARNING_FRIEND_TRIAL_ENABLED === 'true' && freeModelPricing(model!))
-              ? 1
-              : 0,
+          units: !options.repair && model!.source === 'platform' && !freeFriendTrial ? 1 : 0,
+          ...(trialCredit ? { trialCredit } : {}),
           callLimit: byokCallLimit(),
           budgetPhase: learningBudgetPhase(context),
           ...(feedback || model!.writingOutput

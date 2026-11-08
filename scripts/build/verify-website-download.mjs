@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { download as archiveName } from '../../website/render.mjs';
+import { BRAND_FILES, brandSource } from '../../website/brand.mjs';
 
 assert(process.argv[2], 'Pass the website base URL as the first argument');
 const base = new URL(process.argv[2]);
@@ -171,9 +172,30 @@ async function verifyShareAssets(page) {
     }, src);
     assert.deepEqual(actual, [200, type, width, height], src);
   }
+  await verifyBrandSlots(page, ['link[rel="icon"]', '.brand-pill img', '.signup-brand img', '.footer-brand img']);
   console.log(
     `Share image and three icons decoded at their declared sizes. ZIP matched all ${expectedZip.length} bytes.`
   );
+}
+
+// Each brand slot serves its official source (website/brand.mjs) byte for byte.
+async function verifyBrandSlots(page, selectors) {
+  for (const selector of selectors) {
+    const url = new URL(
+      await page
+        .locator(selector)
+        .first()
+        .evaluate((node) => node.currentSrc || node.href)
+    );
+    const published = url.pathname.slice(1);
+    assert(BRAND_FILES[published], `${selector} points at ${url.pathname}, not a brand file`);
+    const response = await page.request.get(url.href);
+    assert.equal(response.status(), 200, url.href);
+    assert(
+      (await response.body()).equals(await readFile(brandSource(published))),
+      `${url.pathname} must match ${BRAND_FILES[published]}`
+    );
+  }
 }
 
 async function verifyLegal(lang, width) {
@@ -194,6 +216,7 @@ async function verifyLegal(lang, width) {
       assert.equal(await page.locator('html').getAttribute('lang'), lang === 'zh' ? 'zh-CN' : 'en');
       assert.equal(await page.locator('h1').textContent(), legalTitles[lang][doc]);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), width, 'Horizontal overflow');
+      await verifyBrandSlots(page, ['link[rel="icon"]', '.legal-brand img']);
       const footer = await page
         .locator('.legal-footer a')
         .evaluateAll((links) => links.map((link) => new URL(link.href).pathname));

@@ -6,14 +6,23 @@
   const video = document.querySelector("#hero-video");
   const mediaButton = document.querySelector("[data-media-toggle]");
   const scrub = document.querySelector("[data-hero-scrub]");
-  const hero = document.querySelector(".hero");
+  const inkSurface = document.querySelector("[data-ink-surface]");
+  const inkToggle = document.querySelector("[data-ink-toggle]");
+  const trail = document.querySelector("[data-ink-trail]");
   const collection = document.querySelector(".collection");
   const collectionStart = document.querySelector("[data-collection-open]");
+  const collectionBack = document.querySelector("[data-collection-back]");
+  const preview = document.querySelector(".study-preview");
   const features = document.querySelector(".features");
   const demo = document.querySelector("[data-demo-toggle]");
-  const films = [...document.querySelectorAll("[data-feature-film]")];
-  const decks = [...document.querySelectorAll("[data-deck-film]")];
+  const films = [...document.querySelectorAll("video[data-src]")];
   const visibleFilms = new Set();
+  const mediaError = document.querySelector(".media-error");
+  const particles = [];
+  let inkOpen = false;
+  let previousPoint = null;
+  let paintFrame = 0;
+  let requestedFrame = null;
   let motionEnabled = !reduced.matches;
   try {
     if (localStorage.getItem("yozi.website.motion") === "paused") motionEnabled = false;
@@ -93,7 +102,7 @@
     document.querySelector('meta[property="og:locale"]').content = lang === "zh" ? "zh_CN" : "en_US";
     const other = lang === "zh" ? "en" : "zh";
     languageLink.href = `/${other}/${location.search}${location.hash}`;
-    languageLink.hreflang = other;
+    languageLink.hreflang = other === "zh" ? "zh-CN" : "en";
     if (updateAddress) history.replaceState(null, "", `/${lang}/${location.search}${location.hash}`);
     const canonical = "https://yozi.bot.cd" + location.pathname;
     document.querySelector('link[rel="canonical"]').href = canonical;
@@ -120,10 +129,18 @@
     menu.hidden = true;
     menuButton.setAttribute("aria-expanded", "false");
     updateLabels();
+    menuButton.querySelector(".menu-bars").hidden = false;
+    menuButton.querySelector(".menu-close").hidden = true;
   }
   menuButton.addEventListener("click", () => {
-    menu.hidden = !menu.hidden;
-    menuButton.setAttribute("aria-expanded", String(!menu.hidden));
+    if (!menu.hidden) {
+      closeMenu();
+      return;
+    }
+    menu.hidden = false;
+    menuButton.setAttribute("aria-expanded", "true");
+    menuButton.querySelector(".menu-bars").hidden = true;
+    menuButton.querySelector(".menu-close").hidden = false;
     updateLabels();
   });
   menu.querySelectorAll("a").forEach((link) => link.addEventListener("click", closeMenu));
@@ -133,261 +150,208 @@
       menuButton.focus();
     }
   });
-  matchMedia("(min-width: 921px)").addEventListener("change", (event) => {
+  document.addEventListener("pointerdown", (event) => {
+    if (!menu.hidden && !event.target.closest(".mast")) closeMenu();
+  });
+  matchMedia("(min-width: 1025px)").addEventListener("change", (event) => {
     if (event.matches) closeMenu();
   });
 
-  // Cursor Follow: accumulate relative pointer movement and issue one seek at a time.
-  let targetTime = 0,
-    isSeeking = false,
-    previousX = null;
-  function loadHero() {
-    if (!video.getAttribute("src")) {
-      video.src = video.dataset.src;
-      video.load();
+  function loadFilm(film) {
+    if (!film.hasAttribute("src")) film.src = film.dataset.src;
+  }
+
+  function syncFilms() {
+    for (const film of films) {
+      let play = motionEnabled && visibleFilms.has(film) && !document.hidden;
+      if (film === video) play &&= requestedFrame === null && (inkOpen || particles.length > 0);
+      if (film.hasAttribute("data-feature-film")) play &&= features.classList.contains("is-practising");
+      if (film.hasAttribute("data-deck-film")) play &&= film.closest("a").matches(":hover, :focus-within");
+      if (play) {
+        loadFilm(film);
+        film.play().catch(() => {});
+      } else {
+        film.pause();
+        delete film.dataset.playing;
+      }
     }
   }
-  function seekHero() {
-    if (!Number.isFinite(video.duration) || isSeeking || Math.abs(video.currentTime - targetTime) <= 0.01)
-      return;
-    isSeeking = true;
-    video.currentTime = Math.min(Math.max(targetTime, 0), Math.max(0, video.duration - 0.001));
+
+  for (const film of films) {
+    film.addEventListener("playing", () => { film.dataset.playing = ""; });
+    if (film.hasAttribute("data-feature-film")) {
+      film.addEventListener("loadedmetadata", () => {
+        if (film.duration > 0) film.currentTime = Number(film.dataset.offset) % film.duration;
+      });
+    }
+    if (film.hasAttribute("data-deck-film")) {
+      for (const event of ["pointerenter", "pointerleave", "focus", "blur"]) {
+        film.closest("a").addEventListener(event, syncFilms);
+      }
+    }
   }
-  video.addEventListener("loadedmetadata", () => {
-    video.pause();
-    seekHero();
-  });
-  video.addEventListener("seeked", () => {
-    isSeeking = false;
-    scrub.value = Math.round((video.currentTime / video.duration) * 1000);
-    seekHero();
+  if ("IntersectionObserver" in window) {
+    const visibility = new IntersectionObserver((entries) => {
+      for (const { target, isIntersecting } of entries) {
+        if (isIntersecting) visibleFilms.add(target);
+        else visibleFilms.delete(target);
+      }
+      syncFilms();
+    }, { threshold: 0.05 });
+    films.forEach((film) => visibility.observe(film));
+  } else {
+    films.filter((film) => film === video || film.hasAttribute("data-feature-film"))
+      .forEach((film) => visibleFilms.add(film));
+  }
+
+  // Keep a single seek in flight, including when the range changes before metadata loads.
+  function seekScene() {
+    if (requestedFrame === null || !Number.isFinite(video.duration) || video.seeking) return;
+    const target = requestedFrame * Math.max(0, video.duration - 0.001);
+    if (Math.abs(video.currentTime - target) > 0.008) video.currentTime = target;
+  }
+  video.addEventListener("loadedmetadata", seekScene);
+  video.addEventListener("seeked", seekScene);
+  video.addEventListener("timeupdate", () => {
+    if (requestedFrame === null && video.duration > 0) scrub.value = Math.round(1000 * video.currentTime / video.duration);
   });
   video.addEventListener("error", () => {
-    document.querySelector(".media-error").hidden = false;
+    mediaError.hidden = false;
     scrub.disabled = true;
   });
   document.querySelector("[data-media-retry]").addEventListener("click", () => {
-    document.querySelector(".media-error").hidden = true;
+    mediaError.hidden = true;
     scrub.disabled = false;
-    isSeeking = false;
-    video.removeAttribute("src");
-    loadHero();
+    video.load();
+    syncFilms();
   });
-  hero.addEventListener(
-    "pointermove",
-    (event) => {
-      if (!motionEnabled || event.pointerType !== "mouse" || event.target.closest("a,button,input")) return;
-      const x = event.clientX / innerWidth;
-      if (previousX !== null && Number.isFinite(video.duration)) {
-        targetTime = Math.min(
-          video.duration - 0.001,
-          Math.max(0, targetTime + (x - previousX) * 0.8 * video.duration),
-        );
-        seekHero();
-      }
-      previousX = x;
-    },
-    { passive: true },
-  );
-  hero.addEventListener("pointerleave", () => {
-    previousX = null;
-  });
+
+  function clearTrail() {
+    cancelAnimationFrame(paintFrame);
+    paintFrame = 0;
+    previousPoint = null;
+    particles.length = 0;
+    trail.replaceChildren();
+  }
+  function setInkOpen(open) {
+    inkOpen = open;
+    inkSurface.toggleAttribute("data-ink-open", open);
+    inkToggle.setAttribute("aria-pressed", String(open));
+    inkToggle.querySelectorAll("[data-reveal-label]").forEach((label) => { label.hidden = open; });
+    inkToggle.querySelectorAll("[data-paper-label]").forEach((label) => { label.hidden = !open; });
+    if (!open) requestedFrame = null;
+    clearTrail();
+    syncFilms();
+  }
+  inkToggle.addEventListener("click", () => setInkOpen(!inkOpen));
   scrub.addEventListener("input", () => {
-    loadHero();
-    if (Number.isFinite(video.duration)) {
-      targetTime = (Number(scrub.value) / 1000) * Math.max(0, video.duration - 0.001);
-      seekHero();
-    } else
-      video.addEventListener(
-        "loadedmetadata",
-        () => {
-          targetTime = (Number(scrub.value) / 1000) * (video.duration - 0.001);
-          seekHero();
-        },
-        { once: true },
-      );
+    requestedFrame = Number(scrub.value) / 1000;
+    setInkOpen(true);
+    loadFilm(video);
+    seekScene();
   });
-  if (motionEnabled) loadHero();
 
-  let collectionChanging = false;
-  async function openCollection() {
-    if (collectionChanging || !collection.hidden) return;
-    collectionChanging = true;
-    closeMenu();
-    collection.hidden = false;
-    collectionStart.setAttribute("aria-expanded", "true");
-    if (motionEnabled) {
-      hero.querySelector(".hero-copy").animate(
-        [
-          { transform: "translateY(0)", opacity: 1 },
-          { transform: "translateY(150%)", opacity: 0 },
-        ],
-        { duration: 1000, easing: "cubic-bezier(.16,1,.3,1)" },
-      );
-      collectionStart.animate(
-        [
-          { transform: "translateX(-50%) scale(1)", opacity: 1 },
-          { transform: "translateX(-50%) scale(0)", opacity: 0 },
-        ],
-        { duration: 800, easing: "cubic-bezier(.34,1.56,.64,1)" },
-      );
-      await collection.animate(
-        [
-          { transform: "translateY(100%)" },
-          { transform: "translateY(-1%)", offset: 0.75 },
-          { transform: "translateY(0)" },
-        ],
-        { duration: 850, easing: "cubic-bezier(.16,1,.3,1)" },
-      ).finished;
+  // SVG blur and alpha threshold join the shrinking stamps into liquid edges.
+  function stamp(x, y, radius, stretch, angle, drift = 0) {
+    if (particles.length >= 42) particles.shift().element.remove();
+    const element = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+    element.setAttribute("cx", x);
+    element.setAttribute("transform", "rotate(" + angle + " " + x + " " + y + ")");
+    trail.append(element);
+    particles.push({ element, y, radius, stretch, drift, born: performance.now() });
+  }
+  function paintInk(now) {
+    for (let index = particles.length - 1; index >= 0; index--) {
+      const particle = particles[index];
+      const age = Math.max(0, (now - particle.born) / 1500);
+      if (age >= 1) {
+        particle.element.remove();
+        particles.splice(index, 1);
+        continue;
+      }
+      const radius = particle.radius * (1 - age) ** .7;
+      particle.element.setAttribute("cy", particle.y + particle.drift * age * age);
+      particle.element.setAttribute("rx", radius * particle.stretch);
+      particle.element.setAttribute("ry", radius);
     }
-    hero.hidden = true;
-    document.querySelector("[data-collection-back]").focus({ preventScroll: true });
-    collectionChanging = false;
+    if (particles.length) paintFrame = requestAnimationFrame(paintInk);
+    else {
+      paintFrame = 0;
+      syncFilms();
+    }
   }
-  async function closeCollection() {
-    if (collectionChanging || collection.hidden) return;
-    collectionChanging = true;
-    hero.hidden = false;
-    if (motionEnabled)
-      await collection.animate([{ transform: "translateY(0)" }, { transform: "translateY(100%)" }], {
-        duration: 600,
-        easing: "cubic-bezier(.16,1,.3,1)",
-      }).finished;
-    collection.hidden = true;
-    collectionStart.setAttribute("aria-expanded", "false");
-    targetTime = 0;
-    previousX = null;
-    seekHero();
-    decks.forEach((film) => {
-      film.pause();
-      if (film.readyState) film.currentTime = 0;
-    });
-    collectionStart.focus({ preventScroll: true });
-    collectionChanging = false;
+  function traceInk(event) {
+    if (!motionEnabled || inkOpen || (event.pointerType === "touch" && !event.buttons)) return;
+    const bounds = inkSurface.getBoundingClientRect();
+    const x = event.clientX - bounds.left, y = event.clientY - bounds.top;
+    const from = previousPoint || { x, y };
+    const dx = x - from.x, dy = y - from.y;
+    const distance = Math.hypot(dx, dy);
+    if (previousPoint && distance < 2) return;
+    previousPoint = { x, y };
+    const speed = Math.min(distance / 56, 1);
+    const radius = Math.max(27, Math.min(60, bounds.width * .054)) * (.76 + speed * .66);
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    const steps = Math.max(1, Math.min(9, Math.ceil(distance / (radius * .6))));
+    for (let step = 1; step <= steps; step++) {
+      const amount = step / steps;
+      stamp(from.x + dx * amount, from.y + dy * amount, radius, 1 + speed * .45, angle);
+    }
+    if (speed > .38) {
+      stamp(x - dy * .8, y + dx * .6, radius * .37, 1, 0, radius * 1.6);
+      stamp(x + dy * .45, y - dx * .8, radius * .24, 1, 0, radius * 2.1);
+    }
+    if (!paintFrame) {
+      paintFrame = requestAnimationFrame(paintInk);
+      syncFilms();
+    }
   }
-  collectionStart.addEventListener("click", openCollection);
-  document.querySelector("[data-collection-back]").addEventListener("click", closeCollection);
+  inkSurface.addEventListener("pointermove", traceInk, { passive: true });
+  inkSurface.addEventListener("pointerdown", traceInk, { passive: true });
+  for (const event of ["pointerleave", "pointerup", "pointercancel"]) {
+    inkSurface.addEventListener(event, () => { previousPoint = null; });
+  }
+
+  function setCollection(open) {
+    collection.hidden = !open;
+    preview.hidden = open;
+    collectionStart.setAttribute("aria-expanded", String(open));
+    fadeUp(open ? collection : preview);
+    (open ? collectionBack : collectionStart).focus();
+    syncFilms();
+  }
+  collectionStart.addEventListener("click", () => setCollection(collection.hidden));
+  collectionBack.addEventListener("click", () => setCollection(false));
   collection.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeCollection();
+    if (event.key === "Escape") setCollection(false);
   });
 
-  function syncFeatureFilms() {
-    const active = motionEnabled && features.classList.contains("is-practising") && !document.hidden;
-    films.forEach((film) => {
-      if (active && visibleFilms.has(film)) {
-        if (!film.getAttribute("src")) {
-          film.addEventListener(
-            "loadedmetadata",
-            () => {
-              film.currentTime = Number(film.dataset.offset) % film.duration;
-            },
-            { once: true },
-          );
-          film.src = film.dataset.src;
-        }
-        film.play().catch(() => {});
-      } else film.pause();
-    });
-  }
-  films.forEach((film) =>
-    film
-      .closest("[data-feature-card]")
-      .querySelector(".feature-still")
-      .addEventListener("load", (event) => {
-        event.currentTarget.style.opacity = "1";
-      }),
-  );
   demo.addEventListener("click", () => {
     const active = features.classList.toggle("is-practising");
     demo.setAttribute("aria-pressed", String(active));
     demo.querySelector("[data-before-label]").hidden = active;
     demo.querySelector("[data-after-label]").hidden = !active;
     features.querySelectorAll(".feature-still").forEach((photo) => {
-      const next = active ? photo.dataset.nightSrc : photo.dataset.daySrc;
-      photo.style.opacity = "0";
-      const image = new Image();
-      image.onload = () => {
-        if (features.classList.contains("is-practising") === active) photo.src = next;
-      };
-      image.src = next;
+      photo.src = active ? photo.dataset.nightSrc : photo.dataset.daySrc;
     });
-    features
-      .querySelectorAll(".art-before")
+    features.querySelectorAll(".art-before")
       .forEach((note) => note.setAttribute("aria-hidden", String(active)));
-    features
-      .querySelectorAll(".art-after")
+    features.querySelectorAll(".art-after")
       .forEach((note) => note.setAttribute("aria-hidden", String(!active)));
-    syncFeatureFilms();
+    syncFilms();
   });
-  decks.forEach((film) => {
-    const card = film.closest(".collection-card");
-    const play = () => {
-      if (!motionEnabled || document.hidden) return;
-      if (!film.getAttribute("src")) film.src = film.dataset.src;
-      film.play().catch(() => {});
-    };
-    const pause = () => {
-      film.pause();
-      if (film.readyState) film.currentTime = 0;
-    };
-    card.addEventListener("pointerenter", play);
-    card.addEventListener("focus", play);
-    card.addEventListener("pointerleave", pause);
-    card.addEventListener("blur", pause);
-  });
-  function fitArtboards() {
-    document.querySelectorAll("[data-artboard]").forEach((board) => {
-      const card = board.closest("[data-feature-card]");
-      board.style.setProperty("--direct-scale", Math.min(card.clientWidth / 660, card.clientHeight / 836));
-    });
-    const viewport = document.querySelector(".cta-viewport");
-    if (innerWidth < 700) {
-      viewport.style.height = "";
-      viewport.style.setProperty("--canvas-scale", "1");
-    } else {
-      const scale = Math.min(viewport.clientWidth / 1690, innerHeight / 950);
-      viewport.style.setProperty("--canvas-scale", String(scale));
-      viewport.style.height = 950 * scale + "px";
-    }
-  }
-  fitArtboards();
-  window.addEventListener("resize", fitArtboards, { passive: true });
-  if ("IntersectionObserver" in window) {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const film = entry.target.querySelector("video");
-          if (entry.isIntersecting) visibleFilms.add(film);
-          else {
-            visibleFilms.delete(film);
-            film.pause();
-          }
-        });
-        syncFeatureFilms();
-      },
-      { threshold: 0.05 },
-    );
-    films.forEach((film) => observer.observe(film.closest("[data-feature-card]")));
-    decks.forEach((film) => observer.observe(film.closest(".collection-card")));
-  } else films.forEach((film) => visibleFilms.add(film));
+
   function applyMotion(enabled) {
     motionEnabled = enabled;
     root.classList.toggle("motion-paused", !enabled);
-    if (enabled) loadHero();
-    else {
-      films.concat(decks).forEach((film) => film.pause());
-      stopFlow();
-      document
-        .getAnimations()
+    if (!enabled) {
+      clearTrail();
+      document.getAnimations()
         .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
-        .forEach((animation) => {
-          try {
-            animation.finish();
-          } catch {}
-        });
+        .forEach((animation) => { try { animation.finish(); } catch {} });
     }
     updateLabels();
-    syncFeatureFilms();
+    syncFilms();
   }
   mediaButton.addEventListener("click", () => {
     applyMotion(!motionEnabled);
@@ -396,122 +360,44 @@
     } catch {}
   });
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) decks.forEach((film) => film.pause());
-    syncFeatureFilms();
+    if (document.hidden) clearTrail();
+    syncFilms();
   });
   reduced.addEventListener("change", (event) => {
     if (event.matches) applyMotion(false);
   });
 
-  function typewriter(node, delay = 0) {
-    if (!motionEnabled) return;
-    const text = node.querySelector(`[data-copy="${currentLanguage()}"]`);
-    if (!text || text.dataset.revealed) return;
-    text.dataset.revealed = "true";
-    const value = text.textContent;
-    text.setAttribute("aria-label", value);
-    text.textContent = "";
-    Array.from(value).forEach((char, i) => {
-      const part = document.createElement("span");
-      part.textContent = char;
-      part.setAttribute("aria-hidden", "true");
-      text.append(part);
-      part.animate([{ opacity: 0 }, { opacity: 1 }], {
-        duration: 160,
-        delay: delay + 12 * i,
-        fill: "backwards",
-      });
-    });
-  }
-  const slides = [...document.querySelectorAll("[data-slide]")],
-    authors = [...document.querySelectorAll("[data-author]")];
-  const arrows = [...document.querySelectorAll("[data-prev],[data-next]")];
-  let slideIndex = 0,
-    sliding = false;
-  function springFrames(from, to) {
-    let x = from,
-      velocity = 0;
-    const frames = [];
-    for (let i = 0; i <= 48; i++) {
-      frames.push({ transform: `translateX(${x}px)`, offset: i / 48 });
-      const acceleration = -300 * (x - to) - 30 * velocity;
-      velocity += acceleration / 60;
-      x += velocity / 60;
-    }
-    frames[frames.length - 1].transform = `translateX(${to}px)`;
-    return frames;
-  }
-  async function moveSlide(direction) {
-    if (sliding) return;
-    sliding = true;
-    arrows.forEach((button) => {
-      button.disabled = true;
-    });
-    const old = slides[slideIndex],
-      oldAuthor = authors[slideIndex];
-    if (!!motionEnabled) {
-      old.animate(springFrames(0, -direction * 100), { duration: 800 });
-      oldAuthor.animate(
-        [
-          { opacity: 1, transform: "translateY(0)" },
-          { opacity: 0, transform: "translateY(-10px)" },
-        ],
-        { duration: 200, fill: "forwards" },
-      );
-      await old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200 }).finished;
-    }
-    old.hidden = true;
-    oldAuthor.hidden = true;
-    old.getAnimations().forEach((animation) => animation.cancel());
-    oldAuthor.getAnimations().forEach((animation) => animation.cancel());
+  const slides = [...document.querySelectorAll("[data-slide]")];
+  const slideNumber = document.querySelector("[data-slide-number]");
+  let slideIndex = 0;
+  function moveSlide(direction) {
+    slides[slideIndex].getAnimations().forEach((animation) => animation.cancel());
+    slides[slideIndex].hidden = true;
     slideIndex = (slideIndex + direction + slides.length) % slides.length;
-    const next = slides[slideIndex],
-      author = authors[slideIndex];
+    const next = slides[slideIndex];
     next.hidden = false;
-    author.hidden = false;
-    document.querySelector("[data-slide-number]").textContent = String(slideIndex + 1).padStart(2, "0");
-    if (!!motionEnabled) {
-      next.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
-      author.animate(
-        [
-          { opacity: 0, transform: "translateY(10px)" },
-          { opacity: 1, transform: "translateY(0)" },
-        ],
-        { duration: 200 },
-      );
-      typewriter(next.querySelector("blockquote"), 200);
-      typewriter(author.querySelector("p"), 500);
-      await next.animate(springFrames(direction * 100, 0), { duration: 800 }).finished;
-    }
-    sliding = false;
-    arrows.forEach((button) => {
-      button.disabled = false;
-    });
+    slideNumber.textContent = String(slideIndex + 1).padStart(2, "0");
+    fadeUp(next);
   }
   document.querySelector("[data-prev]").addEventListener("click", () => moveSlide(-1));
   document.querySelector("[data-next]").addEventListener("click", () => moveSlide(1));
 
-  document.querySelectorAll(".price-card>.button [data-copy]").forEach((label) => {
-    const text = label.textContent;
-    label.classList.add("roll-label");
-    label.textContent = "";
-    const ink = document.createElement("span"),
-      echo = document.createElement("span");
-    ink.textContent = text;
-    echo.textContent = text;
-    echo.className = "roll-echo";
-    echo.setAttribute("aria-hidden", "true");
-    label.append(ink, echo);
-  });
   const categories = [...document.querySelectorAll("[data-category]")];
+  const faqPanels = categories.map((button) => {
+    const panel = document.getElementById(button.getAttribute("aria-controls"));
+    panel.setAttribute("role", "tabpanel");
+    panel.setAttribute("aria-labelledby", button.id);
+    panel.tabIndex = -1;
+    return panel;
+  });
   function fadeUp(element, delay = 0) {
     if (!motionEnabled) return;
     element.animate(
       [
-        { opacity: 0, transform: "translateY(24px)" },
+        { opacity: 0, transform: "translateY(10px)" },
         { opacity: 1, transform: "translateY(0)" },
       ],
-      { duration: 600, delay, easing: "cubic-bezier(.22,1,.36,1)", fill: "backwards" },
+      { duration: 280, delay, easing: "cubic-bezier(.22,1,.36,1)", fill: "backwards" },
     );
   }
   function selectCategory(key) {
@@ -520,14 +406,15 @@
       button.setAttribute("aria-selected", String(active));
       button.tabIndex = active ? 0 : -1;
     });
-    document.querySelectorAll(".faq-panel").forEach((panel) => {
-      panel.hidden = panel.id !== "faq-" + key;
-      panel.querySelectorAll("details").forEach((item, i) => {
-        item.open = false;
-        if (!panel.hidden) fadeUp(item, 150 * i);
-      });
-    });
+    faqPanels.forEach((panel) => { panel.hidden = panel.id !== "faq-" + key; });
   }
+  function selectLinkedCategory() {
+    const linked = categories.find((button) => location.hash === "#faq-" + button.dataset.category);
+    if (linked) selectCategory(linked.dataset.category);
+  }
+  selectCategory(categories[0].dataset.category);
+  selectLinkedCategory();
+  window.addEventListener("hashchange", selectLinkedCategory);
   categories.forEach((button, index) => {
     button.addEventListener("click", () => selectCategory(button.dataset.category));
     button.addEventListener("keydown", (event) => {
@@ -543,74 +430,30 @@
       categories[target].focus();
     });
   });
-  document
-    .querySelectorAll("[data-faq-link]")
-    .forEach((link) => link.addEventListener("click", () => selectCategory(link.dataset.faqLink)));
-  document.querySelectorAll(".spotlight").forEach((element) =>
-    element.addEventListener(
-      "pointermove",
-      (event) => {
-        const bounds = element.getBoundingClientRect();
-        element.style.setProperty("--spot-x", event.clientX - bounds.left + "px");
-        element.style.setProperty("--spot-y", event.clientY - bounds.top + "px");
-      },
-      { passive: true },
-    ),
-  );
-  const flow = document.querySelector(".download-model"),
-    scrambles = [...flow.querySelectorAll("[data-scramble]")];
-  let flowTimer = null,
-    frame = 0;
-  function stopFlow() {
-    clearInterval(flowTimer);
-    flowTimer = null;
-    scrambles.forEach((item) => {
-      item.textContent = item.dataset.scramble;
+  document.querySelectorAll("[data-faq-link]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      selectCategory(link.dataset.faqLink);
+      if (location.hash !== link.hash) history.pushState(null, "", link.hash);
+      const panel = document.getElementById(link.hash.slice(1));
+      panel.focus({ preventScroll: true });
+      panel.scrollIntoView();
     });
-  }
-  function startFlow() {
-    if (flowTimer || !motionEnabled) return;
-    frame = 0;
-    flowTimer = setInterval(() => {
-      frame++;
-      scrambles.forEach((item, index) => {
-        const baseline = item.dataset.scramble;
-        item.textContent = Array.from(baseline)
-          .map((char, i) =>
-            (frame + index + i) % 8 < 3
-              ? "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[(frame * 3 + index * 5 + i) % 26]
-              : char,
-          )
-          .join("");
-      });
-    }, 105);
-  }
-  flow.addEventListener("pointerenter", startFlow);
-  flow.addEventListener("focus", startFlow);
-  flow.addEventListener("pointerleave", stopFlow);
-  flow.addEventListener("blur", stopFlow);
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) stopFlow();
   });
-  reduced.addEventListener("change", (event) => {
-    if (event.matches) stopFlow();
-  });
-  if ("IntersectionObserver" in window && !!motionEnabled) {
+  if ("IntersectionObserver" in window && motionEnabled) {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
+          if (!entry.isIntersecting || !motionEnabled) return;
           const element = entry.target;
-          if (element.matches(".divider"))
-            element.animate([{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], {
-              duration: 800,
-              easing: "ease-out",
+          if (element.matches(".download-media")) {
+            element.animate([{ transform: "scale(1.035)" }, { transform: "scale(1)" }], {
+              duration: 650,
+              easing: "cubic-bezier(.22,1,.36,1)",
             });
-          else if (element.matches(".principle-carousel"))
-            typewriter(slides[0].querySelector("blockquote"), 200);
-          else {
+          } else {
             fadeUp(element, Number(element.dataset.delay) || 0);
-            if (element.matches(".principles-heading")) typewriter(element.querySelector("h2"));
           }
           observer.unobserve(element);
         });
@@ -618,7 +461,7 @@
       { threshold: 0.3 },
     );
     document
-      .querySelectorAll(".reveal,.divider,.principle-carousel,.feature-card")
+      .querySelectorAll(".reveal,.feature-card,.download-media")
       .forEach((element) => observer.observe(element));
   }
   if (location.protocol !== "file:" && "serviceWorker" in navigator) {

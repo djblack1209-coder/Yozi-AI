@@ -11,6 +11,8 @@
 
 服务端明确配置：`LEARNING_FRIEND_TRIAL_ENABLED=true`、`LEARNING_TRIAL_USER_LIMIT`、`LEARNING_TRIAL_EMAILS`（逗号分隔，完整受邀邮箱）；名单占用名额，非法/空配置拒绝试用；并发依赖现有用户邮箱唯一索引与 CAS 预算账。`JWT_SECRET`、`LEARNING_VAULT_KEY`、`SMTP_HOST/PORT/USER/PASS/FROM`、`MONGODB_URI`、`DB_NAME` 沿受保护配置保管，不复制到客户端。
 
+试用额度：`LEARNING_TRIAL_CREDITS_ENABLED`（默认关闭，非 `true` 一律不发放）、`LEARNING_TRIAL_CREDIT_GRANTS`（`a@x.com:3,b@x.com:5`，每个 1–1000，不可重复）、`LEARNING_TRIAL_CREDIT_USER_LIMIT`（1–1000）、`LEARNING_TRIAL_CREDIT_COST_LIMIT`（大于 0）；用于测试版反馈换额度，配置不合法时拒绝平台调用，不影响用户自带 API。
+
 模型配置：`LEARNING_PLATFORM_MODELS` 指定国产模型、完整端点、密钥环境变量名与输出上限（不超过 2000），真实密钥仅在该后端环境变量；`LEARNING_ALLOWED_ORIGINS` 明确供应商。设置 `LEARNING_PLATFORM_CALLS_ENABLED=true`、`LEARNING_USER_DAILY_CALL_LIMIT`（例如 32）、`LEARNING_GLOBAL_DAILY_CALL_LIMIT`（例如 200）、`LEARNING_GLOBAL_DAILY_BUDGET`（美元；仅有效免费型号才可设 0），原账户硬预算继续生效。价格合同过期或费用待结算保持关闭，不自动换模型或付费。
 
 客户端：`VITE_API_BASE_URL` 指向自有后端，`VITE_CDN_URL` 只能指自有静态资源服务；`ALLOWED_ORIGINS` 对应实际网页域名，禁止通配授权。`VITE_ENABLE_MOCK=false`，美国登录与旧学习扩展不启用；`VITE_TRIAL_MONTHLY_PRICE` 配置第七天意愿卡上的参考价，此卡不收费。网页与微信分端选库/条件编译，PDF.js 仅网页按需加载；微信主包 2 MB、媒体 200 KB 门禁继续执行。
