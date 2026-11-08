@@ -28,6 +28,8 @@ function expectPublishedCopy(page, document, language, dateLine) {
     expect([...app.querySelectorAll('.legal-link')].map(text)).toEqual(
       [...site.querySelectorAll('#legal-text p a, #legal-text section a')].map(text)
     );
+    const copyLabel = language === 'zh' ? '复制邮箱' : 'Copy email';
+    expect(wrapper.get('.legal-copy [role="button"]').attributes('aria-label')).toBe(`${copyLabel} yozi@245334.xyz`);
   } finally {
     wrapper.unmount();
     setLanguage('zh-CN');

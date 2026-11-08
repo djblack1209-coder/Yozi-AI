@@ -269,7 +269,7 @@
             : dialog.kind === 'sync'
               ? '同步'
               : dialog.kind === 'feedback'
-                ? t('dashboard.copySupportEmail')
+                ? t('settings.copySupportEmail')
                 : t('dashboard.copy111')
       "
       @confirm="confirmDialog"
@@ -690,7 +690,7 @@ export default {
       if (this.dialog.kind === 'feedback') {
         uni.setClipboardData({
           data: BRAND.supportEmail,
-          fail: () => toast.error(t('dashboard.copySupportFailed'))
+          fail: () => toast.error(t('settings.copySupportFailed'))
         });
         return;
       }

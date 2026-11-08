@@ -15,7 +15,7 @@
         class="legal-link"
         role="button"
         tabindex="0"
-        :aria-label="`${t('dashboard.copySupportEmail')} ${part.text}`"
+        :aria-label="`${t('settings.copySupportEmail')} ${part.text}`"
         @tap="copySupportEmail"
         @keydown.enter.prevent="copySupportEmail"
         @keydown.space.prevent="copySupportEmail"
@@ -52,7 +52,7 @@ const parts = computed(() =>
 function copySupportEmail() {
   uni.setClipboardData({
     data: BRAND.supportEmail,
-    fail: () => toast.error(t('dashboard.copySupportFailed'))
+    fail: () => toast.error(t('settings.copySupportFailed'))
   });
 }
 </script>
