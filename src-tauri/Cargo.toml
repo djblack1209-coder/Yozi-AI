@@ -1,6 +1,6 @@
 [package]
 name = "yozi-ai-desktop"
-version = "2.2.0"
+version = "2.3.0"
 description = "Yozi AI conversation learning desktop host"
 edition = "2021"
 rust-version = "1.90"

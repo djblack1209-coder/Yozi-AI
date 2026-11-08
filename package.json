@@ -1,6 +1,6 @@
 {
   "name": "yozi-ai",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "以对话为主要入口的自适应学习与复习平台",
   "type": "module",
   "scripts": {

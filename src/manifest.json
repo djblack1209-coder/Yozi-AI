@@ -2,8 +2,8 @@
   "name": "Yozi AI",
   "appid": "__UNI__8601AE2",
   "description": "从一个问题开始，在对话中理解、练习和复习。",
-  "versionName": "2.2.0",
-  "versionCode": "20200",
+  "versionName": "2.3.0",
+  "versionCode": "20300",
   "transformPx": false,
   "app-plus": {
     "usingComponents": true,
