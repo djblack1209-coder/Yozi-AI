@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { brandUrl } from "./brand.mjs";
 
 // Legal texts live in website/legal/<doc>.<lang>.md. Both languages keep the same
 // section ids and clause structure; tests/unit/website-legal.spec.js enforces it.
@@ -16,6 +17,7 @@ const copy = {
     home: "Yozi 首页",
     docs: "法律文件",
     toc: "目录",
+    contact: "联系我们",
     skip: "跳至正文",
     language: ["en", "EN", "Switch to English"],
   },
@@ -27,7 +29,8 @@ const copy = {
     meta: (v) => `Version ${v.version} · updated ${date(v.updated)} · effective ${date(v.effective)}`,
     home: "Yozi home",
     docs: "legal documents",
-    toc: "contents",
+    toc: "Contents",
+    contact: "Contact us",
     skip: "skip to text",
     language: ["zh", "中", "切换到中文"],
   },
@@ -151,5 +154,5 @@ export function renderLegal(lang, doc, styles) {
     .map((b) => `<li><a href="#${b.id}">${inline(b.text)}</a></li>`)
     .join("");
   const [targetLang, targetText, targetLabel] = t.language;
-  return `<!doctype html><html lang="${lang === "zh" ? "zh-CN" : "en"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#d5effd"><title>${title} · Yozi</title><meta name="description" content="${description}"><link rel="canonical" href="${canonical}"><link rel="alternate" hreflang="zh-CN" href="https://yozi.bot.cd${legalPath("zh", doc)}"><link rel="alternate" hreflang="en" href="https://yozi.bot.cd${legalPath("en", doc)}"><link rel="icon" href="/brand/kitten.png"><link rel="apple-touch-icon" sizes="180x180" href="/brand/apple-touch-icon.png"><style>${styles}</style></head><body class="legal-page"><a class="skip" href="#legal-text">${t.skip}</a><header class="legal-bar"><a class="legal-brand" href="/${lang}/" aria-label="${t.home}"><img src="/brand/kitten.png" width="36" height="36" alt=""><span>YOZI</span></a><nav class="legal-tabs" aria-label="${t.docs}">${links(t.tabs)}</nav><a class="legal-language" href="${legalPath(other, doc)}" hreflang="${targetLang}" lang="${targetLang === "zh" ? "zh-CN" : "en"}" aria-label="${targetLabel}" data-language-link="${targetLang}"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 4 5c2 2 4 3 6 4M4 6h11M9 3v3m4 0c-1 5-4 9-9 12m10 3 4-10 4 10m-6-4h4"/></svg><span>${targetText}</span></a></header><main class="legal" id="legal-text" data-legal-doc="${doc}" data-legal-version="${LEGAL_VERSION.version}"><h1>${title}</h1><p class="legal-meta">${t.meta(LEGAL_VERSION)}</p><nav aria-label="${t.toc}"><details class="legal-toc" open><summary>${t.toc}</summary><ol>${toc}</ol></details></nav><script>if(matchMedia("(max-width: 560px)").matches)document.querySelector(".legal-toc").open=false;</script>${renderBlocks(blocks)}</main><footer class="legal-footer"><div class="footer-legal"><p>© 2026 Yozi</p>${links(t.footer)}<span>v2.2.0</span></div></footer><script>document.querySelector('[data-language-link]').addEventListener('click',e=>{try{localStorage.setItem('yozi.website.language',e.currentTarget.dataset.languageLink)}catch{}});</script></body></html>`;
+  return `<!doctype html><html lang="${lang === "zh" ? "zh-CN" : "en"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#d5effd"><title>${title} · Yozi</title><meta name="description" content="${description}"><link rel="canonical" href="${canonical}"><link rel="alternate" hreflang="zh-CN" href="https://yozi.bot.cd${legalPath("zh", doc)}"><link rel="alternate" hreflang="en" href="https://yozi.bot.cd${legalPath("en", doc)}"><link rel="icon" type="image/svg+xml" href="${brandUrl("favicon.svg")}"><link rel="apple-touch-icon" sizes="180x180" href="${brandUrl("brand/apple-touch-icon.png")}"><style>${styles}</style></head><body class="legal-page"><a class="skip" href="#legal-text">${t.skip}</a><header class="legal-bar"><a class="legal-brand" href="/${lang}/" aria-label="${t.home}"><img src="${brandUrl("brand/mark.svg")}" width="36" height="36" alt=""><span>Yozi AI</span></a><nav class="legal-tabs" aria-label="${t.docs}">${links(t.tabs)}</nav><a class="legal-language" href="${legalPath(other, doc)}" hreflang="${targetLang}" lang="${targetLang === "zh" ? "zh-CN" : "en"}" aria-label="${targetLabel}" data-language-link="${targetLang}"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 4 5c2 2 4 3 6 4M4 6h11M9 3v3m4 0c-1 5-4 9-9 12m10 3 4-10 4 10m-6-4h4"/></svg><span>${targetText}</span></a></header><main class="legal" id="legal-text" data-legal-doc="${doc}" data-legal-version="${LEGAL_VERSION.version}"><h1>${title}</h1><div class="legal-meta"><p>${t.meta(LEGAL_VERSION)}</p><a href="#contact">${t.contact}</a></div><nav aria-label="${t.toc}"><details class="legal-toc" open><summary>${t.toc}</summary><ol>${toc}</ol></details></nav><script>if(matchMedia("(max-width: 560px)").matches)document.querySelector(".legal-toc").open=false;</script>${renderBlocks(blocks)}</main><footer class="legal-footer"><div class="footer-legal"><p>© 2026 Yozi</p>${links(t.footer)}<span>v2.2.0</span></div></footer><script>document.querySelector('[data-language-link]').addEventListener('click',e=>{try{localStorage.setItem('yozi.website.language',e.currentTarget.dataset.languageLink)}catch{}});</script></body></html>`;
 }
