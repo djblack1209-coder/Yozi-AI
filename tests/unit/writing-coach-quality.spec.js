@@ -2186,6 +2186,33 @@ describe('摸底错误合并复核一次：讲解题只删不加，单词填空�
       )
     ).toMatchObject({ valid: true, agreed: true, claims: { trunk: true } });
   });
+  it.each([
+    [
+      'who 与 that 两个从句',
+      'Students who have grown up with short videos often find it difficult to concentrate on long reading passages, a problem that deserves serious attention.',
+      ['Students', 'find', 'who have grown up with short videos', 'Students', 'who', 'have grown up', '主语'],
+      '主干是 Students find it difficult to concentrate on long reading passages。who have grown up with short videos 是定语从句，修饰 Students。a problem 是同位语，概括前面整件事，that deserves serious attention 是定语从句，修饰 problem。',
+      '主干是 Students find it difficult to concentrate on long reading passages。who have grown up with short videos 是定语从句，修饰 passages。that deserves serious attention 是定语从句，修饰 problem。'
+    ],
+    [
+      '两个 that 从句',
+      'The book that I read has a cover that shines.',
+      ['The book', 'has', 'that I read', 'book', 'I', 'read', '宾语'],
+      '主干是The book has a cover。that I read修饰book；that shines修饰cover。',
+      '主干是The book has a cover。that I read修饰cover；that shines修饰book。'
+    ]
+  ])('一句两个定语从句：另一从句的修饰对象不算本从句的断言（%s）', (_, sentence, fields, right, wrong) => {
+    expect(syntaxAgreement(sentence, parsed('s1', ...fields), right)).toMatchObject({
+      valid: true,
+      agreed: true,
+      claims: { target: true }
+    });
+    expect(syntaxAgreement(sentence, parsed('s1', ...fields), wrong)).toMatchObject({
+      valid: true,
+      agreed: false,
+      claims: { target: false }
+    });
+  });
   it('笔记读不出主干时不删错', () => {
     expect(
       syntaxAgreement(
