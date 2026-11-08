@@ -2,17 +2,17 @@ import { readFileSync } from "node:fs";
 import { legalFooterLinks } from "./legal.mjs";
 
 const source = (name) => readFileSync(new URL(name, import.meta.url), "utf8");
-export const download = "Yozi-AI-2.2.0-macOS-arm64.zip";
+export const download = "Yozi-AI-2.3.0-macOS-arm64.zip";
 const metadata = {
   zh: {
     title: "Yozi — 学懂，练会，记牢。",
     description:
-      "记得进度的 AI 学习教练。从考研英语写作开始，规划、练习、复习。自带 API Key，自选模型。当前版本 2.2.0。",
+      "记得进度的 AI 学习教练。从考研英语写作开始，规划、练习、复习。自带 API Key，自选模型。当前版本 2.3.0。",
   },
   en: {
     title: "Yozi — learn your way.",
     description:
-      "An AI study coach that remembers your progress. Plan, practise and review, starting with postgraduate English writing. Bring your own API key. Version 2.2.0.",
+      "An AI study coach that remembers your progress. Plan, practise and review, starting with postgraduate English writing. Bring your own API key. Version 2.3.0.",
   },
 };
 export const WEBSITE_TITLE = metadata.en.title;
@@ -120,8 +120,8 @@ const faqs = [
       [
         ["现在可以下载哪些版本？", "which version can I download?"],
         [
-          "当前提供 2.2.0 Mac 版，需要 macOS 14 或更新版本、Apple 芯片。Windows 与手机 App 正在规划开发中，尚未提供下载。",
-          "Version 2.2.0 is available for Mac, with macOS 14 or later and Apple silicon. Windows and mobile apps are planned and in development; downloads are not available yet.",
+          "当前提供 2.3.0 Mac 版，需要 macOS 14 或更新版本、Apple 芯片。Windows 与手机 App 正在规划开发中，尚未提供下载。",
+          "Version 2.3.0 is available for Mac, with macOS 14 or later and Apple silicon. Windows and mobile apps are planned and in development; downloads are not available yet.",
         ],
       ],
       [
@@ -286,7 +286,7 @@ const words = {
   copyLink: ["复制链接", "Copy link"],
   linkCopied: ["链接已复制", "Link copied"],
   copyManually: ["请手动复制下方链接", "Copy the link below"],
-  downloadSpec: ["2.2.0 · macOS 14+ · Apple 芯片", "2.2.0 · macOS 14+ · Apple silicon"],
+  downloadSpec: ["2.3.0 · macOS 14+ · Apple 芯片", "2.3.0 · macOS 14+ · Apple silicon"],
   downloadKey: ["连接你的模型", "connect your model"],
   downloadKeyBody: ["接入 API，再选择型号。", "add your API. choose your model."],
   platformTitle: ["更多设备。", "more devices."],
@@ -343,7 +343,7 @@ export function renderHome(lang = "zh", root = false) {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       name: "Yozi AI",
-      softwareVersion: "2.2.0",
+      softwareVersion: "2.3.0",
       applicationCategory: "EducationalApplication",
       operatingSystem: "macOS 14 or later; Apple silicon",
       url: "https://yozi.bot.cd/",
@@ -399,7 +399,7 @@ export function renderHome(lang = "zh", root = false) {
     appFeatures: list([
       ["考研英语写作带练", "postgraduate English writing"],
       ["学习与复习记录", "study and review records"],
-      ["Mac 版 2.2.0", "Mac version 2.2.0"],
+      ["Mac 版 2.3.0", "Mac version 2.3.0"],
       ["模型额度（不包含）", "model credits (not included)", false],
       ["订阅付款（未开放）", "subscription billing (not available)", false],
     ]),
