@@ -1,6 +1,10 @@
 // Only bounded codes cross the provider boundary; never display vendor response text.
+function modelFailureCode(input) {
+  return typeof input === 'string' ? input : input.errorCode || input.error || input.code;
+}
+
 export function classifyModelFailure(input = {}) {
-  const code = typeof input === 'string' ? input : input.errorCode || input.error || input.code;
+  const code = modelFailureCode(input);
   const status = typeof input === 'object' ? input.upstreamStatus : null;
   if (
     ['KEY_REJECTED', 'KEY_UNAVAILABLE', 'MODEL_NOT_CONFIGURED', 'DISCOVERY_AUTH_REJECTED'].includes(code) ||
@@ -36,7 +40,12 @@ export function modelErrorPresentation(input = {}) {
     TIMEOUT: ['响应超时，原答已保留，请先查询原请求', { type: 'query_result' }],
     NETWORK_OR_TLS: ['网络或安全连接失败，请先查询原请求', { type: 'query_result' }],
     INVALID_RESPONSE: ['模型供应商的回复格式无效，请先查询原请求', { type: 'query_result' }],
-    ADDRESS_INVALID: ['API 地址不合法或未获允许，请检查连接', connector],
+    ADDRESS_INVALID: [
+      modelFailureCode(input) === 'ENDPOINT_FORBIDDEN'
+        ? '模型地址未获服务端授权'
+        : 'API 地址不合法或未获允许，请检查连接',
+      connector
+    ],
     COACH_INVALID: ['回复校验未通过，原答已保留，可重新评估', { type: 'retry' }],
     COST_PENDING: ['用量待确认，请先查询原请求', { type: 'query_result' }],
     WORKFLOW_INVALID: ['分工回复未通过检查，请先查询原请求', { type: 'query_result' }],

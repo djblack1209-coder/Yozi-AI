@@ -152,6 +152,7 @@ describe('BYOK two-step connector UI', () => {
     expect(harness.store.saveModel).toHaveBeenCalledOnce();
     expect(harness.store.loadModelDiscovery).not.toHaveBeenCalled();
     expect(harness.store.selectModel).not.toHaveBeenCalled();
+    expect(wrapper.get('[role="alert"]').text()).toContain('模型地址未获服务端授权');
     expect(wrapper.text()).not.toContain('unsafe vendor detail');
     expect(wrapper.get('input[type="password"]').element.value).toBe('');
     expect(wrapper.get('input[aria-label="接口地址"]').element.value).toBe(
