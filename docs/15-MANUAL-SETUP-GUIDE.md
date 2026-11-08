@@ -95,15 +95,13 @@
 
 当前移动 Bundle ID、Android 正式签名和适用链接尚未定稿。先记录页面要求，交工程侧核对生成后再提交这些字段。桌面 `cn.wangshiliang.wenli` 是现有 Mac 技术标识，不自动成为移动应用标识。[DCloud 微信 App 登录说明](https://uniapp.dcloud.net.cn/tutorial/app-oauth-weixin.html)作为后续装配入口，本次该专页读取超时，未据此认定 SDK 已装配。
 
-## 6. 取得匹配的 DCloud 离线 SDK
+## 6. DCloud 5.34 本地装配
 
-当前已安装编译器为 `3.0.0-alpha-5000820260420001`，配套 **5.08** 离线 SDK。Xcode 和 iOS 模拟器已准备；需要的是匹配 SDK 与后续原生装配。
+当前候选使用 HBuilderX **5.34.2026102909** 和编译器 `3.0.0-5030420261029001`。同版 [iOS SDK](https://nativesupport.dcloud.net.cn/AppDocs/download/ios.html)与 [Android SDK](https://nativesupport.dcloud.net.cn/AppDocs/download/android.html)已解压核对，两个平台的原生插件和未签名宿主已构建。
 
-1. 人工打开 [DCloud iOS 离线 SDK 下载页](https://nativesupport.dcloud.net.cn/AppDocs/download/ios.html)。本次无法核验该页当前按钮；按页面的“iOS 离线 SDK/历史版本”找到 5.08，核对官方版本说明，不直接下载“最新”替代。
-2. 需要登录、验证码、网盘访问或许可时由你接管。此前官方历史下载链接被工具安全策略阻止，我没有换入口绕过。
-3. 下载后解压到你选定的本机目录，保持 SDK 内 Libs、Bundles、inc 等结构。只需回传**解压目录的完整路径与版本**。
-4. 若页面要求 DCloud 应用标识/AppKey，登录 [DCloud 开发者中心](https://dev.dcloud.net.cn/)核对已有Yozi AI应用，记录页面要求的包名/Bundle ID；这些应与实际移动工程一致。生成/修改密钥由你完成，并保存在私有位置。
-5. 收到匹配 SDK 后，工程侧负责核对、编译原生插件、装配和模拟/设备验收。当前 `build:app` 的成功仅是前端产物通过。
+1. 在已打开的 HBuilderX 中登录已有 DCloud 账号。工程侧随后执行「生成本地打包 App 资源」，导出同版发行资源。
+2. 在 [DCloud 开发者中心](https://dev.dcloud.net.cn/)的应用管理核对已有 Yozi AI 应用（`__UNI__8601AE2`）。登记的 iOS Bundle ID、Android 包名与证书 SHA-1 须与实际工程一致。工程侧按 [DCloud AppKey 说明](https://nativesupport.dcloud.net.cn/AppDocs/usesdk/appkey)接入现有离线 AppKey。
+3. 通过现有私有位置交接 AppKey 和签名配置。回传移动标识、签名材料的本机路径与 Apple 团队信息。工程侧继续本机自定义基座回归及发行打包，覆盖范围见[移动 SDK 编译](09C-APP-CONNECTOR.md#移动-sdk-编译)。
 
 ## 7. Apple 正式签名：需要正式交付时办理
 
@@ -141,7 +139,7 @@ Apple：Team ID / 会员状态 / 证书位置（如办理正式签名）
 ## 9. 可复制给外部助手的提示词
 
 ```text
-请协助我办理“Yozi AI”学习产品的第三方登录申请。先核对已有账号和应用，优先完成微信开放平台网站应用；已有公众号、小程序、移动应用不要重复注册。根据实际需要，再处理匹配的 DCloud 5.08 离线 SDK 和 Apple 正式签名资格。
+请协助我办理“Yozi AI”学习产品的第三方登录申请。先核对已有账号和应用，优先完成微信开放平台网站应用；已有公众号、小程序、移动应用不要重复注册。根据实际需要，再处理 DCloud 5.34 的 AppKey 与 Apple 正式签名资格。
 
 已知产品信息：
 - 名称：Yozi AI；英文 Yozi AI。

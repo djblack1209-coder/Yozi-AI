@@ -24,6 +24,15 @@ describe('learning progress: canonical, traceable, read-only observations', () =
     expect(writing(model).dimensions.every((dimension) => dimension.percentage === null)).toBe(true);
     expect(model.platformReference).toEqual({ status: 'insufficient', percentage: null, evidenceIds: [] });
   });
+  it('only includes graded evidence for the selected goal', () => {
+    const state = progressFixture(4, 4);
+    const unscoped = learningProgressReadModel(state);
+    const goalId = unscoped.evidence.find((row) => row.kind === 'writing-feedback').conversationId;
+    const scoped = learningProgressReadModel(state, { conversationId: goalId });
+    expect(scoped.evidence).toHaveLength(4);
+    expect(scoped.evidence.every((row) => row.conversationId === goalId)).toBe(true);
+    expect(learningProgressReadModel(state, { conversationId: 'missing-goal' }).evidence).toEqual([]);
+  });
   it('partial legacy records without event identities cannot break the website summary or invent traceable samples', () => {
     const state = progressFixture(0, 0);
     state.attempts = [{ at: 1 }, { at: 1 }];

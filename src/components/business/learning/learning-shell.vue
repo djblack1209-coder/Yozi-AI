@@ -19,7 +19,7 @@
       'is-desktop-settings': nativeSettings,
       'has-notice': !!notice,
       'has-composer': !!$slots.composer,
-      'has-artifact': !!artifactTarget
+      'has-artifact': !!artifactTarget || !!$slots.reader
     }"
     :style="[platformInsets, dockStyle, { '--muse-panel-width': `${panelWidth}px` }]"
   >
@@ -417,11 +417,13 @@
       </view>
       <MuseArtifactPanel
         v-if="artifactTarget"
+        v-show="!$slots.reader"
         :key="artifactTarget.id"
         ref="artifactPanel"
         :target="artifactTarget"
         @close="artifacts.target = null"
       />
+      <slot name="reader" />
     </view>
     <BaseEmpty v-if="error" class="shell-error" state="error" :title="learningText(error)" />
   </view>
@@ -450,7 +452,6 @@ import { bindBusinessMotion } from '@/design/business-motion.js';
 import { BRAND } from '@/config/brand.js';
 import { publicError, t } from '@/i18n/index.js';
 import { bindMessageFollow } from './message-follow.js';
-import { bindKeyboardInset } from './keyboard-inset.js';
 import { isDesktopRuntime } from '@/services/desktop/runtime.js';
 import { isDesktopSettingsWindow } from '@/services/desktop/windows.js';
 import {
@@ -538,7 +539,6 @@ const root = ref(null);
 // #ifdef H5
 let composerResizeFrame;
 let releaseMessageFollow = () => {};
-let releaseKeyboardInset = () => {};
 const shellAttrs = useAttrs();
 onBeforeUpdate(() => {
   composerResizeFrame = null;
@@ -802,10 +802,21 @@ watch([() => learning.recordContext(), () => learning.selectedConversationId], (
   directoryDayLimit.value = 7;
 });
 const viewportHeight = ref(720);
+const visibleHeight = ref(null);
 const dockStyle = computed(() => {
   const item = Math.max(44, Math.min(56, Math.floor((Math.max(0, viewportHeight.value - 224) - 80) / 9)));
-  return { '--dock-item': `${item}px`, '--dock-surface': '44px', '--dock-glyph': '24px' };
+  return {
+    '--dock-item': `${item}px`,
+    '--dock-surface': '44px',
+    '--dock-glyph': '24px',
+    '--muse-visible-height': visibleHeight.value ? `${visibleHeight.value}px` : undefined
+  };
 });
+function updateVisibleHeight() {
+  const viewport = window.visualViewport;
+  // A software keyboard can shrink only the visible area while the layout viewport stays the same.
+  visibleHeight.value = viewport?.scale === 1 ? Math.floor(viewport.height + viewport.offsetTop) : null;
+}
 function updateDockMetrics(event) {
   const info =
     typeof window !== 'undefined'
@@ -1116,10 +1127,11 @@ onMounted(() => {
   unbind = bindLearningKeyboard(root.value);
   const element = root.value?.$el || root.value;
   // #ifdef H5
+  updateVisibleHeight();
+  window.visualViewport?.addEventListener('resize', updateVisibleHeight);
   document.addEventListener('keydown', escapeMenu);
   window.addEventListener('keydown', escapeGeneration);
   if (props.active === 'learning') releaseMessageFollow = bindMessageFollow(element?.querySelector('.space-content'));
-  releaseKeyboardInset = bindKeyboardInset(element);
   // #endif
   element?.addEventListener?.('focusout', headerActionsFocusOut);
   element?.addEventListener?.('keydown', headerActionKey, true);
@@ -1143,10 +1155,10 @@ onUnmounted(() => {
   unbind();
   const element = root.value?.$el || root.value;
   // #ifdef H5
+  window.visualViewport?.removeEventListener('resize', updateVisibleHeight);
   document.removeEventListener('keydown', escapeMenu);
   window.removeEventListener('keydown', escapeGeneration);
   releaseMessageFollow();
-  releaseKeyboardInset();
   // #endif
   element?.removeEventListener?.('focusout', headerActionsFocusOut);
   element?.removeEventListener?.('keydown', headerActionKey, true);

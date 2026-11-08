@@ -21,7 +21,7 @@ const props = defineProps({
 });
 const paddingClass = computed(() => `padding-${props.padding}`);
 </script>
-<style scoped lang="scss">
+<style scoped>
 .base-card {
   background: var(--paper);
   color: var(--ink);

@@ -70,9 +70,9 @@
 
 客户已授权完整 Xcode 与 iOS 模拟器准备，并自行接受 Apple 许可。Xcode 27.0 和 iOS 27.0 runtime 已安装，本轮独立 iPhone 模拟器实际启动；Xcode 27 使用 [Device Hub](https://developer.apple.com/documentation/xcode/device-hub)管理模拟设备。全局命令行工具选择保持不变，编译时显式指定 Xcode。
 
-现有 DCloud 编译器为 `3.0.0-alpha-5000820260420001`，应配套官方 5.08 离线 SDK，不混用不同版本的 Libs/Bundles/inc。官方[下载页](https://nativesupport.dcloud.net.cn/AppDocs/download/ios.html)所列历史百度网盘入口被浏览器安全策略拒绝，本轮不换工具或浏览器绕过；客户取得 SDK 后提供本机解压目录，再配置 AppKey 与原生插件工程。`build:app` 和 iOS Safari 学习页均不能代替原生装配、系统文件选择与网络验收。[DCloud iOS 离线打包说明](https://nativesupport.dcloud.net.cn/AppDocs/usesdk/ios)。后续电脑操作使用普通窗口，不进入全屏。
+当前 DCloud 编译器锁定 `3.0.0-5030420261029001`，对应 HBuilderX 和官方离线 SDK `5.34.2026102909`。使用同版 SDK 与 HBuilderX 本地导出资源，并按实际应用配置 AppKey 与签名。共享构建、本机模拟器和发行包的验证范围分别见 [移动 SDK 编译](09C-APP-CONNECTOR.md#移动-sdk-编译)。
 
-Mac 当前 arm64 Tauri 包已实际安装、作答、提示修正、独立变式和退出恢复，尚未开发者签名、公证。微信产物和包体通过，游客模式使用本轮独立副本，不运行会清理客户项目存储的旧 smoke。Windows 与 Android 原生/实体手机按客户后续环境安排验收；网页视口不代替设备。最新分项见[13](13-DEVELOPMENT-PLAN.md)。
+Mac 当前 arm64 Tauri 包已实际安装、作答、提示修正、独立变式和退出恢复，尚未开发者签名、公证。微信产物和包体通过，游客模式使用本轮独立副本，不运行会清理客户项目存储的旧 smoke。Windows、移动原生与本机窄窗覆盖范围见[当前计划](13-DEVELOPMENT-PLAN.md)。
 
 ## 本地构建
 

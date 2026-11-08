@@ -1,4 +1,9 @@
-import { phaseCallLimit, LEARNING_BUDGET_PHASES } from './learning-runtime-policy.js';
+import {
+  phaseCallLimit,
+  LEARNING_BUDGET_PHASES,
+  PRO_DIAGNOSTIC_REPLY,
+  PRO_DIAGNOSTIC_REQUEST_MS
+} from './learning-runtime-policy.js';
 import { modelConfigurationVersion } from './ai-providers/free-model-presets.js';
 import { assertWorkflowReservation, workflowRepairable, WORKFLOW_VALIDATION_PATHS } from './learning-workflow.js';
 import crypto from 'node:crypto';
@@ -535,7 +540,9 @@ export function eraseModelResultCache(account: any, now = Date.now()) {
 }
 export function recoverStaleReservations(account: any, now = Date.now(), maxAgeMs = 120000) {
   let result = account;
-  for (const call of account.calls.filter((c: any) => c.status === 'reserved' && now - c.at > maxAgeMs)) {
+  for (const call of account.calls) {
+    const maxAge = call.replyProtocol === PRO_DIAGNOSTIC_REPLY ? PRO_DIAGNOSTIC_REQUEST_MS : maxAgeMs;
+    if (call.status !== 'reserved' || now - call.at <= maxAge) continue;
     result = settleCall(result, call.id, {
       success: false,
       actualCost: null,

@@ -4,17 +4,17 @@ import { brandUrl } from "./brand.mjs";
 import { buildSync } from "esbuild";
 
 const source = (name) => readFileSync(new URL(name, import.meta.url), "utf8");
-export const download = "Yozi-AI-2.2.0-macOS-arm64.zip";
+export const download = "Yozi-AI-2.3.0-macOS-arm64.zip";
 const metadata = {
   zh: {
     title: "Yozi — 学懂，练会，记牢。",
     description:
-      "记得进度的 AI 学习 App。用自己的资料练习、订正和复习。自带 API Key，自选模型。当前版本 2.2.0。",
+      "记得进度的 AI 学习 App。用自己的资料练习、订正和复习。自带 API Key，自选模型。当前版本 2.3.0。",
   },
   en: {
     title: "Yozi — learn your way.",
     description:
-      "An AI study app that remembers your progress through practice, feedback and review. Bring your own API key. Version 2.2.0.",
+      "An AI study app that remembers your progress through practice, feedback and review. Bring your own API key. Version 2.3.0.",
   },
 };
 export const WEBSITE_TITLE = metadata.en.title;
@@ -117,8 +117,8 @@ const faqs = [
       [
         ["现在可以下载哪些版本？", "Which version can I download?"],
         [
-          "当前提供 2.2.0 Mac 版，需要 macOS 14 或更新版本、Apple 芯片。Windows 与手机 App 正在规划开发中，尚未提供下载。",
-          "Version 2.2.0 is available for Mac, with macOS 14 or later and Apple silicon. Windows and mobile apps are planned and in development; downloads are not available yet.",
+          "当前提供 2.3.0 Mac 版，需要 macOS 14 或更新版本、Apple 芯片。Windows 与手机 App 正在规划开发中，尚未提供下载。",
+          "Version 2.3.0 is available for Mac, with macOS 14 or later and Apple silicon. Windows and mobile apps are planned and in development; downloads are not available yet.",
         ],
       ],
       [
@@ -312,7 +312,7 @@ export function renderHome(lang = "zh", root = false) {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       name: "Yozi AI",
-      softwareVersion: "2.2.0",
+      softwareVersion: "2.3.0",
       applicationCategory: "EducationalApplication",
       operatingSystem: "macOS 14 or later; Apple silicon",
       url: "https://yozi.bot.cd/",

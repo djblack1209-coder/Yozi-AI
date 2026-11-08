@@ -336,6 +336,7 @@ export const CONVERSATION_ACTION_EFFECTS = Object.freeze({
   commit: 'write',
   loadModels: 'send',
   suggestIdeas: 'send',
+  askAboutReadingPassage: 'send',
   loadUsage: 'send',
   loadModelDiscovery: 'read',
   saveModel: 'send',
@@ -4478,6 +4479,67 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     );
     return { success: true, requestId, model: result.data.model, ideas: result.data.ideas };
   }
+  async function askAboutReadingPassage({ materialId, segmentId, version, start, end }, question) {
+    idleRecords();
+    assert(singleQuestionAvailable.value && ideasModelReady.value, 'NEEDS_CONNECTION', '请连接自己的 API 并确认共享');
+    const segment = () =>
+      state.value.materials.find((item) => item.id === materialId)?.segments.find((item) => item.id === segmentId);
+    const selected = modelId.value;
+    const owner = state.value.owner;
+    const content = segment()?.content;
+    assert(
+      typeof question === 'string' &&
+        Number.isInteger(start) &&
+        Number.isInteger(end) &&
+        start >= 0 &&
+        start < end &&
+        end <= content?.length,
+      'INVALID_INPUT',
+      '请选择一段原文并写下问题'
+    );
+    const quote = content.slice(start, end);
+    const input = JSON.stringify({ passage: quote, question: question.trim() });
+    assert(quote?.trim() && question.trim() && input.length <= 7800, 'INVALID_INPUT', '请选择一段原文并写下问题');
+    const requestId = learningId('reading');
+    const requestBinding = learningId('reading');
+    const result = await modelAction((options) =>
+      generateLearningTurn(
+        {
+          modelId: selected,
+          requestId,
+          requestBinding,
+          shareConsent: true,
+          presentationContract: PRESENTATION_CONTRACT,
+          messages: [{ role: 'user', content: `请根据选中的资料片段解释问题，片段不足时说明缺少什么。\n${input}` }],
+          learningContext: { owner, generalQAOnly: true, questionEntryContract: SINGLE_QUESTION_CONTRACT }
+        },
+        {
+          ...options,
+          assertCurrent() {
+            options.assertCurrent();
+            assert(
+              state.value.owner === owner &&
+                modelId.value === selected &&
+                sharingAllowed.value &&
+                (segment()?.extractionEventId ?? null) === version &&
+                segment()?.content.slice(start, end) === quote,
+              'CONTEXT_CHANGED',
+              '资料、连接或共享授权已变化'
+            );
+          }
+        }
+      )
+    );
+    if (!result.success) return result;
+    assert(
+      result.data?.requestId === requestId &&
+        result.data.requestBinding === requestBinding &&
+        result.data.modelId === selected,
+      'CONTEXT_CHANGED',
+      '结果与本次资料提问不符'
+    );
+    return result;
+  }
   async function modelAction(action) {
     refresh();
     const context = recordContext();
@@ -5944,6 +6006,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     commit,
     loadModels,
     suggestIdeas,
+    askAboutReadingPassage,
     ideasModelReady,
     loadUsage,
     loadModelDiscovery,

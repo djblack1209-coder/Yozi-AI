@@ -17,6 +17,14 @@
     @connections="openConnections"
     @materials="showMaterials = !showMaterials"
   >
+    <template v-if="sourcePassage" #reader>
+      <MuseReadingPane
+        :key="openedSource.id"
+        :material="learning.state.materials.find((item) => item.id === sourcePassage.materialId)"
+        :anchor="sourcePassage"
+        @close="openedSource = null"
+      />
+    </template>
     <!-- #ifdef MP-WEIXIN -->
     <PrivacyPopup />
     <!-- #endif -->
@@ -162,18 +170,25 @@
           <!-- #endif -->
           <text v-if="fileBusy">正在设备内提取文字…</text>
           <view class="coach-material-list">
-            <BaseCheckbox
-              v-for="material in learning.state.materials"
-              :key="material.id"
-              :model-value="
-                materials.some((item) => item.id === material.id) || materialSelection.includes(material.id)
-              "
-              :disabled="
-                fileBusy || learning.busy || !coach?.profile || materials.some((item) => item.id === material.id)
-              "
-              @update:model-value="toggleMaterial(material.id)"
-              >{{ material.name }}</BaseCheckbox
-            >
+            <view v-for="material in learning.state.materials" :key="material.id" class="coach-material-row">
+              <BaseCheckbox
+                :model-value="
+                  materials.some((item) => item.id === material.id) || materialSelection.includes(material.id)
+                "
+                :disabled="
+                  fileBusy || learning.busy || !coach?.profile || materials.some((item) => item.id === material.id)
+                "
+                @update:model-value="toggleMaterial(material.id)"
+                >{{ material.name }}</BaseCheckbox
+              >
+              <BaseButton
+                v-if="material.segments?.length"
+                variant="quiet"
+                :label="`阅读${material.name}`"
+                @tap="readMaterial(material.id)"
+                >阅读</BaseButton
+              >
+            </view>
           </view>
           <BaseButton
             v-if="materialSelection.length"
@@ -318,8 +333,12 @@
             }}</text>
             <BaseBubble v-if="record.prompt || record.source" avatar rich class="coach-agent-turn">
               <MuseRichText v-if="record.prompt" :content="record.prompt" />
-              <text v-if="record.source" class="coach-muted">{{ sourceLabel(record.source) }}</text>
-              <text v-if="record.source?.quote" class="coach-muted" selectable>{{ record.source.quote }}</text>
+              <MuseCoachCitation
+                v-if="record.source"
+                :source="record.source"
+                :materials="learning.state.materials"
+                @open="openedSource = $event"
+              />
             </BaseBubble>
             <BaseBubble author="user" avatar :avatar-src="userAvatar" class="coach-user-turn"
               ><text selectable>{{ record.answer }}</text></BaseBubble
@@ -475,10 +494,12 @@
                   shared-input
                   :title="materialTrack || subjectMethod ? '资料摸底' : '十分钟摸底'"
                   :cards="coach.diagnostic.cards"
+                  :materials="learning.state.materials"
                   :answers="coach.diagnostic.answers"
                   :current-id="diagnosticCard?.id || ''"
                   :disabled="learning.busy"
                   @submit="submitCard($event, true)"
+                  @open-source="openedSource = $event"
                 />
                 <BaseButton
                   v-if="!diagnosticCard"
@@ -525,10 +546,12 @@
                     shared-input
                     title="今日训练"
                     :cards="day.pack.cards"
+                    :materials="learning.state.materials"
                     :answers="day.answers"
                     :current-id="trainingCard.id"
                     :disabled="learning.busy"
                     @submit="submitCard($event, false)"
+                    @open-source="openedSource = $event"
                   />
                   <text v-if="cardAnswer && !learning.busy" role="status">原答已保存，AI 评估待完成</text>
                   <BaseButton
@@ -549,7 +572,11 @@
                 </BaseCard>
                 <BaseCard v-else-if="!materialTrack && !day.analysis">
                   <text class="coach-title">先自己审题</text><text>{{ day.pack.writing.prompt }}</text
-                  ><text class="coach-muted">{{ sourceLabel(day.pack.writing.source) }}</text>
+                  ><MuseCoachCitation
+                    :source="day.pack.writing.source"
+                    :materials="learning.state.materials"
+                    @open="openedSource = $event"
+                  />
                   <BaseInput
                     v-for="field in analysisFields"
                     :key="field.key"
@@ -748,12 +775,15 @@ import { examScopeLabel } from '../../../../laf-backend/functions/_shared/learni
 import MuseRichText from '@/components/business/learning/muse-rich-text.vue';
 import MuseWritingCard from '@/components/business/learning/muse-writing-card.vue';
 import MusePracticeSheet from '@/pages/learning/components/muse-practice-sheet.vue';
+import MuseCoachCitation from './muse-coach-citation.vue';
+import MuseReadingPane from './muse-reading-pane.vue';
 import MuseFeedbackCard from '@/components/business/learning/muse-feedback-card.vue';
 import MuseErrorReview from '@/components/business/learning/muse-error-review.vue';
 import { useConversationLearningStore, learningId } from '@/stores/modules/conversation-learning.js';
 import { dayKey } from '@/services/learning/learning-domain.js';
 import { getToken } from '@/services/auth-storage.js';
 import { readWritingMaterial } from '@/services/learning/writing-material.js';
+import { coachSourcePassage } from '@/services/learning/coach-material-context.js';
 import { resolveSkippedProfile } from '@/services/learning/coach-profile.js';
 import {
   COACH_MATERIAL_TRACK,
@@ -785,6 +815,25 @@ const presentation = props.presentation || useLearningPresentation(() => learnin
 const modelFailure = ref(null);
 const theme = useThemeStore(),
   materialSelection = ref([]);
+const openedSource = ref(null);
+const sourcePassage = computed(() => {
+  const target = openedSource.value;
+  if (!target || target.kind === 'private_material') return coachSourcePassage(learning.state.materials, target);
+  const material = learning.state.materials.find((item) => item.id === target.materialId);
+  const position = material?.reading?.position;
+  const segment =
+    material?.segments.find(
+      (item) => item.id === position?.segmentId && (item.extractionEventId ?? null) === position.version
+    ) || material?.segments[0];
+  if (!segment) return null;
+  const lineBreak = segment.content.indexOf('\n');
+  return {
+    materialId: material.id,
+    segmentId: segment.id,
+    start: 0,
+    end: lineBreak > 0 ? lineBreak : segment.content.length
+  };
+});
 const profileStep = ref(0);
 const composerHeight = ref(60);
 const intakePanel = ref(null);
@@ -1169,6 +1218,7 @@ watch(
   () => [learning.recordContext(), learning.selectedConversationId, learningDay.value],
   ([context, id, day]) => {
     saveDraft();
+    openedSource.value = null;
     restoringDraft = true;
     draftBinding = { context, key: `coach:${id || 'new'}:${day}` };
     const saved = drafts.read(context, draftBinding.key);
@@ -1312,13 +1362,6 @@ function saveProfile(skip) {
     })
   );
 }
-function sourceLabel(source) {
-  return source.materialUncovered
-    ? '资料未覆盖，模型自编'
-    : source.kind === 'private_material'
-      ? `${source.name}${source.page ? ` · 第${source.page}页` : ''} · 内容待核对`
-      : '模型生成 · 内容待核对';
-}
 function pendingCoachRequest(phase, target = phase) {
   return coach.value?.requests.find(
     (item) =>
@@ -1421,6 +1464,10 @@ function toggleMaterial(id) {
   materialSelection.value = materialSelection.value.includes(id)
     ? materialSelection.value.filter((value) => value !== id)
     : [...materialSelection.value, id];
+}
+function readMaterial(id) {
+  showMaterials.value = false;
+  openedSource.value = { id, materialId: id };
 }
 function useMaterials() {
   if (fileBusy.value || learning.busy || !coach.value?.profile) return;
@@ -1737,5 +1784,11 @@ function login() {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+.coach-material-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 </style>

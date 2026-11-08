@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { emptyLearningState, applyLearningOperation, dayKey } from '@/services/learning/learning-domain.js';
-import { coachMaterialContext } from '@/services/learning/coach-material-context.js';
+import { coachMaterialContext, coachSourcePassage } from '@/services/learning/coach-material-context.js';
 import { museLearningInsights } from '@/services/learning/muse-learning-insights.js';
 import { museGoals, museHistory } from '@/services/learning/muse-workspace-data.js';
 import {
@@ -18,6 +18,83 @@ import {
 } from '../../laf-backend/functions/_shared/learning-writing-coach.js';
 
 const start = Date.parse('2026-10-17T12:00:00Z');
+
+it.each([
+  {
+    id: 'writing-guide',
+    pages: [
+      'State the purpose of an email in the first paragraph.',
+      'A library reservation system reduces queueing for study seats.',
+      'Use a greeting when you know the recipient.',
+      'Close a request with the expected response and a courteous sign-off.'
+    ],
+    questions: [
+      { query: 'How can reservation reduce queueing for library seats?', pages: [2] },
+      { query: 'Where do the greeting and purpose belong in an email?', pages: [1, 3] }
+    ]
+  },
+  {
+    id: 'data-structures',
+    pages: [
+      '栈只允许在同一端插入和删除，后进先出。',
+      '队列在队尾插入，在队头删除，先进先出。',
+      '递归调用把返回地址与局部变量压入栈帧。',
+      '环形缓冲区用取模更新读写索引。'
+    ],
+    questions: [
+      { query: '递归调用怎样保存返回地址和局部变量？', pages: [3] },
+      { query: '队列怎样在队尾插入和队头删除？', pages: [2] }
+    ]
+  }
+])('keeps the gold passage ranks for $id', ({ id, pages, questions }) => {
+  const material = { id, name: id, segments: pages.map((content, index) => ({ content, page: index + 1 })) };
+  const rows = questions.map(({ query, pages: relevant }) => {
+    const results = coachMaterialContext(
+      { materials: [material] },
+      { coach: { materialIds: [id] } },
+      { input: query },
+      3
+    );
+    const hits = results.map(({ page }) => relevant.includes(page));
+    const dcg = (items) => items.reduce((sum, hit, rank) => sum + Number(hit) / Math.log2(rank + 2), 0);
+    const first = hits.indexOf(true);
+    return {
+      recallAt3: hits.filter(Boolean).length / relevant.length,
+      ndcgAt3: dcg(hits) / dcg(relevant.map(() => true)),
+      reciprocalRank: first < 0 ? 0 : 1 / (first + 1)
+    };
+  });
+  expect(rows).toEqual(questions.map(() => ({ recallAt3: 1, ndcgAt3: 1, reciprocalRank: 1 })));
+});
+
+it('来源跳到实际检索的页内片段，资料被修改或删除后不跳到同名文件', () => {
+  const quote = '下一段才开始解释先入先出。';
+  const material = {
+    id: 'book',
+    name: '私人资料',
+    segments: [{ id: 'page-7', page: 7, content: `${'甲'.repeat(1140)}${quote}后文` }]
+  };
+  const [source] = coachMaterialContext(
+    { materials: [material] },
+    { coach: { materialIds: ['book'] } },
+    { input: quote },
+    1
+  );
+  const reference = { ...source, kind: 'private_material', quote };
+  expect(source.id).toBe('book:page:7:0:1000');
+  expect(coachSourcePassage([material], reference)).toEqual({
+    name: material.name,
+    location: '第 7 页',
+    materialId: 'book',
+    segmentId: 'page-7',
+    start: 1140,
+    end: 1140 + quote.length
+  });
+  expect(coachSourcePassage([{ ...material, id: 'other' }], reference)).toBeNull();
+  expect(
+    coachSourcePassage([{ ...material, segments: [{ page: 7, content: '乙'.repeat(1200) }] }], reference)
+  ).toBeNull();
+});
 
 it('薄弱点看板复用证据过滤且保留较早的有效记录，不改写历史', () => {
   const labels = Array.from({ length: 9 }, (_, i) => `合成观察${i}`);

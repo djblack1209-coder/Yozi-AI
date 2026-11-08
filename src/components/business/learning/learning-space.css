@@ -352,14 +352,14 @@
   overflow: hidden;
 }
 .has-composer .space-content {
-  padding-bottom: calc(var(--muse-composer-height, 80px) + 48px + var(--keyboard-inset, 0px));
+  padding-bottom: calc(var(--muse-composer-height, 80px) + 48px);
   /* Anything scrolled or focused into view stops above the docked composer. */
-  scroll-padding-bottom: calc(var(--muse-composer-height, 80px) + 24px + var(--keyboard-inset, 0px));
+  scroll-padding-bottom: calc(var(--muse-composer-height, 80px) + 24px);
 }
 .muse-composer-dock {
   position: absolute;
   z-index: 11;
-  bottom: var(--keyboard-inset, 0px);
+  bottom: 0;
   left: 0;
   right: 0;
   /* Muse 2 实现参数： tokens.css:42 / app.css:116,
@@ -718,8 +718,7 @@
     --dock-glyph: 20px;
     position: absolute;
     bottom: calc(4px + env(safe-area-inset-bottom));
-    left: 8px;
-    right: 8px;
+    inset-inline: clamp(0px, calc((100% - 318px) / 2), 8px);
     width: auto;
     height: 56px;
     padding: 0 4px;
@@ -835,10 +834,13 @@
   }
 }
 @media (max-width: 760px) and (pointer: coarse) {
-  .is-chat:has(.muse-composer .base-field__group:focus-within) .muse-rail {
+  .is-chat:has(.muse-composer-field:focus-within) {
+    height: min(100dvh, var(--muse-visible-height, 100dvh));
+  }
+  .is-chat:has(.muse-composer-field:focus-within) .muse-rail {
     visibility: hidden;
   }
-  .is-chat:has(.muse-composer .base-field__group:focus-within) .space-main {
+  .is-chat:has(.muse-composer-field:focus-within) .space-main {
     height: 100%;
   }
 }

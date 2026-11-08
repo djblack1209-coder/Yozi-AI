@@ -106,7 +106,7 @@ describe('S2 continuous reply', () => {
     expect(wrapper.get('.muse-composer-dock').find('.muse-composer').exists()).toBe(true);
     const css = readFileSync('src/components/business/learning/learning-space.css', 'utf8');
     expect(css).toMatch(
-      /\.muse-composer-dock \{[^}]*bottom: var\(--keyboard-inset, 0px\);[^}]*padding: 0 12px max\(18px, env\(safe-area-inset-bottom\)\);[^}]*background: var\(--paper\)/s
+      /\.muse-composer-dock \{[^}]*bottom: 0;[^}]*padding: 0 12px max\(18px, env\(safe-area-inset-bottom\)\);[^}]*background: var\(--paper\)/s
     );
     expect(css).toContain('padding-bottom: max(12px, env(safe-area-inset-bottom))');
   });

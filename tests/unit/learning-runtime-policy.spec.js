@@ -8,6 +8,8 @@ import {
   learningBudgetPhase,
   learningTimeout,
   coachVerificationBudget,
+  isDeepSeekProDiagnostic,
+  PRO_DIAGNOSTIC_VERIFICATION_MS,
   normalizeLearningSnapshot,
   phaseCallLimit
 } from '../../laf-backend/functions/_shared/learning-runtime-policy.js';
@@ -19,6 +21,7 @@ import {
   parseLearningOutput,
   prepareCoachFeedbackModel,
   readCoachFunctionResponse,
+  writingVerificationTimeout,
   validateCoachSchema,
   decodeCoachResponse
 } from '../../laf-backend/functions/_shared/ai-providers/learning-provider.ts';
@@ -44,6 +47,21 @@ const context = () => ({
 });
 
 describe('宿主教学权限与隐私', () => {
+  it('只为官方自带 Pro 的五题混合摸底延长独立复核', () => {
+    const model = { source: 'byok', model: 'deepseek-v4-pro', endpoint: 'https://api.deepseek.com/chat/completions' };
+    const context = { coach: { phase: 'feedback', target: 'diagnostic', feedbackVersion: 2 } };
+    expect(isDeepSeekProDiagnostic(context, model)).toBe(true);
+    expect(isDeepSeekProDiagnostic(context, { ...model, model: 'deepseek-flash' })).toBe(false);
+    expect(isDeepSeekProDiagnostic(context, { ...model, endpoint: 'https://example.com/chat/completions' })).toBe(
+      false
+    );
+    expect(isDeepSeekProDiagnostic({ coach: { ...context.coach, target: 'analysis' } }, model)).toBe(false);
+    const writingOutput = { contract: 'writing-error-verification-v2' };
+    expect(writingVerificationTimeout({ ...model, writingOutput })).toBe(60000);
+    expect(
+      writingVerificationTimeout({ ...model, writingOutput: { ...writingOutput, diagnosticVerification: true } })
+    ).toBe(PRO_DIAGNOSTIC_VERIFICATION_MS);
+  });
   it.each(['method', 'entry.create', 'entry.update', 'review'])('模型无法请求 %s，也不会生成学习事实', (name) => {
     const repo = repository();
     expect(() =>

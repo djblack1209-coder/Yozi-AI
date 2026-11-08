@@ -157,6 +157,8 @@ export function createLearningNotifications(learning, onOpen, native = invoke, c
     timer = null;
   }
   function clearPhone() {
+    // Clear the Watch summary even if the notification scheduler has stalled.
+    phone('clearStudyGlance').catch(() => undefined);
     running = running
       .catch(() => undefined)
       .then(() => phone('applyStudyCompanion', { glance: EMPTY_WATCH_GLANCE }))

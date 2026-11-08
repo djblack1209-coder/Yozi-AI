@@ -500,6 +500,7 @@ function redactMaterial(state, data, deletionId, at) {
     const d = event.data || {};
     return (
       (event.type === 'material.add' && materialIds.has(d.material?.id)) ||
+      (event.type === 'material.reading' && materialIds.has(d.materialId)) ||
       (event.type === 'question.add' && keys.has(d.question && questionKey(d.question))) ||
       keys.has(d.questionKey) ||
       attempts.has(event.id) ||
@@ -2575,6 +2576,7 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
         '版面片段与原件、页码或待核对状态不符'
       );
       const material = clone(data.material);
+      delete material.reading;
       material.scope = 'private';
       material.publishable = false;
       material.segments = material.segments.map((segment) => ({ ...segment, extractionEventId: opId }));
@@ -2613,6 +2615,39 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
       }
       state.materials.push(material);
       result = material;
+      break;
+    }
+    case 'material.reading': {
+      const material = state.materials.find((item) => item.id === data.materialId);
+      const segment = material?.segments.find((item) => item.id === data.segmentId);
+      const version = segment?.extractionEventId ?? null;
+      assert(segment && version === data.version, 'SOURCE_MISMATCH', '资料片段已变化，请重新打开');
+      const reading = (material.reading ||= { position: null, annotations: [] });
+      const location = { segmentId: segment.id, version };
+      if (data.action === 'position') {
+        reading.position = location;
+      } else {
+        const { start, end, marked, note } = data;
+        assert(
+          data.action === 'annotate' &&
+            Number.isInteger(start) &&
+            Number.isInteger(end) &&
+            start >= 0 &&
+            start < end &&
+            end <= segment.content.length &&
+            typeof marked === 'boolean' &&
+            typeof note === 'string' &&
+            note.length <= 4000,
+          'INVALID_INPUT',
+          '笔记或高亮位置不合法'
+        );
+        reading.annotations = reading.annotations.filter(
+          (item) =>
+            item.segmentId !== segment.id || item.version !== version || item.start !== start || item.end !== end
+        );
+        if (marked || note.trim()) reading.annotations.push({ ...location, start, end, marked, note: note.trim() });
+      }
+      result = { materialId: material.id, segmentId: segment.id };
       break;
     }
     case 'material.delete': {

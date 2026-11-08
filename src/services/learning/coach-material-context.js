@@ -1,5 +1,30 @@
 // Search the saved, goal-bound originals on every turn. No embeddings service,
 // second copy of the originals, or model-selected URLs are involved.
+const passageSize = 1100;
+
+export function coachSourcePassage(materials, source) {
+  if (source?.kind !== 'private_material') return null;
+  const location = /^(.+):page:(\d+):(\d+):(\d+)$/.exec(source.id);
+  if (!location) return null;
+  const [, materialId, , index, start] = location;
+  const material = materials.find((item) => item.id === materialId);
+  const segment = material?.segments?.[Number(index)];
+  if (!segment || (segment.page ?? null) !== (source.page ?? null)) return null;
+  const offset = Number(start);
+  const passage = segment.content.slice(offset, offset + passageSize);
+  const quote = source.quote || '';
+  const quoteStart = quote ? passage.indexOf(quote) : 0;
+  if (!passage.trim() || quoteStart < 0) return null;
+  return {
+    name: material.name,
+    location: segment.page ? `第 ${segment.page} 页` : `第 ${Number(index) + 1} 段`,
+    materialId,
+    segmentId: segment.id,
+    start: offset + quoteStart,
+    end: offset + (quote ? quoteStart + quote.length : passage.length)
+  };
+}
+
 const words = (value) => {
   const text = String(value || '')
     .normalize('NFKC')
@@ -26,7 +51,7 @@ export function coachMaterialContext(state, conversation, request, limit = 3) {
     (material.segments || []).forEach((segment, segmentIndex) => {
       const original = String(segment.content || '');
       for (let offset = 0; offset < original.length; offset += 1000) {
-        const content = original.slice(offset, offset + 1100);
+        const content = original.slice(offset, offset + passageSize);
         if (!content.trim()) continue;
         const normalized = content.normalize('NFKC').toLocaleLowerCase();
         const relevance = query.reduce((sum, word) => sum + (normalized.includes(word) ? 1 : 0), 0);

@@ -128,15 +128,14 @@ watch(
   height: 48px;
 }
 @media (max-width: 760px) {
-  .base-bubble__avatar,
-  .base-bubble__still,
-  .base-bubble__photo {
+  .base-bubble--assistant .base-bubble__avatar,
+  .base-bubble__still {
     width: 40px;
     height: 40px;
   }
   .base-bubble__avatar :deep(.animated-avatar) {
-    transform: scale(calc(40 / 48));
-    transform-origin: top left;
+    max-width: 100%;
+    max-height: 100%;
   }
 }
 /* The shared player keeps its 1000ms dwell. The existing 2.2s thinking motion

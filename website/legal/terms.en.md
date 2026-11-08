@@ -49,7 +49,7 @@ If we find illegal content, we will stop generating and transmitting it, remove 
 
 ## 5. AI-generated content and study results {#ai-content}
 
-1. **AI explanations, questions, corrections and suggestions are generated automatically by models and may be inaccurate, incomplete or out of step with the latest exam requirements.** The service labels AI-generated content in the interface.
+1. **AI explanations, questions, corrections and suggestions are generated automatically by models and may be inaccurate, incomplete or out of step with the latest exam requirements.** The service labels AI-generated content in the interface. “AI-generated” appears next to conversation replies and knowledge cards. Writing feedback is labelled “AI assessment”. Shared study images that include assessments retain the assessment label. Please read and make sure you understand these labels.
 2. AI content supports your learning. **It does not replace a teacher, and it is not an official answer, official score or exam result.** Writing feedback is labelled "AI assessment", and practice levels are not exam scores.
 3. We make no promises about exam scores, score gains or admission results. Check anything important against the official exam syllabus, past papers and reliable sources.
 4. If you find AI content that is wrong or inappropriate, you can correct it in the conversation or tell us.

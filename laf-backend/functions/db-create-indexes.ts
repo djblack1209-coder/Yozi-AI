@@ -24,6 +24,11 @@
 import cloud from '@lafjs/cloud';
 import { createLogger } from './_shared/api-response.js';
 import { requireAdminAccess } from './_shared/admin-auth.js';
+import {
+  SECURITY_AUDIT_COLLECTION,
+  SECURITY_AUDIT_RETENTION_SECONDS,
+  SECURITY_AUDIT_TTL_INDEX
+} from './_shared/security-audit-retention.js';
 
 const logger = createLogger('[DbIndexes]');
 const db = cloud.database();
@@ -520,17 +525,17 @@ export default async function (ctx) {
 
     // ==================== 安全审计日志表索引 (S005) ====================
     try {
-      const auditCol = db.collection('security_audit_logs');
+      const auditCol = db.collection(SECURITY_AUDIT_COLLECTION);
       await auditCol.createIndex({ event: 1, timestamp: -1 }, { name: 'idx_event_time' });
       await auditCol.createIndex({ 'context.userId': 1, timestamp: -1 }, { name: 'idx_user_time' });
       await auditCol.createIndex({ severity: 1, timestamp: -1 }, { name: 'idx_severity_time' });
       await auditCol.createIndex(
         { created_at: 1 },
-        { expireAfterSeconds: 7776000, name: 'idx_ttl_90days' } // 90天自动清理
+        { expireAfterSeconds: SECURITY_AUDIT_RETENTION_SECONDS, name: SECURITY_AUDIT_TTL_INDEX }
       );
-      results.push({ collection: 'security_audit_logs', status: 'ok', indexes: 4 });
+      results.push({ collection: SECURITY_AUDIT_COLLECTION, status: 'ok', indexes: 4 });
     } catch (e) {
-      results.push({ collection: 'security_audit_logs', status: 'error', message: e.message });
+      results.push({ collection: SECURITY_AUDIT_COLLECTION, status: 'error', message: e.message });
     }
 
     // ==================== 补充: 爬虫院校表索引 (school-crawler-api.ts) ====================

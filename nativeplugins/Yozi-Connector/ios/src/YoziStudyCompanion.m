@@ -85,6 +85,22 @@ static NSDictionary *safeGlance(id value) {
     dispatch_async(dispatch_get_main_queue(), ^{ [self sendGlance:session]; });
 }
 
+- (void)publishGlance:(NSDictionary *)snapshot {
+    self.glance = snapshot;
+    if (!WCSession.isSupported) return;
+    WCSession *session = WCSession.defaultSession;
+    if (session.delegate != self) session.delegate = self;
+    if (session.activationState == WCSessionActivationStateNotActivated) [session activateSession];
+    [self sendGlance:session];
+}
+
+- (void)clearGlance:(void (^)(void))completion {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self publishGlance:safeGlance(nil)];
+        completion();
+    });
+}
+
 - (void)apply:(NSDictionary *)input completion:(void (^)(NSDictionary *))completion {
     if (![input isKindOfClass:NSDictionary.class]) {
         completion(@{@"ok": @NO, @"acceptedIds": @[]});
@@ -95,15 +111,7 @@ static NSDictionary *safeGlance(id value) {
     BOOL english = [input[@"language"] isEqual:@"en"];
     dispatch_async(dispatch_get_main_queue(), ^{
         NSUInteger current = ++self.revision;
-        self.glance = snapshot;
-        if (WCSession.isSupported) {
-            WCSession *session = WCSession.defaultSession;
-            if (session.delegate != self) {
-                session.delegate = self;
-                [session activateSession];
-            }
-            [self sendGlance:session];
-        }
+        [self publishGlance:snapshot];
         UNUserNotificationCenter *center = UNUserNotificationCenter.currentNotificationCenter;
         [center getPendingNotificationRequestsWithCompletionHandler:^(NSArray<UNNotificationRequest *> *existing) {
             dispatch_async(dispatch_get_main_queue(), ^{

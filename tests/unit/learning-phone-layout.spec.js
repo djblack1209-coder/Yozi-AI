@@ -4,7 +4,6 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { storageService } from '@/services/storageService.js';
 import { generateLearningTurn } from '@/services/api/domains/learning.api.js';
-import { bindKeyboardInset } from '@/components/business/learning/keyboard-inset.js';
 import WritingCoach from '@/pages/learning/components/writing-coach.vue';
 import MuseComposer from '@/components/business/learning/muse-composer.vue';
 import MusePracticeSheet from '@/pages/learning/components/muse-practice-sheet.vue';
@@ -33,44 +32,6 @@ vi.mock('@/services/api/domains/learning.api.js', async (importOriginal) => ({
     }
   }))
 }));
-
-function fakeView(innerHeight, height, offsetTop = 0) {
-  const listeners = {};
-  const visualViewport = {
-    height,
-    offsetTop,
-    addEventListener: (name, fn) => (listeners[name] = fn),
-    removeEventListener: (name) => delete listeners[name]
-  };
-  return { innerHeight, visualViewport, listeners };
-}
-
-describe('keyboard inset', () => {
-  it('reports how much of the window the on-screen keyboard covers', () => {
-    const element = document.createElement('div');
-    const view = fakeView(844, 844);
-    const release = bindKeyboardInset(element, view);
-    expect(element.style.getPropertyValue('--keyboard-inset')).toBe('0px');
-    view.visualViewport.height = 508;
-    view.listeners.resize();
-    expect(element.style.getPropertyValue('--keyboard-inset')).toBe('336px');
-    release();
-    expect(element.style.getPropertyValue('--keyboard-inset')).toBe('');
-    expect(view.listeners.resize).toBeUndefined();
-  });
-
-  it('does not count a page the browser has already panned', () => {
-    const element = document.createElement('div');
-    bindKeyboardInset(element, fakeView(844, 508, 336));
-    expect(element.style.getPropertyValue('--keyboard-inset')).toBe('0px');
-  });
-
-  it('leaves the element alone where the platform has no visual viewport', () => {
-    const element = document.createElement('div');
-    expect(() => bindKeyboardInset(element, { innerHeight: 844 })()).not.toThrow();
-    expect(element.style.getPropertyValue('--keyboard-inset')).toBe('');
-  });
-});
 
 describe('composer focus', () => {
   it('keeps typing focus when a composer control is pressed, and leaves the field itself alone', () => {

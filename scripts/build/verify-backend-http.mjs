@@ -289,10 +289,10 @@ try {
         provider: 'DeepSeek',
         model: 'deepseek-chat',
         endpoint: 'https://api.deepseek.com/chat/completions',
-        apiKey: 'sk-TEST-ONLY-invalid-key'
+        apiKey: 'TEST_ONLY_invalid_key'
       }
     },
-    () => {}
+    () => undefined
   );
   await record('自带连接未通过能力检查', '/proxy-ai', modelCall('golden-byok-1', 'golden-byok'), (r) =>
     assert.equal(r.success, false)

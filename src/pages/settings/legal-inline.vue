@@ -10,6 +10,17 @@
         @keydown.enter.prevent="emit('open', part)"
         >{{ part.text }}</text
       >
+      <text
+        v-else-if="part.copySupport"
+        class="legal-link"
+        role="button"
+        tabindex="0"
+        :aria-label="`${t('settings.copySupportEmail')} ${part.text}`"
+        @tap="copySupportEmail"
+        @keydown.enter.prevent="copySupportEmail"
+        @keydown.space.prevent="copySupportEmail"
+        >{{ part.text }}</text
+      >
       <text v-else :class="{ 'legal-emphasis': part.emphasis }">{{ part.text }}</text>
     </template>
   </text>
@@ -17,6 +28,9 @@
 
 <script setup>
 import { computed } from 'vue';
+import { BRAND } from '@/config/brand.js';
+import { t } from '@/i18n/index.js';
+import { toast } from '@/utils/toast.js';
 
 const props = defineProps({ source: { type: String, required: true } });
 const emit = defineEmits(['open']);
@@ -26,10 +40,21 @@ const parts = computed(() =>
     .filter(Boolean)
     .map((part) => {
       if (part.startsWith('**')) return { text: part.slice(2, -2), emphasis: true };
-      const link = /^\[([^\]]+)\]\(\/(?:en|zh)\/(privacy|terms)\/(?:#([a-z-]+))?\)$/.exec(part);
-      return link ? { text: link[1], document: link[2], section: link[3] } : { text: part };
+      const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(part);
+      if (!link) return { text: part };
+      const [, text, href] = link;
+      if (href === `mailto:${BRAND.supportEmail}`) return { text, copySupport: true };
+      const document = /^\/(?:en|zh)\/(privacy|terms)\/(?:#([a-z-]+))?$/.exec(href);
+      return document ? { text, document: document[1], section: document[2] } : { text: part };
     })
 );
+
+function copySupportEmail() {
+  uni.setClipboardData({
+    data: BRAND.supportEmail,
+    fail: () => toast.error(t('settings.copySupportFailed'))
+  });
+}
 </script>
 
 <style scoped>

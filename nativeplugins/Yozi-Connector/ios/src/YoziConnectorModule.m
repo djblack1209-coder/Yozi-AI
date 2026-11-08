@@ -12,6 +12,7 @@ UNI_EXPORT_METHOD(@selector(readMaterialFile:callback:))
 UNI_EXPORT_METHOD(@selector(releaseMaterialFile:))
 UNI_EXPORT_METHOD(@selector(cancelFileOperation:))
 UNI_EXPORT_METHOD(@selector(studyNotificationPermission:callback:))
+UNI_EXPORT_METHOD(@selector(clearStudyGlance:callback:))
 UNI_EXPORT_METHOD(@selector(applyStudyCompanion:callback:))
 UNI_EXPORT_METHOD(@selector(openStudyNotificationSettings:callback:))
 - (instancetype)init {if((self=[super init])){_transport=[YoziConnectorTransport new];_files=[YoziMaterialFiles new];}return self;}
@@ -27,6 +28,9 @@ static void complete(UniModuleKeepAliveCallback callback,NSDictionary *value){di
 - (void)studyNotificationPermission:(NSDictionary *)options callback:(UniModuleKeepAliveCallback)callback {
     BOOL request = [options isKindOfClass:NSDictionary.class] && [options[@"request"] isEqual:@YES];
     [YoziStudyCompanion.shared permission:request completion:^(NSDictionary *value){complete(callback,value);}];
+}
+- (void)clearStudyGlance:(NSDictionary *)options callback:(UniModuleKeepAliveCallback)callback {
+    [YoziStudyCompanion.shared clearGlance:^{complete(callback,@{@"ok": @YES});}];
 }
 - (void)applyStudyCompanion:(NSDictionary *)options callback:(UniModuleKeepAliveCallback)callback {
     [YoziStudyCompanion.shared apply:options completion:^(NSDictionary *value){complete(callback,value);}];

@@ -72,7 +72,7 @@ If we want to use your information for a purpose this policy does not state, we 
    - We suggest creating a separate key for Yozi at your provider with a spending limit, and revoking it there once you stop using it.
 4. **Which services you can connect**
    - Before you connect, the app shows the provider name and endpoint address you chose. Your content goes only to the service you chose.
-   - **Besides domestic providers, the AI connector in the current version also lists some providers outside mainland China and accepts custom endpoint addresses. If you choose one outside mainland China, the study content you send is transferred there and handled by that provider.** We are narrowing the available services to domestic model services that have completed their legal filings.
+   - **The AI connector presets are model services in mainland China that have completed filing or registration.** A custom endpoint you enter may be outside mainland China. Previously saved connections to overseas providers remain available. If you use an overseas service or endpoint, the study content you send is transferred outside mainland China and handled by that provider.
    - If you connect a model service running on your own computer or local network, the app sends content through the local connector straight to the service you named, without passing through Yozi's servers. Such a service may forward content to other cloud services, so check it yourself.
    - Each provider's name, contact details and privacy policy are as published on its own website.
 5. **Model credits supplied by Yozi** (currently off)
@@ -108,9 +108,9 @@ If we want to use your information for a purpose this policy does not state, we 
    | AI connections and keys | Until you delete the connection or your account |
    | Model result recovery cache | 24 hours by default, 7 days at most, and unrecoverable after that. For accounts left unused, expired content is cleared on the next visit |
    | Usage and cost records | While your account exists, deleted with the account; longer where laws or regulations require |
-   | Server access logs (network address, request time and similar) | 15 days at most, then deleted |
+   | Server access logs (network address, request time and similar) | Kept for 184 days (at least six months), then deleted |
    | Verification-code records, including send time and network address | 24 hours at most, then deleted automatically |
-   | Security audit logs | De-identified and kept for 90 days |
+   | Security audit logs | De-identified and kept for 184 days (at least six months), then automatically cleared |
    | Operational backups | Overwritten when they expire; the backup cycle will be published on this page once set |
 
 3. Once a retention period ends, we delete or anonymise your information.

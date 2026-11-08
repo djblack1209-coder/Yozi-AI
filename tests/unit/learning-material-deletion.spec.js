@@ -109,6 +109,24 @@ afterEach(() => {
 });
 
 describe('资料隐私删除与连续学习事实', () => {
+  it('保存阅读位置、笔记和高亮，并随对应资料清除私有文本', () => {
+    const { repo } = repository();
+    const segment = repo.read().materials[0].segments[0];
+    const location = { materialId: 'm1', segmentId: segment.id, version: segment.extractionEventId };
+    const note = '只存在于阅读笔记中的测试文字';
+    repo.commit({ id: 'reading-position', type: 'material.reading', data: { ...location, action: 'position' } });
+    repo.commit({
+      id: 'reading-note',
+      type: 'material.reading',
+      data: { ...location, action: 'annotate', start: 0, end: 8, note, marked: true }
+    });
+    expect(repo.read().materials[0].reading).toEqual({
+      position: { segmentId: segment.id, version: segment.extractionEventId },
+      annotations: [{ segmentId: segment.id, version: segment.extractionEventId, start: 0, end: 8, note, marked: true }]
+    });
+    repo.deleteMaterial(repo.previewMaterialDeletion('m1'), true, 'delete-reading');
+    expect(JSON.stringify(repo.read())).not.toContain(note);
+  });
   it('删除原文、提取、题目、对话及作答事件，保留独立 2/6 首答与 6/10 计划，不可撤回恢复', () => {
     const { repo, records } = repository();
     for (const suffix of ['_recovery', '_migration_backup', '_sync_conflict'])

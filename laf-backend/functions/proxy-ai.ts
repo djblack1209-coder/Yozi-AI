@@ -10,7 +10,11 @@ import {
 } from './_shared/learning-workflow.js';
 import {
   DEEPSEEK_PRO_INTAKE_TIMEOUT_MS,
+  PRO_DIAGNOSTIC_REPLY,
+  PRO_DIAGNOSTIC_REQUEST_MS,
+  PRO_DIAGNOSTIC_VERIFICATION_MS,
   isDeepSeekProByok,
+  isDeepSeekProDiagnostic,
   learningBudgetPhase,
   learningTimeout,
   coachVerificationBudget,
@@ -490,6 +494,16 @@ export async function runLearningModelTask(
       return { code: 422, success: false, error: 'MODEL_SELECTION_REQUIRED', message: '请在 AI 连接器选择型号后保存' };
     const connectionVersion = modelConfigurationVersion(model);
     const proIntake = intake && isDeepSeekProByok(model);
+    const proDiagnostic = body.replyProtocol === PRO_DIAGNOSTIC_REPLY;
+    if (
+      proDiagnostic &&
+      (!isDeepSeekProDiagnostic({ coach }, model) ||
+        options.stream ||
+        !options.response?.write ||
+        !options.response?.setHeader ||
+        !options.response?.end)
+    )
+      return { code: 422, success: false, error: 'WRITING_FORMAT_UNSUPPORTED', message: '当前请求不支持摸底长连接' };
     model = { ...model, timeoutMs: learningTimeout(context) };
     if (coach) model = { ...model, timeoutMs: learningTimeout({ coach }) };
     if (intake) model = { ...model, timeoutMs: proIntake ? DEEPSEEK_PRO_INTAKE_TIMEOUT_MS : 60000 };
@@ -733,6 +747,7 @@ export async function runLearningModelTask(
           requestBinding: body.requestBinding || null,
           ...(workflowContext ? { workflow: workflowContext.metadata } : {}),
           transport: options.stream ? 'sse-v1' : 'json-v1',
+          ...(proDiagnostic ? { replyProtocol: PRO_DIAGNOSTIC_REPLY } : {}),
           inputMode: image ? 'image' : 'text',
           priceVersion: image
             ? 'vision-pricing-unverified'
@@ -911,14 +926,37 @@ export async function runLearningModelTask(
     let verificationUsage: any = null;
     let verificationPaid = false;
     let verificationSources: any[] = [];
+    const recordVerificationUsage = (verifier: ModelConfig, received: any, paidFallback = false) => {
+      verificationPaid ||= paidFallback;
+      verificationSources.push({
+        provider: verifier.provider,
+        model: received.actualModel,
+        paidFallback,
+        usage: received.usage || null
+      });
+      if (received.usage)
+        verificationUsage = {
+          ...verificationUsage,
+          ...Object.fromEntries(
+            Object.entries(received.usage).map(([key, value]) => {
+              const previous = verificationUsage?.[key];
+              return [key, typeof value === 'number' && typeof previous === 'number' ? previous + value : value];
+            })
+          )
+        };
+    };
+    const verificationDeadline = proDiagnostic
+      ? Date.now() + PRO_DIAGNOSTIC_VERIFICATION_MS
+      : upstreamAt + (proWritingLimits?.totalMs || coachVerificationBudget({ coach }));
     const verify = async (verifier: any, verifierMessages: LearningMessage[]) => {
-      // 混合摸底共用120秒；复核最多60秒且不超过初评后的剩余总额。
-      const verificationBudget = proWritingLimits?.totalMs || coachVerificationBudget({ coach });
-      const remaining = verificationBudget - (Date.now() - upstreamAt);
+      // Pro 摸底的初评和独立复核各有时限，复核返修共用本阶段的剩余时间。
+      if (proDiagnostic)
+        verifier = { ...verifier, writingOutput: { ...verifier.writingOutput, diagnosticVerification: true } };
+      const remaining = verificationDeadline - Date.now();
       if (remaining < 8000) throw new ProviderError('TIMEOUT', '复核时间不足，初评未采用');
       const verification = await callWithDevPaidFallback(
         (target, messages, targetOrigins) => {
-          const left = verificationBudget - (Date.now() - upstreamAt);
+          const left = verificationDeadline - Date.now();
           if (left < 8000) throw new ProviderError('TIMEOUT', '复核时间不足，初评未采用');
           const ceiling = writingVerificationTimeout(target);
           const deadline = new AbortController();
@@ -941,32 +979,23 @@ export async function runLearningModelTask(
           stream: false,
           signal: execution!.signal
         }
-      );
+      ).catch((error: any) => {
+        // Pro JSON mode can return a billed response with blank content. Count it before the bounded format repair.
+        if (proDiagnostic && error?.observed?.actualModel === verifier.model) {
+          recordVerificationUsage(verifier, error.observed);
+          if (error.code === 'INVALID_RESPONSE')
+            throw Object.assign(new ProviderError('COACH_INVALID', '复核未返回有效JSON'), { path: 'json' });
+        }
+        throw error;
+      });
       const checked = verification.response;
-      verificationPaid ||= Boolean(verification.paidFallback);
       if (
         checked.actualModel !== verification.model.model ||
         modelValueHasKeyEcho(checked, verification.model.apiKey) ||
         modelValueHasKeyEcho(checked, model!.apiKey)
       )
         throw new ProviderError('MODEL_MISMATCH', '复核响应未通过模型与密钥检查');
-      verificationSources.push({
-        provider: verification.model.provider,
-        model: checked.actualModel,
-        paidFallback: Boolean(verification.paidFallback),
-        usage: checked.usage || null
-      });
-      // 复核坏格式会再问一次，用量按次累加。
-      verificationUsage = checked.usage
-        ? Object.fromEntries(
-            Object.entries(checked.usage).map(([key, value]) => [
-              key,
-              typeof value === 'number' && typeof verificationUsage?.[key] === 'number'
-                ? value + verificationUsage[key]
-                : value
-            ])
-          )
-        : verificationUsage;
+      recordVerificationUsage(verification.model, checked, Boolean(verification.paidFallback));
       if (
         verification.model.writingOutput?.inferencePolicy === 'native-coach-json-v1' &&
         checked.finishReason !== 'stop'
@@ -974,16 +1003,17 @@ export async function runLearningModelTask(
         throw Object.assign(new ProviderError('COACH_INVALID', '复核输出未正常结束'), { path: 'finish_reason' });
       return checked.content;
     };
-    // 摸底初评通过字段合同后合并复核一次；返修时若原请求已复核则不再复核。
+    // 初评通过字段合同后独立复核；返修时若原请求已复核则不再复核。
     let coachContent = rawResponse.content;
     if (closedCoachReply && !options.capabilityProbe && !options.repair?.verified) {
       ({ content: coachContent, receipt: coachVerification } = await verifyCoachErrors(
         model,
         rawResponse.content,
-        verify
+        verify,
+        proDiagnostic
       ));
       if (coachVerification) coachVerification.usage = redactModelValue(verificationUsage, model.apiKey);
-      if (coachVerification && verificationPaid) coachVerification.sources = verificationSources;
+      if (coachVerification && (verificationPaid || proDiagnostic)) coachVerification.sources = verificationSources;
       if (coachVerification?.status === 'failed') {
         // Preserve known primary/verification usage without pretending the failed check cost nothing.
         if (verificationUsage)
@@ -1409,4 +1439,30 @@ export async function runLearningModelTask(
     execution?.stop();
   }
 }
-export default runLearningModelTask;
+export default async function proxyAI(ctx: any) {
+  if (ctx.body?.replyProtocol !== PRO_DIAGNOSTIC_REPLY) return runLearningModelTask(ctx);
+  const response = cloud.res;
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
+  try {
+    const result = await runLearningModelTask(ctx, {
+      response,
+      onStart() {
+        // A whitespace prefix keeps the HTTP response open. The client receives a single final JSON receipt.
+        response.setTimeout?.(PRO_DIAGNOSTIC_REQUEST_MS);
+        response.setHeader('Content-Type', 'application/json; charset=utf-8');
+        response.setHeader('Cache-Control', 'no-store, no-transform');
+        response.setHeader('Content-Encoding', 'identity');
+        response.setHeader('X-Accel-Buffering', 'no');
+        response.write('\n');
+        heartbeat = setInterval(() => {
+          if (!response.destroyed && !response.writableEnded) response.write('\n');
+        }, 10000);
+      }
+    });
+    if (!response?.headersSent) return result;
+    if (!response.destroyed && !response.writableEnded) response.end(JSON.stringify(result));
+    return null;
+  } finally {
+    clearInterval(heartbeat);
+  }
+}

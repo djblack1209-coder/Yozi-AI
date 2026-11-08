@@ -104,6 +104,37 @@ describe('提醒日期、原任务、权限与回执', () => {
     expect(watchGlance(learning, { owner: 'another-account' }, jobs, now)).toBe(EMPTY_WATCH_GLANCE);
     expect(watchGlance({ ...learning, accountRecordState: 'loading' }, session, jobs, now)).toBe(EMPTY_WATCH_GLANCE);
   });
+  it('clears the Watch at logout while the previous notification request is pending', async () => {
+    await storageService.saveLoginSession({ userId: 'watch-logout', token: 'fixture-only-token', userInfo: {} });
+    const learning = setup();
+    let received;
+    const firstRequest = new Promise((resolve) => {
+      received = resolve;
+    });
+    const applyStudyCompanion = vi
+      .fn((_input, reply) => reply({ ok: true, acceptedIds: [] }))
+      .mockImplementationOnce((_input, reply) => received(reply));
+    const clearStudyGlance = vi.fn((_input, reply) => reply({ ok: true }));
+    vi.stubGlobal('plus', { os: { name: 'iOS' } });
+    vi.stubGlobal('uni', {
+      ...uni,
+      requireNativePlugin: () => ({ applyStudyCompanion, clearStudyGlance, studyNotificationPermission: vi.fn() })
+    });
+    controller = createLearningNotifications(learning);
+    const pending = controller.refresh();
+    const finish = await firstRequest;
+    expect(applyStudyCompanion.mock.calls[0][0].glance.available).toBe(true);
+    expect(await storageService.remove('EXAM_TOKEN', true)).toBe(true);
+    const clearedWhilePending = clearStudyGlance.mock.calls.length;
+    const requestedWhilePending = applyStudyCompanion.mock.calls.length;
+    finish({ ok: true, acceptedIds: [] });
+    expect(clearedWhilePending).toBe(1);
+    expect(requestedWhilePending).toBe(1);
+    await expect(pending).resolves.toBeNull();
+    await controller.refresh();
+    expect(applyStudyCompanion).toHaveBeenCalledWith({ glance: EMPTY_WATCH_GLANCE }, expect.any(Function));
+    expect(applyStudyCompanion.mock.calls.slice(1).every(([input]) => !input.glance.available)).toBe(true);
+  });
   it('tests the OS channel without changing learning consent or replacing saved jobs', async () => {
     host.desktop = true;
     host.native = vi.fn(async (command) =>

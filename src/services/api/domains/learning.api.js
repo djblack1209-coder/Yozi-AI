@@ -5,8 +5,11 @@ import { reportAuthenticationFailure, isAuthenticationFailure } from '../../auth
 import {
   DEEPSEEK_PRO_INTAKE_TIMEOUT_MS,
   DEEPSEEK_PRO_WRITING_TOTAL_MS,
+  PRO_DIAGNOSTIC_REPLY,
+  PRO_DIAGNOSTIC_REQUEST_MS,
   coachVerificationBudget,
-  isDeepSeekProByok
+  isDeepSeekProByok,
+  isDeepSeekProDiagnostic
 } from '../../../../laf-backend/functions/_shared/learning-runtime-policy.js';
 
 export const learningModelDiscoveryEnabled = () => true;
@@ -64,6 +67,8 @@ export function learningRequest(path, body, options = {}) {
     const proTurn = path === '/proxy-ai' && isDeepSeekProByok(options.model);
     let timeout = coach || body.intake || body.feedbackAttemptId ? 70000 : 65000;
     if (path === '/learning-models' && ['save', 'test'].includes(body.action)) timeout = 130000;
+    else if (path === '/proxy-ai' && body.replyProtocol === PRO_DIAGNOSTIC_REPLY)
+      timeout = PRO_DIAGNOSTIC_REQUEST_MS + 5000;
     else if (proTurn && intake) timeout = DEEPSEEK_PRO_INTAKE_TIMEOUT_MS + 5000;
     else if (proTurn && coach && coach.phase === coach.target && ['essay', 'diagnostic', 'daily'].includes(coach.phase))
       timeout = DEEPSEEK_PRO_WRITING_TOTAL_MS + 5000;
@@ -145,8 +150,13 @@ export const saveLearningModelPreferences = (preferences, options) =>
   learningRequest('/learning-models', { action: 'preferences', preferences }, options);
 export const deleteLearningModel = (profileId, options) =>
   learningRequest('/learning-models', { action: 'delete', profileId }, options);
-export const generateLearningTurn = (body, options) =>
-  options?.stream ? generateLearningTurnStream(body, options) : learningRequest('/proxy-ai', body, options);
+export function generateLearningTurn(body, options) {
+  if (options?.stream) return generateLearningTurnStream(body, options);
+  const request = isDeepSeekProDiagnostic(body.learningContext, options?.model)
+    ? { ...body, replyProtocol: PRO_DIAGNOSTIC_REPLY }
+    : body;
+  return learningRequest('/proxy-ai', request, options);
+}
 
 // Independent essay copies use the same captured account as learning-sync.
 // Existing learning APIs and their write contracts remain unchanged.
