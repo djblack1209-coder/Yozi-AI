@@ -289,7 +289,7 @@ try {
         provider: 'DeepSeek',
         model: 'deepseek-chat',
         endpoint: 'https://api.deepseek.com/chat/completions',
-        apiKey: 'sk-TEST-ONLY-invalid-key'
+        apiKey: 'TEST_ONLY_invalid_key'
       }
     },
     () => undefined
