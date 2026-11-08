@@ -127,6 +127,18 @@ watch(
   width: 48px;
   height: 48px;
 }
+@media (max-width: 760px) {
+  .base-bubble__avatar,
+  .base-bubble__still,
+  .base-bubble__photo {
+    width: 40px;
+    height: 40px;
+  }
+  .base-bubble__avatar :deep(.animated-avatar) {
+    transform: scale(calc(40 / 48));
+    transform-origin: top left;
+  }
+}
 /* The shared player keeps its 1000ms dwell. The existing 2.2s thinking motion
    bridges its first idle frame so request feedback starts in the send tick. */
 .base-bubble__avatar[data-avatar-state='working']

@@ -347,7 +347,7 @@
               v-if="record.feedback || record.assessmentStatus === 'pending'"
               avatar
               rich
-              class="coach-agent-turn"
+              class="coach-agent-turn coach-card-turn"
             >
               <MuseFeedbackCard
                 v-if="record.feedback"
@@ -397,7 +397,7 @@
           题待评估</text
         >
         <view id="coach-current-turn" class="coach-current-turn">
-          <BaseBubble avatar rich class="coach-agent-turn">
+          <BaseBubble avatar rich class="coach-agent-turn coach-card-turn">
             <text v-if="coach" class="coach-muted" role="status" aria-live="polite"
               >当前教法：{{
                 { hint: '只给提示', steps: '分步讲解', example: '例子讲解', explain: '直接讲解', question: '引导提问' }[
@@ -675,6 +675,14 @@
                 >
               </template>
             </template>
+            <BaseCheckbox
+              v-if="consentAvailable"
+              data-test="coach-consent"
+              :model-value="learning.sharingAllowed"
+              :disabled="learning.busy"
+              @update:model-value="learning.setSharingAllowed"
+              >同意共享本次原答和必要资料片段</BaseCheckbox
+            >
           </BaseBubble>
         </view>
         <BaseBubble v-if="surveyDue" avatar rich class="coach-agent-turn">
@@ -935,7 +943,10 @@ const trainingCard = computed(() =>
 );
 function continueTraining() {
   if (trainingCard.value) skippedCards.value.push(trainingCard.value.id);
+  revealAfterStudentAction();
 }
+// Consent applies per send, so it has to sit at the step being sent, not back at the top of a long conversation.
+const consentAvailable = computed(() => loggedIn.value && learning.modelId && coach.value?.profile);
 const cardAnswer = computed(() => day.value?.answers.find((a) => a.cardId === trainingCard.value?.id));
 const paragraphIndex = computed(() => day.value?.rewrites.length || 0);
 const historyLimit = ref(1);
@@ -1221,6 +1232,14 @@ async function revealCurrentTurn() {
       document.getElementById('coach-current-turn')?.scrollIntoView?.({ block: 'end' });
   // #endif
 }
+// The student's own submit or continue always shows what comes next, wherever they had scrolled.
+async function revealAfterStudentAction() {
+  await nextTick();
+  // #ifdef H5
+  if (!learning.locatedRecord && typeof document !== 'undefined')
+    document.getElementById('coach-current-turn')?.scrollIntoView?.({ block: 'start' });
+  // #endif
+}
 onMounted(revealCurrentTurn);
 watch([() => savedPractice.value.length, () => coach.value?.profile], revealCurrentTurn);
 async function act(action) {
@@ -1360,6 +1379,7 @@ function submitCard(card, diagnostic) {
       answer: answer.value
     });
     answer.value = '';
+    revealAfterStudentAction();
     if (loggedIn.value && learning.sharingAllowed) {
       if (!diagnostic) await learning.requestCoach('feedback', `card-${card.id}`);
       else if (coach.value.diagnostic.answers.length === coach.value.diagnostic.cards.length)
@@ -1573,6 +1593,19 @@ function login() {
   line-height: 26px;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+/* On a phone a card takes the full content width; plain replies keep the kitten column. */
+@media (max-width: 760px) {
+  .coach-card-turn :deep(.base-bubble__avatar) {
+    display: none;
+  }
+  .coach-card-turn :deep(.base-bubble__row) {
+    gap: 0;
+  }
+  .coach-card-turn :deep(.base-bubble__body) {
+    width: 100%;
+    max-width: 100%;
+  }
 }
 /* WeChat-style agent turns: one kitten per turn, the cards stacked beside it. */
 .coach-agent-turn :deep(.base-bubble__content) {

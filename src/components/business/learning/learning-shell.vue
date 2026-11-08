@@ -361,7 +361,7 @@
           <view v-if="active === 'learning'" class="muse-chat-identity"
             ><AnimatedAvatar
               class="brand-mark"
-              :size="56"
+              :size="viewportWidth <= 760 ? 32 : 56"
               autoplay
               perceptible
               :business="avatarBusiness"
@@ -450,6 +450,7 @@ import { bindBusinessMotion } from '@/design/business-motion.js';
 import { BRAND } from '@/config/brand.js';
 import { publicError, t } from '@/i18n/index.js';
 import { bindMessageFollow } from './message-follow.js';
+import { bindKeyboardInset } from './keyboard-inset.js';
 import { isDesktopRuntime } from '@/services/desktop/runtime.js';
 import { isDesktopSettingsWindow } from '@/services/desktop/windows.js';
 import {
@@ -537,6 +538,7 @@ const root = ref(null);
 // #ifdef H5
 let composerResizeFrame;
 let releaseMessageFollow = () => {};
+let releaseKeyboardInset = () => {};
 const shellAttrs = useAttrs();
 onBeforeUpdate(() => {
   composerResizeFrame = null;
@@ -1117,6 +1119,7 @@ onMounted(() => {
   document.addEventListener('keydown', escapeMenu);
   window.addEventListener('keydown', escapeGeneration);
   if (props.active === 'learning') releaseMessageFollow = bindMessageFollow(element?.querySelector('.space-content'));
+  releaseKeyboardInset = bindKeyboardInset(element);
   // #endif
   element?.addEventListener?.('focusout', headerActionsFocusOut);
   element?.addEventListener?.('keydown', headerActionKey, true);
@@ -1143,6 +1146,7 @@ onUnmounted(() => {
   document.removeEventListener('keydown', escapeMenu);
   window.removeEventListener('keydown', escapeGeneration);
   releaseMessageFollow();
+  releaseKeyboardInset();
   // #endif
   element?.removeEventListener?.('focusout', headerActionsFocusOut);
   element?.removeEventListener?.('keydown', headerActionKey, true);

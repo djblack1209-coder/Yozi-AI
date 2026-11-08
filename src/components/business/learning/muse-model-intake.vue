@@ -341,6 +341,15 @@ function accept() {
   color: var(--ink-3);
   font-size: 14px;
 }
+@media (max-width: 760px) {
+  .intake-capsules {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .intake-capsules :deep(.base-option) {
+    width: 100%;
+  }
+}
 @media (max-width: 600px) {
   .intake-question {
     font-size: 18px;

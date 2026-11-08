@@ -143,6 +143,10 @@ function measureNative() {
     ?.exec?.();
   // #endif
 }
+// Pressing a control must not end typing: on a phone that brings the tab bar back mid-tap and the press lands elsewhere.
+function keepFieldFocus(event) {
+  if (!event.target.closest?.('.base-field__group')) event.preventDefault();
+}
 function submit() {
   if (voice.active || composing) return;
   if (!props.disabled && !props.submitDisabled && !props.busy && props.modelValue.trim()) emit('submit');
@@ -165,6 +169,7 @@ onMounted(() => {
   // uni-view normalizes away target, shiftKey and IME fields on keyboard events.
   keyTarget = element;
   keyTarget?.addEventListener('keydown', keydown);
+  keyTarget?.addEventListener('mousedown', keepFieldFocus);
   keyTarget?.addEventListener('compositionstart', compositionStart);
   keyTarget?.addEventListener('compositionend', compositionEnd);
   if (element?.getBoundingClientRect) emit('height', Math.ceil(element.getBoundingClientRect().height));
@@ -179,6 +184,7 @@ onUpdated(measureNative);
 onBeforeUnmount(() => {
   observer?.disconnect();
   keyTarget?.removeEventListener('keydown', keydown);
+  keyTarget?.removeEventListener('mousedown', keepFieldFocus);
   keyTarget?.removeEventListener('compositionstart', compositionStart);
   keyTarget?.removeEventListener('compositionend', compositionEnd);
 });
@@ -258,10 +264,11 @@ onBeforeUnmount(() => {
   padding: 0;
 }
 .muse-composer :deep(.base-field__input) {
-  padding: 0;
-  margin: 11px 0;
-  min-height: 22px;
-  max-height: 154px;
+  box-sizing: border-box;
+  padding: 11px 0;
+  margin: 0;
+  min-height: 44px;
+  max-height: 176px;
   line-height: 22px;
   font-size: 15px;
 }

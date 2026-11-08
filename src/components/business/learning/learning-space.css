@@ -352,12 +352,14 @@
   overflow: hidden;
 }
 .has-composer .space-content {
-  padding-bottom: calc(var(--muse-composer-height, 80px) + 48px);
+  padding-bottom: calc(var(--muse-composer-height, 80px) + 48px + var(--keyboard-inset, 0px));
+  /* Anything scrolled or focused into view stops above the docked composer. */
+  scroll-padding-bottom: calc(var(--muse-composer-height, 80px) + 24px + var(--keyboard-inset, 0px));
 }
 .muse-composer-dock {
   position: absolute;
   z-index: 11;
-  bottom: 0;
+  bottom: var(--keyboard-inset, 0px);
   left: 0;
   right: 0;
   /* Muse 2 实现参数： tokens.css:42 / app.css:116,
@@ -831,16 +833,12 @@
   .has-directory .muse-chat-identity {
     visibility: hidden;
   }
-  .muse-chat-identity .brand-mark {
-    width: 40px;
-    height: 40px;
-  }
 }
 @media (max-width: 760px) and (pointer: coarse) {
-  .is-chat:has(.muse-composer textarea:focus) .muse-rail {
+  .is-chat:has(.muse-composer .base-field__group:focus-within) .muse-rail {
     visibility: hidden;
   }
-  .is-chat:has(.muse-composer textarea:focus) .space-main {
+  .is-chat:has(.muse-composer .base-field__group:focus-within) .space-main {
     height: 100%;
   }
 }
@@ -1392,6 +1390,7 @@
   }
   .is-chat .space-content {
     padding-top: calc(118px + var(--space-status-top, 0px));
+    scroll-padding-top: calc(118px + var(--space-status-top, 0px));
   }
   .goal-panel,
   .panel,
