@@ -28,6 +28,7 @@ import { FREE_MODEL_PRESETS, modelConnectionState } from './_shared/ai-providers
 import {
   completeModelEndpoint,
   isDomesticModel,
+  visibleModelChoices,
   MODEL_API_KEY_MAX_LENGTH
 } from './_shared/ai-providers/model-endpoints.js';
 import {
@@ -388,7 +389,7 @@ export default async function (ctx: any) {
           whoCanDecrypt: 'deployment_operator_with_vault_key',
           commercialEnabled: false,
           resultCache: cache,
-          presets: FREE_MODEL_PRESETS
+          presets: visibleModelChoices(FREE_MODEL_PRESETS, [])
         }
       };
     }

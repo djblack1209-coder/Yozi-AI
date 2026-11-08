@@ -182,6 +182,7 @@ import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import {
   MODEL_ENDPOINTS,
   completeModelEndpoint,
+  isReleaseProvider,
   MODEL_API_KEY_MAX_LENGTH
 } from '../../../../laf-backend/functions/_shared/ai-providers/model-endpoints.js';
 import { modelErrorPresentation } from '../../../../laf-backend/functions/_shared/model-errors.js';
@@ -221,7 +222,7 @@ const matches = (item) =>
 const savedModels = computed(() => learning.models.filter((model) => model.source === 'byok').filter(matches));
 const providers = computed(() =>
   [
-    ...MODEL_ENDPOINTS.filter((item) => item.id !== 'cloudflare').map((item) => ({
+    ...MODEL_ENDPOINTS.filter((item) => isReleaseProvider(item.id)).map((item) => ({
       ...item,
       ...modelBrand(item.provider)
     })),

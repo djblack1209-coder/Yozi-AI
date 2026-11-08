@@ -141,6 +141,27 @@ export function completeModelEndpoint(raw) {
 const endpointFor = (id) => MODEL_ENDPOINTS.find((item) => item.id === id);
 const privacyFor = (provider) => `当前学习上下文经本项目后端发送至${provider}；资料不默认整份上传。`;
 
+// CAC filing or registration for the services offered when adding a connection.
+export const RELEASE_PROVIDERS = Object.freeze({
+  deepseek: 'Beijing-DeepseekChat-202404280016',
+  siliconflow: 'Beijing-GuiJiLiuDongAIYunFuWu-20251201S0112',
+  zhipu: 'Beijing-ChatGLM-20230821',
+  dashscope: 'ZheJiang-TongYiQianWen-20230901',
+  moonshot: 'Beijing-MoonShot-20231016',
+  ark: 'Beijing-YunQue-20230821',
+  qianfan: 'Beijing-WenXinYiYan-20230821',
+  hunyuan: 'Guangdong-TencentHunyuan-20230901',
+  minimax: 'Shanghai-Abab-20230821',
+  stepfun: 'Shanghai-JieYue-20231106',
+  spark: 'Anhui-XingHuoRenZhiDaMoXing-20230823',
+  yi: 'Beijing-LingYiWanWu-20240102',
+  baichuan: 'Beijing-BaiYing-20230821'
+});
+
+export function isReleaseProvider(id) {
+  return Object.hasOwn(RELEASE_PROVIDERS, id);
+}
+
 // Classification is the documented provider/endpoint pair, never the hosted model name or TLD.
 const domesticProviders = new Set([
   'deepseek',
@@ -162,7 +183,12 @@ export function visibleModelChoices(choices, savedModels) {
   return choices.filter((choice) => {
     const endpoint = completeModelEndpoint(choice.endpoint);
     return (
-      isDomesticModel(choice) ||
+      MODEL_ENDPOINTS.some(
+        (item) =>
+          isReleaseProvider(item.id) &&
+          item.provider === choice.provider &&
+          (item.endpoint === endpoint || (item.legacyBaseURL && `${item.legacyBaseURL}/chat/completions` === endpoint))
+      ) ||
       savedModels.some(
         (saved) =>
           saved.configured === true &&

@@ -619,7 +619,7 @@ it('服务端未授权模型地址时引导检查连接；已终止的请求不�
     wrapper = mount(LearningPage, { global: { stubs: { BaseIcon: true, PrivacyPopup: true } } });
     await flushPromises();
     const alert = wrapper.get('[role="alert"]');
-    expect(alert.text()).toContain('API 地址不合法或未获允许，请检查连接');
+    expect(alert.text()).toContain('模型地址未获服务端授权');
     expect(alert.text()).not.toContain('查询原请求');
     const before = store.exportData();
     await alert.get('button').trigger('tap');
