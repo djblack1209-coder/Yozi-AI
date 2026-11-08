@@ -566,6 +566,14 @@ describe('按任务的真实答题形式送评', () => {
       rule: '格式错误',
       previousResponse: null
     });
+    const broken = '{"message":"缺了结尾括号"';
+    const syntax = coachRepairFeedback(
+      prepared,
+      { code: 'COACH_INVALID', path: 'raw', message: '批改数据不是完整JSON' },
+      broken
+    );
+    expect(syntax).toMatchObject({ path: 'raw', previousResponse: broken });
+    expect(coachRepairPrompt(syntax)).toContain(JSON.stringify(broken));
     expect(coachRepairFeedback(prepared, { ...error, repairForbidden: true }, JSON.stringify(wire))).toBeNull();
     expect(coachRepairFeedback(prepared, { ...error, code: 'TIMEOUT' }, JSON.stringify(wire))).toBeNull();
   });
@@ -1417,6 +1425,29 @@ describe('摸底错误合并复核一次：讲解题只删不加，单词填空�
       expect(receipt.outlines[0]).toMatchObject({ quoteId: 'q5', valid, agreed: false });
     }
     expect(JSON.parse(decodeCoachResponse(p, content)).coach.dimensions[3].score).toBe(1);
+  });
+  it('身份设定和署名约定不要求逐句列出，真正的要求句缺了仍不成立', () => {
+    const prompt =
+      'Suppose you are Li Ming, a senior student. Write a letter of about 100 words to Professor Smith to apply for the summer program. Introduce your academic background. Do not sign your own name. Use "Li Ming" instead. Do not write your address.';
+    const answer = '体裁是书信，对象是 Smith 教授，目的是申请暑期项目，介绍学术背景，字数约 100 词。';
+    const points = [
+      point('Write a letter', '体裁是书信'),
+      point('to Professor Smith', '对象是 Smith 教授'),
+      point('to apply for the summer program', '目的是申请暑期项目'),
+      point('about 100 words', '字数约 100 词'),
+      point('Introduce your academic background', '介绍学术背景')
+    ];
+    expect(outlineAgreement(prompt, points, answer)).toMatchObject({ valid: true, agreed: true });
+    // 第三句是内容要求：一点都没列就不能算核对完整。
+    expect(outlineAgreement(prompt, points.slice(0, 4), answer)).toMatchObject({ valid: false, agreed: false });
+    // 身份句里带写作动作时仍是要求，不按约定跳过。
+    expect(
+      outlineAgreement(
+        'Suppose you are a student and write to your teacher. About 100 words.',
+        [point('About 100 words', '约 100 词')],
+        '约 100 词。'
+      )
+    ).toMatchObject({ valid: false });
   });
   it('开发集园艺感谢信：按语义与完整分句匹配提纲，不要求固定关键词', () => {
     const prompt =

@@ -1065,7 +1065,8 @@ export function coachRepairFeedback(config: ModelConfig, error: any, content?: s
   try {
     if (content) previousResponse = JSON.parse(content);
   } catch {
-    // Missing/invalid JSON still gets the exact host rejection rule.
+    // 语法坏了也把原文交回：没有原文时返修只能从头重批，思考会把输出额度耗尽。
+    previousResponse = content;
   }
   const path = typeof error.path === 'string' ? error.path.slice(0, 160) : 'root';
   const key = path.match(/dimensionReviews\.(grammar|collocation|expression|task)/)?.[1];
@@ -1247,10 +1248,16 @@ export function syntaxAgreement(sentence: string, parse: any, note: string) {
 
 // 要点与原答独立语义核对；原答证据逐字定位后，由宿主检查所在完整分句的否定语境。
 // 引用存在不替代语义判断；引用断章取义或核对不明时保留待核对，不按关键词推断漏项。
+// 身份设定和署名、地址约定不属于审题要列的体裁、对象、目的、内容与字数，不要求逐句列出。
+const OUTLINE_CONVENTION_SENTENCE =
+  /^(?:(?:suppose|imagine|assume)\s+(?:that\s+)?you\s+are|you\s+are)\b(?!.*\bwrite\b)|\b(?:do not|don['’]t|need not|no need to)\b.*\b(?:name|sign|signature|address)\b|^use\s+\S+(?:\s+\S+)?\s+instead\b/u;
+
 export function outlineAgreement(prompt: string, points: any[], answer: string) {
   const flat = (text: string) => text.toLowerCase().replace(/\s+/g, ' ').trim();
   const P = flat(prompt),
-    sentences = P.split(/(?<=[.!?])\s+/).filter(Boolean);
+    sentences = P.split(/(?<=[.!?])\s+/)
+      .filter(Boolean)
+      .filter((sentence: string) => !OUTLINE_CONVENTION_SENTENCE.test(sentence));
   const spans = points.map((point: any) => flat(point.span).replace(/[\s.!?,;:]+$/, ''));
   const delimiter = /[，,；;。.!！？?、\n\r]/u;
   const negative = /不|没|无需|无须|未|勿|\b(?:not|never|without)\b/iu;
