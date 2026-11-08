@@ -2213,6 +2213,26 @@ describe('摸底错误合并复核一次：讲解题只删不加，单词填空�
       claims: { target: false }
     });
   });
+  it('主语带后置修饰时按中心词核对主干，主语写错仍不成立', () => {
+    const sentence =
+        'Although many students complain, the habit of setting aside twenty minutes each morning, which sounds modest at first, gradually reshapes the way they absorb information.',
+      fields = [
+        'the habit of setting aside twenty minutes each morning',
+        'reshapes',
+        'which sounds modest at first',
+        'morning',
+        'which',
+        'sounds',
+        '主语'
+      ];
+    expect(
+      syntaxAgreement(sentence, parsed('s1', ...fields), '主干是 the habit gradually reshapes the way。').claims.trunk
+    ).toBe(true);
+    expect(
+      syntaxAgreement(sentence, parsed('s1', ...fields), '主干是 the students gradually reshapes the way。').claims
+        .trunk
+    ).toBe(false);
+  });
   it('笔记读不出主干时不删错', () => {
     expect(
       syntaxAgreement(
