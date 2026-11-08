@@ -410,7 +410,7 @@ describe('learning interface states preserve learning facts', () => {
     expect(wrapper.findComponent(MuseChatEmpty).exists()).toBe(false);
     const identity = wrapper.getComponent(LearningShell).get('.muse-chat-identity');
     expect(identity.get('.brand-mark').classes()).toContain('animated-avatar');
-    expect(identity.get('.brand-status').text()).toBe('对话学习');
+    expect(identity.find('.brand-status').exists()).toBe(false);
     expect(identity.get('.brand-name').text()).toBe('Yozi AI');
     expect(wrapper.get('.space-content').text()).not.toContain('未连接');
     expect(wrapper.get('.space-content').findAllComponents(BaseChip)).toHaveLength(0);

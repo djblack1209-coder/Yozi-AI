@@ -18,7 +18,7 @@ import { compression, defineAlgorithm } from 'vite-plugin-compression2';
 import postcssColorMixFallback from './scripts/build/postcss-color-mix-fallback.js';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-const require = createRequire(path.join(process.cwd(), 'vite.config.js'));
+const require = createRequire(path.join(__dirname, 'vite.config.js'));
 const uniCliSharedUtils = require('@dcloudio/uni-cli-shared/dist/utils.js');
 
 // 兼容 @dcloudio/vite-plugin-uni CJS/ESM 双层 default 问题
@@ -310,7 +310,7 @@ export default defineConfig(({ command, mode }) => {
   fs.writeFileSync(path.resolve(__dirname, 'src/theme.json'), JSON.stringify(readYoziNativeTheme(), null, 2) + '\n');
   // 隔离核验只使用命令显式传入的配置，避免加载日常私有连接信息。
   const isolatedBuild = process.env.YOZI_ISOLATED_BUILD === '1' || process.env.WENLI_ISOLATED_BUILD === '1';
-  const env = isolatedBuild ? { ...process.env } : loadEnv(mode, process.cwd(), '');
+  const env = isolatedBuild ? { ...process.env } : loadEnv(mode, __dirname, '');
   const platform = process.env.UNI_PLATFORM || env.UNI_PLATFORM || '';
   guardHBuilderMiniProgramHelpers(platform);
 
@@ -329,7 +329,7 @@ export default defineConfig(({ command, mode }) => {
   // uni's startup transform and generated component imports share this path.
   // A relative input can miss the H5 entry or emit unresolved "src/..." imports.
   process.env.UNI_INPUT_DIR = appInputDir;
-  const viteRootDir = process.cwd();
+  const viteRootDir = __dirname;
   const shouldBypassNvueHtmlEntry = isAppPlus && isNvueCompiler;
 
   process.env.VITE_ROOT_DIR = viteRootDir;
@@ -496,8 +496,8 @@ export default defineConfig(({ command, mode }) => {
 
     // 构建配置
     build: {
-      // 源码映射：开发和测试环境启用，生产环境关闭
-      sourcemap: isDevelopment ? 'inline' : isStaging ? true : false,
+      // HBuilderX 的 App 调试会二次编译 Vue 源文件，两个映射内容会冲突。
+      sourcemap: isDevelopment && !(isAppPlus && process.env.UNI_HBUILDERX_PLUGINS) ? 'inline' : isStaging,
 
       // 代码压缩配置 — 小程序 dev 模式也启用轻量压缩以控制主包体积
       minify: isProduction || isStaging ? 'terser' : platform.startsWith('mp-') ? 'esbuild' : false,
@@ -628,7 +628,7 @@ export default defineConfig(({ command, mode }) => {
     envPrefix: 'VITE_',
 
     // 环境目录
-    envDir: isolatedBuild ? false : process.cwd(),
+    envDir: isolatedBuild ? false : viteRootDir,
 
     // 日志级别
     logLevel: isDevelopment ? 'info' : 'warn',

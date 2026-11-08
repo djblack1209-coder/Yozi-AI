@@ -39,11 +39,9 @@ Android 适配器用 `invokeAndKeepAlive` 保留中间回调、终止用 `invoke
 
 **2026-11-02验证范围更正**：客户要求所有测试在本机完成，移除手机连接／解锁、外部设备与跨设备实测事项；产品多端方向和既有适配源码保留。本机编译、桌面原生、共享App、本机已具备条件的原生／模拟器与独立桥接测试分别报告，不把其中一种替代未覆盖能力；以下历史“未做真机”属于事实记录，不再形成外部设备验收门槛。
 
-**2026-11-02当前准备状态【未装配】**：本机Xcode可用；实际DCloud Android classpath和iOS头/框架路径均未配置，未发现已安装HBuilderX入口。本轮沿既有build-only入口预查，因 `DCUniModule.h` 及依赖未配置退出2，未生成二进制、下载、改App配置或云打包。不安排连接iPhone或启动手机执行服务；缺少完整DCloud SDK时继续记录未装配，本机已有Apple SDK不冒充完整DCloud装配。
+**2026-11-08 装配基线**：按任务安排切至 DCloud 正式版 **5.34.2026102909**。HBuilderX macOS ARM64 已从官方渠道取得，通过 Apple 公证校验并打开候选。仓库 DCloud 套件锁定 `3.0.0-5030420261029001`，`npm run build:app` 的 `plus.uni-app.compilerVersion` 为 **5.34**。
 
-当前锁定DCloud系列为 `3.0.0-alpha-5030120260930001`；已安装vite-plugin-uni的 `uni-app.compilerVersion` 与当前App产物manifest均为 **5.31**。下方10月2日的5.08只属于历史准备记录，不能继续作为当前SDK装配基线。11月2日官方[iOS下载/升级说明](https://nativesupport.dcloud.net.cn/AppDocs/download/ios.html)列稳定版5.34及alpha版5.33，尚无与5.31匹配的本机完整包或兼容验收；不能据“最新版”或单个头文件存在直接判定可装配。取得包后核对官方来源、许可、完整版本、依赖库与资源，再沿现有build-only入口编译；不同版本须有对应平台兼容依据和实际验收，不以关闭版本提示代替。
-
-客户11月2日已授权下载与当前编译器匹配的官方iOS离线SDK并本机装配测试，不做云打包或部署；此前暂缓安排由此接续。当前官方链接的历史包入口仍被浏览器策略禁止访问，未取得SDK，不换工具绕过。SDK取得、实际装配和本机原生业务验收尚未完成，不称App开发或原生验收闭环，不转为外部设备测试。
+HBuilderX 的「生成本地打包 App 资源」提示登录 DCloud。当前 iOS 官方镜像的 `SDK.zip` 下载要求中国移动云盘登录，Android 同镜像已达浏览上限，浏览器策略拒绝了 Android 备用镜像访问。装配需要 HBuilderX 导出的资源和两个同版官方完整 SDK。按 [iOS 升级说明](https://nativesupport.dcloud.net.cn/AppDocs/download/ios.html)替换整套 Bundles、inc、Libs，按 [Android 升级说明](https://nativesupport.dcloud.net.cn/AppDocs/download/android.html)替换同版 SDK 后清洁构建。验收顺序为本机自定义基座回归、发行包、Watch 应用层同步。
 
 源码/元数据在 `nativeplugins/Yozi-Connector/`，对应 [DCloud Android](https://nativesupport.dcloud.net.cn/NativePlugin/course/android.html)、[iOS 模块](https://nativesupport.dcloud.net.cn/NativePlugin/course/ios.html)和[打包规范](https://nativesupport.dcloud.net.cn/NativePlugin/course/package.html)。不以模拟 SDK 声明或空二进制替代编译。
 
@@ -52,9 +50,9 @@ Android 适配器用 `invokeAndKeepAlive` 保留中间回调、终止用 `invoke
 - Android：`YOZI_ANDROID_JAVA_HOME` 指向实际 JDK，`YOZI_ANDROID_SDK_CLASSPATH` 用系统路径分隔符列出 android.jar、官方 DCloud 模块 SDK 和 FastJSON 等实际依赖。完整适配器按 Java 8 字节码编译为 jar。
 - iOS：`YOZI_IOS_SDK_INCLUDE_PATHS` 列出官方 `DCUniModule.h` 与依赖头目录，`YOZI_IOS_SDK_FRAMEWORK_PATHS` 可列实际 framework 目录。要求 `xcrun --sdk iphoneos` 成功，完整模块/内核编译为 arm64/iOS 11 静态库。
 
-可对当前构建进程设置标准 `DEVELOPER_DIR` 指向已安装 Xcode，SDK 检测及后续编译均保留该选择；不修改全局 xcode-select。本机显式选择 `/Applications/Xcode.app/Contents/Developer` 已确认 iPhoneOS SDK 存在，当前完整 build-only 仍因实际 DCloud Android classpath/iOS 头未配置退出 2，没有生成插件或修改 manifest。
+可对当前构建进程设置标准 `DEVELOPER_DIR` 指向已安装 Xcode，SDK 检测及后续编译均保留该选择；不修改全局 xcode-select。本机 Xcode 27.2 的 iPhoneOS SDK 可用。完整插件编译等待同版 DCloud Android classpath 与 iOS 头文件、库和资源。
 
-编译后仍须审查二进制/许可，依官方流程装配本地插件、自定义基座，再做独立设备业务验收。当前未执行装配、云打包或生产动作，缺模块继续拒绝。
+编译后审查二进制和许可，依官方流程装配本地插件与自定义基座，再在本机运行隐私、登录、网络与插件业务路径。
 
 2026-10-02 本机 Xcode 27.0 和 iOS 27.0 模拟器运行时已经准备，客户自行接受 Apple 许可，全局开发工具选择未改变。当时缺口是匹配项目编译器5.08的DCloud离线SDK、原生插件装配与业务验收；当前版本基线由上方10月14日记录取代。官方历史下载入口被浏览器安全策略拒绝，待客户提供官方SDK本机解压路径，不能换工具绕过。独立iOS Safari已实际提交错答并得到判错回执；提示确认、更正、独立变式和退出恢复尚未完成，且它不证明原生App。后续全部使用普通窗口，不进入全屏。
 

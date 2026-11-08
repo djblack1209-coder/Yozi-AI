@@ -198,7 +198,7 @@ describe('12B academic subjects and local usage', () => {
     const wrapper = render(Usage);
     await flushPromises();
     expect(wrapper.text()).toContain('本机学习用量');
-    expect(wrapper.text()).toContain('平台额度未同步');
+    expect(wrapper.text()).toContain('账户总额度未同步');
     expect(wrapper.text()).toContain('暂无第三方模型用量');
     expect(wrapper.text()).toContain('本机记录，不等于供应商账单');
     expect(wrapper.text()).not.toContain('—');
