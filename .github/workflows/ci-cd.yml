@@ -56,6 +56,16 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      - name: Stage the approved macOS download
+        run: |
+          archive='Yozi-AI-2.3.0-macOS-arm64.zip'
+          staged="$RUNNER_TEMP/$archive"
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            --retry 2 --connect-timeout 15 --max-time 90 \
+            "https://yozi.bot.cd/downloads/$archive" --output "$staged"
+          printf '%s  %s\n' '9057b775131b37cfdbb010594fb3818384127334c41a1775e18b4411f4b07d72' "$staged" | sha256sum -c
+          mv "$staged" "public/downloads/$archive"
+
       - name: Run Laf source audit
         run: |
           if [ "${LAF_SOURCE_AUDIT_STRICT}" = "true" ]; then
