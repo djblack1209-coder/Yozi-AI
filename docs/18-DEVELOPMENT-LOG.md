@@ -104,4 +104,4 @@ S52 及以前的完整回执见[历史归档](archive/18-DEVELOPMENT-LOG-until-S
 
 - Inventory found 0 proven eligible files outside protected/current/recovery scope; 0 files / 0 bytes deleted, so no deletion backup or restore. Original v3/Muse/App/BYOK source and prior edits retained.
 - Existing gate suite: 7,281 passed / 6 skipped / 2 failed (auth-failure.spec.js:237 owner u1 instead of guest; learning-ui.spec.js:2627 timer 1 instead of 0); stopped without fixes/retries. Website source built and local live-output/v3 renders observed; retained 2.2.0 native app boot/saved cards observed, no new native study submission claimed.
-- Test app, browser tab and preview servers closed; task-generated duplicate build/cache removed, failure evidence retained. No push/deploy/App update. Full inventory, actual coverage and backup status: [cleanup result](../YOZI-REPO-CLEANUP-RESULT-2026-11-06.md).
+- Test app, browser tab and preview servers closed; task-generated duplicate build/cache removed, failure evidence retained. No push/deploy/App update. Full inventory, actual coverage and backup status: cleanup result（本机 `YOZI-REPO-CLEANUP-RESULT-2026-11-06.md`）.

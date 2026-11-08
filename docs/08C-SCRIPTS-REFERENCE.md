@@ -1,6 +1,6 @@
 # 脚本与依赖维护
 
-2026-11-06 Wave3：macOS `build:desktop` 默认 Cargo 输出为 `tmp/desktop-native-target.noindex`，兼容显式 `CARGO_TARGET_DIR`；构建中的 App 与交付候选均处于 `.noindex`。本地补签启用 Hardened Runtime，`lsregister` 对新候选的精确 `-10814` 按未注册处理，其他失败保留；实际重新打包 exit0。Mac 原生学习／复习／同步／重开与各端覆盖见[结果](../YOZI-WAVE3-RESULT-2026-11-06.md)。
+2026-11-06 Wave3：macOS `build:desktop` 默认 Cargo 输出为 `tmp/desktop-native-target.noindex`，兼容显式 `CARGO_TARGET_DIR`；构建中的 App 与交付候选均处于 `.noindex`。本地补签启用 Hardened Runtime，`lsregister` 对新候选的精确 `-10814` 按未注册处理，其他失败保留；实际重新打包 exit0。Mac 原生学习／复习／同步／重开与各端覆盖见结果（本机 `YOZI-WAVE3-RESULT-2026-11-06.md`）。
 
 Windows 本轮使用项目内 cargo-xwin 0.24.0（官方固定提交 `e152e8fac67e977df9cf8e832c6045e5262fee1a`，支持含空格路径）、NSIS 3.13 与已确认许可的微软 SDK／CRT；沿 Tauri 默认静态 VCRUNTIME＋系统 UCRT，不另加 `+crt-static`。Tauri 自动封装会移除 `NSISDIR`，本轮直接用正式生成的 `installer.nsi` 和项目内 `NSISDIR` 调用原版 makensis，exit0；没有改上游或伪造 PATH 命令。完整命令与过程失败保留在资源记录／日志；[上游封装实现](https://github.com/tauri-apps/tauri/blob/dev/crates/tauri-bundler/src/bundle/windows/nsis/mod.rs)。
 

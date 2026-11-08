@@ -4,6 +4,7 @@ import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, unlinkSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
 import { once } from 'node:events';
+import { pathToFileURL } from 'node:url';
 import http from 'node:http';
 import { networkInterfaces } from 'node:os';
 
@@ -41,9 +42,10 @@ beforeAll(() => {
     if (name.endsWith('.js')) unlinkSync(`${directory}/functions/${name}`);
   }
   // Probe exists only in this disposable build, never in production sources/routes.
+  const clientIpModule = pathToFileURL(resolve(directory, 'functions/_shared/client-ip.js'));
   writeFileSync(
     `${directory}/functions/client-ip-probe.js`,
-    "import {getClientIp} from './_shared/client-ip.js'; export default async ctx => ({ip:getClientIp(ctx)});\n"
+    `import {getClientIp} from ${JSON.stringify(clientIpModule.href)}; export default async ctx => ({ip:getClientIp(ctx)});\n`
   );
 }, 60000);
 afterAll(async () => {

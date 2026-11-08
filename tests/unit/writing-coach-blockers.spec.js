@@ -832,21 +832,34 @@ describe('资料保存与绑定是一个整体', () => {
         capabilities: {}
       }
     ];
+    const generate = vi.mocked(generateLearningTurn);
+    const previousGenerate = generate.getMockImplementation();
+    const started = Promise.withResolvers();
+    const response = Promise.withResolvers();
+    generate.mockImplementation(() => {
+      started.resolve();
+      return response.promise;
+    });
     const pending = store.requestCoach('diagnostic');
-    for (let i = 0; i < 12; i++) await Promise.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(store.busy).toBe(true);
+    try {
+      await Promise.race([started.promise, pending]);
+      expect(store.busy).toBe(true);
 
-    const materialsBefore = store.state.materials.length;
-    const revisionBefore = store.state.revision;
-    const boundBefore = [...store.active.coach.materialIds];
-    expect(() => store.attachMaterial(material('需求曲线向右下方倾斜'))).toThrow('请回到当前带练，等待请求结束');
+      const materialsBefore = store.state.materials.length;
+      const revisionBefore = store.state.revision;
+      const boundBefore = [...store.active.coach.materialIds];
+      expect(() => store.attachMaterial(material('需求曲线向右下方倾斜'))).toThrow('请回到当前带练，等待请求结束');
 
-    // 关键：版本未推进、没有新增资料、也没有产生未绑定的孤儿资料。
-    expect(store.state.revision).toBe(revisionBefore);
-    expect(store.state.materials.length).toBe(materialsBefore);
-    expect(store.active.coach.materialIds).toEqual(boundBefore);
-    pending.catch(() => {});
+      // 关键：版本未推进、没有新增资料、也没有产生未绑定的孤儿资料。
+      expect(store.state.revision).toBe(revisionBefore);
+      expect(store.state.materials.length).toBe(materialsBefore);
+      expect(store.active.coach.materialIds).toEqual(boundBefore);
+    } finally {
+      response.resolve({ success: false, status: 'cancelled' });
+      await Promise.allSettled([pending]);
+      generate.mockImplementation(previousGenerate);
+      store.$dispose();
+    }
   });
 });
 

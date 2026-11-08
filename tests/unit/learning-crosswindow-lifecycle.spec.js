@@ -863,6 +863,13 @@ describe('加密同账户会话与凭据请求边界', () => {
     session();
     const actions = Object.keys(store).filter((name) => !/^[$_]/.test(name) && typeof store[name] === 'function');
     expect(actions.length).toBeGreaterThan(90);
+    // Reuse the encrypted facts and peer login. Each action still gets a fresh store bound to the old session.
+    const beforeLogin = JSON.stringify(global.__mockStorage);
+    const staleConfig = config();
+    const recordId = store.searchRecords('19').items[0].id;
+    peerLogin();
+    const afterLogin = JSON.stringify(global.__mockStorage);
+    expect(beforeLogin).not.toBe(afterLogin);
     const safeReads = new Set([
       'reloadRecords',
       'refresh',
@@ -904,13 +911,15 @@ describe('加密同账户会话与凭据请求边界', () => {
     const transport = vi.fn();
     vi.stubGlobal('fetch', transport);
     const request = vi.spyOn(uni, 'request');
-    for (const [index, name] of actions.entries()) {
+    for (const name of actions) {
       store.$dispose();
-      uni.clearStorageSync();
-      session();
-      const before = JSON.stringify(global.__mockStorage);
-      peerLogin(`peer_traversal_epoch_${index}`);
-      const afterLogin = JSON.stringify(global.__mockStorage);
+      global.__mockStorage = JSON.parse(beforeLogin);
+      setActivePinia(createPinia());
+      store = useConversationLearningStore();
+      store.openRecord(recordId, store.recordContext());
+      Object.assign(store, structuredClone(staleConfig));
+      expect(store.locatedRecord).not.toBeNull();
+      global.__mockStorage = JSON.parse(afterLogin);
       let result;
       try {
         result = store[name]();
@@ -921,7 +930,6 @@ describe('加密同账户会话与凭据请求边界', () => {
       else await expect(Promise.resolve(result), name).rejects.toMatchObject({ code: 'CONTEXT_CHANGED' });
       expectReset();
       expect(JSON.stringify(global.__mockStorage), name).toBe(afterLogin);
-      expect(before).not.toBe(afterLogin);
     }
     expect(transport).not.toHaveBeenCalled();
     expect(request).not.toHaveBeenCalled();

@@ -2644,23 +2644,35 @@ describe('学习空间的实际入口与目录', () => {
   });
   it('引导页离开后停止返回首页核验，迟到回执不打断当前页面', async () => {
     vi.useFakeTimers();
+    const previousRedirectTo = uni.redirectTo;
+    uni.redirectTo = vi.fn(() => Promise.resolve());
     const previousPages = globalThis.getCurrentPages;
     globalThis.getCurrentPages = vi.fn(() => [{ route: 'pages/learning/index' }]);
     const wrapper = mount(OnboardingPage, { global: { stubs } });
+    const schedule = vi.spyOn(globalThis, 'setTimeout');
+    const clear = vi.spyOn(globalThis, 'clearTimeout');
     try {
       await wrapper.find('.base-button--primary').trigger('tap');
       const navigation = uni.redirectTo.mock.calls.at(-1)[0];
+      const first = schedule.mock.calls.length;
+      navigation.success?.();
+      expect(schedule.mock.calls.slice(first).map(([, delay]) => delay)).toEqual([350, 1200, 2500]);
+      const verificationTimers = schedule.mock.results.slice(first).map(({ value }) => value);
       wrapper.unmount();
+      for (const timer of verificationTimers) expect(clear).toHaveBeenCalledWith(timer);
+      const scheduled = schedule.mock.calls.length;
       navigation.success?.();
       navigation.fail?.({ errMsg: 'late failure' });
-      await vi.advanceTimersByTimeAsync(3000);
+      expect(schedule.mock.calls).toHaveLength(scheduled);
       expect(uni.reLaunch).not.toHaveBeenCalled();
       expect(uni.redirectTo).toHaveBeenCalledTimes(1);
       expect(uni.switchTab).not.toHaveBeenCalled();
-      expect(vi.getTimerCount()).toBe(0);
     } finally {
       wrapper.unmount();
+      uni.redirectTo = previousRedirectTo;
       globalThis.getCurrentPages = previousPages;
+      schedule.mockRestore();
+      clear.mockRestore();
       vi.clearAllTimers();
       vi.useRealTimers();
     }

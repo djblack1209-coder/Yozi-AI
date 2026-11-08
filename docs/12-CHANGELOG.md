@@ -2,23 +2,23 @@
 
 2026-11-07 官网隐私政策与用户协议上线（1.1）：中英四页与首页页脚法律行；对照 docs/14 补 7 条数据流，改正境内模型、存储地与日志期限表述，联系方式开通前不写地址。37 项测试与本机／公网 14 例浏览器检查通过，guardian accepted，App 与后端不变。
 
-2026-11-06 官网重设计上线：Yoga Coach浅蓝／Anton体系、Cursor Follow指针视频、两幕叠卡与后六区块接入；中英桌面／390px本机与公网交互、原2.2.0 ZIP实下及/auth 404通过。guardian发布accepted，保留旧站回退与阶段备份，App和学习数据不变，见[结果](../YOZI-WEBSITE-REDESIGN-RESULT-2026-11-06.md)。
+2026-11-06 官网重设计上线：Yoga Coach浅蓝／Anton体系、Cursor Follow指针视频、两幕叠卡与后六区块接入；中英桌面／390px本机与公网交互、原2.2.0 ZIP实下及/auth 404通过。guardian发布accepted，保留旧站回退与阶段备份，App和学习数据不变，见结果（本机 `YOZI-WEBSITE-REDESIGN-RESULT-2026-11-06.md`）。
 
 2026-11-06 日常App更新：依客户授权，把已验源码77c0a94d按原应用标识／资料UUID重包2.2.0并原子安装至唯一日常入口；严格签名、实开及两处完整学习状态／8项账号键保留核对通过。更新前后均未登录，App留开供体验。旧程序回退与私有资料备份保留，账户核对明细见本机 Goal 收尾回执。
 
-2026-11-06 Goal收尾：建立本地注释标签v2.0.0／源码快照77c0a94d（包仍2.2.0）与完整包SHA；207项和类型复核通过。获准沿用付费DeepSeek后，原生新学习／复习、17条评估、完整邀请邮件、66新事件同步／重开及800×600入口通过；Windows原有内嵌CRC与结构核对通过，未实开。23笔账本／100,871已知tokens、1笔缺用量、金额pending；原账号、日常App及生产保持，移动SDK／签名与公证等后置项保持，见[结果](../YOZI-GOAL-CLOSEOUT-RESULT-2026-11-06.md)。
+2026-11-06 Goal收尾：建立本地注释标签v2.0.0／源码快照77c0a94d（包仍2.2.0）与完整包SHA；207项和类型复核通过。获准沿用付费DeepSeek后，原生新学习／复习、17条评估、完整邀请邮件、66新事件同步／重开及800×600入口通过；Windows原有内嵌CRC与结构核对通过，未实开。23笔账本／100,871已知tokens、1笔缺用量、金额pending；原账号、日常App及生产保持，移动SDK／签名与公证等后置项保持，见结果（本机 `YOZI-GOAL-CLOSEOUT-RESULT-2026-11-06.md`）。
 
-2026-11-06 Wave3：macOS App／ZIP／DMG 实开核验，Windows x64 安装器／便携包已生成并解包核对，手机 5.31 共享资源与 18 张新图标绑定完成。修复副词修饰被误归为从句修饰对象的扣档；本机实际完成 18 条作答、复习、成文、69 事件同步及重开，新增模型账本 0；207 项定向检查与类型检查通过。44 笔账本／174,370 已知 tokens、1 笔用量缺失、费用全 pending；Windows 实开、移动 SDK／签名及正式分发条件仍缺，日常 App／生产／官网未更新，见[结果](../YOZI-WAVE3-RESULT-2026-11-06.md)。
+2026-11-06 Wave3：macOS App／ZIP／DMG 实开核验，Windows x64 安装器／便携包已生成并解包核对，手机 5.31 共享资源与 18 张新图标绑定完成。修复副词修饰被误归为从句修饰对象的扣档；本机实际完成 18 条作答、复习、成文、69 事件同步及重开，新增模型账本 0；207 项定向检查与类型检查通过。44 笔账本／174,370 已知 tokens、1 笔用量缺失、费用全 pending；Windows 实开、移动 SDK／签名及正式分发条件仍缺，日常 App／生产／官网未更新，见结果（本机 `YOZI-WAVE3-RESULT-2026-11-06.md`）。
 
-2026-11-06 官网参考返修已上线：Hero 改自制近景循环视频与本地 Readex，补齐四卡视频、白底理念弹簧轮播、费用滚动按钮、FAQ 过渡／光边、固定 CTA 与粗体页脚。34 项定向测试、一次官网构建、本机及公网中英桌面／375px实操通过，受保护发布 d8ed4ac7a48645b0a06cdaaaaf2ffef6 accepted；原影片许可不明，未复刻其具体拍摄素材。App／后端业务／原下载保持，见[逐段差异与实屏](../WEBSITE-REFERENCE-REBUILD-RESULT-2026-11-06.md#fix-round--self-analysis-and-conclusions)。
+2026-11-06 官网参考返修已上线：Hero 改自制近景循环视频与本地 Readex，补齐四卡视频、白底理念弹簧轮播、费用滚动按钮、FAQ 过渡／光边、固定 CTA 与粗体页脚。34 项定向测试、一次官网构建、本机及公网中英桌面／375px实操通过，受保护发布 d8ed4ac7a48645b0a06cdaaaaf2ffef6 accepted；原影片许可不明，未复刻其具体拍摄素材。App／后端业务／原下载保持，见逐段差异与实屏（本机 `WEBSITE-REFERENCE-REBUILD-RESULT-2026-11-06.md#fix-round--self-analysis-and-conclusions`）。
 
-2026-11-06 官网指定参考重建已上线：黑白统一视觉、错位首屏、四卡片、理念轮播、诚实 BYOK 费用、分类 FAQ 与三卡片下载／大字页脚；中英及视频续播保持。34 项定向测试、本机／公网桌面与375px实操、同源资源和受保护发布通过；首次统计注入自动回滚后修复，App及原2.2.0包未改。见[结果](../WEBSITE-REFERENCE-REBUILD-RESULT-2026-11-06.md)。
+2026-11-06 官网指定参考重建已上线：黑白统一视觉、错位首屏、四卡片、理念轮播、诚实 BYOK 费用、分类 FAQ 与三卡片下载／大字页脚；中英及视频续播保持。34 项定向测试、本机／公网桌面与375px实操、同源资源和受保护发布通过；首次统计注入自动回滚后修复，App及原2.2.0包未改。见结果（本机 `WEBSITE-REFERENCE-REBUILD-RESULT-2026-11-06.md`）。
 
 2026-11-05 官网 v3 本地候选：按科目切换知识分支、错答订正与复习建议，中英双语静态页面可独立打开。详见[主题、方法与截图](website-theme-v3.md)。
 
-2026-11-05 官网重建已上线：独立静态全平台介绍、山湖循环视频、逐词模糊入场、统一玻璃与三视图学习示意；版本 2.2.0，App／引擎／BYOK 及原下载不改。桌面／375px／首帧、实播／循环／菜单／减少动态、30项定向测试及受保护发布通过；自评8.5／10、最低8。见[结果](../WEBSITE-REDESIGN-RESULT-2026-11-05.md)。
+2026-11-05 官网重建已上线：独立静态全平台介绍、山湖循环视频、逐词模糊入场、统一玻璃与三视图学习示意；版本 2.2.0，App／引擎／BYOK 及原下载不改。桌面／375px／首帧、实播／循环／菜单／减少动态、30项定向测试及受保护发布通过；自评8.5／10、最低8。见结果（本机 `WEBSITE-REDESIGN-RESULT-2026-11-05.md`）。
 
-2026-11-05 官网正式 1.0 已上线：中文四项功能、页脚与法律页、首屏优化、SEO／完整favicon及真实404；30项定向检查、公网桌面／390px截图、链接与真实下载通过，Mac包仍为原2.2.0。沿既有build:h5／受保护事务发布，未改App业务或后端；域名邮箱按客户更正保留待办，未验证收信前不公开。见[结果](../WEBSITE-LAUNCH-RESULT-2026-11-05.md)。
+2026-11-05 官网正式 1.0 已上线：中文四项功能、页脚与法律页、首屏优化、SEO／完整favicon及真实404；30项定向检查、公网桌面／390px截图、链接与真实下载通过，Mac包仍为原2.2.0。沿既有build:h5／受保护事务发布，未改App业务或后端；域名邮箱按客户更正保留待办，未验证收信前不公开。见结果（本机 `WEBSITE-LAUNCH-RESULT-2026-11-05.md`）。
 
 2026-11-05 公网入口更正为 [yozi.bot.cd](https://yozi.bot.cd/)；经客户授权停用两个旧 exam 网站并返回410，巡检切换新官网且实跑成功。新站首页／资源／健康与受保护接口通过，兼容DNS及在用API保留；nginx定向检查3项通过，未改用户数据、UI或公网应用版本。见[记录](18-DEVELOPMENT-LOG.md#公网入口更正与旧站下线20261105)。
 
@@ -391,4 +391,4 @@ Ideas／History 可保存 1080×1440 学习图，默认排除身份、原答和�
 
 ### 2026-11-06 — Repository cleanup stopped
 
-- 0 proven eligible candidates / 0 bytes removed; v3, Muse, live website, App and existing WIP retained; no deletion backup needed. Suite 7,281 passed / 6 skipped / 2 failed, so stopped without fixes; site build/render and native boot/saved-card scope only. [Inventory and actual results](../YOZI-REPO-CLEANUP-RESULT-2026-11-06.md).
+- 0 proven eligible candidates / 0 bytes removed; v3, Muse, live website, App and existing WIP retained; no deletion backup needed. Suite 7,281 passed / 6 skipped / 2 failed, so stopped without fixes; site build/render and native boot/saved-card scope only. Inventory and actual results（本机 `YOZI-REPO-CLEANUP-RESULT-2026-11-06.md`）.
