@@ -83,6 +83,10 @@ S53客户端恢复只读分工时，可识别本对话已明确保存的Goal／t
 
 平台调用必须同时配置 `LEARNING_USER_DAILY_CALL_LIMIT`、`LEARNING_GLOBAL_DAILY_CALL_LIMIT` 与 `LEARNING_GLOBAL_DAILY_BUDGET`（计价币种沿模型价格合同，美元）；缺失配置关闭调用。所有用户按中国自然日共用一个 CAS 预算账，先预留最坏费用再执行，未知费用保持待结算并阻止继续占用。原账户硬预算、限流和幂等仍生效；免费朋友试用须明确启用 `LEARNING_FRIEND_TRIAL_ENABLED=true` 且精确端点/型号的免费价格仍有效，不能用于付费型号。
 
+现有配置能否表达“这个账号试用期共 N 次平台调用”？不能，所以新增下述开关。
+周权益 `entitlement.weeklyUnits` 每周重置，只能表达每周 N 次（`tests/unit/learning-trial-credits.spec.ts` 的「周额度每周重置」用例）。
+朋友试用名单只放行免费定价模型，日限额对所有人相同，都无法按账号限总次数。
+
 试用额度开关（2026-11-08，R10）：`LEARNING_TRIAL_CREDITS_ENABLED`，默认关闭，开发期不开启；开启后按 `LEARNING_TRIAL_CREDIT_GRANTS`（`邮箱:次数`）逐账号授予平台模型次数，受 `LEARNING_TRIAL_CREDIT_USER_LIMIT` 与 `LEARNING_TRIAL_CREDIT_COST_LIMIT` 约束，用于测试版获客时的反馈换额度；额度数值与名单待推广时确定。开启前须先让结算能为 DeepSeek 的缓存和思考用量定价，否则费用一直待结算，全局日预算会拒绝全部平台调用。
 
 本地网络若返回保留地址，仍由 SSRF 拒绝；可明确配置仅该后端进程的 `LEARNING_DNS_SERVERS`（至多三个公网 DNS IP），不会修改系统或共享网络；所有 A/AAAA 结果仍须为公网地址、固定套接字并检查 TLS。无自动供应商切换或失败重发，客户端中断只查询原请求。
