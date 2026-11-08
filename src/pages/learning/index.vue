@@ -2929,7 +2929,7 @@ const emptyConnectionAction = computed(() =>
   learning.modelListState.phase !== 'loading' && connectionTone.value !== 'mint' ? 'AI 连接器' : ''
 );
 const byokForm = ref(false);
-const visibleModels = computed(() => visibleModelChoices(learning.models, learning.models));
+const visibleModels = computed(() => learning.models);
 const connectionPresets = computed(() =>
   visibleModelChoices(
     [

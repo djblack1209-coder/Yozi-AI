@@ -206,7 +206,25 @@ describe('BYOK two-step connector UI', () => {
     expect(wrapper.text()).not.toContain('legacy-secret');
     expect(harness.store.saveModel).not.toHaveBeenCalled();
   });
-  it('offers provider choices, shows multiple saved connections and filters platform models', async () => {
+  it('shows only the 13 release providers followed by the custom entry in the add list', () => {
+    expect(wrapper.findAll('[data-provider-id]').map((row) => row.attributes('data-provider-id'))).toEqual([
+      'deepseek',
+      'siliconflow',
+      'zhipu',
+      'dashscope',
+      'moonshot',
+      'ark',
+      'qianfan',
+      'hunyuan',
+      'minimax',
+      'stepfun',
+      'spark',
+      'yi',
+      'baichuan',
+      'custom'
+    ]);
+  });
+  it('shows multiple saved connections and filters platform models', async () => {
     harness.store.models = [
       saved(),
       saved('two', {
@@ -223,7 +241,20 @@ describe('BYOK two-step connector UI', () => {
     expect(wrapper.text()).toContain('正在使用');
     expect(wrapper.text()).toContain('密钥无效');
     expect(wrapper.find('[data-connection-id="platform"]').exists()).toBe(false);
-    expect(wrapper.find('[data-provider-id="openrouter"]').exists()).toBe(true);
+    expect(wrapper.find('[data-provider-id="openrouter"]').exists()).toBe(false);
+  });
+  it('keeps a saved Z.ai connection available for management', async () => {
+    harness.store.models = [
+      saved('legacy-zai', {
+        provider: 'Z.ai',
+        endpoint: 'https://api.z.ai/api/paas/v4/chat/completions',
+        model: 'glm-4.5-flash'
+      })
+    ];
+    await nextTick();
+    expect(wrapper.get('[data-connection-id="legacy-zai"]').text()).toContain('glm-4.5-flash');
+    await manage('legacy-zai');
+    expect(wrapper.get('[role="dialog"]').text()).toContain('Z.ai');
   });
   it('saves a key before discovery, requires an explicit model choice and never starts inference on selection', async () => {
     await add();

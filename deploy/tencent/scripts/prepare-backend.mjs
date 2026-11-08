@@ -17,6 +17,21 @@ const image = 'docker.io/library/mongo@sha256:bac22ea7710d774103dcad3ec8ac13cba1
 const container = 'wenli-mongo';
 const archive = '/opt/apps/exam-master/release-ops/wenli-backend-candidate.tar.gz';
 const stageContract = 'wenli-backend-stage-v2';
+const rehearsalLearningOrigins = [
+  'https://api.deepseek.com',
+  'https://api.siliconflow.cn',
+  'https://open.bigmodel.cn',
+  'https://dashscope.aliyuncs.com',
+  'https://api.moonshot.cn',
+  'https://ark.cn-beijing.volces.com',
+  'https://qianfan.baidubce.com',
+  'https://tokenhub.tencentmaas.com',
+  'https://api.minimax.cn',
+  'https://api.stepfun.com',
+  'https://spark-api-open.xf-yun.com',
+  'https://api.lingyiwanwu.com',
+  'https://api.baichuan-ai.com'
+].join(',');
 const sha = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const json = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 const owned = (root, id) => json(path.join(root, '.wenli-owner.json')).transaction === id;
@@ -309,7 +324,7 @@ export function candidateEnvironment({ uri, database, storage, jwtSecret, adminS
     ADMIN_SECRET: adminSecret,
     ALLOWED_ORIGINS: 'tauri://localhost',
     LEARNING_VAULT_KEY: vaultKey,
-    LEARNING_ALLOWED_ORIGINS: 'https://api.groq.com',
+    LEARNING_ALLOWED_ORIGINS: rehearsalLearningOrigins,
     LEARNING_PLATFORM_CALLS_ENABLED: 'false',
     LEARNING_PAYMENT_SANDBOX_ENABLED: 'false',
     DESKTOP_OAUTH_ENABLED: 'false'
@@ -1676,6 +1691,7 @@ async function prepare(state, candidateSha) {
       .command({ createUser: 'candidate', pwd: testPassword, roles: [{ role: 'readWrite', db: testDb }] });
     prior.port = '27019';
     prior.searchParams.set('authSource', 'exam-master');
+    // Carry the existing learning origins through to the production-derived environment.
     const env = fs.readFileSync(path.join(legacy, '.env'), 'utf8');
     const additions = {
       MONGODB_URI: prior.toString(),
@@ -1684,7 +1700,6 @@ async function prepare(state, candidateSha) {
       PORT: '3001',
       STORAGE_DIR: path.join(data, 'storage'),
       LEARNING_VAULT_KEY: crypto.randomBytes(32).toString('hex'),
-      LEARNING_ALLOWED_ORIGINS: 'https://api.groq.com',
       LEARNING_PLATFORM_CALLS_ENABLED: 'false',
       LEARNING_PAYMENT_SANDBOX_ENABLED: 'false',
       ALLOWED_ORIGINS: [
@@ -1724,7 +1739,7 @@ async function prepare(state, candidateSha) {
         JWT_SECRET: jwtSecret,
         ALLOWED_ORIGINS: 'tauri://localhost',
         LEARNING_VAULT_KEY: additions.LEARNING_VAULT_KEY,
-        LEARNING_ALLOWED_ORIGINS: 'https://api.groq.com',
+        LEARNING_ALLOWED_ORIGINS: rehearsalLearningOrigins,
         LEARNING_PLATFORM_CALLS_ENABLED: 'false',
         LEARNING_PAYMENT_SANDBOX_ENABLED: 'false'
       },

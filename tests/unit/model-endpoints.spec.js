@@ -5,7 +5,9 @@ import { join } from 'node:path';
 import {
   MODEL_ENDPOINTS,
   MODEL_CONNECTION_PRESETS,
-  completeModelEndpoint
+  RELEASE_PROVIDERS,
+  completeModelEndpoint,
+  visibleModelChoices
 } from '../../laf-backend/functions/_shared/ai-providers/model-endpoints.js';
 import {
   validateCloudEndpoint,
@@ -13,6 +15,22 @@ import {
 } from '../../laf-backend/functions/_shared/ai-providers/learning-provider';
 import { MODEL_BRANDS } from '../../src/config/model-brands.js';
 import { readFreeApiCatalog } from '../../scripts/build/free-api-catalog.mjs';
+
+const releaseIds = [
+  'deepseek',
+  'siliconflow',
+  'zhipu',
+  'dashscope',
+  'moonshot',
+  'ark',
+  'qianfan',
+  'hunyuan',
+  'minimax',
+  'stepfun',
+  'spark',
+  'yi',
+  'baichuan'
+];
 
 const domesticProviders = [
   [
@@ -224,6 +242,26 @@ describe('模型基础地址与实际请求地址', () => {
       pricing: 'official_free_model',
       verifiedAt: '2026-11-02'
     });
+  });
+
+  it('records the 13 release providers in a frozen map', () => {
+    expect(Object.isFrozen(RELEASE_PROVIDERS)).toBe(true);
+    expect(Object.keys(RELEASE_PROVIDERS)).toEqual(releaseIds);
+    expect(RELEASE_PROVIDERS.siliconflow).toBe('Beijing-GuiJiLiuDongAIYunFuWu-20251201S0112');
+  });
+
+  it('offers only release endpoints to new connections, including when older presets are supplied', () => {
+    expect(visibleModelChoices(MODEL_ENDPOINTS, []).map(({ id }) => id)).toEqual(releaseIds);
+    const releaseEndpoints = MODEL_ENDPOINTS.filter(({ id }) => releaseIds.includes(id)).map(({ endpoint }) => endpoint);
+    expect(new Set(visibleModelChoices(MODEL_CONNECTION_PRESETS, []).map(({ endpoint }) => endpoint))).toEqual(
+      new Set(releaseEndpoints)
+    );
+  });
+
+  it('still offers a Z.ai choice when its exact connection has a saved credential', () => {
+    const choice = MODEL_CONNECTION_PRESETS.find(({ id }) => id === 'zai-glm-flash');
+    expect(visibleModelChoices([choice], [{ ...choice, configured: false }])).toEqual([]);
+    expect(visibleModelChoices([choice], [{ ...choice, configured: true }])).toEqual([choice]);
   });
 });
 
