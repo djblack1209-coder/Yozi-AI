@@ -5,6 +5,9 @@ const errorEvidence = (feedback) =>
   list(feedback?.weaknessEvidence).filter(
     (item) => item.classification === 'error' && typeof item.quote === 'string' && item.quote.trim()
   );
+export const COACH_RECALL_CONTRACT = 'coach-recall-v1';
+const dayMs = 86400000;
+const recallIntervals = [3, 7, 14];
 
 export function coachErrorReviews(state, at = Date.now(), conversationId) {
   const rows = [];
@@ -70,9 +73,7 @@ export function coachErrorReviews(state, at = Date.now(), conversationId) {
               )
           )
           .map((dimension) => dimension.name);
-        const id = `coach-error:${receipt.id}:${answer.id}`;
-        const attempts = list(coach.errorReviews).filter((item) => item.reviewId === id && item.at <= at);
-        const completed = [...attempts, ...covering].find((item) => {
+        const assessmentFor = (item) => {
           const assessment = item.feedback;
           const assessed = coach.requests.find(
             (req) =>
@@ -81,41 +82,30 @@ export function coachErrorReviews(state, at = Date.now(), conversationId) {
                 (item.coveringRequestId && req.id === item.coveringRequestId))
           );
           const event = assessed && state.events.find((entry) => entry.id === assessed.resultId);
-          return (
-            assessed?.status === 'completed' &&
-            event?.type === 'coach.result' &&
-            event.data?.conversationId === conversation.id &&
-            event.data.requestId === assessed.id &&
-            event.at <= at &&
-            assessment.feedbackVersion === 2 &&
-            !errorEvidence(assessment).length &&
+          if (
+            assessed?.status !== 'completed' ||
+            event?.type !== 'coach.result' ||
+            event.data?.conversationId !== conversation.id ||
+            event.data.requestId !== assessed.id ||
+            event.at > at ||
+            assessment.feedbackVersion !== 2
+          )
+            return null;
+          const wrong = errorEvidence(assessment).length > 0;
+          const passed =
+            !wrong &&
             dimensions.every((name) => assessment.dimensions?.some((item) => item.name === name && item.score === 2)) &&
             list(assessment.dimensions).some((dimension) => dimension.score === 2) &&
             list(assessment.dimensions).every((dimension) => dimension.score === null || dimension.score === 2) &&
-            !list(assessment.weaknessEvidence).some((item) => item.classification === 'uncertain')
-          );
-        });
-        const deferred = state.events
-          .filter(
-            (event) =>
-              ['review.skip', 'review.reschedule'].includes(event.type) &&
-              event.data.conversationId === conversation.id &&
-              event.data.reviewId === id &&
-              event.at <= at
-          )
-          .at(-1);
-        rows.push({
-          id,
+            !list(assessment.weaknessEvidence).some((item) => item.classification === 'uncertain');
+          return { item, event, wrong, passed };
+        };
+        const original = {
           kind: 'coach_error',
           conversationId: conversation.id,
           questionKey: null,
           itemId: answer.id,
-          due: receipt.at,
-          availableAt: Math.max(receipt.at, deferred?.result.availableAt || receipt.at),
           cancelled: false,
-          completedBy: completed?.feedback.id || null,
-          completedAt: completed ? state.events.find((event) => event.id === completed.feedback.id).at : null,
-          wrongCount: 1 + attempts.filter((item) => errorEvidence(item.feedback).length).length,
           sourceFeedbackId: receipt.id,
           sourceRequestId: request.id,
           sourceAnswerId: answer.id,
@@ -125,9 +115,53 @@ export function coachErrorReviews(state, at = Date.now(), conversationId) {
           original: content,
           labels: [...new Set(observations.map((item) => item.label))],
           dimensions,
-          observations,
-          latestAttempt: attempts.at(-1) || null
-        });
+          observations
+        };
+        let id = `coach-error:${receipt.id}:${answer.id}`;
+        let due = receipt.at;
+        let streak = 0;
+        while (true) {
+          const attempts = list(coach.errorReviews).filter((item) => item.reviewId === id && item.at <= at);
+          const assessed = attempts.map(assessmentFor).filter(Boolean);
+          const completed =
+            assessed.find((item) => item.passed) ||
+            (due === receipt.at ? covering.map(assessmentFor).find((item) => item?.passed) : null);
+          const rated = assessed.filter(
+            ({ item, passed, wrong }) => item.recallContract === COACH_RECALL_CONTRACT && (passed || wrong)
+          );
+          if (rated.some(({ wrong }) => wrong)) streak = 0;
+          const latest = rated.at(-1);
+          const rating = latest?.passed ? (latest.item.referenceShown ? 'hard' : 'good') : 'again';
+          const recall = latest
+            ? {
+                rating,
+                at: latest.event.at,
+                due: latest.event.at + dayMs * (rating === 'good' ? recallIntervals[streak] : 1)
+              }
+            : null;
+          const deferred = state.events.findLast(
+            (event) =>
+              ['review.skip', 'review.reschedule'].includes(event.type) &&
+              event.data.conversationId === conversation.id &&
+              event.data.reviewId === id &&
+              event.at <= at
+          );
+          rows.push({
+            ...original,
+            id,
+            due,
+            availableAt: Math.max(due, deferred?.result.availableAt || due, completed ? due : recall?.due || due),
+            completedBy: completed?.event.id || null,
+            completedAt: completed?.event.at ?? null,
+            wrongCount: 1 + attempts.filter((item) => errorEvidence(item.feedback).length).length,
+            latestAttempt: attempts.at(-1) || null,
+            ...(recall ? { recall } : {})
+          });
+          if (!recall || !completed || completed.item !== latest.item) break;
+          id = `coach-recall:${latest.item.id}`;
+          due = recall.due;
+          streak = rating === 'good' ? Math.min(streak + 1, recallIntervals.length - 1) : 0;
+        }
       }
     };
     collect(

@@ -4,7 +4,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import MuseErrorReview from '@/components/business/learning/muse-error-review.vue';
 import BaseInput from '@/components/base/base-input/base-input.vue';
 import { workspaceDrafts } from '@/services/learning/workspace-drafts.js';
-import { coachErrorReviews } from '../../laf-backend/functions/_shared/learning-coach-review.js';
+import { COACH_RECALL_CONTRACT, coachErrorReviews } from '../../laf-backend/functions/_shared/learning-coach-review.js';
 import { reviewFacts } from '../../laf-backend/functions/_shared/learning-adherence.js';
 import { applyLearningOperation, summarizeLearning } from '@/services/learning/learning-domain.js';
 import {
@@ -266,6 +266,33 @@ describe('saved grading errors are traceable review queue items', () => {
     });
     expect(state.conversations[0].coach.days[0].answers[0].answer).toBe('On');
   });
+  it.each([
+    [false, 'good', 3],
+    [true, 'hard', 1]
+  ])('creates a dated recall after a new graded answer (reference shown: %s)', (referenceShown, rating, days) => {
+    const initial = errorReviewFixture();
+    const [before] = coachErrorReviews(initial, AT);
+    const recalled = operation(
+      initial,
+      'coach.errorAnswer',
+      { reviewId: before.id, answer: 'in', recallContract: COACH_RECALL_CONTRACT, referenceShown },
+      'new-original'
+    );
+    const due = AT + days * 86400000;
+    const rows = coachErrorReviews(assessed(requested(recalled)), AT);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      id: before.id,
+      completedBy: 'new-receipt',
+      recall: { rating, due }
+    });
+    expect(rows[1]).toMatchObject({
+      id: 'coach-recall:new-original',
+      availableAt: due,
+      completedBy: null,
+      sourceAnswerId: before.sourceAnswerId
+    });
+  });
   it('retains the item when the new error remains, the failed dimension is null, or a judgment is uncertain', () => {
     for (const patch of [
       {
@@ -350,6 +377,8 @@ describe('error review uses its own explicit answer and device draft', () => {
     drafts.save(store.recordContext(), key, { answer: 'Unsubmitted main composer' });
     const wrapper = render();
     await tap(wrapper, '开始重练');
+    expect(wrapper.text()).not.toContain('上次原答On');
+    await tap(wrapper, '查看上次原答');
     expect(wrapper.text()).toContain('On');
     expect(store.coachSave).not.toHaveBeenCalled();
     expect(store.requestCoach).not.toHaveBeenCalled();

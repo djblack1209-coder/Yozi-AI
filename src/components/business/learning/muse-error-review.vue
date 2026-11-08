@@ -5,8 +5,11 @@
     <text class="review-source">{{ item.sourceDay }} · AI 评估</text>
     <text selectable>{{ item.prompt }}</text>
     <template v-if="editing || item.latestAttempt">
-      <text class="review-source">上次原答</text>
-      <text selectable>{{ item.original }}</text>
+      <template v-if="referenceShown || (item.latestAttempt && !item.latestAttempt.feedback)">
+        <text class="review-source">上次原答</text>
+        <text selectable>{{ item.original }}</text>
+      </template>
+      <BaseButton v-else variant="quiet" @tap="referenceShown = true">查看上次原答</BaseButton>
       <template v-if="item.latestAttempt && !item.latestAttempt.feedback">
         <text class="review-source">重练原答已保存</text>
         <text selectable>{{ item.latestAttempt.answer }}</text>
@@ -14,7 +17,7 @@
       </template>
       <template v-else>
         <MuseFeedbackCard
-          v-if="item.latestAttempt?.feedback"
+          v-if="referenceShown && item.latestAttempt?.feedback"
           :feedback="item.latestAttempt.feedback"
           :adoptable="false"
           :disabled="learning.busy"
@@ -28,6 +31,9 @@
     <text v-if="message" role="status">{{ message }}</text>
   </BaseCard>
   <text v-else-if="message" role="status">{{ message }}</text>
+  <text v-if="recentRecall" class="review-source" role="status"
+    >{{ recallLabels[recentRecall.rating] }} · 下次复习 {{ dayKey(recentRecall.due, learning.state.timezone) }}</text
+  >
 </template>
 <script setup>
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
@@ -37,27 +43,31 @@ import BaseInput from '@/components/base/base-input/base-input.vue';
 import MuseFeedbackCard from './muse-feedback-card.vue';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { workspaceDrafts } from '@/services/learning/workspace-drafts.js';
-import { coachErrorReviews } from '../../../../laf-backend/functions/_shared/learning-coach-review.js';
-import { assert } from '@/services/learning/learning-domain.js';
+import { COACH_RECALL_CONTRACT, coachErrorReviews } from '../../../../laf-backend/functions/_shared/learning-coach-review.js';
+import { assert, dayKey } from '@/services/learning/learning-domain.js';
 import { publicError } from '@/i18n/index.js';
 
 const props = defineProps({ conversationId: { type: String, required: true } });
 const learning = useConversationLearningStore();
 const selected = ref(null),
   editing = ref(false),
+  referenceShown = ref(false),
   answer = ref(''),
   message = ref('');
-const pending = computed(() => {
+const reviews = computed(() => {
   // State writes can occur between minute ticks. Read the actual time for a
   // freshly saved answer, while the shared calendar still wakes idle views.
   void learning.calendarTime;
   const at = Date.now();
   return learning.active?.id === props.conversationId
-    ? coachErrorReviews(learning.state, at, props.conversationId).filter(
-        (row) => !row.completedBy && row.availableAt <= at
-      )
+    ? coachErrorReviews(learning.state, at, props.conversationId)
     : [];
 });
+const pending = computed(() => reviews.value.filter((row) => !row.completedBy && row.availableAt <= Date.now()));
+const recallLabels = { again: '还需复习', hard: '参考后完成', good: '本卡未查看参考，已通过复练' };
+const recentRecall = computed(() =>
+  reviews.value.reduce((latest, row) => (row.recall && (!latest || row.recall.at > latest.at) ? row.recall : latest), null)
+);
 const item = computed(() => {
   const opened = learning.state.events
     .filter((event) => event.type === 'review.open' && event.data.conversationId === props.conversationId)
@@ -85,7 +95,7 @@ let binding,
   restoring = false;
 function saveDraft() {
   if (binding && !restoring && binding.context === learning.recordContext())
-    drafts.save(binding.context, binding.key, { answer: answer.value });
+    drafts.save(binding.context, binding.key, { answer: answer.value, referenceShown: referenceShown.value });
 }
 watch(
   () => JSON.stringify([learning.recordContext(), props.conversationId, item.value?.id]),
@@ -94,14 +104,16 @@ watch(
     saveDraft();
     restoring = true;
     binding = { context, conversationId, key: `coach-error:${conversationId}:${id || 'none'}` };
-    answer.value = id ? drafts.read(context, binding.key).answer || '' : '';
-    editing.value = Boolean(answer.value);
+    const saved = id ? drafts.read(context, binding.key) : {};
+    answer.value = saved.answer || '';
+    referenceShown.value = !!saved.referenceShown;
+    editing.value = Boolean(answer.value || referenceShown.value);
     message.value = '';
     restoring = false;
   },
   { immediate: true, flush: 'sync' }
 );
-watch(answer, saveDraft, { flush: 'sync' });
+watch([answer, referenceShown], saveDraft, { flush: 'sync' });
 onBeforeUnmount(saveDraft);
 function current() {
   assert(
@@ -124,9 +136,15 @@ async function assess() {
 async function submit() {
   try {
     current();
-    learning.coachSave('errorAnswer', { reviewId: item.value.id, answer: answer.value });
-    drafts.remove(binding.context, binding.key);
+    learning.coachSave('errorAnswer', {
+      reviewId: item.value.id,
+      answer: answer.value,
+      recallContract: COACH_RECALL_CONTRACT,
+      referenceShown: referenceShown.value
+    });
     answer.value = '';
+    referenceShown.value = false;
+    drafts.remove(binding.context, binding.key);
     if (learning.sharingAllowed) await assess();
     else message.value = '重练原答已保存，确认共享后可核对反馈。';
   } catch (error) {

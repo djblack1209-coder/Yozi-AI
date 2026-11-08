@@ -10,7 +10,7 @@ import { phraseReviewRating } from './learning-runtime-policy.js';
 /* global __YOZI_DEV_TEST__ */
 // 教学方法与已保存事实共用现有学习 reducer、备份及同步；模型不授予可靠判分。
 import { reviewFacts } from './learning-adherence.js';
-import { coachErrorReviews } from './learning-coach-review.js';
+import { COACH_RECALL_CONTRACT, coachErrorReviews } from './learning-coach-review.js';
 import { WRITING_KNOWLEDGE_CONTRACT, writingKnowledgeBinding } from './learning-writing-knowledge.js';
 import { normalizeLearningModelOrigin } from './learning-model-origin.js';
 import { subjectCoachMethod, subjectCoachMethodByContract } from './learning-coach-methods.js';
@@ -2021,6 +2021,12 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
   assert(coach.profile, 'PRECONDITION', '请先保存或跳过建档问题');
   const day = coach.days.find((v) => v.day === (op.type === 'coach.request' ? d.request?.day : d.day || today));
   if (op.type === 'coach.errorAnswer') {
+    assert(
+      d.recallContract === undefined ||
+        (d.recallContract === COACH_RECALL_CONTRACT && typeof d.referenceShown === 'boolean'),
+      'INVALID_INPUT',
+      '回忆记录不合法'
+    );
     const review = coachErrorReviews(state, op.at, c.id).find(
       (item) => item.id === d.reviewId && !item.completedBy && item.availableAt <= op.at
     );
@@ -2068,6 +2074,7 @@ export function applyWritingCoachOperation(state, op, { assert, dayKey }) {
       answer,
       task,
       prompt: review.prompt,
+      ...(d.recallContract ? { recallContract: d.recallContract, referenceShown: d.referenceShown } : {}),
       ...(originalRequest.request.sourceKind ? { sourceKind: originalRequest.request.sourceKind } : {}),
       feedback: null
     });
