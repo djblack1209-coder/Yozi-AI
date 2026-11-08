@@ -45,13 +45,13 @@
 
 | 项 | 当前值 |
 | --- | --- |
-| 源码基线 | 当前本机App为Wave3冻结源码77c0a94d（本地v2.0.0标签、包2.2.0）；本次仅沿原日常身份／资料UUID重包，产品代码不改。S56后端e583f818及两项缺陷b183cd05／d0ddf328为既有历史基线，原提交保留；本轮不部署后端。 |
-| 最新候选 | Wave3冻结源码77c0a94d／本地注释标签v2.0.0（包2.2.0）；正式通用包在release/yozi-wave3-20261106.noindex。本次依客户要求，以相同已验桌面前端和原生源码、保留日常标识／资料UUID重包，已安装唯一日常入口（7dfb1bff…）；未改后端或生产。 |
+| 源码基线 | Wave3 冻结基线为 `v2.0.0`（77c0a94d，包 2.2.0）。本机日常 App 已更新至 R5-B3（d9e24e19）。S56 后端 e583f818 及两项缺陷 b183cd05／d0ddf328 为既有历史基线。 |
+| 最新候选 | R5 本机 QA 包在 `tmp/r5-shell-20261107.noindex/b3-closeout.noindex/Yozi AI.app`。Wave3 正式通用包在 `release/yozi-wave3-20261106.noindex`。 |
 | S56 测试后端（历史） | `tmp/yozi-candidate-build/backend` not present (checked 2026-11-07)。`tmp/local-workflow-continuation-backend`（e583f818）not present (checked 2026-11-07)。执行记录见 §3 已验批次。 |
 | S55 回退（历史） | `tmp/uiux-shell-20261102.noindex/daily-before-feature-completion.noindex/Yozi AI.app`（322438f2…）not present (checked 2026-11-07)。`tmp/local-feature-completion-resume-backend`（7431b3f0）not present (checked 2026-11-07)。 |
 | S53 配对恢复（历史） | `tmp/uiux-shell-20261102.noindex/local-closure-learning-agent-workflow-candidate.noindex/Yozi AI.app`（2387b4c0…、源码3e47fbb7）not present (checked 2026-11-07)。`tmp/local-closure-learning-agent-workflow-backend`（8f0323c6）not present (checked 2026-11-07)。 |
-| 日常入口 | /Users/blackdj/Applications/Yozi AI.app（2.2.0、7dfb1bff…、源码77c0a94d）已依客户2026-11-06授权更新并实开。原应用标识、两处学习资料及8项账号／会话键逐项核对一致。账户核对明细见本机 `YOZI-GOAL-CLOSEOUT-RESULT-2026-11-06.md`。 |
-| 日常本次回退 | `tmp/wave3-20261106.noindex/daily-update.noindex/before.noindex/Yozi AI.app`（原c63a62c9…）在本机，完整克隆已试还原并通过严格签名。同目录 private 保存原 WebKit 与偏好。回退只换程序，保留届时最新学习资料。 |
+| 日常入口 | `/Users/blackdj/Applications/Yozi AI.app`（2.2.0，R5-B3 d9e24e19，CDHash 3eeee757…）已原位更新并实开。沿用原应用标识，更新时核对 54 个本地存储条目。见 §3 R5-B3。 |
+| 日常本次回退 | `tmp/r5-shell-20261107.noindex/daily-before-r5.noindex/Yozi AI.app`（CDHash 9521ed40…）已核对签名与应用标识，同目录 `private` 保存 R5 前备份。回退只换程序，保留届时最新学习资料。Wave3 前回退包在 `tmp/wave3-20261106.noindex/daily-update.noindex/before.noindex/Yozi AI.app`。 |
 | 官网本次回退 | 当前发布根 `yozi-r6-legal-v11-20261107-0e8de2d8a367`（法律页1.1），即时回退根 `yozi-r6-legal-20261107-fbfc749e55d4`（1.0，含已更正的日志期限行）；干净回退用 `yozi-r2-20261107-960deca8b477`（无法律页，42个文件已读回）。Guardian `9ca7390e133c4dcb8bf552dd14e45955` 与 `afe8358d77a24589af30797ddffa4f08` 均已接受并独立读回，本机保留独立回退备份。[本版发布回执](../tmp/yozi-r6-website-20261107/v1.1/deployment.json)。 |
 | 历史索引 | `tmp/uiux-shell-20261102.noindex/` not present (checked 2026-11-07)。`tmp/uiux-shell-20261102.noindex/resources.json` not present (checked 2026-11-07)。`tmp/muse-survey.noindex/` not present (checked 2026-11-07)。 |
 | 静态输出 | 当前S55桌面／共享输出、S53／S54与原失败现场保留；本批只将被已核验回退覆盖的原子交换旧副本正常入篓，4文件／19,383,238逻辑字节。C1的14份历史静态输出仍在废纸篓，未清空，不计为物理空间释放。 |
