@@ -96,7 +96,12 @@ jobs:
           npm run lint:python
 
       - name: Run unit and component tests
-        run: npm test -- --exclude tests/unit/mobile-viewport-smoke.spec.js
+        # The v1 engineering manifest belongs to its frozen source snapshot (D004).
+        # Keep the App gate's active scope while preserving the archive validator.
+        run: >-
+          npm test --
+          --exclude tests/unit/mobile-viewport-smoke.spec.js
+          --exclude tests/unit/engineering-eval-v1.spec.js
         timeout-minutes: 8
 
       - name: Install matching mobile smoke browser
