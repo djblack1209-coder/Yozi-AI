@@ -2245,6 +2245,18 @@ describe('摸底错误合并复核一次：讲解题只删不加，单词填空�
     expect(target(phrase)).toBe(true);
     expect(target('context')).toBe(false);
   });
+  it('省略关系词的另一从句，其修饰对象不算本从句的断言，指错本从句仍不成立', () => {
+    const sentence =
+        'Students who take part in campus workshops often find that the skills they acquire there prove more useful than the theories they memorize for exams.',
+      fields = ['Students', 'find', 'who take part in campus workshops', 'Students', 'who', 'take', '主语'],
+      target = (note) => syntaxAgreement(sentence, parsed('s1', ...fields), note).claims.target;
+    expect(
+      target(
+        'who take part in campus workshops 是定语从句，修饰 Students。they acquire there 是省略关系词的定语从句，修饰 skills。they memorize for exams 是省略关系词的定语从句，修饰 theories。'
+      )
+    ).toBe(true);
+    expect(target('who take part in campus workshops 是定语从句，修饰 workshops。')).toBe(false);
+  });
   it('形容词位的介词形词不当作后置修饰', () => {
     const sentence = 'We expect a change in the near future, which most people welcome.',
       fields = ['We', 'expect', 'which most people welcome', 'the near future', 'most people', 'welcome', '宾语'];

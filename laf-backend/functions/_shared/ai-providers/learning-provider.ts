@@ -1240,10 +1240,8 @@ export function syntaxAgreement(sentence: string, parse: any, note: string) {
       !new RegExp(`(?<![A-Za-z])${pronoun}(?![A-Za-z])`, 'iu').test(block)
     )
       continue;
-    // 一句有两个定语从句时盲析只描述其中一个；学生对另一个从句的「修饰X」不是对本从句的断言。
-    const named = Array.from(
-      block.matchAll(/(?<![A-Za-z])(?:who|whom|whose|which|that)(?![A-Za-z])[A-Za-z' -]*/giu)
-    ).at(-1);
+    // 一句有多个从句时盲析只描述其中一个；「修饰X」前引的是本从句以外的原文，就不是对本从句的断言。
+    const named = Array.from(block.matchAll(/[A-Za-z][A-Za-z' -]*/gu)).at(-1);
     const quotedClause = named ? words(named[0]) : [];
     if (quotedClause.some((word, i) => word !== C[i]) && outside(quotedClause).length > 0) continue;
     const target = words(m[1]).at(-1),
