@@ -41,7 +41,9 @@ Android 适配器用 `invokeAndKeepAlive` 保留中间回调、终止用 `invoke
 
 **2026-11-08 装配基线**：按任务安排切至 DCloud 正式版 **5.34.2026102909**。HBuilderX macOS ARM64 已从官方渠道取得，通过 Apple 公证校验并打开候选。仓库 DCloud 套件锁定 `3.0.0-5030420261029001`，`npm run build:app` 的 `plus.uni-app.compilerVersion` 为 **5.34**。
 
-HBuilderX 的「生成本地打包 App 资源」提示登录 DCloud。当前 iOS 官方镜像的 `SDK.zip` 下载要求中国移动云盘登录，Android 同镜像已达浏览上限，浏览器策略拒绝了 Android 备用镜像访问。装配需要 HBuilderX 导出的资源和两个同版官方完整 SDK。按 [iOS 升级说明](https://nativesupport.dcloud.net.cn/AppDocs/download/ios.html)替换整套 Bundles、inc、Libs，按 [Android 升级说明](https://nativesupport.dcloud.net.cn/AppDocs/download/android.html)替换同版 SDK 后清洁构建。验收顺序为本机自定义基座回归、发行包、Watch 应用层同步。
+两套 5.34 官方离线 SDK 已解压验证，Android JAR 与 iOS ARM64 静态库已用实际 SDK 编译。按 [iOS 升级说明](https://nativesupport.dcloud.net.cn/AppDocs/download/ios.html)保留同版 Bundles、inc、Libs，按 [Android 升级说明](https://nativesupport.dcloud.net.cn/AppDocs/download/android.html)使用完整同版 SDK。HBuilderX 的「生成本地打包 App 资源」和 `cli publish app --type appResource --project <路径>` 均需要 DCloud 登录，登录后导出同版资源，再用应用 [AppKey 和签名配置](https://nativesupport.dcloud.net.cn/AppDocs/usesdk/appkey)清洁构建自定义基座及发行包。
+
+本机配对的 iOS／watchOS 27.2 已验证 Yozi 原生桥接发送摘要、清空及重开后保持空态。两台模拟器完成启动并读回 `active, connected` 后，先安装 iOS 宿主，再在已配对的 Watch 安装该宿主 `Watch/` 内嵌的 App。iOS 会话随后读回已激活且 `isWatchAppInstalled` 为真。Device Hub 实操验证通知授权和手机锁屏提醒。Watch 镜像由系统投递，本机通知分发服务记录配对设备未就绪（IDS 200），Watch 端到达待验证。完整 iOS 基座需要兼容的本机运行时，官方 `DCUniBase` 的 arm64 切片面向设备，模拟器切片为 x86_64。
 
 源码/元数据在 `nativeplugins/Yozi-Connector/`，对应 [DCloud Android](https://nativesupport.dcloud.net.cn/NativePlugin/course/android.html)、[iOS 模块](https://nativesupport.dcloud.net.cn/NativePlugin/course/ios.html)和[打包规范](https://nativesupport.dcloud.net.cn/NativePlugin/course/package.html)。不以模拟 SDK 声明或空二进制替代编译。
 
