@@ -14,6 +14,9 @@ export const LEARNING_BUDGET_PHASES = Object.freeze(['diagnostic', 'practice', '
 export const DEEPSEEK_PRO_ESSAY_TIMEOUT_MS = 90000;
 export const DEEPSEEK_PRO_INTAKE_TIMEOUT_MS = 90000;
 export const DEEPSEEK_PRO_WRITING_TOTAL_MS = 110000;
+export const PRO_DIAGNOSTIC_REPLY = 'pro-diagnostic-json-v1';
+export const PRO_DIAGNOSTIC_VERIFICATION_MS = 120000;
+export const PRO_DIAGNOSTIC_REQUEST_MS = 240000;
 
 export function isDeepSeekProByok(config) {
   return (
@@ -22,6 +25,14 @@ export function isDeepSeekProByok(config) {
     typeof config.endpoint === 'string' &&
     config.endpoint.startsWith('https://api.deepseek.com/')
   );
+}
+
+function mixedDiagnosticFeedback(coach) {
+  return coach?.phase === 'feedback' && coach.target === 'diagnostic' && coach.feedbackVersion === 2;
+}
+
+export function isDeepSeekProDiagnostic(context, model) {
+  return mixedDiagnosticFeedback(context?.coach) && isDeepSeekProByok(model);
 }
 
 export function learningBudgetPhase(context = {}) {
@@ -47,11 +58,8 @@ export function learningTimeout(context = {}) {
   return ['writing', 'diagnostic'].includes(learningBudgetPhase(context)) || context.coach ? 60000 : 30000;
 }
 export function coachVerificationBudget(context = {}) {
-  const request = context.coach;
   // 五题混合初评与独立复核共用总额；不通过减弱模型思考或评分来挤进时限。
-  return request?.phase === 'feedback' && request.target === 'diagnostic' && request.feedbackVersion === 2
-    ? 120000
-    : 65000;
+  return mixedDiagnosticFeedback(context.coach) ? 120000 : 65000;
 }
 export function hostReviewRating({ outcome, hinted = false, correctStreak = 0 }) {
   if (outcome !== 'correct') return 1;

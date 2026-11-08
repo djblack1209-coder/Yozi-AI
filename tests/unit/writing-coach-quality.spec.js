@@ -1348,6 +1348,35 @@ describe('摸底错误合并复核一次：讲解题只删不加，单词填空�
     );
     expect(coach.weaknesses).toEqual(['interested in']);
   });
+  it.each([false, true])('按复核任务分别提问，仅在各组通过后合并：%s', async (timedOut) => {
+    const model = prepared();
+    const initial = JSON.stringify(overflagged(model));
+    const fields = [];
+    const { content, receipt } = await verifyCoachErrors(
+      model,
+      initial,
+      async (verifier, messages) => {
+        expect(verifier.writingOutput.format).toBe('json_object');
+        const keys = Object.keys(verifier.writingOutput.schema.properties);
+        expect(keys).toHaveLength(1);
+        const [field] = keys;
+        expect(Object.keys(JSON.parse(messages[1].content))).toEqual([field]);
+        fields.push(field);
+        if (field === 'blanks') return JSON.stringify({ blanks: [fill(['in'])] });
+        if (timedOut) throw Object.assign(new Error('Timed out'), { code: 'TIMEOUT' });
+        return JSON.stringify({ outlines: [outline()] });
+      },
+      true
+    );
+    expect(fields.sort()).toEqual(['blanks', 'outlines']);
+    if (timedOut) {
+      expect(content).toBe(initial);
+      expect(receipt).toMatchObject({ status: 'failed', failure: 'TIMEOUT', checked: 2 });
+    } else {
+      expect(receipt).toMatchObject({ status: 'completed', checked: 2, removed: 1 });
+      expect(JSON.parse(content).errors.map(({ quoteId }) => quoteId)).toEqual(['q2']);
+    }
+  });
   it.each([
     [
       '提纲漏写一个要点',

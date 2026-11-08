@@ -4,6 +4,10 @@ import { EventEmitter } from 'node:events';
 import { Resolver } from 'node:dns/promises';
 import { parseCoachModelOutput } from '../../laf-backend/functions/_shared/learning-writing-coach.js';
 import {
+  PRO_DIAGNOSTIC_REPLY,
+  PRO_DIAGNOSTIC_REQUEST_MS
+} from '../../laf-backend/functions/_shared/learning-runtime-policy.js';
+import {
   newAccount,
   reserveCall,
   settleCall,
@@ -115,6 +119,24 @@ describe('模型费用和权益分别记账', () => {
     expect(recovered.cost.reserved).toBe(1);
     expect(recovered.cost.pending).toBe(1);
     expect(recoverStaleReservations(recovered, now + 240000).reused).toBe(true);
+  });
+  it('Pro 摸底在常规预留过期后仍可完成复核，达到自己的时限才回收', () => {
+    const now = Date.now();
+    const account = reserveCall(
+      funded(),
+      { ...input('diagnostic', 'byok'), replyProtocol: PRO_DIAGNOSTIC_REPLY, maxCost: 0, units: 0 },
+      now
+    ).account;
+    const stillRunning = recoverStaleReservations(account, now + 121000).account;
+    expect(stillRunning.calls[0].status).toBe('reserved');
+    expect(settleCall(stillRunning, 'diagnostic', { success: true, actualCost: null }, now + 121001).call.status).toBe(
+      'completed'
+    );
+    expect(recoverStaleReservations(account, now + PRO_DIAGNOSTIC_REQUEST_MS + 1).account.calls[0]).toMatchObject({
+      status: 'failed',
+      errorCode: 'EXECUTION_INTERRUPTED',
+      costStatus: 'pending'
+    });
   });
   it('平台预留、取消、退款、结算、重试只处理一次', () => {
     let { account } = reserveCall(funded(), input('r1'));
