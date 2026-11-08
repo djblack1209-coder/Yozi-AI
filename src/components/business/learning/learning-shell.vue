@@ -361,7 +361,7 @@
           <view v-if="active === 'learning'" class="muse-chat-identity"
             ><AnimatedAvatar
               class="brand-mark"
-              :size="56"
+              :size="viewportWidth <= 760 ? 32 : 56"
               autoplay
               perceptible
               :business="avatarBusiness"
@@ -800,10 +800,21 @@ watch([() => learning.recordContext(), () => learning.selectedConversationId], (
   directoryDayLimit.value = 7;
 });
 const viewportHeight = ref(720);
+const visibleHeight = ref(null);
 const dockStyle = computed(() => {
   const item = Math.max(44, Math.min(56, Math.floor((Math.max(0, viewportHeight.value - 224) - 80) / 9)));
-  return { '--dock-item': `${item}px`, '--dock-surface': '44px', '--dock-glyph': '24px' };
+  return {
+    '--dock-item': `${item}px`,
+    '--dock-surface': '44px',
+    '--dock-glyph': '24px',
+    '--muse-visible-height': visibleHeight.value ? `${visibleHeight.value}px` : undefined
+  };
 });
+function updateVisibleHeight() {
+  const viewport = window.visualViewport;
+  // A software keyboard can shrink only the visible area while the layout viewport stays the same.
+  visibleHeight.value = viewport?.scale === 1 ? Math.floor(viewport.height + viewport.offsetTop) : null;
+}
 function updateDockMetrics(event) {
   const info =
     typeof window !== 'undefined'
@@ -1114,6 +1125,8 @@ onMounted(() => {
   unbind = bindLearningKeyboard(root.value);
   const element = root.value?.$el || root.value;
   // #ifdef H5
+  updateVisibleHeight();
+  window.visualViewport?.addEventListener('resize', updateVisibleHeight);
   document.addEventListener('keydown', escapeMenu);
   window.addEventListener('keydown', escapeGeneration);
   if (props.active === 'learning') releaseMessageFollow = bindMessageFollow(element?.querySelector('.space-content'));
@@ -1140,6 +1153,7 @@ onUnmounted(() => {
   unbind();
   const element = root.value?.$el || root.value;
   // #ifdef H5
+  window.visualViewport?.removeEventListener('resize', updateVisibleHeight);
   document.removeEventListener('keydown', escapeMenu);
   window.removeEventListener('keydown', escapeGeneration);
   releaseMessageFollow();

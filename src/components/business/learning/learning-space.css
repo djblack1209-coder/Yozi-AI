@@ -716,8 +716,7 @@
     --dock-glyph: 20px;
     position: absolute;
     bottom: calc(4px + env(safe-area-inset-bottom));
-    left: 8px;
-    right: 8px;
+    inset-inline: clamp(0px, calc((100% - 318px) / 2), 8px);
     width: auto;
     height: 56px;
     padding: 0 4px;
@@ -831,16 +830,15 @@
   .has-directory .muse-chat-identity {
     visibility: hidden;
   }
-  .muse-chat-identity .brand-mark {
-    width: 40px;
-    height: 40px;
-  }
 }
 @media (max-width: 760px) and (pointer: coarse) {
-  .is-chat:has(.muse-composer textarea:focus) .muse-rail {
+  .is-chat:has(.muse-composer-field:focus-within) {
+    height: min(100dvh, var(--muse-visible-height, 100dvh));
+  }
+  .is-chat:has(.muse-composer-field:focus-within) .muse-rail {
     visibility: hidden;
   }
-  .is-chat:has(.muse-composer textarea:focus) .space-main {
+  .is-chat:has(.muse-composer-field:focus-within) .space-main {
     height: 100%;
   }
 }
