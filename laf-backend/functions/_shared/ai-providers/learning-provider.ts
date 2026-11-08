@@ -1207,7 +1207,10 @@ export function syntaxAgreement(sentence: string, parse: any, note: string) {
       .slice(0, m.index)
       .split(/[。；;\n]/u)
       .at(-1)!;
-    const modifier = block.trim().match(/(?:^|[^A-Za-z])([A-Za-z]+)$/u)?.[1]?.toLowerCase();
+    const modifier = block
+      .trim()
+      .match(/(?:^|[^A-Za-z])([A-Za-z]+)$/u)?.[1]
+      ?.toLowerCase();
     const mainClauseAdverb = modifier?.endsWith('ly') && outside([modifier]).length > 0;
     const pair = block.match(/(?:^|[^A-Za-z])([A-Za-z]+)\s*(?:和|与|\band\b)\s*([A-Za-z]+)\s*$/iu);
     const mainClauseAdjectives =
@@ -2401,10 +2404,10 @@ export async function callLearningProvider(
     (config.timeoutMs === DEEPSEEK_PRO_INTAKE_TIMEOUT_MS && isDeepSeekProByok(config)
       ? DEEPSEEK_PRO_INTAKE_TIMEOUT_MS
       : mixedInitial
-      ? learningTimeout({ coach: { phase: 'feedback', target: 'diagnostic', feedbackVersion: 2 } })
-      : config.timeoutMs === 60000
-        ? 60000
-        : writingVerificationTimeout(config));
+        ? learningTimeout({ coach: { phase: 'feedback', target: 'diagnostic', feedbackVersion: 2 } })
+        : config.timeoutMs === 60000
+          ? 60000
+          : writingVerificationTimeout(config));
   const timeoutMs = Math.min(ceiling, Math.max(5000, config.timeoutMs || 30000));
   const traceSafeModel =
     DEV_TEST &&

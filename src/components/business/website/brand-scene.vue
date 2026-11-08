@@ -25,13 +25,7 @@
       :src="VIDEO"
     />
     <!-- #endif -->
-    <view class="brand-scene__brand"
-      ><image
-        :src="BRAND.mark"
-        mode="aspectFit"
-        alt=""
-      /><text>Yozi AI</text></view
-    >
+    <view class="brand-scene__brand"><image :src="BRAND.mark" mode="aspectFit" alt="" /><text>Yozi AI</text></view>
     <view class="brand-scene__copy"
       ><text lang="en">A little clearer.</text><text lang="en">Every day.</text
       ><text class="brand-scene__caption">{{

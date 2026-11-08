@@ -16,12 +16,12 @@ Yozi 官网 v3 是按中文简报制作的本机候选。此页保留当时的�
 
 先写下学习者要回答的问题，再看提示词作者如何处理同类决策。画廊横看服装、汽车、季报、安全、作品集与交互栏目，Academy 比较角色、交通工具和滚动叙事课程。十两按同名条目核对。实建库的「由你创建」有 15 项，选作品来校验方法。以下只记推导，许可、代码、媒体和原词均沿原来源。[MotionSites 画廊](https://motionsites.ai/) · [Academy](https://motionsites.ai/academy) · [十两网站收录库](https://wangshiliang.cn/news) · [AI Studio 原列表](https://aistudio.google.com/apps?source=user&tag=created-by-you)
 
-| 出处 | 它的主题 | 构建逻辑 | 迁移检验 |
-| --- | --- | --- | --- |
-| [Runway Lookbook](https://motionsites.ai/?prompt=vell-lookbook)，走秀主场与右侧单品栏。MotionSites 已登录的 Copy full prompt 取得 24,299 字符 | 逛秀者跟随眼前的一套穿搭，认出其中可单独查看的衣物 | 原词先写人与物的关系，再定义「当前造型位置」。这个值同时决定前景人物、远处模特的深度、款号和右栏商品。其余款式可见，但当前款的购买细节优先。 | 换科后，首屏路径、正确率、示例错答和复习题都必须指向同一份记录。模糊其他学科会妨碍读图，舍弃模糊与纵深舞台。迁移到 App 时，可用同一条记录关联批注和复习任务。 |
-| [Saffron Field](https://motionsites.ai/?prompt=saffron-field)，季报的田地、开花、采收及终幕。MotionSites 显示锁定，从[十两](https://wangshiliang.cn/news)同名预览旁复制完整原词，18,518 字符 | 读者跟随一季藏红花的生长和采收 | 作者先排季节事件，再为它们指定轮廓、视线位置与显现时机。哪一章由季节进到下一阶段，最后的重播应回到哪一幕，都先于粒子和色彩。 | 先画「选中分支→在纸上订正→回同点练新题」。滚动仅控制阅读进度，不能改变学生成绩。静态图仍须传达因果；粒子、全屏接管、章节编号全部舍弃。 |
-| [Academy 的 Mainframe 制作课](https://motionsites.ai/lesson/cursor-tracking-website-with-motionsites)，角色与问候首屏 | 创意机构想让访客感到角色注意到了自己 | 先明确谁在看谁，再让指针的方向控制人物姿态；问候、导航与业务按钮承担各自职责。 | 在学习图上，游标掠过没有作答含义。只在明确选择科目后改变焦点，触摸和键盘能表达同一意图。淘汰跟随指针的角色。 |
-| [Meridial 成品](https://aistudio.google.com/apps/a14debd7-44b5-4da2-b6e8-cdf28227aa9a)，首屏至 Signal Dashboard，在已登录预览实滑 | 顾问先发现组合偏离目标，再看配置依据与复核动作 | 实屏先露出配置比例与偏离提示，滑动后它们进入更完整的组合面板；读者可以在两种密度中认出同一信号。此行用于反查前述推导。 | 在全科图与局部纠错之间保留同一目标与圈记，详情才有前因。舍弃金融面板、手势锁屏和收益率式宣传数字。 |
+| 出处                                                                                                                                                                                         | 它的主题                                           | 构建逻辑                                                                                                                                     | 迁移检验                                                                                                                                                      |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Runway Lookbook](https://motionsites.ai/?prompt=vell-lookbook)，走秀主场与右侧单品栏。MotionSites 已登录的 Copy full prompt 取得 24,299 字符                                                | 逛秀者跟随眼前的一套穿搭，认出其中可单独查看的衣物 | 原词先写人与物的关系，再定义「当前造型位置」。这个值同时决定前景人物、远处模特的深度、款号和右栏商品。其余款式可见，但当前款的购买细节优先。 | 换科后，首屏路径、正确率、示例错答和复习题都必须指向同一份记录。模糊其他学科会妨碍读图，舍弃模糊与纵深舞台。迁移到 App 时，可用同一条记录关联批注和复习任务。 |
+| [Saffron Field](https://motionsites.ai/?prompt=saffron-field)，季报的田地、开花、采收及终幕。MotionSites 显示锁定，从[十两](https://wangshiliang.cn/news)同名预览旁复制完整原词，18,518 字符 | 读者跟随一季藏红花的生长和采收                     | 作者先排季节事件，再为它们指定轮廓、视线位置与显现时机。哪一章由季节进到下一阶段，最后的重播应回到哪一幕，都先于粒子和色彩。                 | 先画「选中分支→在纸上订正→回同点练新题」。滚动仅控制阅读进度，不能改变学生成绩。静态图仍须传达因果；粒子、全屏接管、章节编号全部舍弃。                        |
+| [Academy 的 Mainframe 制作课](https://motionsites.ai/lesson/cursor-tracking-website-with-motionsites)，角色与问候首屏                                                                        | 创意机构想让访客感到角色注意到了自己               | 先明确谁在看谁，再让指针的方向控制人物姿态；问候、导航与业务按钮承担各自职责。                                                               | 在学习图上，游标掠过没有作答含义。只在明确选择科目后改变焦点，触摸和键盘能表达同一意图。淘汰跟随指针的角色。                                                  |
+| [Meridial 成品](https://aistudio.google.com/apps/a14debd7-44b5-4da2-b6e8-cdf28227aa9a)，首屏至 Signal Dashboard，在已登录预览实滑                                                            | 顾问先发现组合偏离目标，再看配置依据与复核动作     | 实屏先露出配置比例与偏离提示，滑动后它们进入更完整的组合面板；读者可以在两种密度中认出同一信号。此行用于反查前述推导。                       | 在全科图与局部纠错之间保留同一目标与圈记，详情才有前因。舍弃金融面板、手势锁屏和收益率式宣传数字。                                                            |
 
 **换题检验。** Lazy 要让老师定位并修改一份课堂原稿，最后带走文件。把那份课件贴到这里，既无法计算各科正确率，也没有同节点的回练依据；把学习图塞进 Lazy，教师找不到可标注的原稿和文件出口。两边共享「哪个对象需要前后一致」这个问题，各自回答。
 
@@ -29,9 +29,9 @@ Yozi 官网 v3 是按中文简报制作的本机候选。此页保留当时的�
 
 当时的 `dist/website-v3/` 已不在本机。原源码保存在[阶段备份](../tmp/website-reference-20261106/fix/before-fix-stage.tar.gz)内的 `preserved-earlier-source-stage.tar.gz`。
 
-| 语言 | 桌面 1440 × 900 | 窄屏 375 × 844 | 桌面起始画面 | 整页 |
-| --- | --- | --- | --- | --- |
-| 中文 | [桌面](../output/playwright/website-v3/zh-desktop.png) | [窄屏](../output/playwright/website-v3/zh-mobile.png) | [首帧](../output/playwright/website-v3/zh-first.png) | [桌面长图](../output/playwright/website-v3/zh-desktop-full.png) · [窄屏长图](../output/playwright/website-v3/zh-mobile-full.png) |
+| 语言    | 桌面 1440 × 900                                           | 窄屏 375 × 844                                          | 桌面起始画面                                                | 整页                                                                                                                                    |
+| ------- | --------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 中文    | [桌面](../output/playwright/website-v3/zh-desktop.png)    | [窄屏](../output/playwright/website-v3/zh-mobile.png)   | [首帧](../output/playwright/website-v3/zh-first.png)        | [桌面长图](../output/playwright/website-v3/zh-desktop-full.png) · [窄屏长图](../output/playwright/website-v3/zh-mobile-full.png)        |
 | English | [Desktop](../output/playwright/website-v3/en-desktop.png) | [Mobile](../output/playwright/website-v3/en-mobile.png) | [First frame](../output/playwright/website-v3/en-first.png) | [Full desktop](../output/playwright/website-v3/en-desktop-full.png) · [Full mobile](../output/playwright/website-v3/en-mobile-full.png) |
 
 - **画面判断。** 全文隐藏后仍能顺着分叉、笔下的订正、返回同一圈记的回箭头阅读。开发侧依实屏判断可辨。[无文案流程](../output/playwright/website-v3/no-copy-path.png) · [带例题的流程](../output/playwright/website-v3/zh-path.png)
@@ -39,4 +39,4 @@ Yozi 官网 v3 是按中文简报制作的本机候选。此页保留当时的�
 - **实操结果。** 三科按 111 次示例作答计数。数学 27/37，英语 30/37，物理 28/37；各科优先回练的节点在示例中均为 2/5。两种语言和两种尺寸均查过切科、焦点联动、语言记忆、404 与返回、原装 ZIP 实际下载；375px 和 390px 无横向溢出，右上控件成对同宽同高，高 44px。减少动效、禁用脚本终态、禁用存储、离线页面键盘切科均通过。首页脚本及资源错误为零。[浏览器回执](../output/playwright/website-v3/verification.json)
 - **Rubric 自评。** 首眼 9、识别特征 9、字体 8、构图 8、色彩 9、媒体融合 9、动效 8、移动 8、文案 9、细节 9，平均 **8.6/10**，最低 **8/10**。窄屏优先保留当前分支名，刻线仍需旁边图例辅助。当时的评分口径为 `motionsites-web-builder/references/review.md`。
 - **来源与范围。** 图形由本地示例记录生成，例题用于解释一次纠错。使用项目现有 Inter、Playfair Display 及随附 OFL，中文使用系统字体。已有安装包通过 ZIP 完整性读取，34 项定向测试通过。本次交付范围为本地官网；真实学生掌握预测和公网发布另行处理。
-- **通用技能。** 两个会话共用 CC Switch 主副本，由 Lazy 会话写入并校验。将「同一对象需要哪些旁证」「动作是在浏览还是改变结果」带回下一次网页或 App 任务，每次先回答新主题，再选择技法。[共享工作流](</Users/blackdj/.cc-switch/skills/uiux-reference-workflow/SKILL.md>)
+- **通用技能。** 两个会话共用 CC Switch 主副本，由 Lazy 会话写入并校验。将「同一对象需要哪些旁证」「动作是在浏览还是改变结果」带回下一次网页或 App 任务，每次先回答新主题，再选择技法。[共享工作流](/Users/blackdj/.cc-switch/skills/uiux-reference-workflow/SKILL.md)

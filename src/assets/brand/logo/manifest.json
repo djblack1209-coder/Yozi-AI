@@ -15,11 +15,7 @@
   "palette": {
     "navy": "#11243d",
     "reverse": "#ffffff",
-    "sky": [
-      "#d5effd",
-      "#aedcf9",
-      "#8cd0f7"
-    ],
+    "sky": ["#d5effd", "#aedcf9", "#8cd0f7"],
     "tokenSource": "website/site.css --navy"
   },
   "construction": {
@@ -37,21 +33,12 @@
       "y": 48
     },
     "chamfer": {
-      "from": [
-        88,
-        16
-      ],
-      "to": [
-        112,
-        40
-      ],
+      "from": [88, 16],
+      "to": [112, 40],
       "angleDeg": 45
     },
     "diamond": {
-      "center": [
-        76,
-        64
-      ],
+      "center": [76, 64],
       "halfDiagonal": 20
     },
     "radii": {
@@ -64,21 +51,9 @@
   },
   "exports": {
     "svg": "mark.svg",
-    "viewBox": [
-      0,
-      0,
-      128,
-      128
-    ],
+    "viewBox": [0, 0, 128, 128],
     "png": "png/{size}.png",
-    "sizesPx": [
-      1024,
-      512,
-      180,
-      64,
-      32,
-      16
-    ],
+    "sizesPx": [1024, 512, 180, 64, 32, 16],
     "transparent": true,
     "renderer": "sharp 0.35.5 / librsvg 2.63.2",
     "reverseSvg": "mark-reverse.svg",

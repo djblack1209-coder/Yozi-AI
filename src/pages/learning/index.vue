@@ -4632,8 +4632,7 @@ onHide(() => {
     desktopHost &&
     document.visibilityState === 'hidden' &&
     window.location.hash.split('?')[0] === '#/pages/learning/index' &&
-    ((learning.busy && learning.reply?.kind === 'coach') ||
-      (learning.intakeBusy && learning.reply?.kind === 'intake'));
+    ((learning.busy && learning.reply?.kind === 'coach') || (learning.intakeBusy && learning.reply?.kind === 'intake'));
   try {
     const leave = !backgroundModelWork && learningLeaveOperation(learning.state, learning.active?.id);
     if (leave) learning.commit(leave.type, leave.data, leave.id);

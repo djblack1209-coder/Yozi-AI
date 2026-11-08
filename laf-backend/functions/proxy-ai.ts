@@ -497,7 +497,11 @@ export async function runLearningModelTask(
       return { code: 503, success: false, error: 'NEEDS_CONNECTION', message: '请先在 AI 连接器接入自己的 API' };
     }
     if (options.capabilityProbe)
-      model = { ...model, capabilityProbe: options.capabilityProbe, timeoutMs: isDeepSeekProByok(model) ? 60000 : 30000 };
+      model = {
+        ...model,
+        capabilityProbe: options.capabilityProbe,
+        timeoutMs: isDeepSeekProByok(model) ? 60000 : 30000
+      };
     else if (
       model.source === 'byok' &&
       (!model.capabilityCheck || !model.capabilityCheck.tools || !model.capabilityCheck.structured)
@@ -986,7 +990,11 @@ export async function runLearningModelTask(
         // Preserve known primary/verification usage without pretending the failed check cost nothing.
         if (verificationUsage)
           observedResponse.usage = { ...(response.usage || {}), verification: coachVerification.usage };
-        throw failedWritingVerification(coachVerification, '批改复核未完成，初评未采用；原答已保留', 'coachVerification');
+        throw failedWritingVerification(
+          coachVerification,
+          '批改复核未完成，初评未采用；原答已保留',
+          'coachVerification'
+        );
       }
     }
     let probeOutput: any = null;
@@ -1049,7 +1057,11 @@ export async function runLearningModelTask(
       if (exerciseCalibration && verificationPaid) exerciseCalibration.sources = verificationSources;
       if (!exerciseCalibration || exerciseCalibration.status !== 'completed' || exerciseCalibration.passes !== 2) {
         if (verificationUsage) observedResponse.usage = { ...(response.usage || {}), calibration: verificationUsage };
-        throw failedWritingVerification(exerciseCalibration, '练习核对未完成，题目未下发；请稍后重试', 'exerciseCalibration');
+        throw failedWritingVerification(
+          exerciseCalibration,
+          '练习核对未完成，题目未下发；请稍后重试',
+          'exerciseCalibration'
+        );
       }
     }
     const output = redactModelValue(parsedOutput, model.apiKey);

@@ -66,7 +66,17 @@ async function shelterBundle() {
       !process.env.APPLE_SIGNING_IDENTITY &&
       (await native('/usr/bin/codesign', ['--verify', '--deep', '--strict', source]))
     ) {
-      if (await native('/usr/bin/codesign', ['--force', '--sign', '-', '--options', 'runtime', '--timestamp=none', source]))
+      if (
+        await native('/usr/bin/codesign', [
+          '--force',
+          '--sign',
+          '-',
+          '--options',
+          'runtime',
+          '--timestamp=none',
+          source
+        ])
+      )
         throw new Error('Local candidate signing failed');
     }
     if (await native('/usr/bin/codesign', ['--verify', '--deep', '--strict', source]))
@@ -79,8 +89,7 @@ async function shelterBundle() {
     );
     child = unregister;
     let output = '';
-    for (const stream of [unregister.stdout, unregister.stderr])
-      stream.on('data', (data) => (output += data));
+    for (const stream of [unregister.stdout, unregister.stderr]) stream.on('data', (data) => (output += data));
     code = await new Promise((res, rej) => {
       unregister.once('error', rej);
       unregister.once('exit', (status) => res(status ?? 1));

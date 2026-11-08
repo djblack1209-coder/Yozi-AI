@@ -21,7 +21,8 @@ export function restoreDesktopSettingsFocus() {
   if (target?.isConnected) target.focus?.({ preventScroll: true });
 }
 export function openDesktopSettings(panel) {
-  if (!['settings', 'connectors', 'profile', 'legal'].includes(panel)) return Promise.reject(new Error('设置分组不合法'));
+  if (!['settings', 'connectors', 'profile', 'legal'].includes(panel))
+    return Promise.reject(new Error('设置分组不合法'));
   // Sequence different panels; merge duplicate rapid clicks while native creation is pending.
   if (settingsOpening?.panel === panel) return settingsOpening.promise;
   rememberSettingsFocus();

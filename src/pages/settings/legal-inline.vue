@@ -8,7 +8,8 @@
         tabindex="0"
         @tap="emit('open', part)"
         @keydown.enter.prevent="emit('open', part)"
-      >{{ part.text }}</text>
+        >{{ part.text }}</text
+      >
       <text v-else :class="{ 'legal-emphasis': part.emphasis }">{{ part.text }}</text>
     </template>
   </text>
@@ -20,11 +21,14 @@ import { computed } from 'vue';
 const props = defineProps({ source: { type: String, required: true } });
 const emit = defineEmits(['open']);
 const parts = computed(() =>
-  props.source.split(/(\*\*.+?\*\*|\[[^\]]+\]\([^)]+\))/g).filter(Boolean).map((part) => {
-    if (part.startsWith('**')) return { text: part.slice(2, -2), emphasis: true };
-    const link = /^\[([^\]]+)\]\(\/(?:en|zh)\/(privacy|terms)\/(?:#([a-z-]+))?\)$/.exec(part);
-    return link ? { text: link[1], document: link[2], section: link[3] } : { text: part };
-  })
+  props.source
+    .split(/(\*\*.+?\*\*|\[[^\]]+\]\([^)]+\))/g)
+    .filter(Boolean)
+    .map((part) => {
+      if (part.startsWith('**')) return { text: part.slice(2, -2), emphasis: true };
+      const link = /^\[([^\]]+)\]\(\/(?:en|zh)\/(privacy|terms)\/(?:#([a-z-]+))?\)$/.exec(part);
+      return link ? { text: link[1], document: link[2], section: link[3] } : { text: part };
+    })
 );
 </script>
 

@@ -15,7 +15,9 @@
     <view class="artifact-body"
       ><view class="quota-canvas">
         <view class="quota-head"
-          ><image :src="theme.isDark ? BRAND.markOnDark : BRAND.mark" mode="aspectFit" alt="" /><text class="quota-title">使用情况</text
+          ><image :src="theme.isDark ? BRAND.markOnDark : BRAND.mark" mode="aspectFit" alt="" /><text
+            class="quota-title"
+            >使用情况</text
           ><text class="quota-stamp" role="status">{{ refreshed }}</text></view
         >
         <MuseConversationFilter />

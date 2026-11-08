@@ -434,7 +434,14 @@ it('received nonstream failures keep shape, usage and duration without reply or 
         ['kaoyan-writing-coach-v1', 90000, { kind: 'feedback', target: 'diagnostic' }, 1, 30000],
         ['kaoyan-writing-coach-v1', 110000, { kind: 'essay', target: 'essay' }, 2, 90000, deepSeekPro],
         ['kaoyan-writing-coach-v1', 60000, { kind: 'feedback', target: 'paragraph-1' }, 2, 60000, deepSeekPro],
-        ['kaoyan-writing-coach-v1', 60000, { kind: 'essay', target: 'essay' }, 2, 60000, { ...deepSeekPro, model: 'deepseek-flash' }]
+        [
+          'kaoyan-writing-coach-v1',
+          60000,
+          { kind: 'essay', target: 'essay' },
+          2,
+          60000,
+          { ...deepSeekPro, model: 'deepseek-flash' }
+        ]
       ] as const) {
         timers.mockClear();
         await callLearningProvider(

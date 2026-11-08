@@ -83,7 +83,10 @@ export function scanPublicBuild(directory) {
         text = text.replaceAll('TODO|FIXME|NOTE|BUG|OPTIMIZE|HACK|XXX', 'code-comment-tags');
       // Published copy uses these phrases in context. Standalone setup labels still fail.
       text = text
-        .replaceAll('If you connect a model service running on your own computer or local network,', 'legal-local-service')
+        .replaceAll(
+          'If you connect a model service running on your own computer or local network,',
+          'legal-local-service'
+        )
         .replaceAll('Your identity, model connections and temporary credentials are cleared.', 'legal-sign-out');
       // The website's published connection instructions and download availability are real copy.
       if (/^(?:(?:en|zh)\/)?index\.html(?:\.(?:gz|br))?$/.test(relative)) {

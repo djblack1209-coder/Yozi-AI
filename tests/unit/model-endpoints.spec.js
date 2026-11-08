@@ -252,7 +252,9 @@ describe('模型基础地址与实际请求地址', () => {
 
   it('offers only release endpoints to new connections, including when older presets are supplied', () => {
     expect(visibleModelChoices(MODEL_ENDPOINTS, []).map(({ id }) => id)).toEqual(releaseIds);
-    const releaseEndpoints = MODEL_ENDPOINTS.filter(({ id }) => releaseIds.includes(id)).map(({ endpoint }) => endpoint);
+    const releaseEndpoints = MODEL_ENDPOINTS.filter(({ id }) => releaseIds.includes(id)).map(
+      ({ endpoint }) => endpoint
+    );
     expect(new Set(visibleModelChoices(MODEL_CONNECTION_PRESETS, []).map(({ endpoint }) => endpoint))).toEqual(
       new Set(releaseEndpoints)
     );

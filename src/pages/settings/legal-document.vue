@@ -76,12 +76,17 @@ const props = defineProps({
   document: { type: String, required: true },
   query: { type: Object, required: true }
 });
-const { documents, version: { version, updated, effective } } = __YOZI_LEGAL__;
+const {
+  documents,
+  version: { version, updated, effective }
+} = __YOZI_LEGAL__;
 const english = computed(() => currentLanguage.value === 'en');
 const blocks = computed(() => documents[english.value ? 'en' : 'zh'][props.document]);
-const dateLine = computed(() => english.value
-  ? `Version ${version} · updated ${updated} · effective ${effective}`
-  : `版本 ${version} · ${updated} 更新 · ${effective} 生效`);
+const dateLine = computed(() =>
+  english.value
+    ? `Version ${version} · updated ${updated} · effective ${effective}`
+    : `版本 ${version} · ${updated} 更新 · ${effective} 生效`
+);
 const themeStore = useThemeStore();
 const isDark = computed(() => themeStore.isDark);
 const desktop = isDesktopRuntime();
@@ -94,15 +99,17 @@ onMounted(() => {
   unbindKeyboard = bindLearningKeyboard(keyboardRoot.value);
 });
 onBeforeUnmount(() => unbindKeyboard?.());
-watch(() => props.query.section, async (section) => {
-  await nextTick();
-  anchor.value = section || '';
-}, { immediate: true });
+watch(
+  () => props.query.section,
+  async (section) => {
+    await nextTick();
+    anchor.value = section || '';
+  },
+  { immediate: true }
+);
 
 function openDocument({ document, section }) {
-  const query = [fromSettings.value && 'fromSettings=1', section && `section=${section}`]
-    .filter(Boolean)
-    .join('&');
+  const query = [fromSettings.value && 'fromSettings=1', section && `section=${section}`].filter(Boolean).join('&');
   const path = `/pages/settings/${document}`;
   const url = query ? `${path}?${query}` : path;
   // A linked document replaces the current one when Settings opened it.
@@ -122,7 +129,11 @@ async function goBack() {
       return;
     }
   }
-  safeNavigateBack({ complete: () => { returning.value = false; } });
+  safeNavigateBack({
+    complete: () => {
+      returning.value = false;
+    }
+  });
 }
 </script>
 

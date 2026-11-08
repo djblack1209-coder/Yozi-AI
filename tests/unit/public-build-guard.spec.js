@@ -93,11 +93,14 @@ describe('public build guard', () => {
   });
   it('scans homepage output around the published download and connection copy', () => {
     const file = path.join(directory, 'index.html');
-    fs.appendFileSync(file, [
-      '<span data-copy="en" lang="en">about model connections</span>',
-      '<span data-copy="en" lang="en">connect your model</span>',
-      '<span data-copy="zh" lang="zh-CN">Windows 与手机 App 正在规划开发中，尚未提供下载。</span>'
-    ].join(''));
+    fs.appendFileSync(
+      file,
+      [
+        '<span data-copy="en" lang="en">about model connections</span>',
+        '<span data-copy="en" lang="en">connect your model</span>',
+        '<span data-copy="zh" lang="zh-CN">Windows 与手机 App 正在规划开发中，尚未提供下载。</span>'
+      ].join('')
+    );
     expect(scanPublicBuild(directory).ok).toBe(true);
     fs.appendFileSync(file, '<p>开发中</p>');
     expect(scanPublicBuild(directory).ok).toBe(false);

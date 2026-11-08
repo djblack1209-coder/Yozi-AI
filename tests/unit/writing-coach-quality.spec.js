@@ -2107,10 +2107,23 @@ describe('摸底错误合并复核一次：讲解题只删不加，单词填空�
   it.each(['Students', 'communication'])('主句副词 gradually 修饰 become 时独立核对先行词 %s', (target) => {
     const result = syntaxAgreement(
       'Students who practice writing short emails every day gradually become more confident in formal business communication.',
-      parsed('s1', 'Students', 'become', 'who practice writing short emails every day', 'Students', 'who', 'practice', '主语'),
+      parsed(
+        's1',
+        'Students',
+        'become',
+        'who practice writing short emails every day',
+        'Students',
+        'who',
+        'practice',
+        '主语'
+      ),
       `主干 Students become more confident；who practice writing short emails every day 修饰 ${target}；gradually 修饰 become。`
     );
-    expect(result).toMatchObject({ valid: true, agreed: target === 'Students', claims: { target: target === 'Students' } });
+    expect(result).toMatchObject({
+      valid: true,
+      agreed: target === 'Students',
+      claims: { target: target === 'Students' }
+    });
   });
   it.each([
     ['主语', '谓语', 'Students', true, true],
@@ -2119,7 +2132,16 @@ describe('摸底错误合并复核一次：讲解题只删不加，单词填空�
   ])('括号标注的主干和先行词分别核对（%s／%s，%s）', (subject, verb, target, trunk, antecedent) => {
     const result = syntaxAgreement(
       'Students who take part in the campus writing club often improve their ability to write clear and polite invitation emails.',
-      parsed('s1', 'Students', 'improve', 'who take part in the campus writing club', 'Students', 'who', 'take part', '主语'),
+      parsed(
+        's1',
+        'Students',
+        'improve',
+        'who take part in the campus writing club',
+        'Students',
+        'who',
+        'take part',
+        '主语'
+      ),
       `主干是 Students（${subject}）improve（${verb}）their ability（宾语）。who take part in the campus writing club 是修饰 ${target} 的定语从句；often 修饰 improve；to write clear and polite invitation emails 补充说明 ability，clear 和 polite 修饰 invitation emails。`
     );
     expect(result).toMatchObject({ valid: true, agreed: trunk && antecedent, claims: { trunk, target: antecedent } });
