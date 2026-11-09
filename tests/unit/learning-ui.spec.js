@@ -2450,6 +2450,24 @@ describe('学习空间的实际入口与目录', () => {
     expect(wrapper.get('.settings-sidebar').element.closest('.space-dark')).toBeNull();
     wrapper.unmount();
   });
+  it('关闭设置返回登录页之前已经打开的学习页', async () => {
+    const wrapper = mount(ProfilePage, { global: { stubs: { ...stubs, image: true } } });
+    try {
+      await flushPromises();
+      globalThis.getCurrentPages.mockReturnValueOnce([
+        { route: 'pages/learning/index' },
+        { route: 'pages/login/index' },
+        { route: 'pages/profile/index' }
+      ]);
+      uni.navigateBack.mockClear();
+      uni.navigateTo.mockClear();
+      await wrapper.get('.settings-back').trigger('tap');
+      expect(uni.navigateBack).toHaveBeenCalledWith(expect.objectContaining({ delta: 2 }));
+      expect(uni.navigateTo).not.toHaveBeenCalled();
+    } finally {
+      wrapper.unmount();
+    }
+  });
   it('账户导航到共享统计后沿原答更新概览，旧题库数据保留独立口径', async () => {
     const store = useConversationLearningStore();
     store.start('12 + 8');
