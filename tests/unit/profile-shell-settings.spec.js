@@ -42,10 +42,12 @@ it('revokes unsaved settings and account dialogs synchronously when the owner ch
   wrapper.vm.draftAppearance = 'dark';
   wrapper.vm.draftLanguage = 'en';
   wrapper.vm.showDialog = true;
+  wrapper.vm.feedbackOpen = true;
   wrapper.vm.languageOpen = true;
   identityChanged();
   expect(wrapper.vm.draftAppearance).toBeNull();
   expect(wrapper.vm.draftLanguage).toBeNull();
   expect(wrapper.vm.showDialog).toBe(false);
+  expect(wrapper.vm.feedbackOpen).toBe(false);
   expect(wrapper.vm.languageOpen).toBe(false);
 });

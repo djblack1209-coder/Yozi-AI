@@ -13,6 +13,7 @@
   "permissions": [
     "allow-close-desktop-settings",
     "allow-open-desktop-workspace",
+    "allow-open-support-feedback",
     "allow-set-desktop-appearance",
     "allow-request-settings-notification-refresh",
     "allow-learning-notification-permission",

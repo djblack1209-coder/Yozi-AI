@@ -615,6 +615,21 @@ fn focus_desktop_after_oauth(app: AppHandle) -> Result<(), String> {
     window.set_focus().map_err(|_| "无法返回桌面窗口".into())
 }
 
+fn support_feedback_url(note: &str) -> String {
+    let mut url = tauri::Url::parse("mailto:yozi@245334.xyz").expect("valid support address");
+    url.query_pairs_mut()
+        .append_pair("subject", "Yozi AI feedback")
+        .append_pair("body", note);
+    url.as_str().replace('+', "%20")
+}
+
+#[tauri::command]
+async fn open_support_feedback(app: AppHandle, note: String) -> Result<(), String> {
+    app.opener()
+        .open_url(support_feedback_url(&note), None::<&str>)
+        .map_err(|_| "无法打开系统邮件应用".into())
+}
+
 fn main() {
     // 通知可能在系统启动应用时到达，代理必须先于 Tauri 的就绪回调安装。
     notifications::bootstrap();
@@ -699,6 +714,7 @@ fn main() {
             discard_learning_material,
             create_desktop_oauth_proof,
             open_desktop_oauth,
+            open_support_feedback,
             focus_desktop_after_oauth,
             begin_learning_notifications,
             learning_notification_permission,
@@ -727,6 +743,23 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn support_feedback_encodes_the_note_in_a_draft_to_the_fixed_recipient() {
+        let note = "建议 + test\r\n&bcc=other@example.test";
+        let raw = super::support_feedback_url(note);
+        let parsed = tauri::Url::parse(&raw).unwrap();
+        assert_eq!(parsed.scheme(), "mailto");
+        assert_eq!(parsed.path(), "yozi@245334.xyz");
+        assert_eq!(
+            parsed.query_pairs().into_owned().collect::<Vec<_>>(),
+            vec![
+                ("subject".to_owned(), "Yozi AI feedback".to_owned()),
+                ("body".to_owned(), note.to_owned())
+            ]
+        );
+        assert!(raw.contains("Yozi%20AI%20feedback"));
+    }
+
     #[test]
     fn conflict_exports_keep_distinct_names_and_record_guards() {
         let local = filename("records-conflict-local").unwrap();

@@ -257,12 +257,13 @@
           <template v-if="settingsSection === 'support'">
             <LearningQuickstart @open="openQuickstart" />
             <view class="settings-group">
-              <BaseListRow :label="t('dashboard.copy108')" @tap="handleFeedback" />
+              <BaseListRow :label="t('dashboard.copy108')" @tap="feedbackOpen = true" />
             </view>
           </template>
         </view>
       </view>
     </view>
+    <SupportFeedback v-model:visible="feedbackOpen" :is-dark="isDark" :title="t('dashboard.copy108')" />
     <CustomModal
       :key="dialogSequence"
       v-model:visible="showDialog"
@@ -275,7 +276,7 @@
       :show-cancel="['logout', 'sync', 'reset'].includes(dialog.kind)"
       :confirm-loading="resetBusy"
       :type="dialog.kind === 'reset' ? 'error' : 'info'"
-      :mask-closable="['feedback', 'account'].includes(dialog.kind)"
+      :mask-closable="dialog.kind === 'account'"
       :confirm-text="
         dialog.kind === 'reset'
           ? '确认清除并退出'
@@ -283,9 +284,7 @@
             ? t('dashboard.copy110')
             : dialog.kind === 'sync'
               ? '同步'
-              : dialog.kind === 'feedback'
-                ? t('settings.copySupportEmail')
-                : t('dashboard.copy111')
+              : t('dashboard.copy111')
       "
       @confirm="confirmDialog"
     >
@@ -340,7 +339,8 @@ import { safeNavigateTo, consumeProfilePanel } from '@/utils/safe-navigate';
 import { toast } from '@/utils/toast.js';
 import { logger } from '@/utils/logger.js';
 import CustomModal from '@/components/common/CustomModal.vue';
-import { BRAND, DEFAULT_AVATAR } from '@/config/brand.js';
+import SupportFeedback from './support-feedback.vue';
+import { DEFAULT_AVATAR } from '@/config/brand.js';
 import { bindLearningKeyboard } from '@/services/learning/keyboard-controls.js';
 import { bindBusinessMotion } from '@/design/business-motion.js';
 import { currentLanguage, LANGUAGE_OPTIONS, setLanguage, initI18n, t, translateRegisteredText } from '@/i18n/index.js';
@@ -355,6 +355,7 @@ export default {
     BaseStat,
     BaseListRow,
     BaseCheckbox,
+    SupportFeedback,
     CustomModal
   },
 
@@ -375,13 +376,10 @@ export default {
       defaultAvatar: DEFAULT_AVATAR,
       avatarFailed: false,
       reducedMotion: true,
+      feedbackOpen: false,
       showDialog: false,
       dialogSequence: 0,
-      dialog: {
-        kind: 'feedback',
-        title: t('dashboard.copy108'),
-        content: t('dashboard.copy112', { email: BRAND.supportEmail })
-      }
+      dialog: {}
     };
   },
 
@@ -525,6 +523,7 @@ export default {
     },
     settingsSection() {
       this.languageOpen = false;
+      this.feedbackOpen = false;
     },
     avatarUrl() {
       this.avatarFailed = false;
@@ -535,6 +534,7 @@ export default {
       this.draftLanguage = this.draftAppearance = null;
       this.syncIdeasModel();
       this.languageOpen = false;
+      this.feedbackOpen = false;
       this.showDialog = false;
       this.dialogSequence++;
     });
@@ -697,16 +697,6 @@ export default {
       };
     },
 
-    handleFeedback() {
-      this.dialogSequence++;
-      this.dialog = {
-        kind: 'feedback',
-        title: t('dashboard.copy108'),
-        content: t('dashboard.copy112', { email: BRAND.supportEmail })
-      };
-      this.showDialog = true;
-    },
-
     handleLocalReset() {
       if (this.resetBusy) return;
       if (this.nativeSettings) {
@@ -756,13 +746,6 @@ export default {
       this.showDialog = true;
     },
     confirmDialog() {
-      if (this.dialog.kind === 'feedback') {
-        uni.setClipboardData({
-          data: BRAND.supportEmail,
-          fail: () => toast.error(t('settings.copySupportFailed'))
-        });
-        return;
-      }
       if (this.dialog.kind === 'account') {
         this.showDialog = false;
         return;

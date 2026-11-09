@@ -20,6 +20,7 @@
     "allow-discard-learning-material",
     "allow-create-desktop-oauth-proof",
     "allow-open-desktop-oauth",
+    "allow-open-support-feedback",
     "allow-focus-desktop-after-oauth",
     "allow-begin-learning-notifications",
     "allow-learning-notification-permission",

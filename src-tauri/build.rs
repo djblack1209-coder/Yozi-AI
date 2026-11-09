@@ -55,6 +55,7 @@ fn main() {
             "discard_learning_material",
             "create_desktop_oauth_proof",
             "open_desktop_oauth",
+            "open_support_feedback",
             "focus_desktop_after_oauth",
             "begin_learning_notifications",
             "learning_notification_permission",
