@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Yozi AI">
+  <defs>
+    <mask id="study-index" maskUnits="userSpaceOnUse" x="0" y="0" width="128" height="128" style="mask-type:alpha">
+      <image href="mark.svg" width="128" height="128"/>
+    </mask>
+    <linearGradient id="enamel" x1="0" y1="0" x2=".86" y2="1">
+      <stop stop-color="#5686b8"/>
+      <stop offset=".48" stop-color="#2f5989"/>
+      <stop offset="1" stop-color="#132d51"/>
+    </linearGradient>
+    <radialGradient id="reflection" cx=".22" cy=".13" r=".72">
+      <stop stop-color="#dbf0ff" stop-opacity=".52"/>
+      <stop offset="1" stop-color="#bfdfff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="bevel-shape" x="0" y="0" width="1" height="1">
+      <feMorphology in="SourceAlpha" operator="erode" radius="1.65" result="inner"/>
+      <feComposite in="SourceAlpha" in2="inner" operator="out"/>
+    </filter>
+    <mask id="bevel" maskUnits="userSpaceOnUse" x="0" y="0" width="128" height="128" style="mask-type:alpha">
+      <image href="mark.svg" width="128" height="128" filter="url(#bevel-shape)"/>
+    </mask>
+    <linearGradient id="rim" x1=".14" y1="0" x2=".79" y2=".93">
+      <stop stop-color="#d8efff"/>
+      <stop offset=".42" stop-color="#90c6ed" stop-opacity=".82"/>
+      <stop offset="1" stop-color="#102641"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" fill="#fff"/>
+  <g mask="url(#study-index)">
+    <rect width="128" height="128" fill="url(#enamel)"/>
+    <rect width="128" height="128" fill="url(#reflection)"/>
+  </g>
+  <rect width="128" height="128" fill="url(#rim)" mask="url(#bevel)"/>
+</svg>

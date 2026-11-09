@@ -57,7 +57,15 @@
     "transparent": true,
     "renderer": "sharp 0.35.5 / librsvg 2.63.2",
     "reverseSvg": "mark-reverse.svg",
-    "rasterization": "librsvg at target density (72 * size / 128 dpi), no resampling"
+    "rasterization": "librsvg at target density (72 * size / 128 dpi), no resampling",
+    "macosDock": {
+      "svg": "current/dock.svg",
+      "derivedFrom": "current/mark.svg",
+      "output": "src-tauri/icons/icon.icns",
+      "background": "#ffffff",
+      "renderer": "rsvg-convert 2.62.1 at target width and height, packed as lossless PNG slots",
+      "command": "node scripts/build/macos-dock-icon.mjs"
+    }
   },
   "contactSheet": "contact-sheet.png",
   "beforeAfterSheet": "contact-sheet-before-after.png",
