@@ -28,7 +28,8 @@
         :aria-expanded="planSheet"
         :disabled="busy"
         @tap="reviewPlan"
-      >{{ t('tutor.proposal.reviewPlan') }}</BaseButton>
+        >{{ t('tutor.proposal.reviewPlan') }}</BaseButton
+      >
       <template v-else>
         <BaseButton variant="quiet" :disabled="busy" @tap="$emit('resolve', 'dismiss')">{{
           t('tutor.proposal.keep')
@@ -68,7 +69,8 @@
           :aria-pressed="planChoice === option.value"
           :disabled="busy"
           @tap="planChoice = option.value"
-        >{{ t(option.label) }}</BaseButton>
+          >{{ t(option.label) }}</BaseButton
+        >
       </view>
     </CustomModal>
   </BaseCard>

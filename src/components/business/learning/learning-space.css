@@ -1718,7 +1718,9 @@
   border-radius: 9px;
   color: var(--workspace-muted);
   animation: none;
-  transition: color 140ms var(--workspace-ease), background-color 140ms var(--workspace-ease);
+  transition:
+    color 140ms var(--workspace-ease),
+    background-color 140ms var(--workspace-ease);
 }
 .workspace-wide.muse-space .muse-rail .rail-item:is(:hover, :focus-visible) {
   background: var(--workspace-hover);
@@ -1797,7 +1799,9 @@
   border-radius: 7px;
   background: var(--workspace-frame);
   color: var(--workspace-ink);
-  transition: transform 150ms var(--workspace-ease), opacity 150ms var(--workspace-ease);
+  transition:
+    transform 150ms var(--workspace-ease),
+    opacity 150ms var(--workspace-ease);
 }
 .workspace-collapsed .rail-item:is(:hover, :focus-visible) .rail-item-tip {
   opacity: 1;
@@ -2049,7 +2053,9 @@
   border: 1px solid var(--workspace-border);
   border-radius: 15px;
   background: var(--workspace-frame);
-  transition: opacity 130ms var(--workspace-ease), visibility 0s linear 220ms;
+  transition:
+    opacity 130ms var(--workspace-ease),
+    visibility 0s linear 220ms;
 }
 .workspace-context-open .desktop-study-context {
   visibility: visible;
@@ -2111,7 +2117,8 @@
 .study-context-links .base-button__content > :nth-child(2) {
   flex: 1;
 }
-.workspace-shell.reduce-motion :is(.desktop-study-context, .rail-item-tip, .directory-scroll, .space-sidebar, .workspace-history-toggle .base-icon) {
+.workspace-shell.reduce-motion
+  :is(.desktop-study-context, .rail-item-tip, .directory-scroll, .space-sidebar, .workspace-history-toggle .base-icon) {
   animation: none;
   transition: none;
 }
@@ -2172,10 +2179,14 @@
   }
 }
 @keyframes workspace-drawer-in {
-  from { transform: translateX(-100%); }
+  from {
+    transform: translateX(-100%);
+  }
 }
 @keyframes workspace-drawer-out {
-  to { transform: translateX(-100%); }
+  to {
+    transform: translateX(-100%);
+  }
 }
 
 .is-desktop-settings .muse-rail,

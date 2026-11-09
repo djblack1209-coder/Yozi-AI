@@ -38,7 +38,13 @@
           :label="t('learning.kpd')"
           numeric-delete-ink
         />
-        <BaseInput v-model.number="form.minutes" type="number" inputmode="numeric" :label="t('learning.k8r')" numeric-delete-ink />
+        <BaseInput
+          v-model.number="form.minutes"
+          type="number"
+          inputmode="numeric"
+          :label="t('learning.k8r')"
+          numeric-delete-ink
+        />
       </view>
       <view class="button-row" :aria-label="t('learning.k6c')">
         <BaseChip

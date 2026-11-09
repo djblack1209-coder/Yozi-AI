@@ -87,9 +87,17 @@
               @tap="openView(item.id, $event)"
             >
               <view class="rail-item-surface"><BaseIcon :name="item.icon" size="20px" /></view>
-              <text class="rail-item-tip" aria-hidden="true">{{
-                item.id === 'search' ? t('muse.nav.search') : desktopShell ? item.label : item.shortLabel || item.label
-              }}<text v-if="item.id === 'search' && desktopShell" class="rail-shortcut">{{ searchShortcut }}</text></text>
+              <text class="rail-item-tip" aria-hidden="true"
+                >{{
+                  item.id === 'search'
+                    ? t('muse.nav.search')
+                    : desktopShell
+                      ? item.label
+                      : item.shortLabel || item.label
+                }}<text v-if="item.id === 'search' && desktopShell" class="rail-shortcut">{{
+                  searchShortcut
+                }}</text></text
+              >
             </BaseButton>
           </view>
           <BaseButton
@@ -101,7 +109,9 @@
             @tap="openView('usage')"
           >
             <view class="rail-item-surface"><BaseIcon name="chart" size="20px" /></view>
-            <text class="rail-item-tip" aria-hidden="true">{{ t(desktopShell ? 'muse.usage' : 'muse.nav.usage') }}</text>
+            <text class="rail-item-tip" aria-hidden="true">{{
+              t(desktopShell ? 'muse.usage' : 'muse.nav.usage')
+            }}</text>
           </BaseButton>
           <BaseButton
             v-if="!desktopShell && !loggedIn"
@@ -596,17 +606,7 @@ import MuseLaunch from './muse-launch.vue';
 import AnimatedAvatar from '@/components/base/animated-avatar/animated-avatar.vue';
 import { avatarBusinessForLearning, avatarStateFor } from '@/design/avatar-state.js';
 
-import {
-  computed,
-  ref,
-  onMounted,
-  onUnmounted,
-  onBeforeUpdate,
-  onUpdated,
-  nextTick,
-  useAttrs,
-  watch
-} from 'vue';
+import { computed, ref, onMounted, onUnmounted, onBeforeUpdate, onUpdated, nextTick, useAttrs, watch } from 'vue';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { useThemeStore } from '@/stores/modules/theme.js';
 import { safeNavigateTo, requestProfilePanel } from '@/utils/safe-navigate';
@@ -757,9 +757,7 @@ const todayTasks = computed(() => (learning.journeySummary || learning.todaySumm
 // #ifdef APP-PLUS
 const hasNativeWebView = typeof plus !== 'undefined' && Boolean(plus.webview);
 // #endif
-const canRestoreDirectory = computed(
-  () => props.active === 'learning' && desktopShell.value
-);
+const canRestoreDirectory = computed(() => props.active === 'learning' && desktopShell.value);
 const sidebarExpanded = ref(!sidebar.collapsed);
 const historyExpanded = ref(sidebar.historyExpanded !== false);
 const sidebarToggle = ref(null);
@@ -1193,7 +1191,8 @@ function escapeMenu(event) {
       if (event.key !== 'Enter') {
         event.preventDefault();
         const direction = event.key === 'ArrowDown' ? 1 : -1;
-        const nextIndex = index < 0 ? (direction > 0 ? 0 : rows.length - 1) : (index + direction + rows.length) % rows.length;
+        const nextIndex =
+          index < 0 ? (direction > 0 ? 0 : rows.length - 1) : (index + direction + rows.length) % rows.length;
         rows[nextIndex]?.focus();
       } else if (event.target?.tagName === 'INPUT') {
         event.preventDefault();

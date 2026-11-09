@@ -269,7 +269,7 @@
   </view>
 </template>
 <script setup>
-import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick, TransitionGroup } from 'vue';
+import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { workspaceConversationContext } from '@/services/learning/workspace-context.js';
 import MuseConversationFilter from './muse-conversation-filter.vue';

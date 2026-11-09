@@ -131,7 +131,10 @@ const open = ref(false);
   opacity: 0;
   transform: translateY(-4px);
   filter: blur(5px);
-  transition: opacity 130ms ease, filter 190ms ease, transform 240ms ease;
+  transition:
+    opacity 130ms ease,
+    filter 190ms ease,
+    transform 240ms ease;
 }
 .is-open .study-progress-body {
   opacity: 1;

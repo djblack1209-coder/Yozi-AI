@@ -130,7 +130,9 @@
         </template>
         <template v-else-if="view === 'plan'">
           <view class="focus-timer-entry">
-            <BaseButton variant="quiet" icon="timer" @tap="focusTimerOpen = true">{{ t('muse.focus.title') }}</BaseButton>
+            <BaseButton variant="quiet" icon="timer" @tap="focusTimerOpen = true">{{
+              t('muse.focus.title')
+            }}</BaseButton>
           </view>
           <MuseStudyProgress
             v-if="todayProgress.denominator"

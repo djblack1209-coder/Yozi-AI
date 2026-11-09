@@ -370,8 +370,12 @@ watch(
     background-image:
       linear-gradient(var(--muse-rich-danger, var(--coral)), var(--muse-rich-danger, var(--coral))),
       linear-gradient(var(--apricot-soft), var(--apricot-soft));
-    background-position: left 54%, left 84%;
-    background-size: 100% 1.5px, 100% 0.54em;
+    background-position:
+      left 54%,
+      left 84%;
+    background-size:
+      100% 1.5px,
+      100% 0.54em;
     animation: essay-original-ink 3300ms linear var(--essay-line-delay) backwards;
   }
   .feedback-essay .feedback-rewrite {
@@ -391,14 +395,22 @@ watch(
   }
 }
 @keyframes essay-original-ink {
-  0%, 22.727% {
-    background-size: 0% 1.5px, 0% 0.54em;
+  0%,
+  22.727% {
+    background-size:
+      0% 1.5px,
+      0% 0.54em;
   }
-  31%, 90.909% {
-    background-size: 0% 1.5px, 100% 0.54em;
+  31%,
+  90.909% {
+    background-size:
+      0% 1.5px,
+      100% 0.54em;
   }
   100% {
-    background-size: 100% 1.5px, 100% 0.54em;
+    background-size:
+      100% 1.5px,
+      100% 0.54em;
   }
 }
 @media (prefers-reduced-motion: reduce) {

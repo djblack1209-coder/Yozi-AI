@@ -438,8 +438,12 @@ function goBack() {
 }
 @keyframes connection-arrival {
   0%,
-  100% { box-shadow: none; }
-  45% { box-shadow: 0 0 0 3px var(--muse-selected); }
+  100% {
+    box-shadow: none;
+  }
+  45% {
+    box-shadow: 0 0 0 3px var(--muse-selected);
+  }
 }
 .node-name {
   font-weight: 600;

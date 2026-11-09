@@ -228,14 +228,16 @@
           :selected="folder.id === moveFolderId"
           :aria-pressed="folder.id === moveFolderId"
           @tap="moveFolderId = folder.id"
-        >{{ builtinFolderText(folder) }}</BaseButton>
+          >{{ builtinFolderText(folder) }}</BaseButton
+        >
       </view>
       <BaseButton
         variant="primary"
         block
         :disabled="!moveFolderId || moveFolderId === movingItem?.folderId"
         @tap="confirmMove"
-      >{{ t('favorite.confirmMove') }}</BaseButton>
+        >{{ t('favorite.confirmMove') }}</BaseButton
+      >
     </CustomModal>
 
     <!-- 笔记编辑弹窗 -->
