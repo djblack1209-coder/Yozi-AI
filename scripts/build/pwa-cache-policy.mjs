@@ -6,7 +6,7 @@ export function publicImageMatch({ url, sameOrigin, request }) {
     sameOrigin &&
     request.method === 'GET' &&
     !request.headers.has('authorization') &&
-    (url.pathname.startsWith('/static/') || url.pathname === '/public/visual/nomi/kitten.png') &&
+    url.pathname.startsWith('/static/') &&
     /\.(png|jpg|jpeg|svg|gif|webp)$/.test(url.pathname)
   );
 }

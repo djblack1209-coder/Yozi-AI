@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createCanvas } from '@napi-rs/canvas';
+import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { kittenPoseAt, paintKittenRig } from '../../src/design/kitten-rig.js';
 import { AVATAR_STATES, avatarStateFor, avatarBusinessForLearning } from '../../src/design/avatar-state.js';
 describe('task kitten articulation', () => {
@@ -49,20 +49,22 @@ describe('task kitten articulation', () => {
       kittenPoseAt(4000, 'celebrate', { age: 4000 }).pawL
     );
   });
-  it.each(AVATAR_STATES)('%s stays transparent and preserves white fur with dark details', (state) => {
+  it.each(AVATAR_STATES)('%s renders transparent Pudding with orange fur and a blue cap', async (state) => {
     const canvas = createCanvas(144, 144),
       ctx = canvas.getContext('2d');
-    paintKittenRig(ctx, 144, 144, kittenPoseAt(900, state, { age: 900 }));
+    const portrait = await loadImage('src/static/brand/kitten-avatar.png');
+    paintKittenRig(ctx, 144, 144, kittenPoseAt(900, state, { age: 900 }), { portrait });
     const rgba = ctx.getImageData(0, 0, 144, 144).data;
     expect(rgba[3]).toBe(0);
     expect(rgba[rgba.length - 1]).toBe(0);
-    let white = 0,
-      dark = 0;
+    let orange = 0,
+      blue = 0;
     for (let i = 0; i < rgba.length; i += 4) {
-      if (rgba[i + 3] > 240 && rgba[i] > 240) white++;
-      if (rgba[i + 3] > 240 && rgba[i] < 40) dark++;
+      const [r, g, b, a] = rgba.subarray(i, i + 4);
+      if (a > 240 && r > 140 && r > b + 45) orange++;
+      if (a > 240 && b > 100 && b > r + 50 && b > g + 40) blue++;
     }
-    expect(white).toBeGreaterThan(1200);
-    expect(dark).toBeGreaterThan(300);
+    expect(orange).toBeGreaterThan(1200);
+    expect(blue).toBeGreaterThan(600);
   });
 });

@@ -43,7 +43,7 @@ describe('kitten blink at native size', () => {
   it('closes both branded eyes while preserving transparency and pixels outside the eyes', async () => {
     const canvas = createCanvas(112, 112);
     const context = canvas.getContext('2d');
-    context.drawImage(await loadImage('public/visual/avatar/idle.webp'), 0, 0, 112, 112);
+    context.drawImage(await loadImage('src/static/brand/kitten-avatar.png'), 0, 0, 112, 112);
     const before = context.getImageData(0, 0, 112, 112).data.slice();
     paintAvatarBlink(context, 112, 112, 0);
     expect(context.getImageData(0, 0, 112, 112).data).toEqual(before);
@@ -55,8 +55,8 @@ describe('kitten blink at native size', () => {
         const i = (y * 112 + x) * 4;
         expect(after[i + 3]).toBe(before[i + 3]);
         if (before.slice(i, i + 3).some((v, c) => v !== after[i + c])) {
-          expect(y).toBeGreaterThan(39);
-          expect(y).toBeLessThan(64);
+          expect(y).toBeGreaterThan(49);
+          expect(y).toBeLessThan(73);
           if (x < 56) changed[0]++;
           else changed[1]++;
         }
@@ -95,7 +95,12 @@ describe('kitten blink at native size', () => {
 });
 
 describe('bundled video transport', () => {
-  it('keeps the poster fallback when a canvas context is unavailable, then resumes painting after recovery', () => {
+  it('keeps the poster fallback when a canvas context is unavailable, then resumes painting after recovery', async () => {
+    const portrait = await loadImage('src/static/brand/kitten-avatar.png');
+    Object.defineProperty(portrait, 'src', { set() {} });
+    const image = vi.spyOn(window, 'Image').mockImplementation(function () {
+      return portrait;
+    });
     const runtime = acquireAvatar('lost-canvas-context');
     const canvas = createCanvas(96, 96),
       painted = vi.fn();
@@ -112,6 +117,7 @@ describe('bundled video transport', () => {
     } finally {
       releaseView();
       runtime.release();
+      image.mockRestore();
     }
   });
   it('loads a native local video URL without fetch/blob and releases its decoder', async () => {

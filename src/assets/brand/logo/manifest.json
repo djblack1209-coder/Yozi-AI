@@ -1,151 +1,60 @@
 {
   "schemaVersion": 1,
-  "date": "2026-11-07",
+  "date": "2026-11-10",
   "brand": "Yozi AI",
   "current": {
-    "id": "01-study-index",
-    "directory": "current",
-    "primary": "current/mark.svg",
-    "onDark": "current/mark-reverse.svg",
-    "integrationStatus": "wired-2026-11-08",
-    "integrationRecord": "YOZI-LOGO-WIRING-RESULT-2026-11-08.md",
-    "revision": "claude-optimize-2026-11-07",
-    "previousRevision": "archive/study-index-redo-2026-11-07"
+    "id": "pudding",
+    "mascot": "Pudding",
+    "master": "brand/logo-2026-11-10/yozi-logo-master-blue-bg.jpg",
+    "cutoutPlate": "brand/logo-2026-11-10/yozi-logo-cutout-white-bg.jpg",
+    "transparent": "brand/logo-2026-11-10/yozi-logo-transparent.png",
+    "blueBackground": "brand/logo-2026-11-10/yozi-logo-blue-bg.png"
   },
   "palette": {
-    "navy": "#11243d",
-    "reverse": "#ffffff",
-    "sky": ["#d5effd", "#aedcf9", "#8cd0f7"],
-    "tokenSource": "website/site.css --navy"
+    "forcedBackground": "#0001BE",
+    "sRGB": [0, 1, 190],
+    "sample": {
+      "x": 50,
+      "y": 352
+    }
   },
-  "construction": {
-    "units": "viewBox units, 128 x 128",
-    "grid": 8,
-    "gridNote": "8 units = 1 px at 16 px, 2 px at 32 px, 4 px at 64 px",
-    "outline": {
-      "left": 16,
-      "right": 112,
-      "top": 16,
-      "bottom": 104
-    },
-    "step": {
-      "x": 40,
-      "y": 48
-    },
-    "chamfer": {
-      "from": [88, 16],
-      "to": [112, 40],
-      "angleDeg": 45
-    },
-    "diamond": {
-      "center": [76, 64],
-      "halfDiagonal": 20
-    },
-    "radii": {
-      "outerConvex": 8,
-      "stepConcave": 4,
-      "diamond": 4,
-      "type": "circular arc"
-    },
-    "winding": "outline clockwise, diamond counter-clockwise; renders the same under evenodd and nonzero"
+  "usage": {
+    "default": "transparent",
+    "blueBackground": [
+      "macOS app icon",
+      "iOS and iPadOS app icons",
+      "watchOS app icon",
+      "Apple touch icon",
+      "Android adaptive background",
+      "PWA maskable icon",
+      "Google Play listing icon"
+    ]
   },
   "exports": {
-    "svg": "mark.svg",
-    "viewBox": [0, 0, 128, 128],
-    "png": "png/{size}.png",
-    "sizesPx": [1024, 512, 180, 64, 32, 16],
-    "transparent": true,
-    "renderer": "sharp 0.35.5 / librsvg 2.63.2",
-    "reverseSvg": "mark-reverse.svg",
-    "rasterization": "librsvg at target density (72 * size / 128 dpi), no resampling",
-    "macosDock": {
-      "svg": "current/dock.svg",
-      "derivedFrom": "current/mark.svg",
-      "output": "src-tauri/icons/icon.icns",
-      "background": "#ffffff",
-      "renderer": "rsvg-convert 2.62.1 at target width and height, packed as lossless PNG slots",
-      "command": "node scripts/build/macos-dock-icon.mjs"
-    }
+    "transparentSizesPx": [16, 32, 60, 64, 180, 256, 512, 1024],
+    "webFaviconsPx": [16, 32, 48],
+    "webInstallPx": [180, 192, 512],
+    "macOS": {
+      "file": "src-tauri/icons/icon.icns",
+      "sizesPx": [16, 32, 64, 128, 256, 512, 1024],
+      "slots": 10
+    },
+    "windows": {
+      "file": "src-tauri/icons/icon.ico",
+      "icoSizesPx": [16, 24, 32, 48, 64, 128, 256],
+      "storeSizesPx": [30, 44, 50, 71, 89, 107, 142, 150, 284, 310]
+    },
+    "iOSAndIPadOS": [20, 29, 40, 58, 60, 76, 80, 87, 120, 152, 167, 180, 1024],
+    "watchOS": {
+      "assetCatalog": "nativewatch/Assets.xcassets/AppIcon.appiconset",
+      "universalPx": 1024
+    },
+    "android": {
+      "legacyPx": [48, 72, 96, 144, 192],
+      "adaptiveForegroundPx": [108, 162, 216, 324, 432],
+      "adaptiveResources": "brand/logo-2026-11-10/android-adaptive/res"
+    },
+    "store": "brand/logo-2026-11-10/store"
   },
-  "contactSheet": "contact-sheet.png",
-  "beforeAfterSheet": "contact-sheet-before-after.png",
-  "candidates": [
-    {
-      "id": "01-study-index",
-      "name": "Study Index",
-      "rank": 1,
-      "status": "official",
-      "directory": "current",
-      "legibility": {
-        "16": "pass",
-        "32": "pass"
-      }
-    },
-    {
-      "id": "04-revision-fold",
-      "name": "Revision Fold",
-      "rank": 2,
-      "status": "finalist",
-      "directory": "archive/candidates-2026-11-07/04-revision-fold",
-      "legibility": {
-        "16": "pass",
-        "32": "pass"
-      }
-    },
-    {
-      "id": "02-traverse",
-      "name": "Traverse",
-      "rank": 3,
-      "status": "finalist",
-      "directory": "archive/candidates-2026-11-07/02-traverse",
-      "legibility": {
-        "16": "pass",
-        "32": "pass"
-      }
-    },
-    {
-      "id": "03-terraces",
-      "name": "Terraces",
-      "rank": 4,
-      "status": "finalist",
-      "directory": "archive/candidates-2026-11-07/03-terraces",
-      "legibility": {
-        "16": "pass",
-        "32": "pass"
-      }
-    },
-    {
-      "id": "05-pivot-y",
-      "name": "Pivot Y",
-      "rank": 5,
-      "status": "excluded",
-      "directory": "archive/candidates-2026-11-07/05-pivot-y",
-      "legibility": {
-        "16": "angled foot no longer reads",
-        "32": "pass"
-      }
-    },
-    {
-      "id": "06-intervals",
-      "name": "Intervals",
-      "rank": 6,
-      "status": "excluded",
-      "directory": "archive/candidates-2026-11-07/06-intervals",
-      "legibility": {
-        "16": "inner exit no longer reads",
-        "32": "pass"
-      }
-    }
-  ],
-  "archive": {
-    "candidates": "archive/candidates-2026-11-07",
-    "previousOfficial": "archive/previous-official",
-    "previousRevision": "b122e3c944c379b2639da3355a43625026bcb7a4",
-    "previousRevisionPathsPreserved": true,
-    "wave3Artwork": {
-      "originalRepoPath": "release/yozi-wave3-20261106.noindex/artwork",
-      "snapshot": "archive/previous-official/wave3-artwork"
-    },
-    "studyIndexRedo": "archive/study-index-redo-2026-11-07"
-  }
+  "previous": "archive/study-index-2026-11-10"
 }

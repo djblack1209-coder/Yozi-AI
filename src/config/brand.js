@@ -6,13 +6,12 @@ export const BRAND = Object.freeze({
   supportEmail: 'yozi@245334.xyz',
   title: 'Yozi AI · 对话学习空间',
   description: '从一个问题开始，在对话中理解、练习和复习。',
-  // Study Index mark. Source: src/assets/brand/logo/current/ (mark.svg navy, mark-reverse.svg white).
+  // Pudding, the owner-selected mark. Light and dark surfaces use the same transparent portrait.
   mark: '/static/images/logo.png',
-  markOnDark: '/static/images/logo-reverse.png',
+  markOnDark: '/static/images/logo.png',
   icon: '/static/images/logo.png',
   themeColor: '#eae8fc'
 });
 
-// One local, licensed fallback across account surfaces; uploaded photos take priority.
-// The kitten keeps the avatar role; the logo is not an avatar.
+// The local Pudding portrait is the account fallback. Uploaded photos take priority.
 export const DEFAULT_AVATAR = '/static/brand/kitten-avatar.png';

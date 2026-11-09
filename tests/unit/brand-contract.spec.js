@@ -24,7 +24,7 @@ describe('品牌显示与兼容合同', () => {
     expect(native.identifier).toBe('cn.wangshiliang.wenli');
     expect(native.app.windows[0].title).toBe(BRAND.name);
   });
-  it('品牌 PNG 可安装尺寸正确，分享沿当前 Logo，官方 SVG 保持本地', () => {
+  it('品牌尺寸和透明底按平台导出，分享沿当前 Logo', () => {
     for (const [path, size] of [
       ['src/static/images/logo.png', 256],
       ['src/static/images/logo-reverse.png', 256],
@@ -39,12 +39,15 @@ describe('品牌显示与兼容合同', () => {
     }
     expect(ASSETS.logo).toBe(BRAND.icon);
     expect(ASSETS.appShareCover).toBe(BRAND.icon);
-    // Study Index is the logo; the kitten keeps the avatar role on its own file.
     expect(BRAND.mark).toBe(BRAND.icon);
-    expect(BRAND.markOnDark).toBe('/static/images/logo-reverse.png');
-    expect(DEFAULT_AVATAR).not.toBe(BRAND.icon);
+    expect(BRAND.markOnDark).toBe(BRAND.mark);
+    const mark = readFileSync(`src${BRAND.mark}`);
+    expect(mark[25]).toBe(6);
+    expect(readFileSync(`src${DEFAULT_AVATAR}`)).toEqual(mark);
+    expect(readFileSync('src/static/images/logo-reverse.png')).toEqual(mark);
     expect(AVATAR_STATIC).toBe(DEFAULT_AVATAR);
-    // Opaque white iOS icons, as the store requires (PNG color type 2 = RGB, no alpha).
+    expect(readFileSync('public/static/pwa-icons/icon-512x512-maskable.png')[25]).toBe(2);
+    // PNG color type 2 is opaque RGB for the Apple App Store.
     const ios = JSON.parse(readFileSync('src/manifest.json', 'utf8'))['app-plus'].distribute.icons.ios;
     const iosFiles = new Set([ios.appstore, ...Object.values(ios.iphone), ...Object.values(ios.ipad)]);
     for (const file of iosFiles) expect(readFileSync(`src/${file}`)[25]).toBe(2);

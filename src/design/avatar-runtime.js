@@ -8,7 +8,7 @@ import cushionUrl from '@/assets/brand/kitten-cushion.webp';
 const players = new Map();
 let serial = 0;
 // MP4 carries color on the left and a grayscale alpha mask on the right.
-// One ordinary video decoder works in WebKit and WeChat without losing the white kitten.
+// One ordinary video decoder preserves the portrait alpha in WebKit.
 export function paintAvatarFrame(context, image, width, height, packedAlpha = false) {
   context.clearRect(0, 0, width, height);
   if (!packedAlpha) {
@@ -24,9 +24,8 @@ export function paintAvatarFrame(context, image, width, height, packedAlpha = fa
   for (let i = 0; i < frame.data.length; i += 4) frame.data[i + 3] = mask[i];
   context.putImageData(frame, 0, 0);
 }
-// Compress only the two connected eye shapes from the selected kitten artwork.
-// Locate them in each decoded frame so the existing clip's small motion is retained.
-// All pixels outside the eyes (including alpha, fur and scan lines) stay untouched.
+// Compress the two connected pupils inside the neutral Pudding portrait.
+// Pixels outside the eyes, including the fur and alpha, stay untouched.
 export function paintAvatarBlink(context, width, height, closure) {
   if (closure <= 0) return;
   const frame = context.getImageData(0, 0, width, height);
@@ -36,8 +35,8 @@ export function paintAvatarBlink(context, width, height, closure) {
     return original[i + 3] > 220 && Math.max(original[i], original[i + 1], original[i + 2]) < 100;
   };
   for (const [cx, cy] of [
-    [0.355, 0.425],
-    [0.59, 0.505]
+    [0.355, 0.545],
+    [0.65, 0.545]
   ]) {
     let seed = null;
     let distance = Infinity;
@@ -89,7 +88,7 @@ export function paintAvatarBlink(context, width, height, closure) {
         const center = (top + bottom) / 2 + closure * (bottom - top) * 0.14 * (1 - across * across);
         const sourceY = Math.round((top + bottom) / 2 + (y - center) / scale);
         const dest = (y * width + x) * 4;
-        // Sample white fur beside each eye, preserving the original alpha.
+        // Sample the neighbouring eyelid, preserving the original alpha.
         const source = (sourceY >= top && sourceY <= bottom ? sourceY * width + x : y * width + left) * 4;
         for (let c = 0; c < 3; c++) frame.data[dest + c] = original[source + c];
       }
@@ -121,8 +120,7 @@ export function avatarBlinkAt(elapsed) {
   return 0;
 }
 
-// Muse's avatar is never still while visible. The kitten keeps a slow breath and
-// drift, and its curious head tilt returns every few seconds at a size readable at 56px.
+// Pudding keeps a slow breath and drift, with a recurring tilt readable at 56px.
 // Thinking and replying drift faster; the tilt phrase is shared so a state change never restarts it.
 const AVATAR_DRIFT = { idle: [1.4, 5200], working: [3.5, 1700], making: [2.2, 1100] };
 export function avatarPoseAt(elapsed, state = 'idle') {
@@ -257,6 +255,10 @@ export function acquireAvatar(identity = 'yozi') {
   }
   const fallback = new window.Image();
   fallback.src = AVATAR_MEDIA.idle.poster;
+  const portrait = new window.Image();
+  portrait.onload = () => paint();
+  portrait.src = AVATAR_STATIC;
+  let blinkContext;
   fallback.onerror = () => {
     fallback.onerror = null;
     fallback.src = AVATAR_STATIC;
@@ -336,18 +338,29 @@ export function acquireAvatar(identity = 'yozi') {
         if (view.perceptible?.()) {
           if (layer.state === 'making') loadProp('laptop');
           if (layer.state === 'sleeping') loadProp('cushion');
-          paintKittenRig(
-            context,
-            canvas.width,
-            canvas.height,
-            kittenPoseAt(gestureTime, layer.state, {
-              reduced: state.reduced || !state.activated,
-              age: Math.max(0, behavior.time() - (layer.poseStartedAt ?? layer.enteredAt)),
-              exit:
-                key === 'current' && state.fading ? Math.min(1, (behavior.time() - state.next.poseStartedAt) / 500) : 0
-            }),
-            props
-          );
+          if (!portrait.naturalWidth) continue;
+          const pose = kittenPoseAt(gestureTime, layer.state, {
+            reduced: state.reduced || !state.activated,
+            age: Math.max(0, behavior.time() - (layer.poseStartedAt ?? layer.enteredAt)),
+            exit:
+              key === 'current' && state.fading ? Math.min(1, (behavior.time() - state.next.poseStartedAt) / 500) : 0
+          });
+          let frame = portrait;
+          const closure = layer.state === 'idle' ? avatarBlinkAt(gestureTime) : pose.blink;
+          if (!state.reduced && state.activated && closure > 0) {
+            if (blinkContext === undefined) {
+              const canvas = document.createElement('canvas');
+              canvas.width = canvas.height = 256;
+              blinkContext = canvas.getContext('2d', { willReadFrequently: true });
+            }
+            if (blinkContext) {
+              const { width, height } = blinkContext.canvas;
+              paintAvatarFrame(blinkContext, portrait, width, height);
+              paintAvatarBlink(blinkContext, width, height, closure);
+              frame = blinkContext.canvas;
+            }
+          }
+          paintKittenRig(context, canvas.width, canvas.height, pose, { ...props, portrait: frame });
           if (key === 'current')
             view.painted?.(state.reduced ? 'fallback' : state.visible && state.focused ? 'playing' : 'paused');
           continue;
@@ -355,9 +368,6 @@ export function acquireAvatar(identity = 'yozi') {
         const image = !state.reduced && layer.video?.readyState >= 2 ? layer.video : layer.poster;
         if (!image || !(image.videoWidth || image.naturalWidth)) continue;
         paintAvatarFrame(context, image, canvas.width, canvas.height, image === layer.video && layer.packedAlpha);
-        if (view.perceptible?.() && !state.reduced && state.activated && AVATAR_MEDIA[layer.state]?.loop) {
-          paintAvatarBlink(context, canvas.width, canvas.height, avatarBlinkAt(gestureTime));
-        }
         // Report the displayed current layer, not merely a loaded decoder or poster.
         if (key === 'current') {
           const media =
@@ -465,6 +475,8 @@ export function acquireAvatar(identity = 'yozi') {
         image.onload = image.onerror = null;
         image.src = '';
       }
+      portrait.onload = null;
+      portrait.src = '';
       if (frameId !== null) cancelAnimationFrame(frameId);
       document.removeEventListener('visibilitychange', gates);
       window.removeEventListener('focus', focus);

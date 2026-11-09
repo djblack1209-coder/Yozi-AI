@@ -156,8 +156,9 @@ async function verifyShareAssets(page) {
   const { icons } = await response.json();
   assert.deepEqual(
     icons.map((icon) => icon.sizes),
-    ['192x192', '512x512']
+    ['192x192', '512x512', '512x512']
   );
+  assert.equal(icons[2].purpose, 'maskable');
   const images = [
     [share.pathname, 'image/jpeg', 1200, 630],
     [touch, 'image/png', 180, 180],
@@ -174,7 +175,7 @@ async function verifyShareAssets(page) {
   }
   await verifyBrandSlots(page, ['link[rel="icon"]', '.brand-pill img', '.signup-brand img', '.footer-brand img']);
   console.log(
-    `Share image and three icons decoded at their declared sizes. ZIP matched all ${expectedZip.length} bytes.`
+    `Share image and four icons decoded at their declared sizes. ZIP matched all ${expectedZip.length} bytes.`
   );
 }
 

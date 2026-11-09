@@ -27,7 +27,7 @@ describe('PWA只缓存公共静态资源', () => {
   });
   it('不缓存鉴权图片、私人storage/API、跨来源或写入请求', () => {
     expect(publicImageMatch(context('/static/images/book.webp'))).toBe(true);
-    expect(publicImageMatch(context('/public/visual/nomi/kitten.png'))).toBe(true);
+    expect(publicImageMatch(context('/public/visual/nomi/kitten.png'))).toBe(false);
     expect(publicImageMatch(context('/public/visual/nomi/private.png'))).toBe(false);
     for (const x of [
       context('/static/images/book.webp', true),

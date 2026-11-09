@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -58,6 +58,30 @@ writeFileSync(
 `
 );
 cpSync(resolve(root, 'src/static/brand/kitten-avatar.png'), resolve(bundle, 'Kitten.png'));
+const iconsPlist = resolve(dirname(bundle), 'watch-icons.plist');
+run('xcrun', [
+  '--sdk',
+  sdk,
+  'actool',
+  '--compile',
+  bundle,
+  '--platform',
+  sdk,
+  '--target-device',
+  'watch',
+  '--minimum-deployment-target',
+  minimum,
+  '--app-icon',
+  'AppIcon',
+  '--output-partial-info-plist',
+  iconsPlist,
+  resolve(root, 'nativewatch/Assets.xcassets')
+]);
+const icons = execFileSync('plutil', ['-extract', 'CFBundleIcons', 'xml1', '-o', '-', iconsPlist], {
+  encoding: 'utf8'
+});
+run('plutil', ['-insert', 'CFBundleIcons', '-xml', icons, resolve(bundle, 'Info.plist')]);
+unlinkSync(iconsPlist);
 run('plutil', ['-lint', resolve(bundle, 'Info.plist')]);
 if (simulator) run('codesign', ['--sign', '-', '--timestamp=none', bundle]);
 console.log(bundle);

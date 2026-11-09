@@ -299,8 +299,8 @@ export function renderHome(lang = "zh", root = false) {
   return fill(source("index.html"), {
     ...metadata[lang],
     base,
-    brandMark: brandUrl("brand/mark.svg", base),
-    brandMarkReverse: brandUrl("brand/mark-reverse.svg", base),
+    brandMark: brandUrl("brand/mark.png", base),
+    brandMarkReverse: brandUrl("brand/mark.png", base),
     favicon: brandUrl("favicon.svg"),
     appleTouchIcon: brandUrl("brand/apple-touch-icon.png"),
     shareImage: brandUrl("media/yozi-hero-share.jpg", "https://yozi.bot.cd"),
@@ -420,7 +420,7 @@ export function renderAccount() {
   return fill(source("account/index.html"), {
     favicon: brandUrl("favicon.svg"),
     appleTouchIcon: brandUrl("brand/apple-touch-icon.png"),
-    brandMark: brandUrl("brand/mark.svg"),
+    brandMark: brandUrl("brand/mark.png"),
     styles: (["site.css", "legal.css", "../src/styles/password-lamp.css", "account/account.css"].map(source).join("\n")).replaceAll("FONT_BASE", "/fonts"),
     bootstrap: `(() => { let lang; try { lang = localStorage.getItem('yozi.website.language'); } catch {} document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN'; })();`,
     homeLabel: label("zh", "返回首页", "Back to home"),
@@ -447,7 +447,7 @@ export function renderNotFound() {
 <body class="not-found">
   <main>
     <div class="not-found-bar">
-      <a href="/" class="not-found-brand"><img src="${brandUrl("brand/mark.svg")}" width="36" height="36" alt="">Yozi AI</a>
+      <a href="/" class="not-found-brand"><img src="${brandUrl("brand/mark.png")}" width="36" height="36" alt="">Yozi AI</a>
       <button class="button secondary" type="button" data-language-link hidden>${tr("EN", "中文")}</button>
     </div>
     <div class="not-found-copy">

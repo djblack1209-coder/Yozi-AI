@@ -391,8 +391,6 @@ export default defineConfig(({ command, mode }) => {
                 navigateFallbackAllowlist: appShellNavigationAllowlist,
                 // 预缓存 app shell
                 globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-                // The exact template poster exceeds 2 MiB; cache on first use instead of precaching.
-                globIgnores: ['**/public/visual/nomi/kitten.png'],
                 // 运行时缓存策略
                 runtimeCaching: [
                   {

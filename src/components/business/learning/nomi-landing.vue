@@ -3,11 +3,9 @@
     <section class="hero" aria-label="Yozi AI · 考研英语写作教练">
       <img
         class="hero__media"
-        :src="'/public/visual/nomi/kitten-1600.webp'"
-        :srcset="'/public/visual/nomi/kitten-960.webp 960w, /public/visual/nomi/kitten-1600.webp 1600w'"
-        sizes="100vw"
-        width="1600"
-        height="905"
+        :src="puddingPortrait"
+        width="512"
+        height="512"
         fetchpriority="high"
         decoding="async"
         alt=""
@@ -128,6 +126,7 @@ import { onHide, onShow } from '@dcloudio/uni-app';
 import BaseButton from '@/components/base/base-button/base-button.vue';
 import { MAC_DOWNLOAD, WEBSITE_CONTACT, WEBSITE_TITLE } from '@/config/website.js';
 import { BRAND } from '@/config/brand.js';
+import puddingPortrait from '@/assets/brand/mascot-512.webp';
 
 const emit = defineEmits(['open']);
 const menuOpen = ref(false);
@@ -233,11 +232,11 @@ onBeforeUnmount(() => {
 }
 .hero__media {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 62% 50%;
+  top: 8%;
+  right: 4%;
+  width: 62%;
+  height: 84%;
+  object-fit: contain;
   z-index: -1;
   pointer-events: none;
 }
@@ -451,10 +450,9 @@ onBeforeUnmount(() => {
   }
   .hero__media {
     top: 27%;
+    right: 0;
+    width: 100%;
     height: 50%;
-    object-position: 73% 50%;
-    mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
-    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
   }
   .nav {
     height: calc(var(--u) * 68);
@@ -586,10 +584,9 @@ onBeforeUnmount(() => {
 @media (max-width: 720px) and (max-height: 520px) {
   .hero__media {
     top: 0;
+    width: 62%;
     height: 100%;
     object-position: 100% 50%;
-    mask-image: none;
-    -webkit-mask-image: none;
   }
   .hero__title {
     width: calc(var(--u) * 230);

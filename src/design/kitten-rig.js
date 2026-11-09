@@ -1,6 +1,4 @@
-// Live articulation follows the selected kitten-icon-master.png: round tilted
-// face, large black eyes, pointed ears, white fur and tapered scan-line markings.
-// The logo/assets stay untouched. Each gesture belongs to a business state.
+// Gesture timing for the avatar business states. The approved Pudding portrait supplies the artwork.
 const ease = (t) => {
   const x = Math.max(0, Math.min(1, t));
   return x * x * (3 - 2 * x);
@@ -191,162 +189,24 @@ export function kittenPoseAt(elapsed, state = 'idle', { reduced = false, age = e
   }
   return p;
 }
-function path(ctx, commands, { fill = '#fff', stroke = '#101113', width = 10 } = {}) {
-  ctx.beginPath();
-  for (const [op, ...args] of commands) ctx[op](...args);
-  ctx.lineWidth = width;
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-  if (fill) {
-    ctx.fillStyle = fill;
-    ctx.fill();
-  }
-  if (stroke) {
-    ctx.strokeStyle = stroke;
-    ctx.stroke();
-  }
-}
-const M = (...a) => ['moveTo', ...a],
-  L = (...a) => ['lineTo', ...a],
-  C = (...a) => ['bezierCurveTo', ...a],
-  Q = (...a) => ['quadraticCurveTo', ...a],
-  Z = () => ['closePath'];
-function stripe(ctx, x, y, width, direction = 1) {
-  path(
-    ctx,
-    [
-      M(x, y),
-      Q(x + direction * width, y - 4, x + direction * width, y),
-      Q(x + direction * width, y + 4, x, y + 6),
-      Z()
-    ],
-    { fill: '#101113', stroke: null }
-  );
-}
-function paw(ctx, x, y, lift, turn) {
-  ctx.save();
-  ctx.translate(x, y - lift);
-  ctx.rotate((turn * Math.PI) / 180);
-  path(ctx, [M(-36, -95), C(-48, -42, -62, 15, -48, 45), C(-41, 69, 22, 75, 45, 51), C(64, 23, 41, -38, 30, -94)]);
-  path(ctx, [M(-24, 36), Q(-12, 52, -20, 64), M(4, 38), Q(17, 53, 8, 67)], { fill: null, width: 7 });
-  ctx.restore();
-}
-function ear(ctx, side, angle) {
-  ctx.save();
-  ctx.translate(side * 220, -203);
-  ctx.rotate((angle * Math.PI) / 180);
-  ctx.scale(side, 1);
-  path(ctx, [M(-64, 40), Q(-99, -82, -27, -181), Q(34, -162, 112, 13), Z()]);
-  path(ctx, [M(-34, -8), Q(-55, -70, -25, -126), Q(14, -108, 54, -28), Z()], { fill: '#101113', stroke: null });
-  ctx.restore();
-}
-function eye(ctx, x, y, blink, gazeX, gazeY) {
-  ctx.save();
-  ctx.translate(x, y);
-  if (blink > 0.92) path(ctx, [M(-48, 1), Q(0, 34, 48, 1)], { fill: null, width: 10 });
-  else {
-    ctx.scale(1, 1 - Math.min(0.88, blink) * 0.88);
-    ctx.fillStyle = '#08090a';
-    ctx.beginPath();
-    ctx.ellipse(gazeX, gazeY, 55, 70, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.ellipse(gazeX - 13, gazeY - 30, 16, 21, 0.45, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(gazeX + 9, gazeY - 5, 7, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
 export function paintKittenRig(ctx, width, height, pose, props = {}) {
-  const p = pose;
   ctx.clearRect(0, 0, width, height);
+  const { portrait, laptop, cushion } = props;
+  if (!portrait || !(portrait.naturalWidth || portrait.width)) return;
+
   ctx.save();
   ctx.scale(width / 1000, height / 1000);
-  ctx.translate(p.shiftX, -p.jump);
-  if (p.cushion && props.cushion?.naturalWidth) ctx.drawImage(props.cushion, 120, 775, 770, 220);
-  // Tail moves behind the haunch: a low dropped tail, a wrapped loaf and an
-  // upright focused tail have distinct silhouettes even without motion.
+  if (pose.cushion && cushion?.naturalWidth) ctx.drawImage(cushion, 105, 763, 790, 225);
+
+  const size = (pose.laptop ? 818 : 894) * pose.headScale;
+  const weightShift = (pose.pawR - pose.pawL) * 0.12;
   ctx.save();
-  ctx.translate(630, 820);
-  ctx.rotate(((p.tail + p.tailTip) * Math.PI) / 180);
-  ctx.translate(-630, -820);
-  path(ctx, [
-    M(610, 860),
-    C(810, 915, 863, 784, 837, 671),
-    C(822, 607, 751, 626, 752, 693),
-    C(758, 777, 720, 809, 615, 807),
-    Z()
-  ]);
-  ctx.clip();
-  for (let i = 0; i < 7; i++) stripe(ctx, 839 - i * 2, 677 + i * 23, 45 + (i % 3) * 7, -1);
+  ctx.translate(500 + pose.shiftX * 0.58 + weightShift, 493 + pose.headY * 0.42 - pose.jump * 0.62);
+  ctx.rotate(((pose.head - 10) * 0.65 * Math.PI) / 180);
+  ctx.scale(1, 1 + pose.breath);
+  ctx.drawImage(portrait, -size / 2, -size / 2, size, size);
   ctx.restore();
-  ctx.save();
-  ctx.translate(490, 898);
-  ctx.scale(p.bodyWidth, p.body + p.breath);
-  ctx.translate(-490, -898);
-  path(ctx, [
-    M(371, 621),
-    C(310, 677, 294, 775, 330, 863),
-    C(350, 928, 600, 943, 654, 870),
-    C(689, 807, 665, 698, 601, 636),
-    Z()
-  ]);
-  ctx.clip();
-  for (let i = 0; i < 5; i++) {
-    stripe(ctx, 337 - i * 3, 705 + i * 27, 90 - i * 9);
-    stripe(ctx, 662 + i * 2, 726 + i * 26, 70 - i * 9, -1);
-  }
-  ctx.restore();
-  if (p.laptop && props.laptop?.naturalWidth) ctx.drawImage(props.laptop, -65, 600, 740, 400);
-  paw(ctx, 421, p.pawY, p.pawL, p.pawTurnL);
-  paw(ctx, p.laptop ? 595 : 550, p.pawY, p.pawR, p.pawTurnR);
-  ctx.save();
-  ctx.translate(480, 443 + p.headY);
-  ctx.scale(p.headScale, p.headScale);
-  ctx.rotate((p.head * Math.PI) / 180);
-  ear(ctx, -1, p.earL);
-  ear(ctx, 1, p.earR);
-  const head = [
-    M(-300, -132),
-    C(-232, -239, -91, -260, 25, -242),
-    C(160, -250, 278, -191, 318, -100),
-    L(333, -67),
-    L(322, -71),
-    C(354, 2, 351, 106, 305, 163),
-    L(309, 135),
-    C(266, 215, 138, 251, 5, 247),
-    C(-136, 261, -277, 214, -316, 131),
-    L(-331, 106),
-    L(-321, 111),
-    C(-366, 31, -356, -38, -323, -88),
-    L(-337, -74),
-    Q(-338, -108, -300, -132),
-    Z()
-  ];
-  path(ctx, head);
-  ctx.save();
-  ctx.clip();
-  ctx.clip();
-  for (let i = 0; i < 5; i++) {
-    stripe(ctx, -350, -29 + i * 24, 74 + (i % 3) * 19);
-    stripe(ctx, 348, 27 + i * 23, 82 - (i % 2) * 19, -1);
-  }
-  for (let i = 0; i < 5; i++) stripe(ctx, -270 + i * 11, -188 + i * 19, 61 - i * 5);
-  ctx.restore();
-  eye(ctx, -150, -4, p.blink, p.gazeX, p.gazeY);
-  eye(ctx, 151, 2, p.blink, p.gazeX, p.gazeY);
-  path(ctx, [M(-17, 84), Q(0, 76, 17, 84), Q(12, 97, 0, 104), Q(-13, 97, -17, 84), Z()], {
-    fill: '#101113',
-    stroke: null
-  });
-  path(ctx, [M(0, 103), Q(0, 145, -36, 131), M(0, 103), Q(0, 145, 37, 131)], { fill: null, width: 7 });
-  ctx.restore();
-  if (p.tucked) {
-    path(ctx, [M(500, 923), C(645, 918, 750, 847, 780, 875), C(850, 953, 610, 989, 492, 950), Z()]);
-    for (let i = 0; i < 4; i++) stripe(ctx, 725 - i * 30, 914 + i * 8, 34, -1);
-  }
+
+  if (pose.laptop && laptop?.naturalWidth) ctx.drawImage(laptop, 35, 620, 530, 280);
   ctx.restore();
 }

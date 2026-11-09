@@ -1,5 +1,7 @@
 # Yozi AI 样式与语言规则
 
+2026-11-10 品牌定版。官方 Logo 与默认头像、启动海报和陪伴角色统一为橘猫 Pudding。页面使用[透明肖像](../brand/logo-2026-11-10/yozi-logo-transparent.png)。iOS、iPadOS、macOS、watchOS 与自动填底的位置使用[纯蓝版](../brand/logo-2026-11-10/yozi-logo-blue-bg.png)或同色派生版。母版背景实测为 sRGB `#0001BE`。旧标归档，以下日期注明的历史用法供回溯。
+
 2026-11-09 22:55 客户更正。界面以客户选定的 React Bits Pro、Recent、Aceternity 与 21st 组件和 Yozi 官网令牌为准，旧 Muse 界面参照仅作历史记录。外壳采用独立可折叠侧栏、固定账户区、内嵌内容框和独立搜索。仅沿用既有学习状态机、目标、资料生成与记忆转文档机制。
 
 2026-11-06 官网重设计以 Yoga Coach 完整原词为准：浅蓝渐变 `#d5effd → #aedcf9 → #8cd0f7`、本地 Anton 大字、Condiment 强调字与 Inter／中文字体；客户已撤销黑白禁令，按内容需要使用深浅色。Hero 采用 Cursor Follow 的暂停视频、相对指针拖动与连续定位，并提供键盘／触摸滑杆；Yoga 两幕切换、返回与叠卡保留，八区块组合后正常滚动。Interior Features 四卡、Arceage 理念轮播、Rocket 费用与分类 FAQ、Vela 三卡 CTA 和 Stark 页脚沿各自原词结构与交互接入统一体系。仅官网采用，App 规则不变；透明品牌标记（2026-11-07 起为 Study Index，取代小猫母版）、双语、真实 2.2.0 下载与权限／费用边界保持。参考角色影片未直接分发，使用项目自制的蓝色书页／铅笔场景；来源、适配差异、实际验证及发布状态见本轮结果（本机 `YOZI-WEBSITE-REDESIGN-RESULT-2026-11-06.md`）。
@@ -27,11 +29,11 @@ Yozi AI 面向中国学生，先做考研英语写作带练。2026-10-20 起，�
 
 ## 2026-10-20 官网与动效覆盖规则
 
-2026-11-06 Wave3 安装候选按本轮任务采用最新一轮 06 Event Cat（本机 `logo-candidates-2026-11-06/06-event-cat/mark-primary.svg`）导出 Tauri／手机原生图标与商店素材；编号尚未由客户最终选定，不改现役角色事件机制或日常 App。原生 iOS 图标按[DCloud 打包格式](https://uniapp.dcloud.io/tutorial/app-icons)统一白底、无 alpha，其他透明规则继续；18 张手机原生图标已绑定 manifest。来源、平台例外与有限验证见Wave3 结果（本机 `YOZI-WAVE3-RESULT-2026-11-06.md`）。2026-11-08 起安装图标改由 Study Index 派生，Event Cat 候选已[归档](../src/assets/brand/logo/archive/previous-official/logo-candidates-2026-11-06/)，iOS 白底无 alpha 的平台要求不变。
+历史安装候选见 Wave3 和 2026-11-08 接线结果。当前 iOS／iPadOS 图标采用 #0001BE、不含 alpha，尺寸映射由 App manifest 提供。
 
 参考：官网沿已取得完整提示词的 [Nomi AI Agent](https://motionsites.ai/?prompt=nomi-ai-agent)；登录按客户指定的 Lazy AI 左动画右表单结构，登录后借鉴本机 Muse 的独立侧栏、宽松内容列和轻量控件。MotionSites 未检索到准确的 Lazy AI / Muse 条目；未将 Pixel Muse 等近似名称当作同一模板，也未声称取得这两套原始提示词。
 
-正式 Logo 母版自 2026-11-07 起为 Study Index（[深蓝透明](../src/assets/brand/logo/current/mark.svg)、[深色底反白](../src/assets/brand/logo/current/mark-reverse.svg)，规格见[资产清单](../src/assets/brand/logo/manifest.json)，2026-11-08 完成接线（本机 `YOZI-LOGO-WIRING-RESULT-2026-11-08.md`））。客户此前从 6 款中选定的第 03 款「好奇歪头」小猫作为 Logo 已被取代，旧标与派生文件见[归档](../src/assets/brand/logo/archive/previous-official/)；小猫继续作默认头像、启动海报与动态陪伴角色，角色透明母版为 `src/assets/brand/kitten-icon-master.png`：保留官网原型的圆脸、大眼睛、猫耳与黑白扫描线，正面直立，不直接抠取视频角色。官网、App、小程序、默认头像、PWA 与 Windows 图标均使用透明背景，只保留图形本身，不加圆形或方形底板；只有 macOS Dock 图标单独派生不透明纯白底。动态头像沿小猫角色母版生成轻微呼吸、摆动与一次性缩放；MP4 同帧保存颜色与透明度，Canvas 还原透明效果，白色面部保持完整。旧 pose、双层切换、共享时钟、减少动态与三级回退继续保留；静态角色保留 256px 与 512px 各一份。
+动态头像以 Pudding 透明肖像为底，沿用状态分发、共享时钟和减少动态。MP4 同帧保存颜色与 alpha，Canvas 还原透明效果。静态角色保留 256 和 512 px 两份。
 
 实现计划（6 项，零新增依赖）：
 
@@ -74,9 +76,9 @@ Yozi AI 面向中国学生，先做考研英语写作带练。2026-10-20 起，�
 
 ## 唯一素材入口与清理边界
 
-- Logo 母版：Study Index（[深蓝透明](../src/assets/brand/logo/current/mark.svg)、[深色底反白](../src/assets/brand/logo/current/mark-reverse.svg)，规格见[资产清单](../src/assets/brand/logo/manifest.json)）；所有页面标志和安装图标由此派生，只有 macOS Dock 导出保留纯白底，不从截图或旧投影图裁切。原第 03 款「好奇歪头」小猫已被取代并[归档](../src/assets/brand/logo/archive/previous-official/)，[kitten-icon-master.png](../src/assets/brand/kitten-icon-master.png) 仅作默认头像与角色素材来源。
+- [Pudding 官方母版](../brand/logo-2026-11-10/yozi-logo-master-blue-bg.jpg)与[派生资产清单](../src/assets/brand/logo/manifest.json)。旧标与历史版本归档，日常界面统一用当前肖像。
 - 页面标志与默认头像：[brand.js](../src/config/brand.js)；256px 静态角色 [mascot-256.webp](../src/static/brand/mascot-256.webp)，大尺寸 [mascot-512.webp](../src/assets/brand/mascot-512.webp)。旧 pose 参数仅控制呈现，不再对应一套旧角色文件。
-- 官网与登录背景：`public/visual/nomi/kitten.{mp4,png}`；动态头像：`public/visual/avatar/`。两者均仍在使用。
+- 登录场景使用 `src/static/signin/`，动态头像使用 `public/visual/avatar/`。
 - App / 小程序欢迎页与主体统一使用下述 Muse 2 底座；两套旧欢迎页、天空动效与投影插画已退役。官网的 Nomi 与原登录页继续保留。
 - 官网与登录仍使用本地字体及现有许可；App 使用系统字体栈，不引入 Muse 提取字体或第三方品牌素材。
 - 官方 Apple / Google / WeChat 标志及其许可保留原样。素材来源与已被取代的小猫 Logo 生成提示词见 [品牌说明](../src/static/licenses/yozi-brand.txt)。
@@ -84,7 +86,7 @@ Yozi AI 面向中国学生，先做考研英语写作带练。2026-10-20 起，�
 
 ## 2026-10-20 App：Muse 2 覆盖规则
 
-客户指定 `/Users/blackdj/Desktop/Muse 2` 为 App 唯一 UI / UX 参考；布局依据 `Muse2/src/styles/app.css`、`Rail`、`SidePanel`、`ChatView`、`Composer` 与 `SettingsWindow`，不混入旧 App 设计。官网、登录、名称与已选小猫角色母版保持（Logo 母版自 2026-11-07 起为 Study Index）。
+客户指定 `/Users/blackdj/Desktop/Muse 2` 为 App 唯一 UI / UX 参考；布局依据 `Muse2/src/styles/app.css`、`Rail`、`SidePanel`、`ChatView`、`Composer` 与 `SettingsWindow`，不混入旧 App 设计。此段记录 2026-10-20 的历史界面安排，当前工作区以业主选定的组件为准。
 
 - 全屏底色深色 `#181819`、浅色 `#fcfcfc`；78px 图标导航，48×55px 导航触区，会话列表按设备恢复，首次默认展开、217px，180–420px 拖宽，⌘B／Ctrl+B 开合；普通侧栏不消费 Esc，搜索／弹层沿现有优先级关闭。217／180–420 为 Muse 2 实现参数（`sidebarPreferences.ts:5–8`），不冒充原版测量。
 - 顶部左侧会话胶囊、中央静态透明小猫与当前目标；动态头像仅在消息内。顶部 116px 避让放在滚动容器外（Muse 2 `app.css:91`），历史不会卷到标题牌下；图标只用现有 Lucide，常用动作最小 44px。App 没有额外副标题、动效说明或演示数据。
