@@ -3,6 +3,8 @@
   const root = document.documentElement;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   const languageLink = document.querySelector("[data-language-link]");
+  const heroStage = document.querySelector("[data-hero-stage]");
+  const heroPulse = document.querySelector("[data-hero-pulse]");
   const video = document.querySelector("#hero-video");
   const mediaButton = document.querySelector("[data-media-toggle]");
   const scrub = document.querySelector("[data-hero-scrub]");
@@ -23,6 +25,7 @@
   let previousPoint = null;
   let paintFrame = 0;
   let requestedFrame = null;
+  let lastHeroPulse = -Infinity;
   let motionEnabled = !reduced.matches;
   try {
     if (localStorage.getItem("yozi.website.motion") === "paused") motionEnabled = false;
@@ -181,16 +184,40 @@
   if ("IntersectionObserver" in window) {
     const visibility = new IntersectionObserver((entries) => {
       for (const { target, isIntersecting } of entries) {
+        if (target === heroStage) {
+          heroStage.toggleAttribute("data-offscreen", !isIntersecting);
+          continue;
+        }
         if (isIntersecting) visibleFilms.add(target);
         else visibleFilms.delete(target);
       }
       syncFilms();
     }, { threshold: 0.05 });
     films.forEach((film) => visibility.observe(film));
+    visibility.observe(heroStage);
   } else {
-    films.filter((film) => film === video || film.hasAttribute("data-feature-film"))
+    films.filter((film) => film === video || film.matches(".hero-opening-film,[data-feature-film]"))
       .forEach((film) => visibleFilms.add(film));
   }
+
+  function rippleHero(event) {
+    if (!motionEnabled || event.target.closest("a,button")) return;
+    if (event.type === "pointermove" && (event.pointerType === "touch" || event.timeStamp - lastHeroPulse < 310)) return;
+    const bounds = heroStage.getBoundingClientRect();
+    const x = event.clientX - bounds.left;
+    if (x < bounds.width * .4) return;
+    lastHeroPulse = event.timeStamp;
+    heroPulse.style.left = `${x}px`;
+    heroPulse.style.top = `${event.clientY - bounds.top}px`;
+    heroPulse.getAnimations().forEach((animation) => animation.cancel());
+    heroPulse.animate([
+      { opacity: .75, transform: "translate(-50%, -50%) scale(.12) rotate(-9deg)" },
+      { opacity: 0, transform: "translate(-50%, -50%) scale(2.5) rotate(16deg)" }
+    ], { duration: 1200, easing: "cubic-bezier(.16,1,.3,1)" });
+  }
+  const heroOpening = heroStage.parentElement;
+  heroOpening.addEventListener("pointermove", rippleHero, { passive: true });
+  heroOpening.addEventListener("pointerdown", rippleHero, { passive: true });
 
   // Keep a single seek in flight, including when the range changes before metadata loads.
   function seekScene() {
@@ -348,6 +375,7 @@
     } catch {}
   });
   document.addEventListener("visibilitychange", () => {
+    heroStage.toggleAttribute("data-tab-hidden", document.hidden);
     if (document.hidden) clearTrail();
     syncFilms();
   });

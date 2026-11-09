@@ -32,10 +32,46 @@
   {{symbols}}
   <a class="skip" href="#main-content">{{skip}}</a>
   <main id="main-content">
-    <div class="landing-wrap">
+    <div class="hero-opening">
+      <div class="hero-stage" data-hero-stage aria-hidden="true">
+        <img class="hero-backdrop" src="{{base}}/media/yozi-learning-sky-poster.jpg" width="1280" height="720" fetchpriority="high" alt="">
+        <video class="hero-backdrop hero-opening-film" data-src="{{base}}/media/yozi-learning-sky.mp4" muted loop playsinline preload="none"></video>
+        <svg class="hero-wake" viewBox="0 0 840 640" fill="none" preserveAspectRatio="xMidYMid slice" focusable="false">
+          <defs>
+            <linearGradient id="wake-light" x1="0" y1="0" x2="1" y2="1">
+              <stop stop-color="#b1e8ff" stop-opacity="0"/>
+              <stop offset=".46" stop-color="#e5f8ff"/>
+              <stop offset="1" stop-color="#85d0fb" stop-opacity=".12"/>
+            </linearGradient>
+            <linearGradient id="drift-paper" x1="0" y1="0" x2="1" y2="1">
+              <stop stop-color="#fff6dd"/>
+              <stop offset="1" stop-color="#e5a072"/>
+            </linearGradient>
+            <g id="drift-note">
+              <path d="M-45-24Q-18-32 25-27L48-8 40 21Q5 28-43 23L-49-12Z" fill="url(#drift-paper)"/>
+              <path d="m25-27 1 19 22 0" fill="#fff4d4" stroke="#fff4d4" stroke-linejoin="round"/>
+              <path d="M-33-11q23-3 48-1m-49 10q28-2 59-1m-61 12q23-2 46-2" stroke="#9f6c61" stroke-width="1.25" stroke-linecap="round" opacity=".65"/>
+              <path d="M11 13q12-2 22-6" stroke="#ba5a48" stroke-width="2" stroke-linecap="round"/>
+            </g>
+          </defs>
+          <g class="hero-ink" stroke="url(#wake-light)" stroke-width="2.2">
+            <path d="M600 140C706 190 741 304 673 391S470 493 340 416 189 202 283 139 503 99 600 140Z" opacity=".76"/>
+            <path d="M565 171C644 199 687 282 638 353S467 445 371 393 248 226 315 176 490 143 565 171Z" opacity=".64"/>
+            <path d="M550 204C615 229 646 278 606 331S482 390 410 354 316 238 366 206 489 182 550 204Z" opacity=".55"/>
+          </g>
+          <g class="hero-ink hero-ink--echo" stroke="url(#wake-light)" stroke-width="3">
+            <path d="M527 262c-61-56-161-46-184 27s50 152 133 151 173-55 147-118-61-68-96-60Z" opacity=".8"/>
+            <path d="M526 289c-38-37-113-34-128 17s38 104 97 102 122-40 105-79-43-45-74-40Z" opacity=".58"/>
+          </g>
+          <g class="hero-sheet"><use href="#drift-note"/></g>
+          <g transform="translate(240 28) scale(.69)"><g class="hero-sheet hero-sheet--echo"><use href="#drift-note"/></g></g>
+        </svg>
+        <span class="hero-pulse" data-hero-pulse></span>
+      </div>
+      <div class="landing-wrap">
       <header class="mast">
         <nav class="navigation" {{navLabel}}>
-          <a class="brand-pill" href="#top" {{homeLabel}}><img src="{{brandMark}}" width="36" height="36" alt=""><span>Yozi AI</span></a>
+          <a class="brand-pill" href="#top" {{homeLabel}}><img src="{{brandMarkReverse}}" width="36" height="36" alt=""><span>Yozi AI</span></a>
           <div class="nav-links"><a href="#product">{{navProduct}}</a><a href="#principles">{{navPrinciples}}</a><a href="#pricing">{{navPricing}}</a><a href="#faq">{{navFaq}}</a><a href="/account/">{{navAccount}}</a></div>
           <div class="nav-tools">
             <a class="language-button" href="{{otherLangUrl}}" hreflang="{{otherLang}}" data-language-link {{languageLabel}}>{{ilanguage}}<span>{{languageText}}</span></a>
@@ -59,6 +95,10 @@
           </div>
         </div>
 
+      </section>
+      </div>
+    </div>
+    <div class="landing-wrap preview-wrap">
         <div class="showcase">
           <section class="study-preview" aria-labelledby="preview-title">
             <div class="preview-content">
@@ -82,14 +122,12 @@
               </div>
             </div>
           </section>
-          <img class="showcase-scene" src="{{base}}/media/yozi-learning-sky-poster.jpg" width="1280" height="720" fetchpriority="high" alt="">
           <section class="collection" id="collection" aria-labelledby="collection-title" hidden>
             <button class="collection-back" type="button" data-collection-back>{{ileft}}{{backToStart}}</button>
             <h2 id="collection-title">{{collectionTitle}}</h2>
             <div class="collection-deck">{{collectionCards}}</div>
           </section>
         </div>
-      </section>
     </div>
     <section class="features section" id="product" aria-labelledby="features-title">
       <div class="wide">

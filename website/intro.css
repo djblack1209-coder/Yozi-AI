@@ -1,4 +1,11 @@
 /* Intelligent Systems opening and the existing Yoga example deck. */
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("FONT_BASE/instrument-serif-italic-latin.woff2") format("woff2");
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+}
 .site-home {
   background: var(--paper);
 }
@@ -6,6 +13,105 @@
   width: min(100%, var(--site-max));
   margin-inline: auto;
   padding-inline: var(--gutter);
+}
+.hero-opening {
+  position: relative;
+  isolation: isolate;
+  background: #122f51;
+}
+.hero-stage {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 84% 89%, #6ab6d4, transparent 65%), #123351;
+}
+.hero-stage::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #102541 0%, #122f51 29%, #1534589c 51%, #122f510c 85%),
+    linear-gradient(180deg, #142d4c 0%, #14335512 26%, transparent 77%, #244c7080);
+  content: "";
+}
+.hero-backdrop {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 75%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 81% center;
+}
+.hero-opening-film {
+  opacity: 0;
+  transition: opacity .48s var(--entrance-ease);
+}
+.hero-opening-film[data-playing] {
+  opacity: 1;
+}
+.hero-wake {
+  position: absolute;
+  z-index: 1;
+  inset: 0 0 0 auto;
+  width: 75%;
+  height: 100%;
+}
+.hero-ink {
+  opacity: .52;
+  transform-origin: 56% 47%;
+  transform: scale(1.12) rotate(9deg);
+}
+.hero-ink--echo {
+  opacity: .35;
+  transform-origin: 56% 54%;
+}
+.hero-sheet {
+  transform: translate(532px, 431px) rotate(28deg);
+  filter: drop-shadow(3px 9px 8px #15284463);
+}
+.hero-sheet--echo {
+  transform: translate(620px, 238px) rotate(52deg);
+}
+.js .hero-ink {
+  animation: hero-ink-spread 3.2s ease-out -1s infinite;
+}
+.js .hero-ink--echo {
+  animation-delay: -2.5s;
+}
+.js .hero-sheet {
+  animation: hero-paper-current 5.8s cubic-bezier(.32,.04,.36,.99) -1.6s infinite;
+}
+.js .hero-sheet--echo {
+  animation-delay: -4.4s;
+}
+.hero-stage[data-offscreen] :is(.hero-ink, .hero-sheet),
+.hero-stage[data-tab-hidden] :is(.hero-ink, .hero-sheet) {
+  animation-play-state: paused;
+}
+@keyframes hero-ink-spread {
+  0% { opacity: 0; transform: scale(.48) rotate(-15deg); }
+  22% { opacity: .65; }
+  70% { opacity: .36; }
+  100% { opacity: 0; transform: scale(1.5) rotate(18deg); }
+}
+@keyframes hero-paper-current {
+  0% { opacity: 0; transform: translate(260px, 675px) rotate(-21deg); }
+  13% { opacity: 1; transform: translate(310px, 530px) rotate(-42deg); }
+  36% { transform: translate(486px, 223px) rotate(-15deg); }
+  56% { transform: translate(639px, 244px) rotate(34deg); }
+  77% { transform: translate(583px, 465px) rotate(74deg); }
+  91% { opacity: 1; }
+  100% { opacity: 0; transform: translate(405px, 682px) rotate(113deg); }
+}
+.hero-pulse {
+  position: absolute;
+  z-index: 1;
+  width: 128px;
+  aspect-ratio: 1;
+  border: 1px solid #e5f8ffb3;
+  border-radius: 49% 51% 52% 48%;
+  box-shadow: inset 0 0 17px #dbf5ff32, 0 0 18px #b0e7ff56;
+  opacity: 0;
 }
 .mast {
   position: relative;
@@ -32,7 +138,7 @@
   font: 700 19px/1 system-ui, sans-serif;
   letter-spacing: -.04em;
   white-space: nowrap;
-  color: var(--ink);
+  color: #fff;
 }
 .brand-pill img {
   width: 34px;
@@ -44,7 +150,7 @@
   left: 50%;
   transform: translateX(-50%);
   gap: clamp(18px, 2.8vw, 40px);
-  color: #57585b;
+  color: #e1eef7;
 }
 .nav-links a {
   display: flex;
@@ -54,7 +160,7 @@
   font-size: clamp(14px, 1.2vw, 18px);
 }
 .nav-links a:hover {
-  color: var(--ink);
+  color: #fff;
 }
 .nav-tools {
   gap: 8px;
@@ -71,7 +177,7 @@
   padding: 0 9px;
   background: transparent;
   border-radius: 999px;
-  color: var(--ink);
+  color: #fff;
   font-size: 13px;
 }
 .language-button .icon {
@@ -108,14 +214,14 @@
 .language-button:hover,
 .menu-button:hover,
 .media-button:hover {
-  background: #eeefef;
+  background: #eef7ff24;
 }
 .nav-download {
-  background: #18181a;
-  color: #fff;
+  background: #f4fbff;
+  color: var(--navy);
 }
 .nav-download:hover {
-  background: #353538;
+  background: #d9edf8;
 }
 .menu-button,
 html:not(.js) .media-button {
@@ -149,26 +255,31 @@ html:not(.js) .media-button {
 }
 
 .hero {
-  margin-top: clamp(34px, 7.4vh, 88px);
+  display: grid;
+  min-height: clamp(470px, 67vh, 695px);
+  align-items: center;
+  padding-block: clamp(70px, 8vh, 106px);
 }
 .hero-heading {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(330px, 34%);
-  gap: clamp(24px, 4vw, 60px);
-  align-items: end;
-  margin-bottom: clamp(26px, 4vh, 42px);
+  width: min(100%, 680px);
 }
 .hero-heading h1 {
   font-family: var(--font-display);
-  font-size: clamp(42px, 5.8vw, 86px);
+  font-size: clamp(44px, 6.1vw, 95px);
   font-weight: 750;
   line-height: 1.04;
-  letter-spacing: -.04em;
-  color: var(--ink);
+  letter-spacing: -.045em;
+  color: #fff;
   text-transform: none;
 }
 .hero-heading .title-line:nth-child(2) {
-  color: var(--navy);
+  color: #bde4fa;
+}
+html[lang="en"] .hero-heading .title-line:nth-child(2) {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -.025em;
 }
 .title-line,
 .title-line > [data-copy] {
@@ -180,10 +291,10 @@ html:not(.js) .media-button {
 }
 .hero-support p {
   max-width: 39ch;
-  color: var(--muted);
+  margin-top: clamp(15px, 2.3vh, 24px);
+  color: #e0edf8;
   font-size: clamp(16px, 1.36vw, 19.5px);
   line-height: 1.55;
-  text-wrap: balance;
 }
 .hero-actions {
   display: flex;
@@ -213,6 +324,9 @@ html:not(.js) .media-button {
   font-size: 14px;
   font-weight: 600;
 }
+.hero-signup {
+  color: #e8f5ff;
+}
 .hero-signup:hover,
 .collection-start:hover {
   text-decoration: underline;
@@ -222,6 +336,9 @@ html:not(.js) .media-button {
 .collection-start .icon {
   width: 16px;
   height: 16px;
+}
+.preview-wrap {
+  margin-block-start: clamp(20px, 4vw, 58px);
 }
 .showcase {
   position: relative;
@@ -239,23 +356,8 @@ html:not(.js) .media-button {
   padding-block: clamp(18px, 3.3vw, 48px);
   background: radial-gradient(ellipse at 100% 0%, var(--sky-mid), transparent 70%), var(--navy);
 }
-.showcase-scene {
-  position: absolute;
-  z-index: -1;
-  inset: 0 0 auto auto;
-  width: 65%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 90% 58%;
-  mask-image: linear-gradient(to right, transparent, #000 38%);
-  pointer-events: none;
-}
-.study-preview[hidden] + .showcase-scene {
-  display: none;
-}
 .study-preview {
   container-type: inline-size;
-  width: 65%;
   min-width: 0;
   overflow: hidden;
   border-radius: 16px;
@@ -591,6 +693,7 @@ html:not(.js) .ink-hint,
   .motion-paused .motion-switch__thumb { transition-duration: 220ms, 290ms !important; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .hero-opening-film { transition: none; }
   .motion-switch__track,
   .motion-switch__thumb { transition: none; }
 }
@@ -605,12 +708,8 @@ html:not(.js) .ink-hint,
   .js .menu-button {
     display: inline-flex;
   }
-  .hero {
-    margin-top: clamp(34px, 6vh, 60px);
-  }
   .hero-heading {
-    grid-template-columns: 1fr;
-    gap: 20px;
+    width: min(100%, 580px);
   }
   .hero-heading h1 {
     font-size: clamp(38px, 7vw, 66px);
@@ -618,26 +717,27 @@ html:not(.js) .ink-hint,
   .hero-support p {
     max-width: 48ch;
   }
-  .showcase:has(.study-preview:not([hidden])) {
-    padding-top: clamp(96px, 16vw, 146px);
-  }
-  .showcase-scene {
-    width: 100%;
-    height: clamp(158px, 26vw, 220px);
-    object-position: right 58%;
-    mask-image: linear-gradient(to bottom, #000 55%, transparent);
-  }
-  .study-preview {
-    width: 100%;
-  }
 }
 @media (max-width: 620px) {
   .hero {
-    margin-top: 24px;
+    min-height: 545px;
+    align-items: start;
+    padding-block: 47px 225px;
   }
-  .hero-heading {
-    gap: 13px;
-    margin-bottom: 24px;
+  .hero-stage::after {
+    background: linear-gradient(180deg, #102541 0%, #122f51 35%, #173d62d9 58%, #14335512 84%, #254f7380);
+  }
+  .hero-backdrop {
+    inset: auto 0 0;
+    width: 100%;
+    height: 57%;
+    object-position: 88% center;
+    mask-image: linear-gradient(to bottom, transparent, #000 31%);
+  }
+  .hero-wake {
+    inset: auto -13% -5% auto;
+    width: 120%;
+    height: 52%;
   }
   .hero-heading h1 {
     font-size: clamp(32px, 10.25vw, 46px);
@@ -648,10 +748,6 @@ html:not(.js) .ink-hint,
   }
   .showcase:has(.study-preview:not([hidden])) {
     padding-bottom: 12px;
-  }
-  .showcase-scene {
-    top: -20px;
-    mask-image: linear-gradient(to bottom, #000 70%, transparent);
   }
   .study-preview {
     border-radius: 12px;
