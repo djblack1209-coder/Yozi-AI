@@ -2732,7 +2732,6 @@ function openAccountData() {
   showData.value = true;
 }
 async function restoreLearningSession() {
-  learning.refresh();
   await learning.readAccountRecords();
   if (learning.accountRecordState === 'remote') openAccountData();
   if (learning.accountRecordState === 'ready' && getToken() && !learning.intakeBusy && !learning.busy)
