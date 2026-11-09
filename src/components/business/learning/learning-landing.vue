@@ -5,6 +5,7 @@
     :aria-busy="!welcome && !entryFailed"
   >
     <AnimatedAvatar :size="64" /><text>{{ BRAND.name }}</text>
+    <WelcomeStudyCards v-if="welcome" />
     <BaseButton v-if="welcome || entryFailed" variant="primary" @tap="welcome ? $emit('start') : open()">{{
       t('landing.start')
     }}</BaseButton>
@@ -15,6 +16,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import AnimatedAvatar from '@/components/base/animated-avatar/animated-avatar.vue';
 import BaseButton from '@/components/base/base-button/base-button.vue';
+import WelcomeStudyCards from './welcome-study-cards.vue';
 import { BRAND } from '@/config/brand.js';
 import { t } from '@/i18n/index.js';
 import '@/i18n/messages/landing.js';
@@ -53,7 +55,9 @@ onBeforeUnmount(() => {
 </script>
 <style scoped>
 .app-entry {
-  min-height: 100vh;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  padding: 24px 16px;
   display: flex;
   flex-direction: column;
   align-items: center;

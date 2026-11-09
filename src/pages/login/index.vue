@@ -1060,6 +1060,35 @@ onMounted(async () => {
     --ink-2: var(--yozi-mobile-muted);
     --ink-3: var(--yozi-mobile-muted);
   }
+  .lazy-login:not(.website-login) .login-layout {
+    gap: 0;
+  }
+  .lazy-login:not(.website-login) .login-form-column {
+    position: relative;
+    margin-top: -20px;
+    padding-top: 10px;
+    border-radius: 24px 24px 0 0;
+    background: var(--paper);
+    animation: login-sheet-enter 260ms cubic-bezier(0.22, 0.7, 0.25, 1) both;
+  }
+  .lazy-login:not(.website-login) .login-stack {
+    animation: login-sheet-enter 220ms cubic-bezier(0.22, 0.7, 0.25, 1) both;
+  }
+  @keyframes login-sheet-enter {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .lazy-login:not(.website-login) :is(.login-form-column, .login-stack) {
+      animation: none;
+    }
+  }
   .lazy-login:not(.website-login) :deep(.brand-scene) {
     min-height: 216px;
     background: var(--yozi-mobile-sky);
