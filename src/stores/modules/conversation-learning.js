@@ -342,6 +342,7 @@ export const CONVERSATION_ACTION_EFFECTS = Object.freeze({
   loadUsage: 'send',
   loadModelDiscovery: 'read',
   saveModel: 'send',
+  saveModelEffort: 'send',
   removeModel: 'send',
   importText: 'write',
   previewMaterialDeletion: 'write',

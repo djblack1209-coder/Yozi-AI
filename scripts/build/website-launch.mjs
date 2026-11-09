@@ -8,7 +8,8 @@ import { BRAND_FILES, brandSource } from '../../website/brand.mjs';
 export { WEBSITE_TITLE };
 const project = path.resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const website = path.join(project, 'website');
-const archive = path.join(project, 'public/downloads', download);
+const downloads = path.join(project, 'public/downloads');
+const archive = path.join(downloads, download);
 const additionalFonts = ['PlayfairDisplay-normal-400.woff2', 'OFL-playfairdisplay.txt'];
 const languages = ['zh', 'en'];
 const signinAssets = {
@@ -80,8 +81,15 @@ export function buildWebsite(output = path.join(project, 'dist/website')) {
     path.join(destination, 'sitemap.xml'),
     `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${routes.map((route) => `<url><loc>https://yozi.bot.cd/${route}</loc></url>`).join('')}</urlset>\n`
   );
-  fs.mkdirSync(path.join(destination, 'downloads'), { recursive: true });
-  fs.copyFileSync(archive, path.join(destination, 'downloads', download));
+  for (const entry of fs.readdirSync(downloads, { recursive: true, withFileTypes: true })) {
+    const source = path.join(entry.parentPath, entry.name);
+    const target = path.join(destination, 'downloads', path.relative(downloads, source));
+    if (entry.isDirectory()) fs.mkdirSync(target, { recursive: true });
+    else {
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(source, target);
+    }
+  }
   return destination;
 }
 

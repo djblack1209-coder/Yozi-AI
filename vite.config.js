@@ -275,11 +275,6 @@ function copyH5PwaIcons({ enableUpdates = false, website = false } = {}) {
               }
             });
         }
-        if (website) {
-          const downloads = path.resolve(__dirname, 'public/downloads');
-          if (fs.existsSync(downloads)) fs.cpSync(downloads, path.join(outDir, 'downloads'), { recursive: true });
-        }
-
         const oauthSource = path.resolve(__dirname, 'public/oauth');
         fs.cpSync(oauthSource, path.join(outDir, 'oauth'), { recursive: true });
 
