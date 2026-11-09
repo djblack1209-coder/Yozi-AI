@@ -14,6 +14,8 @@
       'is-workspace': layout === 'workspace',
       'is-resizing': panelResizing || panelOpening,
       'is-chat': active === 'learning',
+      'desktop-conversation': desktopConversation,
+      'desktop-directory': desktopConversation && !searchOnOpen && (menuOpen || menuLeaving),
       'is-library': ['archive', 'plan', 'phrases', 'ideas', 'materials', 'usage'].includes(active),
       'is-settings': active === 'settings' || active === 'profile',
       'is-desktop-settings': nativeSettings,
@@ -34,6 +36,262 @@
     <view class="native-titlebar" data-tauri-drag-region aria-hidden="true" />
     <MuseLaunch :scope="learning" :ready="['ready', 'error'].includes(learning.recordReadState)" />
     <view class="space-frame">
+      <button
+        v-if="(menuOpen || menuLeaving) && directoryModal"
+        class="sidebar-scrim"
+        :class="{ 'is-closing': menuLeaving, 'is-search': searchOnOpen }"
+        tabindex="-1"
+        :disabled="menuLeaving"
+        :aria-label="t('learning.kh3')"
+        @tap="closeMenu"
+      ></button>
+      <view
+        v-if="menuOpen || menuLeaving"
+        class="space-sidebar"
+        :class="{ 'sidebar-open': menuOpen, 'sidebar-leaving': menuLeaving, 'search-palette': searchOnOpen }"
+        :inert="menuLeaving || undefined"
+        :role="directoryModal ? 'dialog' : 'complementary'"
+        :aria-modal="directoryModal || undefined"
+        :aria-label="t(searchOnOpen ? 'learning.ki6' : 'learning.openDirectory')"
+      >
+        <view class="directory-clip"
+          ><view class="directory-surface">
+            <view v-if="desktopConversation && !searchOnOpen" class="desktop-directory-header">
+              <text>{{ t('muse.chats') }}</text>
+              <BaseButton
+                class="new-session desktop-new-chat"
+                variant="quiet"
+                icon="plus"
+                icon-only
+                :label="t('learning.k8t')"
+                :disabled="learning.busy"
+                @tap="newSession"
+              />
+            </view>
+            <view class="directory-top">
+              <view class="directory-search"
+                ><BaseIcon name="search" :size="searchOnOpen ? '18px' : '16px'" tone="ink-3" />
+                <BaseInput
+                  ref="searchInput"
+                  v-model="query"
+                  input-class="search-input"
+                  hide-label
+                  focus-visible-only
+                  :placeholder="t(searchOnOpen ? 'learning.ki6' : 'muse.searchChats')"
+                  maxlength="120"
+                  :label="t('learning.ki6')"
+              /></view>
+              <BaseButton
+                v-if="directoryModal"
+                class="sidebar-close"
+                icon-only
+                icon="close"
+                :label="t('learning.closeDirectory')"
+                variant="quiet"
+                @tap="closeMenu"
+              />
+              <BaseButton
+                v-if="!searchOnOpen"
+                ref="closeButton"
+                class="sidebar-options"
+                icon-only
+                icon="ellipsis"
+                label="会话选项"
+                variant="quiet"
+                aria-haspopup="menu"
+                :aria-expanded="directoryOptions"
+                @tap="directoryOptions = !directoryOptions"
+              />
+            </view>
+            <view
+              v-if="directoryOptions && !searchOnOpen"
+              class="directory-options-menu"
+              role="group"
+              aria-label="会话选项"
+            >
+              <BaseButton
+                v-if="!directoryModal"
+                variant="quiet"
+                align="start"
+                :selected="panelPinned"
+                :aria-pressed="panelPinned"
+                @tap="panelPinned = !panelPinned"
+                ><BaseIcon :name="panelPinned ? 'checkbox-on' : 'checkbox-off'" size="16px" />固定会话列表</BaseButton
+              >
+              <BaseButton variant="quiet" align="start" icon="plus" :disabled="learning.busy" @tap="newSession"
+                >新建会话</BaseButton
+              >
+              <BaseButton variant="quiet" align="start" icon="chevron-left" @tap="closeMenu">收起会话列表</BaseButton>
+            </view>
+            <BaseButton
+              v-if="!desktopConversation && !searchOnOpen && recent.length"
+              class="new-session"
+              variant="quiet"
+              icon="plus"
+              align="start"
+              :disabled="learning.busy"
+              @tap="newSession"
+              >{{ t('learning.k8t') }}</BaseButton
+            >
+            <view class="directory-scroll">
+              <view v-if="learning.recordReadState === 'error'" class="recent-list" role="status">
+                <text class="sidebar-caption">{{ recordReadMessage }}</text>
+              </view>
+              <view
+                v-else-if="learning.recordReadState !== 'ready' || queryPending"
+                class="muse-list-skeleton"
+                role="status"
+                :aria-label="t('learning.records.loading')"
+              >
+                <view v-for="line in 3" :key="line" class="muse-list-skeleton__row" aria-hidden="true">
+                  <view class="muse-list-skeleton__icon" /><view class="muse-list-skeleton__line" />
+                </view>
+              </view>
+              <view v-else-if="recordSearch" class="recent-list" :aria-label="t('learning.records.results')">
+                <text class="sidebar-caption" role="status">{{
+                  t('learning.records.count', { count: recordSearch.total })
+                }}</text>
+                <BaseButton
+                  v-for="record in recordSearch.items"
+                  :key="record.id"
+                  class="recent-item"
+                  align="start"
+                  variant="quiet"
+                  :disabled="learning.busy"
+                  :aria-disabled="learning.busy"
+                  @tap="openRecord(record.id, recordSearch.context)"
+                >
+                  <BaseIcon :name="record.kind === 'conversation' ? 'chat' : 'book-open'" tone="ink-3" />
+                  <view class="material-copy">
+                    <text class="sidebar-label">{{ record.label }}</text>
+                    <text class="sidebar-caption record-meta" :title="record.goal"
+                      >{{ record.day }} · {{ record.goal }}</text
+                    >
+                  </view>
+                </BaseButton>
+                <BaseEmpty
+                  v-if="!recordSearch.total"
+                  :title="t('learning.records.empty')"
+                  show-button
+                  :button-text="t('learning.records.clear')"
+                  @action="query = ''"
+                />
+                <BaseButton v-if="recordPage" variant="quiet" @tap="recordPage--">{{
+                  t('learning.records.previous')
+                }}</BaseButton>
+                <BaseButton v-if="recordSearch.hasMore" variant="quiet" @tap="recordPage++">{{
+                  t('learning.records.next')
+                }}</BaseButton>
+              </view>
+              <view v-else-if="!recent.length && !searchOnOpen" class="directory-empty"
+                ><BaseIcon name="chat" size="32px" tone="ink-3" /><text class="directory-empty-title"
+                  >开始一段新对话</text
+                ><text class="directory-empty-copy">按主题整理你的学习</text
+                ><BaseButton v-if="!desktopConversation" variant="quiet" :disabled="learning.busy" @tap="newSession"
+                  >新建会话</BaseButton
+                ></view
+              >
+              <view v-else class="recent-list" :aria-label="t('learning.k5p')">
+                <view v-for="conversation in recent" :key="conversation.id" class="recent-conversation">
+                  <BaseButton
+                    class="recent-item"
+                    align="start"
+                    :selected="learning.selectedConversationId === conversation.id"
+                    :class="{ current: learning.selectedConversationId === conversation.id }"
+                    :disabled="learning.busy"
+                    :aria-disabled="learning.busy"
+                    :aria-label="`${conversation.goal}，${new Date(conversation.at).toLocaleDateString()}`"
+                    :aria-current="learning.selectedConversationId === conversation.id ? 'true' : undefined"
+                    variant="quiet"
+                    @tap="resume(conversation.id)"
+                  >
+                    <view v-if="desktopConversation && !searchOnOpen" class="desktop-thread-icon" aria-hidden="true">
+                      <BaseIcon :name="conversation.coach ? 'edit' : 'chat'" size="17px" />
+                    </view>
+                    <view v-if="desktopConversation && !searchOnOpen" class="desktop-thread-summary">
+                      <view class="desktop-thread-title">
+                        <text class="sidebar-label">{{ conversation.goal }}</text>
+                        <text class="thread-time">{{
+                          new Date(conversation.messages.at(-1)?.at || conversation.at).toLocaleDateString(
+                            currentLanguage,
+                            { month: 'numeric', day: 'numeric' }
+                          )
+                        }}</text>
+                      </view>
+                      <text v-if="conversation.messages.at(-1)?.content" class="desktop-thread-preview">{{
+                        conversation.messages.at(-1).content
+                      }}</text>
+                    </view>
+                    <template v-else>
+                      <text class="sidebar-label">{{ conversation.goal }}</text>
+                      <text class="thread-time">{{ new Date(conversation.at).toLocaleDateString() }}</text>
+                    </template>
+                  </BaseButton>
+                  <view
+                    v-if="!searchOnOpen && learning.selectedConversationId === conversation.id"
+                    class="conversation-directory"
+                  >
+                    <view v-for="chapter in directoryDays" :key="chapter.day" class="directory-day">
+                      <BaseButton
+                        v-if="learning.timeline.length > 1"
+                        class="directory-day-link"
+                        variant="quiet"
+                        icon="calendar"
+                        icon-only
+                        :label="`查看原对话 · ${chapter.day}`"
+                        :disabled="learning.busy"
+                        @tap="locate(conversation.id, chapter.day)"
+                      />
+                      <BaseButton
+                        v-for="group in chapter.groups"
+                        :key="group.id"
+                        class="directory-module"
+                        align="start"
+                        :disabled="learning.busy"
+                        :aria-disabled="learning.busy"
+                        :aria-label="t('learning.kv1', { v0: chapter.day, v1: learningText(group.label) })"
+                        variant="quiet"
+                        @tap="locate(conversation.id, chapter.day, group.id)"
+                      >
+                        <text>{{ learningText(group.label) }}</text>
+                        <BaseIcon name="arrow-right" tone="ink-3" />
+                      </BaseButton>
+                    </view>
+                    <BaseButton
+                      v-if="learning.timeline.length > directoryDayLimit"
+                      class="directory-earlier"
+                      align="start"
+                      :disabled="learning.busy"
+                      :aria-disabled="learning.busy"
+                      data-test="earlier-learning-days"
+                      variant="quiet"
+                      @tap="directoryDayLimit += 7"
+                      >{{ t('learning.kjp') }}</BaseButton
+                    >
+                  </view>
+                </view>
+              </view>
+            </view>
+          </view></view
+        >
+        <!-- #ifdef H5 -->
+        <component
+          :is="'div'"
+          v-if="!searchOnOpen"
+          class="directory-resize"
+          role="separator"
+          tabindex="0"
+          aria-orientation="vertical"
+          :aria-label="t('muse.resize')"
+          :aria-valuemin="180"
+          :aria-valuemax="420"
+          :aria-valuenow="panelWidth"
+          @pointerdown="startPanelResize"
+          @keydown="resizePanelKey"
+          @dblclick="resetPanelWidth"
+        />
+        <!-- #endif -->
+      </view>
       <view
         class="muse-rail"
         role="navigation"
@@ -105,228 +363,6 @@
           >
         </view>
       </view>
-      <button
-        v-if="(menuOpen || menuLeaving) && directoryModal"
-        class="sidebar-scrim"
-        :class="{ 'is-closing': menuLeaving, 'is-search': searchOnOpen }"
-        tabindex="-1"
-        :disabled="menuLeaving"
-        :aria-label="t('learning.kh3')"
-        @tap="closeMenu"
-      ></button>
-      <view
-        v-if="menuOpen || menuLeaving"
-        class="space-sidebar"
-        :class="{ 'sidebar-open': menuOpen, 'sidebar-leaving': menuLeaving, 'search-palette': searchOnOpen }"
-        :inert="menuLeaving || undefined"
-        :role="directoryModal ? 'dialog' : 'complementary'"
-        :aria-modal="directoryModal || undefined"
-        :aria-label="t(searchOnOpen ? 'learning.ki6' : 'learning.openDirectory')"
-      >
-        <view class="directory-clip"
-          ><view class="directory-surface">
-            <view class="directory-top">
-              <view class="directory-search"
-                ><BaseIcon name="search" :size="searchOnOpen ? '18px' : '16px'" tone="ink-3" />
-                <BaseInput
-                  ref="searchInput"
-                  v-model="query"
-                  input-class="search-input"
-                  hide-label
-                  focus-visible-only
-                  :placeholder="t(searchOnOpen ? 'learning.ki6' : 'muse.searchChats')"
-                  maxlength="120"
-                  :label="t('learning.ki6')"
-              /></view>
-              <BaseButton
-                v-if="directoryModal"
-                class="sidebar-close"
-                icon-only
-                icon="close"
-                :label="t('learning.closeDirectory')"
-                variant="quiet"
-                @tap="closeMenu"
-              />
-              <BaseButton
-                v-if="!searchOnOpen"
-                ref="closeButton"
-                class="sidebar-options"
-                icon-only
-                icon="ellipsis"
-                label="会话选项"
-                variant="quiet"
-                aria-haspopup="menu"
-                :aria-expanded="directoryOptions"
-                @tap="directoryOptions = !directoryOptions"
-              />
-            </view>
-            <view
-              v-if="directoryOptions && !searchOnOpen"
-              class="directory-options-menu"
-              role="group"
-              aria-label="会话选项"
-            >
-              <BaseButton
-                v-if="!directoryModal"
-                variant="quiet"
-                align="start"
-                :selected="panelPinned"
-                :aria-pressed="panelPinned"
-                @tap="panelPinned = !panelPinned"
-                ><BaseIcon :name="panelPinned ? 'checkbox-on' : 'checkbox-off'" size="16px" />固定会话列表</BaseButton
-              >
-              <BaseButton variant="quiet" align="start" icon="plus" :disabled="learning.busy" @tap="newSession"
-                >新建会话</BaseButton
-              >
-              <BaseButton variant="quiet" align="start" icon="chevron-left" @tap="closeMenu">收起会话列表</BaseButton>
-            </view>
-            <BaseButton
-              v-if="!searchOnOpen && recent.length"
-              class="new-session"
-              variant="quiet"
-              icon="plus"
-              align="start"
-              :disabled="learning.busy"
-              @tap="newSession"
-              >{{ t('learning.k8t') }}</BaseButton
-            >
-            <view class="directory-scroll">
-              <view v-if="learning.recordReadState === 'error'" class="recent-list" role="status">
-                <text class="sidebar-caption">{{ recordReadMessage }}</text>
-              </view>
-              <view
-                v-else-if="learning.recordReadState !== 'ready' || queryPending"
-                class="muse-list-skeleton"
-                role="status"
-                :aria-label="t('learning.records.loading')"
-              >
-                <view v-for="line in 3" :key="line" class="muse-list-skeleton__row" aria-hidden="true">
-                  <view class="muse-list-skeleton__icon" /><view class="muse-list-skeleton__line" />
-                </view>
-              </view>
-              <view v-else-if="recordSearch" class="recent-list" :aria-label="t('learning.records.results')">
-                <text class="sidebar-caption" role="status">{{
-                  t('learning.records.count', { count: recordSearch.total })
-                }}</text>
-                <BaseButton
-                  v-for="record in recordSearch.items"
-                  :key="record.id"
-                  class="recent-item"
-                  align="start"
-                  variant="quiet"
-                  :disabled="learning.busy"
-                  :aria-disabled="learning.busy"
-                  @tap="openRecord(record.id, recordSearch.context)"
-                >
-                  <BaseIcon :name="record.kind === 'conversation' ? 'chat' : 'book-open'" tone="ink-3" />
-                  <view class="material-copy">
-                    <text class="sidebar-label">{{ record.label }}</text>
-                    <text class="sidebar-caption record-meta" :title="record.goal"
-                      >{{ record.day }} · {{ record.goal }}</text
-                    >
-                  </view>
-                </BaseButton>
-                <BaseEmpty
-                  v-if="!recordSearch.total"
-                  :title="t('learning.records.empty')"
-                  show-button
-                  :button-text="t('learning.records.clear')"
-                  @action="query = ''"
-                />
-                <BaseButton v-if="recordPage" variant="quiet" @tap="recordPage--">{{
-                  t('learning.records.previous')
-                }}</BaseButton>
-                <BaseButton v-if="recordSearch.hasMore" variant="quiet" @tap="recordPage++">{{
-                  t('learning.records.next')
-                }}</BaseButton>
-              </view>
-              <view v-else-if="!recent.length && !searchOnOpen" class="directory-empty"
-                ><BaseIcon name="chat" size="32px" tone="ink-3" /><text class="directory-empty-title"
-                  >开始一段新对话</text
-                ><text class="directory-empty-copy">按主题整理你的学习</text
-                ><BaseButton variant="quiet" :disabled="learning.busy" @tap="newSession">新建会话</BaseButton></view
-              >
-              <view v-else class="recent-list" :aria-label="t('learning.k5p')">
-                <view v-for="conversation in recent" :key="conversation.id" class="recent-conversation">
-                  <BaseButton
-                    class="recent-item"
-                    align="start"
-                    :selected="learning.selectedConversationId === conversation.id"
-                    :class="{ current: learning.selectedConversationId === conversation.id }"
-                    :disabled="learning.busy"
-                    :aria-disabled="learning.busy"
-                    :aria-label="`${conversation.goal}，${new Date(conversation.at).toLocaleDateString()}`"
-                    variant="quiet"
-                    @tap="resume(conversation.id)"
-                  >
-                    <text class="sidebar-label">{{ conversation.goal }}</text>
-                    <text class="thread-time">{{ new Date(conversation.at).toLocaleDateString() }}</text>
-                  </BaseButton>
-                  <view
-                    v-if="!searchOnOpen && learning.selectedConversationId === conversation.id"
-                    class="conversation-directory"
-                  >
-                    <view v-for="chapter in directoryDays" :key="chapter.day" class="directory-day">
-                      <BaseButton
-                        v-if="learning.timeline.length > 1"
-                        class="directory-day-link"
-                        variant="quiet"
-                        icon="calendar"
-                        icon-only
-                        :label="`查看原对话 · ${chapter.day}`"
-                        :disabled="learning.busy"
-                        @tap="locate(conversation.id, chapter.day)"
-                      />
-                      <BaseButton
-                        v-for="group in chapter.groups"
-                        :key="group.id"
-                        class="directory-module"
-                        align="start"
-                        :disabled="learning.busy"
-                        :aria-disabled="learning.busy"
-                        :aria-label="t('learning.kv1', { v0: chapter.day, v1: learningText(group.label) })"
-                        variant="quiet"
-                        @tap="locate(conversation.id, chapter.day, group.id)"
-                      >
-                        <text>{{ learningText(group.label) }}</text>
-                        <BaseIcon name="arrow-right" tone="ink-3" />
-                      </BaseButton>
-                    </view>
-                    <BaseButton
-                      v-if="learning.timeline.length > directoryDayLimit"
-                      class="directory-earlier"
-                      align="start"
-                      :disabled="learning.busy"
-                      :aria-disabled="learning.busy"
-                      data-test="earlier-learning-days"
-                      variant="quiet"
-                      @tap="directoryDayLimit += 7"
-                      >{{ t('learning.kjp') }}</BaseButton
-                    >
-                  </view>
-                </view>
-              </view>
-            </view>
-          </view></view
-        >
-        <!-- #ifdef H5 -->
-        <component
-          :is="'div'"
-          v-if="!searchOnOpen"
-          class="directory-resize"
-          role="separator"
-          tabindex="0"
-          aria-orientation="vertical"
-          :aria-label="t('muse.resize')"
-          :aria-valuemin="180"
-          :aria-valuemax="420"
-          :aria-valuenow="panelWidth"
-          @pointerdown="startPanelResize"
-          @keydown="resizePanelKey"
-          @dblclick="resetPanelWidth"
-        />
-        <!-- #endif -->
-      </view>
       <!-- #ifdef H5 -->
       <component
         :is="'div'"
@@ -369,7 +405,7 @@
           <view v-if="active === 'learning'" class="muse-chat-identity"
             ><AnimatedAvatar
               class="brand-mark"
-              :size="viewportWidth <= 760 ? 32 : 56"
+              :size="desktopConversation || viewportWidth <= 760 ? 32 : 56"
               autoplay
               perceptible
               :business="avatarBusiness"
@@ -403,8 +439,20 @@
             role="group"
             :aria-label="t('muse.headerActions')"
             @tap="closeHeaderActions(true)"
-            ><slot name="controls"></slot
-          ></view>
+          >
+            <slot name="controls"></slot>
+            <BaseButton
+              v-if="canShowContext && !$slots.reader"
+              class="context-toggle"
+              variant="quiet"
+              icon="info"
+              icon-only
+              :label="t('muse.studyContext')"
+              :aria-expanded="contextOpen"
+              aria-controls="desktop-study-context"
+              @tap="contextOpen = !contextOpen"
+            />
+          </view>
         </view>
         <view class="space-content">
           <slot v-if="learning.recordReadState === 'ready'"></slot>
@@ -421,6 +469,45 @@
             learningText(notice)
           }}</text>
           <slot name="composer"></slot>
+        </view>
+      </view>
+      <view
+        v-if="canShowContext && !$slots.reader"
+        v-show="contextOpen"
+        id="desktop-study-context"
+        class="desktop-study-context"
+        role="complementary"
+        aria-labelledby="desktop-study-context-title"
+        :inert="(menuOpen && directoryModal) || undefined"
+      >
+        <text id="desktop-study-context-title" class="study-context-title" role="heading" aria-level="2">{{
+          t('muse.studyContext')
+        }}</text>
+        <view v-if="learning.active" class="study-context-goal">
+          <BaseIcon name="target" size="18px" />
+          <view>
+            <text class="study-context-label">{{ t('tutor.insights.goal') }}</text>
+            <text class="study-context-copy">{{ learning.active.goal }}</text>
+          </view>
+        </view>
+        <view class="study-context-links">
+          <BaseButton variant="quiet" align="start" @tap="openView('plan')">
+            <BaseIcon name="calendar" size="18px" />
+            <view>
+              <text class="study-context-label">{{ t('tutor.insights.todayPlan') }}</text>
+              <text class="study-context-copy">{{
+                todayTasks.denominator
+                  ? t('muse.studyTasks', { done: todayTasks.numerator, total: todayTasks.denominator })
+                  : t('tutor.insights.noPlan')
+              }}</text>
+            </view>
+            <BaseIcon name="chevron-right" size="14px" />
+          </BaseButton>
+          <BaseButton variant="quiet" align="start" @tap="openView('materials')">
+            <BaseIcon name="folder" size="18px" />
+            <text class="study-context-label">{{ t('muse.library') }}</text>
+            <BaseIcon name="chevron-right" size="14px" />
+          </BaseButton>
         </view>
       </view>
       <MuseArtifactPanel
@@ -459,7 +546,7 @@ import { storageService } from '@/services/storageService.js';
 import { bindLearningKeyboard } from '@/services/learning/keyboard-controls.js';
 import { bindBusinessMotion } from '@/design/business-motion.js';
 import { BRAND } from '@/config/brand.js';
-import { publicError, t } from '@/i18n/index.js';
+import { currentLanguage, publicError, t } from '@/i18n/index.js';
 import { bindMessageFollow } from './message-follow.js';
 import { isDesktopRuntime } from '@/services/desktop/runtime.js';
 import { isDesktopSettingsWindow } from '@/services/desktop/windows.js';
@@ -583,6 +670,18 @@ const viewportWidth = ref(
   typeof window !== 'undefined' ? window.innerWidth : uni.getWindowInfo?.().windowWidth || 1024
 );
 const directoryAutoOpenWidth = isDesktopRuntime() ? 800 : 760;
+const desktopConversation = computed(
+  () => props.active === 'learning' && props.layout !== 'workspace' && viewportWidth.value > 800
+);
+const contextOpen = ref(true);
+const canShowContext = computed(
+  () =>
+    desktopConversation.value &&
+    viewportWidth.value >= 1120 &&
+    learning.recordReadState === 'ready' &&
+    !artifactTarget.value
+);
+const todayTasks = computed(() => (learning.journeySummary || learning.todaySummary).tasks);
 // #ifdef APP-PLUS
 const hasNativeWebView = typeof plus !== 'undefined' && Boolean(plus.webview);
 // #endif
