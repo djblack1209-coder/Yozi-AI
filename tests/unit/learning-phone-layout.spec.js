@@ -128,4 +128,29 @@ describe('coach card on a phone', () => {
     await flushPromises();
     expect(store.sharingAllowed).toBe(true);
   });
+
+  it('assesses the card on screen after the student goes back to an earlier one', async () => {
+    const store = await trainingCard({ sharing: false });
+    const [first, second] = store.active.coach.days[0].pack.cards;
+    const sheet = wrapper.findComponent(MusePracticeSheet);
+    wrapper.vm.answer = 'First answer.';
+    sheet.vm.$emit('submit', first);
+    await flushPromises();
+    wrapper.vm.continueTraining();
+    await flushPromises();
+    expect(sheet.props('currentId')).toBe(second.id);
+    wrapper.vm.answer = 'Second answer.';
+    sheet.vm.$emit('submit', second);
+    await flushPromises();
+    store.sharingAllowed = true;
+    sheet.vm.$emit('viewed', first.id);
+    await flushPromises();
+    const requestCoach = vi.spyOn(store, 'requestCoach').mockResolvedValue();
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '查看本卡反馈')
+      .trigger('tap');
+    await flushPromises();
+    expect(requestCoach).toHaveBeenCalledWith('feedback', `card-${first.id}`);
+  });
 });

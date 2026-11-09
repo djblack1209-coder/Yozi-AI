@@ -95,7 +95,7 @@ const props = defineProps({
   sharedInput: Boolean,
   disabled: Boolean
 });
-const emit = defineEmits(['update:modelValue', 'submit', 'open-source']);
+const emit = defineEmits(['update:modelValue', 'submit', 'open-source', 'viewed']);
 const choice = ref('');
 const viewedId = ref(props.currentId);
 watch(
@@ -111,6 +111,11 @@ const selected = computed(
     props.cards[0]
 );
 const selectedAnswer = computed(() => props.answers.find((answer) => answer.cardId === selected.value?.id));
+watch(
+  () => selected.value?.id,
+  (id) => emit('viewed', id),
+  { immediate: true }
+);
 watch(
   [() => selected.value?.id, () => selectedAnswer.value?.answer],
   () => {

@@ -544,7 +544,7 @@
                   <MusePracticeSheet
                     v-model="answer"
                     shared-input
-                    title="今日训练"
+                    :title="day.day === today ? '今日训练' : '继续上次训练'"
                     :cards="day.pack.cards"
                     :materials="learning.state.materials"
                     :answers="day.answers"
@@ -552,14 +552,15 @@
                     :disabled="learning.busy"
                     @submit="submitCard($event, false)"
                     @open-source="openedSource = $event"
+                    @viewed="viewedCardId = $event"
                   />
-                  <text v-if="cardAnswer && !learning.busy" role="status">原答已保存，AI 评估待完成</text>
+                  <text v-if="shownCardAwaitsFeedback && !learning.busy" role="status">原答已保存，AI 评估待完成</text>
                   <BaseButton
-                    v-if="cardAnswer"
+                    v-if="shownCardAwaitsFeedback"
                     variant="primary"
-                    :disabled="requestDisabled('feedback', `card-${trainingCard.id}`)"
-                    @tap="request('feedback', `card-${trainingCard.id}`)"
-                    >{{ requestLabel('feedback', `card-${trainingCard.id}`, '查看本卡反馈') }}</BaseButton
+                    :disabled="requestDisabled('feedback', `card-${shownCard.id}`)"
+                    @tap="request('feedback', `card-${shownCard.id}`)"
+                    >{{ requestLabel('feedback', `card-${shownCard.id}`, '查看本卡反馈') }}</BaseButton
                   >
                   <BaseButton v-if="cardAnswer" variant="quiet" :disabled="learning.busy" @tap="continueTraining"
                     >先继续下一题</BaseButton
@@ -997,6 +998,14 @@ function continueTraining() {
 // Consent applies per send, so it has to sit at the step being sent, not back at the top of a long conversation.
 const consentAvailable = computed(() => loggedIn.value && learning.modelId && coach.value?.profile);
 const cardAnswer = computed(() => day.value?.answers.find((a) => a.cardId === trainingCard.value?.id));
+// 查看本卡反馈 has to assess the card on screen, which the tabs can move away from the current one.
+const viewedCardId = ref('');
+const shownCard = computed(() => day.value?.pack.cards.find((c) => c.id === viewedCardId.value) || trainingCard.value);
+const shownCardAwaitsFeedback = computed(
+  () =>
+    day.value?.answers.some((a) => a.cardId === shownCard.value?.id) &&
+    !day.value.feedback[`card-${shownCard.value.id}`]
+);
 const paragraphIndex = computed(() => day.value?.rewrites.length || 0);
 const historyLimit = ref(1);
 const savedPractice = computed(() => coachSavedRecords(learning.active));

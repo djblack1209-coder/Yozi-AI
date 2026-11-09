@@ -1,7 +1,9 @@
 import {
   writingCoachDashboard,
+  coachLearningDay,
   coachUsesMaterials
 } from '../../../laf-backend/functions/_shared/learning-writing-coach.js';
+import { coachErrorReviews } from '../../../laf-backend/functions/_shared/learning-coach-review.js';
 import { dayKey, effectiveGrade, questionKey } from './learning-domain.js';
 import { museSafeLink } from './muse-rich-content.js';
 import { conversationCategoryId, conversationLabel } from './workspace-context.js';
@@ -78,7 +80,9 @@ export function museGoals(state, now) {
     .filter((c) => c.coach)
     .map((conversation) => {
       const coach = conversation.coach;
-      const current = coach.days.find((d) => d.day === today);
+      // Same day rule as the conversation, so an unfinished task carried over reads the same in both places.
+      const learningDay = coachLearningDay(coach, today);
+      const current = coach.days.find((d) => d.day === learningDay);
       const board = writingCoachDashboard(coach, today, state.timezone);
       const totalDays = coach.profile?.deadline
         ? Math.max(0, daysBetween(coach.startedDay, coach.profile.deadline) + 1)
@@ -93,10 +97,24 @@ export function museGoals(state, now) {
           count: coach.diagnostic.answers.length,
           total: coach.diagnostic.cards.length
         });
+      const retries = coachErrorReviews(state, now, conversation.id).filter((row) => row.availableAt <= now);
+      const retriesLeft = retries.filter((row) => !row.completedBy).length;
+      const retriesDoneToday = retries.filter((row) => {
+        const done = row.completedBy && state.events.find((event) => event.id === row.completedBy);
+        return done && dayKey(done.at, state.timezone) === today;
+      }).length;
+      if (retriesLeft || retriesDoneToday)
+        tasks.push({
+          id: 'retry',
+          title: '待重练',
+          done: !retriesLeft,
+          count: retriesDoneToday,
+          total: retriesLeft + retriesDoneToday
+        });
       if (current) {
         tasks.push({
           id: 'practice',
-          title: '今日训练',
+          title: current.day === today ? '今日训练' : '继续上次训练',
           done: current.pack.cards.every((c) => current.feedback[`card-${c.id}`]),
           count: current.answers.length,
           total: current.pack.cards.length
@@ -125,9 +143,11 @@ export function museGoals(state, now) {
             ? '开始摸底'
             : !coach.diagnostic.feedback
               ? '继续摸底'
-              : !current
-                ? '安排今日训练'
-                : tasks.find((t) => !t.done)?.title || '今天已完成';
+              : retriesLeft
+                ? '待重练'
+                : !current
+                  ? '安排今日训练'
+                  : tasks.find((t) => !t.done)?.title || '今天已完成';
       return {
         id: conversation.id,
         goal: conversation.goal,

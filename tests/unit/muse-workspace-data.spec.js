@@ -6,6 +6,7 @@ import {
   searchLearningRecords,
   learningRecordTarget
 } from '../../laf-backend/functions/_shared/learning-record-search.js';
+import { progressBoundaryFixture } from '../fixtures/learning-progress.js';
 
 function fixture() {
   const state = emptyLearningState('muse-isolated');
@@ -128,5 +129,73 @@ describe('Muse workspace reads saved facts', () => {
       quotaPercent: null,
       cost: null
     });
+  });
+});
+
+describe('Muse plan page follows the conversation on the next day', () => {
+  const dayAt = (day) => Date.parse(`${day}T12:00:00Z`);
+  function nextDay({ saved = true, finished = false } = {}) {
+    const { state } = fixture();
+    state.timezone = 'UTC';
+    const conversation = state.conversations[0];
+    conversation.at = dayAt('2026-05-01');
+    Object.assign(conversation.coach, {
+      timezone: 'UTC',
+      startedDay: '2026-05-01',
+      profile: { minutes: 20 },
+      requests: []
+    });
+    conversation.coach.diagnostic.feedback = { weaknesses: [] };
+    conversation.coach.days = [
+      {
+        day: '2026-05-01',
+        completed: finished,
+        writingTask: { taskVersion: 1 },
+        pack: { cards: [{ id: 'c1' }], writing: { patterns: ['p1'] } },
+        answers: saved ? [{ id: 'a1', cardId: 'c1', answer: 'x' }] : [],
+        rewrites: [],
+        drafts: [],
+        feedback: {}
+      }
+    ];
+    return state;
+  }
+  it('names an unfinished task carried over the same way the conversation does', () => {
+    const [goal] = museGoals(nextDay(), dayAt('2026-05-02'));
+    expect(goal.current.day).toBe('2026-05-01');
+    expect(goal.tasks.find((t) => t.id === 'practice')).toMatchObject({ title: '继续上次训练', count: 1, total: 1 });
+    expect(goal.next).toBe('继续上次训练');
+  });
+  it('keeps a finished day as history and asks for a new plan', () => {
+    const [goal] = museGoals(nextDay({ finished: true }), dayAt('2026-05-02'));
+    expect(goal.current).toBeUndefined();
+    expect(goal.tasks.some((t) => t.id === 'practice')).toBe(false);
+    expect(goal.next).toBe('安排今日训练');
+  });
+  it('puts saved corrections on the next day’s plan without inventing a result', () => {
+    const state = progressBoundaryFixture(1, 0);
+    const { coach } = state.conversations[0];
+    coach.diagnostic = { cards: [], answers: [], feedback: { weaknesses: [] } };
+    const day = coach.days[0];
+    day.answers[0].answer = 'On';
+    Object.assign(day.feedback['card-card0'], {
+      weaknesses: ['介词搭配'],
+      weaknessEvidence: [{ label: '介词搭配', quote: 'On', classification: 'error' }],
+      dimensions: [{ name: '搭配', score: 1, evidence: ['On'], comment: '合成错误反馈' }]
+    });
+    const before = JSON.stringify(state);
+    const [goal] = museGoals(state, Date.parse('2026-10-31T03:00:00Z'));
+    expect(goal.tasks.find((t) => t.id === 'retry')).toMatchObject({
+      title: '待重练',
+      done: false,
+      count: 0,
+      total: 1
+    });
+    expect(goal.next).toBe('待重练');
+    expect(JSON.stringify(state)).toBe(before);
+  });
+  it('titles the same day as today’s training', () => {
+    const [goal] = museGoals(nextDay(), dayAt('2026-05-01'));
+    expect(goal.tasks.find((t) => t.id === 'practice').title).toBe('今日训练');
   });
 });
