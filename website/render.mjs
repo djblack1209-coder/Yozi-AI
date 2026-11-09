@@ -238,6 +238,10 @@ const words = {
   retryMedia: ["重试", "Retry"],
   demoBefore: ["看练习结果", "See the outcomes"],
   demoAfter: ["返回练习", "Back to the practice"],
+  expoOpen: ["浏览学习路线", "Explore the study route"],
+  expoTitle: ["学习路线", "Study route"],
+  expoHint: ["滚动浏览，或选择一站。", "Scroll through the route or choose a stop."],
+  expoStaticHint: ["选择一站查看示例。", "Choose a stop to see its example."],
   principlesTitle: ["学习方法", "How Yozi helps you learn"],
   pricingTitle: ["订阅价格", "Plans"],
   pricingIntro: [
@@ -281,6 +285,9 @@ const labels = {
   nextLabel: ["下一条理念", "next principle"],
   collectionPreviousLabel: ["上一张学习卡", "previous study card"],
   collectionNextLabel: ["下一张学习卡", "next study card"],
+  expoCloseLabel: ["收起学习路线", "Close the study route"],
+  expoScrollLabel: ["学习路线滚动视图", "Scrollable study route"],
+  expoStepsLabel: ["学习路线站点", "Study route stops"],
   faqLabel: ["问题分类", "question categories"],
   footerProduct: ["产品链接", "product links"],
   footerUse: ["使用链接", "getting started links"],
@@ -296,6 +303,7 @@ function fill(template, slots) {
 }
 export function renderHome(lang = "zh", root = false) {
   const base = root ? "." : "..";
+  const expoSteps = [words.previewWrite, words.previewFeedback, words.previewReview];
   return fill(source("index.html"), {
     ...metadata[lang],
     base,
@@ -320,12 +328,21 @@ export function renderHome(lang = "zh", root = false) {
       url: "https://yozi.bot.cd/",
       downloadUrl: `https://yozi.bot.cd/downloads/${download}`,
     }),
-    styles: (["site.css", "intro.css", "get-app.css"].map(source).join("\n")).replaceAll("FONT_BASE", base + "/fonts"),
+    styles: (["site.css", "intro.css", "get-app.css", "expo.css"].map(source).join("\n")).replaceAll("FONT_BASE", base + "/fonts"),
     bootstrap: `(() => { let lang = ${JSON.stringify(root ? "" : lang)}; if (!lang) { try { lang = localStorage.getItem('yozi.website.language'); } catch {} } document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN'; document.documentElement.classList.add('js'); })();`,
     script: source("site.js").replace("LOCALE_METADATA", JSON.stringify(metadata)),
     sampleAttempt: sample.attempt,
     sampleCorrection: sample.correction,
     featureCards: featureCards().replaceAll("{{base}}", base),
+    expoBays: features.map((feature, index) =>
+      `<div class="expo-bay" data-expo-bay${index === 0 ? " data-expo-active" : ""}><div class="expo-bay-heading"><span>0${index + 1}</span><h4>${tr(...expoSteps[index])}</h4></div><div class="expo-bay-content"><img src="${base}/media/feature-day-${index + 1}.jpg" alt="" loading="lazy"><p lang="en">${feature.back}</p></div></div>`,
+    ).join(""),
+    expoSteps: expoSteps.map((step, index) =>
+      `<li><button type="button" data-expo-step="${index}" aria-controls="expo-note-${index}"${index === 0 ? ' aria-current="step"' : ""}><span aria-hidden="true">0${index + 1}</span>${tr(...step)}</button></li>`,
+    ).join(""),
+    expoNotes: features.map((feature, index) =>
+      `<article id="expo-note-${index}" class="expo-note" data-expo-note${index === 0 ? "" : " hidden"}><h4>${tr(...feature.title)}</h4><p lang="en">${feature.back}</p>${feature.assessment ? `<small>${tr(...feature.assessment)}</small>` : ""}</article>`,
+    ).join(""),
     collectionCards: [
       [
         ["试着作答", "Practise"],

@@ -138,8 +138,31 @@
       <div class="wide">
         <div class="section-heading reveal">
           <h2 id="features-title">{{featuresTitle}}</h2>
-          <button class="button secondary" data-demo-toggle type="button" aria-pressed="false" aria-controls="practice-cards"><span data-before-label>{{demoBefore}}</span><span data-after-label hidden>{{demoAfter}}</span>{{iright}}</button>
+          <div class="feature-actions">
+            <button class="button secondary" data-demo-toggle type="button" aria-pressed="false" aria-controls="practice-cards"><span data-before-label>{{demoBefore}}</span><span data-after-label hidden>{{demoAfter}}</span>{{iright}}</button>
+            <button class="button secondary" data-expo-open type="button" aria-expanded="false" aria-controls="study-expo" hidden>{{expoOpen}}{{ilayers}}</button>
+          </div>
         </div>
+        <section class="study-expo" id="study-expo" aria-labelledby="expo-title" data-expo-current="0" hidden>
+          <header class="expo-heading">
+            <img src="{{brandMark}}" width="36" height="36" alt="">
+            <h3 id="expo-title">{{expoTitle}}</h3>
+            <button class="expo-close" type="button" data-expo-close {{expoCloseLabel}}>{{iclose}}</button>
+          </header>
+          <div class="expo-scroll" data-expo-scroll role="region" tabindex="0" {{expoScrollLabel}}>
+            <div class="expo-stage" aria-hidden="true">
+              <div class="expo-track" data-expo-track>{{expoBays}}</div>
+            </div>
+            <div class="expo-distance" aria-hidden="true"></div>
+          </div>
+          <div class="expo-details">
+            <div class="expo-guide">
+              <p class="expo-hint"><span class="expo-motion-hint">{{expoHint}}</span><span class="expo-static-hint">{{expoStaticHint}}</span></p>
+              <ol class="expo-steps" {{expoStepsLabel}}>{{expoSteps}}</ol>
+            </div>
+            <div class="expo-notes" aria-live="polite">{{expoNotes}}</div>
+          </div>
+        </section>
         <div class="feature-grid" id="practice-cards">{{featureCards}}</div>
       </div>
     </section>

@@ -383,6 +383,69 @@
     syncFilms();
   });
 
+  const expo = document.querySelector("#study-expo");
+  const expoOpen = document.querySelector("[data-expo-open]");
+  const expoClose = expo.querySelector("[data-expo-close]");
+  const expoScroll = expo.querySelector("[data-expo-scroll]");
+  const expoTrack = expo.querySelector("[data-expo-track]");
+  const expoSteps = [...expo.querySelectorAll("[data-expo-step]")];
+  const expoBays = [...expo.querySelectorAll("[data-expo-bay]")];
+  const expoNotes = [...expo.querySelectorAll("[data-expo-note]")];
+  const expoEnd = expoSteps.length - 1;
+  let expoIndex = 0;
+
+  function positionExpo(progress) {
+    expoTrack.style.setProperty("--expo-position", progress);
+    const index = Math.round(progress);
+    if (index === expoIndex) return;
+    expoSteps[expoIndex].removeAttribute("aria-current");
+    expoBays[expoIndex].removeAttribute("data-expo-active");
+    expoNotes[expoIndex].hidden = true;
+    expoIndex = index;
+    expo.dataset.expoCurrent = String(index);
+    expoSteps[index].setAttribute("aria-current", "step");
+    expoBays[index].setAttribute("data-expo-active", "");
+    expoNotes[index].hidden = false;
+  }
+  function goToExpoStop(index, behavior) {
+    if (expo.classList.contains("is-static")) {
+      positionExpo(index);
+      return;
+    }
+    const distance = expoScroll.scrollHeight - expoScroll.clientHeight;
+    expoScroll.scrollTo({ top: distance * index / expoEnd, behavior });
+  }
+  function syncExpoMotion() {
+    const staticView = !motionEnabled || reduced.matches;
+    expo.classList.toggle("is-static", staticView);
+    if (staticView && document.activeElement === expoScroll) expoSteps[expoIndex].focus();
+    expoScroll.tabIndex = staticView ? -1 : 0;
+    if (staticView) expoScroll.setAttribute("aria-hidden", "true");
+    else expoScroll.removeAttribute("aria-hidden");
+    if (!expo.hidden) goToExpoStop(expoIndex, "auto");
+  }
+  function setExpoOpen(open) {
+    expo.hidden = !open;
+    expoOpen.setAttribute("aria-expanded", String(open));
+    if (open) syncExpoMotion();
+    (open ? expoClose : expoOpen).focus();
+  }
+
+  expoOpen.hidden = false;
+  expoOpen.addEventListener("click", () => setExpoOpen(expo.hidden));
+  expoClose.addEventListener("click", () => setExpoOpen(false));
+  expo.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setExpoOpen(false);
+  });
+  expoScroll.addEventListener("scroll", () => {
+    const distance = expoScroll.scrollHeight - expoScroll.clientHeight;
+    if (!expo.hidden && distance > 0 && !expo.classList.contains("is-static")) {
+      const progress = Math.min(1, Math.max(0, expoScroll.scrollTop / distance));
+      positionExpo(progress * expoEnd);
+    }
+  }, { passive: true });
+  expoSteps.forEach((button, index) => button.addEventListener("click", () => goToExpoStop(index, "smooth")));
+
   function applyMotion(enabled) {
     motionEnabled = enabled;
     root.classList.toggle("motion-paused", !enabled);
@@ -394,6 +457,7 @@
     }
     updateLabels();
     syncFilms();
+    syncExpoMotion();
   }
   mediaButton.addEventListener("click", () => {
     applyMotion(!motionEnabled);
@@ -408,6 +472,7 @@
   });
   reduced.addEventListener("change", (event) => {
     if (event.matches) applyMotion(false);
+    else syncExpoMotion();
   });
 
   const slides = [...document.querySelectorAll("[data-slide]")];
