@@ -403,6 +403,7 @@ describe('原件删除回执和真实状态', () => {
     });
     try {
       await wrapper.get('#learning-composer [aria-label="导入资料"]').trigger('tap');
+      await button('粘贴文字').trigger('tap');
       await button('用此资料练习').trigger('tap');
       await button('预览并删除资料').trigger('tap');
       expect(modal.content).toContain('1 次');

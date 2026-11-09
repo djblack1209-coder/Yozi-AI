@@ -5,9 +5,29 @@
     :role="narrow ? 'dialog' : 'region'"
     :aria-modal="narrow || undefined"
     :aria-label="`${material.name} · ${pageLabel}`"
+    :style="readerWidth ? { '--reading-width': `${readerWidth}px` } : undefined"
     tabindex="-1"
-    @keydown.esc.stop.prevent="$emit('close')"
+    @keydown="closeOnEscape"
   >
+    <!-- #ifdef H5 -->
+    <component
+      :is="'div'"
+      v-if="!narrow"
+      class="reading-resize"
+      role="separator"
+      aria-label="调整阅读区宽度"
+      aria-orientation="vertical"
+      :aria-valuemin="340"
+      :aria-valuemax="readerLimit"
+      :aria-valuenow="readerWidth || 340"
+      tabindex="0"
+      @pointerdown="startResize"
+      @pointermove="resizeReading"
+      @pointerup="endResize"
+      @pointercancel="endResize"
+      @keydown="resizeByKey"
+    />
+    <!-- #endif -->
     <view class="reading-header">
       <view class="reading-title"
         ><text>{{ material.name }}</text
@@ -62,19 +82,54 @@
         <BaseInput v-model="note" label="阅读笔记" multiline :maxlength="4000" @update:model-value="saveNoteDraft" />
         <BaseButton variant="primary" @tap="saveNote">保存笔记</BaseButton>
       </view>
-      <view v-if="asking" class="reading-editor" aria-label="片段答疑">
-        <text class="reading-question-source" selectable>{{ selectedText }}</text>
-        <BaseInput ref="questionInput" v-model="question" label="关于这段的问题" multiline :maxlength="1000" />
-        <BaseCheckbox :model-value="learning.sharingAllowed" @update:model-value="setSharing"
-          >同意将所选片段和本次问题发给当前模型</BaseCheckbox
-        >
-        <BaseButton variant="primary" :disabled="pending || !question.trim() || !learning.sharingAllowed" @tap="ask">
-          {{ pending ? '正在回答' : '发送所选片段和问题' }}
-        </BaseButton>
-        <LearningMessage v-if="reply" :content="reply.message" :content-blocks="reply.contentBlocks" generated />
+      <view v-if="reply" id="reading-answer">
+        <LearningMessage :content="reply.message" :content-blocks="reply.contentBlocks" generated />
       </view>
       <text v-if="status" role="status">{{ status }}</text>
     </scroll-view>
+    <view v-if="asking" class="reading-question-dock">
+      <view
+        class="reading-question-handle"
+        @touchstart="startQuestionSwipe"
+        @touchmove="moveQuestionSwipe"
+        @touchend="endQuestionSwipe"
+        @touchcancel="cancelQuestionSwipe"
+      >
+        <BaseButton
+          variant="quiet"
+          :aria-expanded="!questionCollapsed"
+          aria-controls="reading-question-editor"
+          @tap="setQuestionCollapsed(!questionCollapsed)"
+          >{{ questionCollapsed ? '展开提问' : '收起提问' }}</BaseButton
+        >
+      </view>
+      <view
+        id="reading-question-editor"
+        class="reading-question-tray"
+        :class="{ 'is-collapsed': questionCollapsed, 'is-dragging': questionDrag > 0 }"
+        :style="{ '--question-drag': `${questionDrag}px` }"
+        :inert="questionCollapsed || undefined"
+        :aria-hidden="questionCollapsed || undefined"
+        aria-label="片段答疑"
+      >
+        <view class="reading-question-tray__contents">
+          <view class="reading-editor">
+            <text class="reading-question-source" selectable>{{ selectedText }}</text>
+            <BaseInput ref="questionInput" v-model="question" label="关于这段的问题" multiline :maxlength="1000" />
+            <BaseCheckbox :model-value="learning.sharingAllowed" @update:model-value="setSharing"
+              >同意将所选片段和本次问题发给当前模型</BaseCheckbox
+            >
+            <BaseButton
+              variant="primary"
+              :disabled="pending || !question.trim() || !learning.sharingAllowed"
+              @tap="ask"
+            >
+              {{ pending ? '正在回答' : '发送所选片段和问题' }}
+            </BaseButton>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -96,6 +151,31 @@ const pane = ref(null);
 const sourceText = ref(null);
 const questionInput = ref(null);
 const narrow = ref((uni.getWindowInfo?.().windowWidth || 390) <= 760);
+const readerWidth = ref(0);
+const readerLimit = ref(680);
+// #ifdef H5
+let resize = null;
+function setReaderWidth(width) {
+  readerWidth.value = Math.max(340, Math.min(readerLimit.value, Math.round(width)));
+}
+function startResize(event) {
+  if (event.button !== 0) return;
+  resize = { pointer: event.pointerId, x: event.clientX, width: readerWidth.value };
+  event.currentTarget.setPointerCapture(event.pointerId);
+}
+function resizeReading(event) {
+  if (resize?.pointer === event.pointerId) setReaderWidth(resize.width + resize.x - event.clientX);
+}
+function endResize() {
+  resize = null;
+}
+function resizeByKey(event) {
+  const change = { ArrowLeft: 32, ArrowRight: -32 }[event.key];
+  if (!change) return;
+  event.preventDefault();
+  setReaderWidth(readerWidth.value + change);
+}
+// #endif
 const page = ref(props.material.segments.findIndex((segment) => segment.id === props.anchor.segmentId));
 const range = ref({ start: props.anchor.start, end: props.anchor.end });
 const scrollTarget = ref('');
@@ -105,9 +185,44 @@ const editingNote = ref(false);
 const note = ref('');
 const asking = ref(false);
 const question = ref('');
+const questionCollapsed = ref(false);
+const questionDrag = ref(0);
+let questionStart;
+const touchY = (touch) => touch?.clientY ?? touch?.pageY;
+function setQuestionCollapsed(collapsed) {
+  questionCollapsed.value = collapsed;
+  // #ifdef H5
+  if (collapsed) (questionInput.value?.$el || questionInput.value)?.querySelector('textarea')?.blur();
+  // #endif
+}
+function startQuestionSwipe(event) {
+  questionStart = touchY(event.touches?.[0]);
+}
+function moveQuestionSwipe(event) {
+  if (questionCollapsed.value || questionStart === undefined) return;
+  questionDrag.value = Math.min(54, Math.max(0, (touchY(event.touches?.[0]) ?? questionStart) - questionStart));
+}
+function cancelQuestionSwipe() {
+  questionStart = undefined;
+  questionDrag.value = 0;
+}
+function endQuestionSwipe(event) {
+  if (questionStart === undefined) return;
+  const distance = (touchY(event.changedTouches?.[0]) ?? questionStart) - questionStart;
+  cancelQuestionSwipe();
+  if (Math.abs(distance) < 24) return;
+  event.preventDefault?.();
+  setQuestionCollapsed(distance > 0);
+}
 const pending = ref(false);
 const reply = ref(null);
 const status = ref('');
+function closeOnEscape(event) {
+  if (event.key !== 'Escape') return;
+  event.preventDefault();
+  event.stopPropagation();
+  emit('close');
+}
 const version = (segment) => segment.extractionEventId ?? null;
 const current = computed(() => props.material.segments[page.value]);
 const pageLabel = computed(() => (current.value.page ? `第 ${current.value.page} 页` : `第 ${page.value + 1} 段`));
@@ -217,6 +332,7 @@ function saveNote() {
 }
 async function openQuestion() {
   asking.value = true;
+  setQuestionCollapsed(false);
   await nextTick();
   // #ifdef H5
   (questionInput.value?.$el || questionInput.value)?.querySelector?.('textarea')?.focus?.();
@@ -238,8 +354,11 @@ async function ask() {
   try {
     const result = await learning.askAboutReadingPassage(selection.value, question.value);
     if (closed || key !== noteKey.value) return;
-    if (result.success) reply.value = result.data;
-    else status.value = publicError(result);
+    if (result.success) {
+      reply.value = result.data;
+      await nextTick();
+      if (!closed && key === noteKey.value && !questionCollapsed.value) scrollTarget.value = 'reading-answer';
+    } else status.value = publicError(result);
   } catch (error) {
     if (!closed && key === noteKey.value) status.value = publicError(error);
   } finally {
@@ -272,6 +391,8 @@ onMounted(() => {
   const element = pane.value?.$el || pane.value;
   if (narrow.value) releaseFocus = bindLearningDialog(element, { onEscape: () => emit('close') });
   else {
+    readerLimit.value = Math.max(340, Math.min(680, Math.floor(element.parentElement.clientWidth * 0.72)));
+    setReaderWidth(element.getBoundingClientRect().width);
     const previous = document.activeElement;
     element?.focus();
     releaseFocus = () => {
@@ -295,7 +416,8 @@ onBeforeUnmount(() => {
   position: absolute;
   z-index: 36;
   inset: 0 0 0 auto;
-  width: clamp(340px, 44%, 520px);
+  width: var(--reading-width, clamp(340px, 44%, 520px));
+  max-width: 72%;
   display: flex;
   flex-direction: column;
   padding: 18px;
@@ -303,6 +425,26 @@ onBeforeUnmount(() => {
   background: var(--paper);
   border-left: 1px solid var(--line);
   overflow: hidden;
+}
+.reading-resize {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 12px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.reading-resize::after {
+  content: '';
+  position: absolute;
+  inset: calc(50% - 18px) auto auto 4px;
+  width: 3px;
+  height: 36px;
+  border-radius: var(--r-pill);
+  background: var(--line);
+}
+.reading-resize:hover::after,
+.reading-resize:focus-visible::after {
+  background: var(--blue);
 }
 .reading-header,
 .reading-actions {
@@ -341,11 +483,61 @@ onBeforeUnmount(() => {
   gap: 8px;
   margin-top: 8px;
 }
+.reading-question-dock {
+  border-top: 1px solid var(--line);
+}
+.reading-question-handle {
+  display: flex;
+  justify-content: center;
+  touch-action: none;
+}
+.reading-question-tray {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 300ms cubic-bezier(0.22, 0.72, 0.26, 1);
+}
+.reading-question-tray.is-collapsed {
+  grid-template-rows: 0fr;
+}
+.reading-question-tray__contents {
+  min-height: 0;
+  max-height: 42dvh;
+  overflow: auto;
+  opacity: 1;
+  transform: translateY(var(--question-drag));
+  transition:
+    transform 300ms cubic-bezier(0.22, 0.72, 0.26, 1),
+    opacity 180ms ease-out;
+}
+.reading-question-tray.is-dragging .reading-question-tray__contents {
+  transition: none;
+}
+.reading-question-tray.is-collapsed .reading-question-tray__contents {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    transform 300ms cubic-bezier(0.22, 0.72, 0.26, 1),
+    opacity 180ms ease-out,
+    visibility 0s 300ms;
+}
+.reading-question-source {
+  max-height: 4.5em;
+  overflow: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reading-question-tray,
+  .reading-question-tray__contents,
+  .reading-question-tray.is-collapsed .reading-question-tray__contents {
+    transition: none;
+  }
+}
 @media (max-width: 760px) {
   .reading-pane {
     position: fixed;
     inset: 0;
     width: 100%;
+    max-width: 100%;
     height: 100dvh;
     padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
     border: 0;

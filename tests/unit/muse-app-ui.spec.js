@@ -55,6 +55,18 @@ describe('Muse App input behavior', () => {
     expect(wrapper.emitted('submit')).toBeUndefined();
     expect(wrapper.emitted('stop')).toHaveLength(1);
   });
+  it('discloses attachment actions and emits only the action the user chooses', async () => {
+    wrapper = mount(MuseComposer, { props: { attachmentActions: ['file', 'text', 'library'] } });
+    const trigger = wrapper.get('.muse-attach');
+    const menu = wrapper.get('.muse-attachment-menu');
+    expect(menu.attributes('inert')).toBeDefined();
+    await trigger.trigger('tap');
+    expect(trigger.attributes('aria-expanded')).toBe('true');
+    expect(wrapper.emitted('attach')).toBeUndefined();
+    await menu.findAll('button')[1].trigger('tap');
+    expect(trigger.attributes('aria-expanded')).toBe('false');
+    expect(wrapper.emitted('attach')).toEqual([['text']]);
+  });
   it('navigation drafts stay separate by conversation and are revoked on an identity change', () => {
     const save = vi.spyOn(uni, 'setStorageSync');
     save.mockClear();

@@ -47,6 +47,7 @@
         class="composer"
         :stop-label="t('learning.cancelRequest')"
         :attachment-label="t('learning.import')"
+        :attachment-actions="legacyLearningEnabled ? [] : ['file', 'text', 'library']"
         :placeholder="
           learning.batchTrainingActive
             ? t('learning.kkk')
@@ -70,7 +71,7 @@
         "
         :busy="learning.busy || learning.reply?.pending"
         :disabled="!!learning.active?.stopped || learning.accountRecordState !== 'ready'"
-        @attach="showMaterial = !showMaterial"
+        @attach="openComposerAttachment"
         @stop="learning.cancel()"
         @submit="send"
         @height="composerHeight = $event"
@@ -2033,7 +2034,7 @@ import BaseBubble from '@/components/base/base-bubble/base-bubble.vue';
 import BaseOptions from '@/components/base/base-options/base-options.vue';
 import YoziMascot from '@/components/base/yozi-mascot/yozi-mascot.vue';
 import AnimatedAvatar from '@/components/base/animated-avatar/animated-avatar.vue';
-import { visibleReply, cancelledNotice, studentAvatar } from '@/services/learning/shell-navigation.js';
+import { visibleReply, cancelledNotice, studentAvatar, SHELL_ROUTES } from '@/services/learning/shell-navigation.js';
 import { answerFeedback, answerOptionState } from '@/components/business/learning/learning-feedback.js';
 import './messages.js';
 import { learningText } from '@/i18n/learning.js';
@@ -3458,6 +3459,20 @@ function dismissOverlay() {
     }
   }
   return false;
+}
+async function openComposerAttachment(action) {
+  if (action === 'library') return safeNavigateTo(SHELL_ROUTES.materials);
+  if (!action) {
+    showMaterial.value = !showMaterial.value;
+    return;
+  }
+  showMaterial.value = true;
+  await nextTick();
+  revealLearningTarget('material-intake');
+  if (action === 'file' && !materialFileChoiceBusy.value) return chooseMaterialFile();
+  // #ifdef H5
+  if (action === 'text') document.querySelector('#material-intake textarea')?.focus({ preventScroll: true });
+  // #endif
 }
 async function sendDirective(action) {
   const conversationId = learning.selectedConversationId;

@@ -110,7 +110,8 @@ const props = defineProps({
   position: { type: String, default: 'center', validator: (value) => ['center', 'bottom'].includes(value) },
   escapeClosable: { type: Boolean, default: undefined },
   closeButton: { type: Boolean, default: false },
-  showActions: { type: Boolean, default: true }
+  showActions: { type: Boolean, default: true },
+  initialFocusSelector: { type: String, default: '' }
 });
 const emit = defineEmits(['cancel', 'update:visible', 'confirm', 'closed']);
 const dialog = ref(null);
@@ -168,12 +169,16 @@ function bindDialog() {
   if (!props.visible || releaseDialog || !dialog.value) return;
   releaseKeyboard = bindLearningKeyboard(dialog.value);
   const input = editableInput.value?.$el || editableInput.value;
+  const element = dialog.value?.$el || dialog.value;
+  const requestedFocus = props.initialFocusSelector && element?.querySelector?.(props.initialFocusSelector);
   releaseDialog = bindLearningDialog(dialog.value, {
-    initialFocus: props.editable
-      ? input?.querySelector?.('textarea') || input
-      : props.showCancel
-        ? cancelButton.value
-        : confirmButton.value,
+    initialFocus:
+      requestedFocus ||
+      (props.editable
+        ? input?.querySelector?.('textarea') || input
+        : props.showCancel
+          ? cancelButton.value
+          : confirmButton.value),
     onEscape: () => {
       if (props.escapeClosable ?? (props.showCancel || props.maskClosable)) handleCancel();
     }

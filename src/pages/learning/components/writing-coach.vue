@@ -58,8 +58,9 @@
         :disabled="Boolean(coach && (learning.active.stopped || !answerTarget))"
         :submit-disabled="false"
         :attachment-disabled="fileBusy || learning.busy"
+        :attachment-actions="composerAttachments"
         @submit="submitComposer"
-        @attach="showMaterials = !showMaterials"
+        @attach="openComposerAttachment"
         @stop="
           learning.intakeBusy || learning.reply?.kind === 'intake' ? learning.cancelModelIntake() : learning.cancel()
         "
@@ -142,6 +143,7 @@
       <CustomModal
         :visible="showMaterials"
         title="资料"
+        :initial-focus-selector="materialEntry === 'text' ? 'textarea' : ''"
         :is-dark="theme.isDark"
         :show-actions="false"
         close-button
@@ -754,7 +756,7 @@
   </LearningShell>
 </template>
 <script setup>
-import { visibleReply, cancelledNotice, studentAvatar } from '@/services/learning/shell-navigation.js';
+import { visibleReply, cancelledNotice, studentAvatar, SHELL_ROUTES } from '@/services/learning/shell-navigation.js';
 import { studentEssaySources, openStudentArtifact } from '@/services/learning/learning-artifacts.js';
 import { computed, ref, reactive, watch, onMounted, onBeforeUnmount, onUnmounted, nextTick } from 'vue';
 import { coachSavedRecords } from '../../../../laf-backend/functions/_shared/learning-coach-records.js';
@@ -855,7 +857,11 @@ const goal = ref(''),
   materialText = ref(''),
   message = ref('');
 const showMaterials = ref(props.materialsOpen),
+  materialEntry = ref(''),
   fileBusy = ref(false);
+watch(showMaterials, (open) => {
+  if (!open) materialEntry.value = '';
+});
 watch(
   () => props.materialsOpen,
   (open) => {
@@ -1477,6 +1483,20 @@ function review() {
     if (key) drafts.remove(context, key);
     if (draftKey === draftBinding?.key && answer.value === submitted) answer.value = '';
   });
+}
+const composerAttachments = ['text', 'library'];
+// #ifdef H5
+composerAttachments.unshift('file');
+// #endif
+async function openComposerAttachment(action) {
+  if (action === 'library') return safeNavigateTo(SHELL_ROUTES.materials);
+  materialEntry.value = action;
+  showMaterials.value = true;
+  // #ifdef H5
+  await nextTick();
+  const dialog = document.querySelector('.coach-material-dialog');
+  if (action === 'file') dialog?.querySelector('.coach-file-input')?.click();
+  // #endif
 }
 function toggleMaterial(id) {
   materialSelection.value = materialSelection.value.includes(id)

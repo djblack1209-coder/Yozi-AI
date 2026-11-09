@@ -25,15 +25,39 @@
     <text v-if="voiceMessage" class="muse-dictation-status muse-dictation-message" role="status">{{
       voiceMessage
     }}</text>
-    <BaseButton
-      class="muse-attach"
-      variant="quiet"
-      icon-only
-      icon="plus"
-      :label="attachmentLabel || t('muse.attach')"
-      :disabled="attachmentDisabled || voice.active"
-      @tap="emit('attach')"
-    />
+    <view class="muse-attachment" :class="{ 'is-open': attachmentOpen }">
+      <BaseButton
+        ref="attachmentTrigger"
+        class="muse-attach"
+        variant="quiet"
+        icon-only
+        :icon="attachmentOpen ? 'x' : 'plus'"
+        :label="attachmentLabel || t('muse.attach')"
+        :aria-expanded="attachmentActions.length ? attachmentOpen : undefined"
+        :aria-controls="attachmentActions.length ? 'muse-attachment-actions' : undefined"
+        :disabled="attachmentDisabled || voice.active"
+        @tap="toggleAttachment"
+      />
+      <view
+        v-if="attachmentActions.length"
+        class="muse-attachment-menu"
+        id="muse-attachment-actions"
+        role="group"
+        :aria-label="attachmentLabel || t('muse.attach')"
+        :aria-hidden="!attachmentOpen || undefined"
+        :inert="!attachmentOpen || undefined"
+      >
+        <BaseButton
+          v-for="(action, index) in attachmentActions"
+          :key="action"
+          variant="quiet"
+          :icon="attachmentOptions[action].icon"
+          :style="{ '--attachment-delay': `${(attachmentActions.length - 1 - index) * 32}ms` }"
+          @tap="pickAttachment(action)"
+          >{{ t(attachmentOptions[action].label) }}</BaseButton
+        >
+      </view>
+    </view>
     <BaseInput
       :model-value="modelValue"
       class="muse-composer-field"
@@ -82,7 +106,7 @@
   </view>
 </template>
 <script setup>
-import { ref, computed, getCurrentInstance, onMounted, onUpdated, onBeforeUnmount } from 'vue';
+import { ref, computed, getCurrentInstance, onMounted, onUpdated, onBeforeUnmount, watch } from 'vue';
 import { useVoiceDictation } from '@/composables/useVoiceDictation.js';
 import { DEV_TEST } from '@/config/build-channel.js';
 import '@/i18n/muse.js';
@@ -102,16 +126,39 @@ const props = defineProps({
   busy: Boolean,
   disabled: Boolean,
   submitDisabled: Boolean,
-  attachmentDisabled: Boolean
+  attachmentDisabled: Boolean,
+  attachmentActions: { type: Array, default: () => [] }
 });
 const emit = defineEmits(['update:modelValue', 'submit', 'attach', 'stop', 'height']);
 const root = ref(null);
+const attachmentTrigger = ref(null);
+const attachmentOpen = ref(false);
+const attachmentOptions = {
+  file: { label: 'muse.attachmentFile', icon: 'paperclip' },
+  text: { label: 'muse.attachmentText', icon: 'file-text' },
+  library: { label: 'muse.library', icon: 'shapes' }
+};
+function toggleAttachment() {
+  if (props.attachmentActions.length) attachmentOpen.value = !attachmentOpen.value;
+  else emit('attach');
+}
+function pickAttachment(action) {
+  attachmentOpen.value = false;
+  (attachmentTrigger.value?.$el || attachmentTrigger.value)?.focus?.();
+  emit('attach', action);
+}
 // Native acceptance stays opt-in and cannot expose unverified dictation in production.
 const voiceEntryEnabled = DEV_TEST && import.meta.env.VITE_YOZI_VOICE_ACCEPTANCE === '1';
 const voice = useVoiceDictation(
   props,
   emit,
   () => (root.value?.$el || root.value)?.querySelector?.('textarea')?.selectionEnd
+);
+watch(
+  () => props.attachmentDisabled || voice.active,
+  (disabled) => {
+    if (disabled) attachmentOpen.value = false;
+  }
 );
 const voiceMessage = computed(() => {
   const reason =
@@ -147,11 +194,22 @@ function measureNative() {
 function keepFieldFocus(event) {
   if (!event.target.closest?.('.base-field__group')) event.preventDefault();
 }
+function dismissAttachmentOutside(event) {
+  if (attachmentOpen.value && !keyTarget?.querySelector('.muse-attachment')?.contains(event.target))
+    attachmentOpen.value = false;
+}
 function submit() {
   if (voice.active || composing) return;
   if (!props.disabled && !props.submitDisabled && !props.busy && props.modelValue.trim()) emit('submit');
 }
 function keydown(event) {
+  if (attachmentOpen.value && event.key === 'Escape') {
+    event.preventDefault();
+    event.stopPropagation();
+    attachmentOpen.value = false;
+    (attachmentTrigger.value?.$el || attachmentTrigger.value)?.focus?.();
+    return;
+  }
   if (voice.active && event.key === 'Escape') {
     event.preventDefault();
     voice.cancel();
@@ -172,6 +230,7 @@ onMounted(() => {
   keyTarget?.addEventListener('mousedown', keepFieldFocus);
   keyTarget?.addEventListener('compositionstart', compositionStart);
   keyTarget?.addEventListener('compositionend', compositionEnd);
+  document.addEventListener('pointerdown', dismissAttachmentOutside);
   if (element?.getBoundingClientRect) emit('height', Math.ceil(element.getBoundingClientRect().height));
   if (element && typeof ResizeObserver !== 'undefined') {
     observer = new ResizeObserver(() => emit('height', Math.ceil(element.getBoundingClientRect().height)));
@@ -187,6 +246,9 @@ onBeforeUnmount(() => {
   keyTarget?.removeEventListener('mousedown', keepFieldFocus);
   keyTarget?.removeEventListener('compositionstart', compositionStart);
   keyTarget?.removeEventListener('compositionend', compositionEnd);
+  // #ifdef H5
+  document.removeEventListener('pointerdown', dismissAttachmentOutside);
+  // #endif
 });
 </script>
 <style scoped>
@@ -283,6 +345,61 @@ onBeforeUnmount(() => {
   padding: 0;
   color: var(--ink-2);
   border-radius: 50%;
+}
+.muse-attachment {
+  position: relative;
+  flex: none;
+}
+.muse-attachment-menu {
+  position: absolute;
+  z-index: 4;
+  inset: auto auto calc(100% + 5px) 0;
+  display: grid;
+  gap: 2px;
+  width: max-content;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px #00000019;
+  opacity: 0;
+  transform: translateY(9px) scale(0.92);
+  transform-origin: left bottom;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 170ms ease,
+    transform 210ms cubic-bezier(0.2, 0.75, 0.24, 1),
+    visibility 0s 210ms;
+}
+.muse-attachment.is-open .muse-attachment-menu {
+  visibility: visible;
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition-delay: 0s;
+}
+.muse-attachment-menu :deep(.base-button) {
+  min-height: 44px;
+  justify-content: flex-start;
+  padding-inline: 12px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    transform 180ms ease-out,
+    opacity 150ms ease-out;
+}
+.muse-attachment.is-open .muse-attachment-menu :deep(.base-button) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: var(--attachment-delay);
+}
+@media (prefers-reduced-motion: reduce) {
+  .muse-attachment-menu,
+  .muse-attachment-menu :deep(.base-button) {
+    transition: none;
+  }
 }
 .muse-composer .muse-send {
   min-width: 44px;

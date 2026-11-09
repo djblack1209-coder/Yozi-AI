@@ -239,6 +239,10 @@ async function page(platform = 'h5') {
     modal = state;
   });
   await wrapper.get('#learning-composer [aria-label="导入资料"]').trigger('tap');
+  await wrapper
+    .findAll('#learning-composer .muse-attachment-menu button')
+    .find((button) => button.text().trim() === '粘贴文字')
+    .trigger('tap');
 }
 const choose = () =>
   wrapper
