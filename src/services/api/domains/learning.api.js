@@ -146,6 +146,8 @@ export const fetchLearningResult = (requestId, options) =>
   learningRequest('/learning-models', { action: 'result', requestId }, options);
 export const saveLearningModel = (profile, shareConsent, options) =>
   learningRequest('/learning-models', { action: 'save', profile, shareConsent }, options);
+export const saveLearningModelEffort = (profileId, version, effort, options) =>
+  learningRequest('/learning-models', { action: 'reasoning-effort', profileId, version, effort }, options);
 export const saveLearningModelPreferences = (preferences, options) =>
   learningRequest('/learning-models', { action: 'preferences', preferences }, options);
 export const deleteLearningModel = (profileId, options) =>

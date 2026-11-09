@@ -917,6 +917,61 @@ it('当前题讲解拦截擅自新题，明确变式仍返回待核对候选并�
   }
   expect(callLearningProvider).toHaveBeenCalledTimes(2);
 });
+it('saves thinking effort on the account connection and sends each supported value on the next request', async () => {
+  vi.stubEnv('LEARNING_ALLOWED_ORIGINS', 'https://api.deepseek.com');
+  const profile = {
+    id: 'effort-connection',
+    provider: 'DeepSeek',
+    model: 'deepseek-flash',
+    apiKey: 'test-only-connection-key',
+    endpoint: 'https://api.deepseek.com/chat/completions'
+  };
+  const save = (patch = {}) =>
+    models(context({ action: 'save', profile: { ...profile, ...patch }, shareConsent: true }));
+  const list = async () => (await models(context({ action: 'list' }))).data.models[0];
+  expect((await save({ reasoningEffort: 'max' })).success).toBe(true);
+  expect((await list()).reasoningEffort).toBeUndefined();
+  vi.mocked(callCapabilityProvider).mockClear();
+  const set = (effort: string | null, version: string, owner = 'u1') =>
+    models(context({ action: 'reasoning-effort', profileId: profile.id, version, effort }, owner));
+  const original = await list();
+  expect(original.reasoningEffortLevels).toEqual(['low', 'high', 'max']);
+  expect((await set('extra', original.reasoningEffortVersion)).code).toBe(400);
+  expect((await set('max', original.reasoningEffortVersion, 'u2')).code).toBe(409);
+  vi.mocked(callLearningProvider).mockImplementation(async (config) => ({
+    content: '{"message":"隔离测试回复","tools":[]}',
+    actualModel: config.model,
+    usage: { prompt_tokens: 15, completion_tokens: 12 },
+    durationMs: 1
+  }));
+  for (const effort of [...original.reasoningEffortLevels, null]) {
+    const saved = await list();
+    expect((await set(effort, saved.reasoningEffortVersion)).success).toBe(true);
+    expect((await list()).reasoningEffort ?? null).toBe(effort);
+    const result = await ai(context({ ...streamBody(`effort-${effort}`), modelId: profile.id }));
+    expect(result.success, JSON.stringify(result)).toBe(true);
+    const [config, messages] = vi.mocked(callLearningProvider).mock.calls.at(-1)!;
+    expect(buildLearningRequest(config, messages).reasoning_effort).toBe(effort ?? undefined);
+  }
+  expect(callCapabilityProvider).not.toHaveBeenCalled();
+  expect((await set('max', original.reasoningEffortVersion)).success).toBe(true);
+  expect((await set('max', original.reasoningEffortVersion)).success).toBe(true);
+  expect((await set('low', original.reasoningEffortVersion)).code).toBe(409);
+  const test = await models(
+    context({ action: 'test', modelId: profile.id, requestId: 'effort-tool', shareConsent: true })
+  );
+  expect(test.success).toBe(true);
+  const [tool, json] = vi.mocked(callCapabilityProvider).mock.calls;
+  expect(buildLearningRequest(tool[0], tool[1])).toMatchObject({ reasoning_effort: 'max', tools: expect.any(Array) });
+  const replay = buildLearningRequest(json[0], json[1]);
+  expect(replay.reasoning_effort).toBe('max');
+  expect(replay.tools).toBeUndefined();
+  expect(replay.messages.at(-1)).toMatchObject({ role: 'tool', tool_call_id: 'synthetic_capability_call' });
+  expect((await save({ apiKey: 'another-test-key' })).success).toBe(true);
+  expect((await list()).reasoningEffort).toBe('max');
+  expect((await save({ model: 'deepseek-v4-pro', apiKey: '' })).success).toBe(true);
+  expect((await list()).reasoningEffort).toBeUndefined();
+});
 it('连接测试调用真实预算链，幂等复用且不进入学习事实；列表状态来自调用记录', async () => {
   await models(
     context({

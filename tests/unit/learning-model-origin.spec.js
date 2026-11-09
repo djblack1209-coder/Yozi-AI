@@ -54,6 +54,7 @@ describe('bound learning model provenance', () => {
         endpoint: 'https://example.test'
       })
     ).toEqual({ max_tokens: 8192, thinking: { type: 'disabled' } });
+    expect(learningSentParameters({ reasoning_effort: 'max' })).toEqual({ reasoning_effort: 'max' });
     expect(learningSentParameters({})).toEqual({});
   });
   it('records a prompt-only subject method without inventing a schema or relaxing strict-format origins', () => {

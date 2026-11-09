@@ -3,8 +3,28 @@ import { DEV_TEST } from '../build-channel.js';
 import { MODEL_CONNECTION_PRESETS } from './model-endpoints.js';
 // 只保存公开接入事实；密钥来自用户保险库，目录存在不代表账户额度可用。
 export const FREE_MODEL_PRESETS = MODEL_CONNECTION_PRESETS;
+export const DEEPSEEK_EFFORT_LEVELS = ['low', 'high', 'max'] as const;
+export type DeepSeekEffort = (typeof DEEPSEEK_EFFORT_LEVELS)[number];
+
+export function supportsReasoningEffort(model: { model: string; endpoint?: string; source?: string }) {
+  return (
+    model.source === 'byok' &&
+    ['deepseek-flash', 'deepseek-v4-pro'].includes(model.model) &&
+    [
+      'https://api.deepseek.com/chat/completions',
+      'https://api.deepseek.com/v1/chat/completions',
+      'https://api.deepseek.com/beta/chat/completions'
+    ].includes(model.endpoint || '')
+  );
+}
 // Only documented native chat routes; output bounds and other profiles stay unchanged.
-export function modelInferenceParameters(model: { model: string; endpoint?: string; devPaidFallback?: boolean }) {
+export function modelInferenceParameters(model: {
+  model: string;
+  endpoint?: string;
+  source?: string;
+  devPaidFallback?: boolean;
+  reasoningEffort?: DeepSeekEffort;
+}) {
   if (
     model.model === 'glm-4.7-flash' &&
     ['https://open.bigmodel.cn/api/paas/v4/chat/completions', 'https://api.z.ai/api/paas/v4/chat/completions'].includes(
@@ -35,6 +55,7 @@ export function modelInferenceParameters(model: { model: string; endpoint?: stri
     )
   )
     return { thinking: { type: 'disabled' } };
+  if (model.reasoningEffort && supportsReasoningEffort(model)) return { reasoning_effort: model.reasoningEffort };
   return null;
 }
 // Exact zero-price routes checked against the provider's public catalog.

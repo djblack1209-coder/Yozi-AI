@@ -198,6 +198,7 @@ import {
   testLearningModel,
   generateLearningTurn,
   saveLearningModel,
+  saveLearningModelEffort,
   saveLearningModelPreferences,
   deleteLearningModel,
   cancelLearningTurn,
@@ -4847,6 +4848,16 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     }
     return result;
   }
+  async function saveModelEffort(profile, effort) {
+    const result = await modelAction((options) =>
+      saveLearningModelEffort(profile.id, profile.reasoningEffortVersion, effort, options)
+    );
+    if (result.success || result.error === 'CONTEXT_CHANGED') {
+      cancelModelReads('models', 'CONTEXT_CHANGED');
+      await loadModels();
+    }
+    return result;
+  }
   async function removeModel(id) {
     const origin = ensureSessionCurrent();
     const result = await modelAction((options) => deleteLearningModel(id, options));
@@ -6011,6 +6022,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     loadUsage,
     loadModelDiscovery,
     saveModel,
+    saveModelEffort,
     removeModel,
     importText,
     previewMaterialDeletion,

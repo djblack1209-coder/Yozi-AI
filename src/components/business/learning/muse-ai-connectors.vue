@@ -72,6 +72,14 @@
         <template v-if="current?.saved && !editing && !choosing">
           <text class="connect-model">{{ savedEndpoint }}</text>
           <text class="connect-model">{{ connectionLabel(current.saved) }}</text>
+          <ConnectorEffort
+            v-if="current.saved.reasoningEffortLevels?.length"
+            v-model="effortDraft"
+            :levels="current.saved.reasoningEffortLevels"
+            :saved="current.saved.reasoningEffort ?? null"
+            :disabled="locked || disconnecting"
+            @save="saveEffort"
+          />
           <BaseButton
             variant="primary"
             :disabled="locked || disconnecting || current.saved.requiresModelSelection || !current.saved.configured"
@@ -225,6 +233,7 @@ import { modelBrand } from '@/config/model-brands.js';
 import BaseButton from '@/components/base/base-button/base-button.vue';
 import BaseInput from '@/components/base/base-input/base-input.vue';
 import CustomModal from '@/components/common/CustomModal.vue';
+import ConnectorEffort from './connector-effort.vue';
 import MuseModelFeedback from './muse-model-feedback.vue';
 const learning = useConversationLearningStore(),
   theme = useThemeStore();
@@ -247,6 +256,14 @@ const query = ref(''),
   operationState = ref({ phase: 'idle' }),
   testRequest = ref(null);
 const locked = computed(() => saving.value || discovering.value || learning.busy || learning.intakeBusy);
+const effortDraft = ref(null);
+watch(
+  () => current.value?.saved,
+  (model) => {
+    effortDraft.value = model?.reasoningEffort ?? null;
+  },
+  { flush: 'sync' }
+);
 const disconnectTrigger = ref(null);
 const disconnectCancel = ref(null);
 async function setDisconnecting(value) {
@@ -462,6 +479,20 @@ async function select() {
   if (result?.success) {
     message.value = '已切换连接';
     if (!isDesktopSettingsWindow()) safeNavigateTo('/pages/learning/index');
+  }
+}
+
+async function saveEffort() {
+  if (locked.value || disconnecting.value) return;
+  const target = current.value;
+  const saved = target?.saved;
+  if (!saved || effortDraft.value === (saved.reasoningEffort ?? null)) return;
+  const result = await perform(() => learning.saveModelEffort(saved, effortDraft.value));
+  if (current.value !== target) return;
+  if (result?.success || result?.error === 'CONTEXT_CHANGED') {
+    const updated = learning.models.find((model) => model.id === saved.id);
+    if (updated) current.value = { ...target, saved: updated };
+    else close();
   }
 }
 
@@ -753,8 +784,7 @@ onUnmounted(close);
   font-size: 13px;
   line-height: 20px;
 }
-/* Like Muse's connector tiles, each official mark sits whole on a light rounded tile, so black
-   and colored marks stay legible on dark surfaces without recoloring or the global image dimming. */
+/* Keep provider marks legible on both themes without recoloring them. */
 .ai-connectors .connect-logo,
 .connect-dialog-heading .connect-logo {
   flex: none;

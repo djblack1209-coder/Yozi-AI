@@ -13,7 +13,7 @@ import https from 'node:https';
 import { lookup, Resolver } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import crypto from 'node:crypto';
-import { modelInferenceParameters } from './free-model-presets.js';
+import { type DeepSeekEffort, modelInferenceParameters } from './free-model-presets.js';
 import { DEV_TEST } from '../build-channel.js';
 import {
   WRITING_COACH_CONTRACT,
@@ -164,6 +164,7 @@ export type ModelConfig = {
   outputPerMillion?: number;
   priceVersion?: string;
   maxOutput: number;
+  reasoningEffort?: DeepSeekEffort;
   timeoutMs?: number;
   capabilityProbe?: { stage: 'tool' | 'json'; nonce: string; toolCall?: any };
   capabilityCheck?: { version: number; tools: boolean; structured: boolean; checkedAt: number };

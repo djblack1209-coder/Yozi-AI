@@ -50,7 +50,7 @@ export function learningSentParameters(wire) {
       result[key] = value;
     else if (key === 'temperature' && typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 2)
       result[key] = value;
-    else if (key === 'reasoning_effort' && ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'].includes(value))
+    else if (key === 'reasoning_effort' && ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].includes(value))
       result[key] = value;
     else if (key === 'include_reasoning' && typeof value === 'boolean') result[key] = value;
     else if (

@@ -24,7 +24,13 @@ import { createModelDiscovery } from './_shared/ai-providers/model-discovery.js'
 import proxyAI, { configuredModels, runLearningModelTask } from './proxy-ai.js';
 import { readModelCredential } from './_shared/model-connections.js';
 import { modelErrorPresentation } from './_shared/model-errors.js';
-import { FREE_MODEL_PRESETS, modelConnectionState } from './_shared/ai-providers/free-model-presets.js';
+import {
+  DEEPSEEK_EFFORT_LEVELS,
+  FREE_MODEL_PRESETS,
+  modelConfigurationVersion,
+  modelConnectionState,
+  supportsReasoningEffort
+} from './_shared/ai-providers/free-model-presets.js';
 import {
   completeModelEndpoint,
   isDomesticModel,
@@ -355,6 +361,12 @@ export default async function (ctx: any) {
         return {
           ...model,
           configured: Boolean(apiKey || keyRef),
+          ...(keyRef && !model.requiresModelSelection && supportsReasoningEffort(model)
+            ? {
+                reasoningEffortLevels: DEEPSEEK_EFFORT_LEVELS,
+                reasoningEffortVersion: modelConfigurationVersion(configured)
+              }
+            : {}),
           ...modelConnectionState(configured, account.calls),
           dataFlow: 'client_to_backend_to_named_provider'
         };
@@ -392,6 +404,29 @@ export default async function (ctx: any) {
           presets: visibleModelChoices(FREE_MODEL_PRESETS, [])
         }
       };
+    }
+    if (body.action === 'reasoning-effort') {
+      const { profileId, version, effort } = body;
+      if (
+        typeof profileId !== 'string' ||
+        typeof version !== 'string' ||
+        (effort !== null && !DEEPSEEK_EFFORT_LEVELS.includes(effort))
+      ) {
+        return { code: 400, success: false, message: '思考强度配置不合法' };
+      }
+      const { profile, conflict } = await mutateAccount(db, auth.userId, (account) => {
+        const profile = account.profiles.find((item: any) => item.id === profileId);
+        if (!profile?.keyRef || profile.requiresModelSelection || !supportsReasoningEffort(profile))
+          return { account, reused: true, conflict: true };
+        if ((profile.reasoningEffort ?? null) === effort) return { account, reused: true, profile };
+        if (version !== modelConfigurationVersion(profile)) return { account, reused: true, conflict: true };
+        if (effort === null) delete profile.reasoningEffort;
+        else profile.reasoningEffort = effort;
+        return { account, profile };
+      });
+      if (conflict)
+        return { code: 409, success: false, error: 'CONTEXT_CHANGED', message: '连接已变化，请重新打开后保存' };
+      return { code: 0, success: true, data: { id: profile.id, reasoningEffort: profile.reasoningEffort ?? null } };
     }
     if (body.action === 'save') {
       const p = body.profile;
@@ -455,14 +490,26 @@ export default async function (ctx: any) {
           // An empty-key add must never replace an existing connection or remove its vault key.
           if (!hasKey && existing && !existing.keyRef)
             throw Object.assign(new Error('MODEL_ALREADY_SAVED'), { code: 'MODEL_ALREADY_SAVED' });
-          if (!hasKey && account.profiles.find((item: any) => item.id === p.id)?.keyRef !== existing?.keyRef)
+          const previous = account.profiles.find((item: any) => item.id === p.id);
+          if (!hasKey && previous?.keyRef !== existing?.keyRef)
             throw Object.assign(new Error('CONTEXT_CHANGED'), { code: 'CONTEXT_CHANGED' });
           if (!DEV_TEST && account.profiles.length >= 5 && !account.profiles.some((item: any) => item.id === p.id))
             throw new Error('PROFILE_LIMIT');
           account.profiles
             .filter((item: any) => item.id === p.id)
             .forEach((item: any) => replacedRefs.add(item.keyRef));
-          account.profiles = [...account.profiles.filter((item: any) => item.id !== p.id), profile];
+          account.profiles = [
+            ...account.profiles.filter((item: any) => item.id !== p.id),
+            {
+              ...profile,
+              ...(!profile.requiresModelSelection &&
+              previous?.model === profile.model &&
+              previous?.endpoint === profile.endpoint &&
+              previous.reasoningEffort
+                ? { reasoningEffort: previous.reasoningEffort }
+                : {})
+            }
+          ];
           return { account };
         });
       } catch (error) {

@@ -84,6 +84,33 @@ async function manage(id = 'one') {
 }
 
 describe('BYOK two-step connector UI', () => {
+  it('edits the advertised effort as a draft and reads the saved choice on reopen', async () => {
+    const connection = saved('one', { reasoningEffortLevels: ['low', 'high', 'max'], reasoningEffortVersion: 'v1' });
+    harness.store.models = [connection, saved('other')];
+    harness.store.saveModelEffort = vi.fn(async (_profile, reasoningEffort) => {
+      harness.store.models[0] = { ...connection, reasoningEffort, reasoningEffortVersion: 'v2' };
+      return { success: true };
+    });
+    await nextTick();
+    await manage('other');
+    expect(wrapper.find('input[type="range"]').exists()).toBe(false);
+    await wrapper.get('.test-close').trigger('click');
+    await manage();
+    const slider = () => wrapper.get('input[type="range"]');
+    expect(slider().attributes('aria-valuetext')).toBe('默认 · 高');
+    await slider().setValue('2');
+    expect(slider().attributes('aria-valuetext')).toBe('最高');
+    expect(harness.store.saveModelEffort).not.toHaveBeenCalled();
+    await tap('保存思考强度');
+    expect(harness.store.saveModelEffort).toHaveBeenCalledExactlyOnceWith(connection, 'max');
+    expect(harness.store.testModel).not.toHaveBeenCalled();
+    await wrapper.get('.test-close').trigger('click');
+    await manage();
+    expect(slider().attributes('aria-valuetext')).toBe('最高');
+    await tap('使用默认');
+    await tap('保存思考强度');
+    expect(harness.store.saveModelEffort).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'one' }), null);
+  });
   async function customFields(endpoint = 'https://model.example.com/v1/chat/completions') {
     await add('custom');
     await wrapper.get('input[aria-label="服务名称"]').setValue('  我的服务  ');
