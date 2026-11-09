@@ -1,6 +1,10 @@
 <template>
-  <view class="muse-feedback" data-test="coach-feedback">
-    <view class="feedback-head"
+  <view
+    class="muse-feedback"
+    :class="{ 'feedback-essay': isEssay, 'feedback-awaiting-view': isEssay && !essayStarted }"
+    data-test="coach-feedback"
+  >
+    <view ref="feedbackHead" class="feedback-head"
       ><text class="feedback-title">{{
         feedback.sourceStatus === 'pending_verification' ? '资料依据待核对' : title
       }}</text
@@ -10,6 +14,7 @@
       v-for="(line, index) in feedback.lines"
       :key="`${feedback.id || feedback.target}:${index}`"
       class="feedback-line"
+      :style="isEssay ? { '--essay-line-delay': `${Math.min(index, 6) * 70}ms` } : undefined"
     >
       <view class="feedback-line-head"
         ><text>第 {{ String(index + 1).padStart(2, '0') }} 句</text
@@ -138,7 +143,7 @@
   </view>
 </template>
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, getCurrentInstance, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { DEV_TEST } from '@/config/build-channel.js';
 import { publicError } from '@/i18n/index.js';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
@@ -158,6 +163,43 @@ const props = defineProps({
 });
 defineEmits(['adopt']);
 const expanded = ref({});
+const isEssay = computed(() => props.feedback.target === 'essay');
+const feedbackHead = ref(null);
+const essayStarted = ref(false);
+const instance = getCurrentInstance();
+let observer;
+
+function startEssay() {
+  essayStarted.value = true;
+  observer?.disconnect();
+  observer = undefined;
+}
+
+onMounted(() => {
+  if (!isEssay.value) return;
+  // #ifdef H5
+  const element = feedbackHead.value?.$el || feedbackHead.value;
+  if (typeof IntersectionObserver !== 'undefined' && element) {
+    observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) startEssay();
+    });
+    observer.observe(element);
+    return;
+  }
+  // #endif
+  // #ifndef H5
+  if (import.meta.env.MODE !== 'test' && typeof uni.createIntersectionObserver === 'function') {
+    observer = uni.createIntersectionObserver(instance.proxy, { thresholds: [0], initialRatio: 0 });
+    observer.relativeToViewport().observe('.feedback-head', (result) => {
+      if (result.intersectionRatio > 0) startEssay();
+    });
+    return;
+  }
+  // #endif
+  startEssay();
+});
+onBeforeUnmount(() => observer?.disconnect());
+
 const words = (value) => value?.match(/[\p{L}\p{M}\p{N}]+|\s+|./gu) ?? [];
 const comparisons = computed(() =>
   props.feedback.lines.map(({ original, rewrite }) => {
@@ -314,6 +356,49 @@ watch(
   from {
     opacity: 0;
     transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .feedback-essay .feedback-ink-source {
+    --muse-ink-delay: var(--essay-line-delay);
+    --muse-ink-duration: 680ms;
+  }
+  .feedback-essay .feedback-head .feedback-badge::after {
+    animation-delay: 1500ms;
+  }
+  .feedback-essay .muse-ink-strike {
+    background-image:
+      linear-gradient(var(--muse-rich-danger, var(--coral)), var(--muse-rich-danger, var(--coral))),
+      linear-gradient(var(--apricot-soft), var(--apricot-soft));
+    background-position: left 54%, left 84%;
+    background-size: 100% 1.5px, 100% 0.54em;
+    animation: essay-original-ink 3300ms linear var(--essay-line-delay) backwards;
+  }
+  .feedback-essay .feedback-rewrite {
+    --muse-ink-delay: calc(3300ms + var(--essay-line-delay));
+    --muse-ink-duration: 580ms;
+    --muse-ink-stroke-delay: calc(3540ms + var(--essay-line-delay));
+  }
+  .feedback-essay .feedback-dimensions {
+    animation-delay: 4500ms;
+  }
+  .feedback-awaiting-view .feedback-head .feedback-badge::after,
+  .feedback-awaiting-view .muse-ink-reveal,
+  .feedback-awaiting-view .muse-ink-strike,
+  .feedback-awaiting-view .muse-ink-mark,
+  .feedback-awaiting-view .feedback-dimensions {
+    animation-play-state: paused;
+  }
+}
+@keyframes essay-original-ink {
+  0%, 22.727% {
+    background-size: 0% 1.5px, 0% 0.54em;
+  }
+  31%, 90.909% {
+    background-size: 0% 1.5px, 100% 0.54em;
+  }
+  100% {
+    background-size: 100% 1.5px, 100% 0.54em;
   }
 }
 @media (prefers-reduced-motion: reduce) {

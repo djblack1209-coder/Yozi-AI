@@ -380,7 +380,7 @@
                 :feedback="record.feedback"
                 :writing-observation="DEV_TEST ? record.writingObservation : null"
                 :material-track="materialTrack || Boolean(subjectMethod)"
-                :title="`${record.feedback.target === 'diagnostic' ? '摸底反馈' : subjectMethod && record.phase === 'essay' ? '成文反馈' : record.title} · AI 评估`"
+                :title="`${record.feedback.target === 'diagnostic' ? '摸底反馈' : record.feedback.target === 'essay' ? '成文反馈' : record.title} · AI 评估`"
                 :adoptable="
                   record.day === learningDay &&
                   Object.values(day?.feedback || {}).some((f) => f.id === record.feedback.id)
