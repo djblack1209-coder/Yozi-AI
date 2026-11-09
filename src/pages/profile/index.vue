@@ -254,9 +254,12 @@
             >{{ t('dashboard.copy110') }}</BaseButton
           >
           <MuseAIConnectors v-if="settingsSection === 'connectors'" />
-          <view v-if="settingsSection === 'support'" class="settings-group"
-            ><BaseListRow :label="t('dashboard.copy108')" @tap="handleFeedback"
-          /></view>
+          <template v-if="settingsSection === 'support'">
+            <LearningQuickstart @open="openQuickstart" />
+            <view class="settings-group">
+              <BaseListRow :label="t('dashboard.copy108')" @tap="handleFeedback" />
+            </view>
+          </template>
         </view>
       </view>
     </view>
@@ -316,6 +319,7 @@ import { isDesktopRuntime } from '@/services/desktop/runtime.js';
 import '@/components/business/learning/learning-space.css';
 import MuseAIConnectors from '@/components/business/learning/muse-ai-connectors.vue';
 import MuseStudyReminders from '@/components/business/learning/muse-study-reminders.vue';
+import LearningQuickstart from '@/components/business/learning/learning-quickstart.vue';
 import { getTabbarSafeAreaStyle } from '@/utils/core/system.js';
 import '@/i18n/messages/dashboard.js';
 import BaseListRow from '@/components/base/base-list-row/base-list-row.vue';
@@ -345,6 +349,7 @@ export default {
   components: {
     MuseStudyReminders,
     MuseAIConnectors,
+    LearningQuickstart,
     BaseButton,
     BaseInput,
     BaseStat,
@@ -643,6 +648,12 @@ export default {
 
     goTo(url) {
       safeNavigateTo(url);
+    },
+
+    openQuickstart(step) {
+      if (step === 'connect') this.settingsSection = 'connectors';
+      else if (step === 'practice') this.returnToConversation();
+      else if (step === 'review') this.goTo('/pages/archive/index');
     },
 
     returnToConversation() {
