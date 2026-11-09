@@ -90,6 +90,13 @@ export function readStorageStrict(runtime, key, strict = true, { allowEmpty = fa
   const reader = strict && runtime.getStorageSyncStrict ? 'getStorageSyncStrict' : 'getStorageSync';
   const value = Reflect.get(runtime, reader).call(runtime, key);
   if (strict && !allowEmpty && (value === '' || value === undefined || value === null) && runtime.getStorageInfoSync) {
+    // #ifdef APP-PLUS
+    if (reader === 'getStorageSync' && typeof plus !== 'undefined' && runtime === globalThis.uni) {
+      // Use the native key list to establish absence without reading stored values to calculate capacity.
+      const keys = plus.storage?.getAllKeys?.();
+      if (Array.isArray(keys) && !keys.includes(key)) return value;
+    }
+    // #endif
     const info = runtime.getStorageInfoSync();
     if (!Array.isArray(info?.keys) || info.keys.includes(key)) throw sessionUnavailable();
   }

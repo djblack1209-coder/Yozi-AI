@@ -6,7 +6,8 @@ import {
   getLoginSessionEpoch,
   getToken,
   getUserId,
-  readIdentityRecord
+  readIdentityRecord,
+  readStorageStrict
 } from '@/services/auth-storage.js';
 import { obfuscate } from '@/utils/crypto/cipher.js';
 
@@ -15,7 +16,28 @@ beforeEach(async () => {
   uni.clearStorageSync();
   await login();
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+it('uses the native key list only to confirm a missing App storage key', () => {
+  const runtime = {
+    getStorageSync: vi.fn(() => ''),
+    getStorageInfoSync: vi.fn(() => ({ keys: ['present'] }))
+  };
+  const getAllKeys = vi.fn(() => ['present']);
+  vi.stubGlobal('uni', runtime);
+  vi.stubGlobal('plus', { storage: { getAllKeys } });
+
+  expect(readStorageStrict(runtime, 'absent')).toBe('');
+  expect(runtime.getStorageInfoSync).not.toHaveBeenCalled();
+  expect(() => readStorageStrict(runtime, 'present')).toThrow(expect.objectContaining({ code: 'SESSION_UNAVAILABLE' }));
+
+  getAllKeys.mockReturnValueOnce(null);
+  expect(() => readStorageStrict(runtime, 'present')).toThrow(expect.objectContaining({ code: 'SESSION_UNAVAILABLE' }));
+  expect(runtime.getStorageInfoSync).toHaveBeenCalledTimes(2);
+});
 
 it.each(['sign-out', 'revocation', 'account-switch'])(
   'settled %s invalidates a leftover epoch without requiring a retry',
