@@ -36,6 +36,9 @@
     <template #composer>
       <MuseComposer
         v-model="composerDraft"
+        :class="{
+          'is-writing-answer': answerTarget && answerTarget.kind !== 'foundation' && !answerTarget.card?.options?.length
+        }"
         :get-voice-context="dictationContext"
         :label="composerLabel"
         :placeholder="composerPlaceholder"

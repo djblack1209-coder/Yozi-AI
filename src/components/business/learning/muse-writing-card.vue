@@ -52,10 +52,10 @@ const count = computed(() =>
 .muse-writing-card {
   width: 100%;
   min-width: 0;
-  padding: 14px;
-  border: 1px solid var(--control-line);
+  padding: 16px;
+  border: 1px solid var(--line-strong);
   border-radius: 16px;
-  background: var(--muse-rich-surface);
+  background: var(--canvas);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -95,8 +95,12 @@ const count = computed(() =>
 .writing-input :deep(textarea) {
   min-height: 132px;
   padding: 0;
-  font-size: 15px;
-  line-height: 23px;
+  font-size: 16px;
+  line-height: 1.65;
+  caret-color: var(--violet);
+}
+.muse-writing-card:not(.is-shared):focus-within {
+  border-color: var(--focus);
 }
 .writing-footer {
   justify-content: flex-end;

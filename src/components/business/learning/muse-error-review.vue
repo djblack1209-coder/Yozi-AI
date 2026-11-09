@@ -7,7 +7,14 @@
     <template v-if="editing || item.latestAttempt">
       <template v-if="referenceShown || (item.latestAttempt && !item.latestAttempt.feedback)">
         <text class="review-source">上次原答</text>
-        <text selectable>{{ item.original }}</text>
+        <text class="review-original muse-ink-reveal" selectable
+          ><text
+            v-for="(segment, index) in originalSegments"
+            :key="index"
+            :class="{ 'muse-ink-mark': segment.highlight }"
+            >{{ segment.text }}</text
+          ></text
+        >
       </template>
       <BaseButton v-else variant="quiet" @tap="referenceShown = true">查看上次原答</BaseButton>
       <template v-if="item.latestAttempt && !item.latestAttempt.feedback">
@@ -22,8 +29,14 @@
           :adoptable="false"
           :disabled="learning.busy"
         />
-        <BaseInput v-model="answer" label="重练答案" multiline :maxlength="4000" :disabled="learning.busy" />
-        <BaseButton variant="primary" :disabled="learning.busy || !answer.trim()" @tap="submit">提交重练</BaseButton>
+        <MuseWritingCard
+          v-model="answer"
+          label="重练答案"
+          submit-label="提交重练"
+          :maxlength="4000"
+          :disabled="learning.busy"
+          @submit="submit"
+        />
       </template>
     </template>
     <BaseButton v-else variant="secondary" :disabled="learning.busy" @tap="editing = true">开始重练</BaseButton>
@@ -39,8 +52,8 @@
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import BaseCard from '@/components/base/base-card/base-card.vue';
 import BaseButton from '@/components/base/base-button/base-button.vue';
-import BaseInput from '@/components/base/base-input/base-input.vue';
 import MuseFeedbackCard from './muse-feedback-card.vue';
+import MuseWritingCard from './muse-writing-card.vue';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { workspaceDrafts } from '@/services/learning/workspace-drafts.js';
 import {
@@ -93,6 +106,23 @@ const originalRequest = computed(() => {
       request.request.errorReviewId === id &&
       ['pending', 'closed'].includes(request.status)
   );
+});
+const originalSegments = computed(() => {
+  if (!item.value) return [];
+  const { original, observations } = item.value;
+  const ranges = observations
+    .map(({ quote }) => ({ start: original.indexOf(quote), quote }))
+    .filter(({ start, quote }) => start >= 0 && start === original.lastIndexOf(quote))
+    .sort((a, b) => a.start - b.start);
+  const segments = [];
+  let offset = 0;
+  for (const { start, quote } of ranges) {
+    if (start < offset) continue;
+    segments.push({ text: original.slice(offset, start) }, { text: quote, highlight: true });
+    offset = start + quote.length;
+  }
+  segments.push({ text: original.slice(offset) });
+  return segments;
 });
 const canRequest = computed(() => originalRequest.value?.status === 'pending' || learning.sharingAllowed);
 const requestLabel = computed(() => (originalRequest.value?.status === 'pending' ? '查询原请求结果' : '核对重练答案'));
@@ -175,5 +205,10 @@ function next() {
 .review-source {
   color: var(--muse-text-secondary, var(--yozi-ink-3));
   font-size: 13px;
+}
+.review-original {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
 }
 </style>

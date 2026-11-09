@@ -100,6 +100,10 @@ describe('Muse structured assistant output', () => {
     const before = JSON.stringify(feedback);
     wrapper = mount(MuseFeedbackCard, { props: { feedback, title: '搭配 · AI 评估' }, global: { stubs } });
     expect(wrapper.get('.feedback-title').text()).toBe('搭配 · AI 评估');
+    expect(wrapper.get('.feedback-ink-source').element.textContent).toBe(feedback.lines[0].original);
+    expect(wrapper.get('.feedback-ink-revision').element.textContent).toBe(feedback.lines[0].rewrite);
+    expect(wrapper.get('.muse-ink-strike').text()).toBe('likes');
+    expect(wrapper.get('.muse-ink-mark').text()).toBe('like');
     expect(wrapper.text()).not.toContain('主谓一致。');
     await wrapper.get('button[aria-label="展开解析"]').trigger('tap');
     expect(wrapper.text()).toContain('主谓一致。');

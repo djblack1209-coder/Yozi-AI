@@ -6,7 +6,11 @@
       }}</text
       ><text class="feedback-badge">{{ feedback.lines.length }} 句反馈</text></view
     >
-    <view v-for="(line, index) in feedback.lines" :key="index" class="feedback-line">
+    <view
+      v-for="(line, index) in feedback.lines"
+      :key="`${feedback.id || feedback.target}:${index}`"
+      class="feedback-line"
+    >
       <view class="feedback-line-head"
         ><text>第 {{ String(index + 1).padStart(2, '0') }} 句</text
         ><BaseButton
@@ -17,10 +21,24 @@
           >{{ expanded[index] ? '收起解析' : '展开解析' }}</BaseButton
         ></view
       >
-      <text class="feedback-original" selectable>{{ line.original }}</text>
-      <view v-if="!DEV_TEST || line.rewrite !== line.original" class="feedback-rewrite"
-        ><BaseIcon name="arrow-right" :size="16" /><text selectable>{{ line.rewrite }}</text></view
+      <text class="feedback-original feedback-ink-source muse-ink-reveal" selectable
+        ><text>{{ comparisons[index].prefix }}</text
+        ><text class="muse-ink-strike">{{ comparisons[index].removed }}</text
+        ><text>{{ comparisons[index].suffix }}</text></text
       >
+      <view
+        v-if="!DEV_TEST || line.rewrite !== line.original"
+        class="feedback-rewrite"
+        role="group"
+        aria-label="建议改写"
+      >
+        <BaseIcon name="arrow-right" :size="16" />
+        <text class="feedback-ink-revision muse-ink-reveal" selectable
+          ><text>{{ comparisons[index].prefix }}</text
+          ><text class="muse-ink-mark">{{ comparisons[index].inserted }}</text
+          ><text>{{ comparisons[index].suffix }}</text></text
+        >
+      </view>
       <MuseRichText v-if="expanded[index]" :content="line.advice" class="feedback-explanation" />
     </view>
     <view v-if="feedback.dimensions.length" class="feedback-dimensions" role="table" aria-label="写作维度"
@@ -140,6 +158,24 @@ const props = defineProps({
 });
 defineEmits(['adopt']);
 const expanded = ref({});
+const words = (value) => value?.match(/[\p{L}\p{M}\p{N}]+|\s+|./gu) ?? [];
+const comparisons = computed(() =>
+  props.feedback.lines.map(({ original, rewrite }) => {
+    const before = words(original);
+    const after = words(rewrite);
+    const limit = Math.min(before.length, after.length);
+    let start = 0;
+    while (start < limit && before[start] === after[start]) start++;
+    let end = 0;
+    while (end < limit - start && before[before.length - end - 1] === after[after.length - end - 1]) end++;
+    return {
+      prefix: before.slice(0, start).join(''),
+      removed: before.slice(start, before.length - end).join(''),
+      inserted: after.slice(start, after.length - end).join(''),
+      suffix: before.slice(before.length - end).join('')
+    };
+  })
+);
 const learning = DEV_TEST ? useConversationLearningStore() : null;
 const historyOpen = ref(false),
   reassessmentError = ref('');
@@ -202,6 +238,7 @@ watch(
   font-weight: 600;
 }
 .feedback-badge {
+  position: relative;
   display: inline-flex;
   align-self: flex-start;
   padding: 3px 8px;
@@ -210,6 +247,16 @@ watch(
   color: var(--ink-3);
   font-size: 12px;
   line-height: 18px;
+}
+.feedback-head .feedback-badge::after {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--muse-rich-warning, var(--apricot));
+  border-radius: 48% 44% 48% 41%;
+  transform: rotate(-3deg);
+  animation: muse-ink-sweep 260ms cubic-bezier(0.16, 1, 0.3, 1) 230ms backwards;
+  content: '';
+  pointer-events: none;
 }
 .feedback-line {
   display: flex;
@@ -230,16 +277,26 @@ watch(
   color: var(--ink-2);
   white-space: pre-wrap;
 }
+.feedback-ink-source {
+  --muse-ink-duration: 440ms;
+  --muse-ink-stroke-delay: 310ms;
+}
 .feedback-rewrite {
+  --muse-ink-delay: 470ms;
+  --muse-ink-duration: 520ms;
+  --muse-ink-stroke-delay: 750ms;
   justify-content: flex-start;
-  padding: 12px;
-  border: 1px solid var(--violet);
-  border-radius: 12px;
-  background: var(--violet-soft);
+  align-items: flex-start;
+  padding: 9px 12px;
+  border-inline-start: 2px solid var(--line-strong);
   color: var(--ink);
 }
-.feedback-rewrite > text {
+.feedback-ink-source,
+.feedback-ink-revision {
   min-width: 0;
+  font-size: 16px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 .feedback-explanation {
@@ -251,6 +308,19 @@ watch(
 .feedback-dimensions {
   display: flex;
   flex-direction: column;
+  animation: muse-ink-section 260ms cubic-bezier(0.16, 1, 0.3, 1) 840ms backwards;
+}
+@keyframes muse-ink-section {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .feedback-dimensions,
+  .feedback-head .feedback-badge::after {
+    animation: none;
+  }
 }
 .feedback-observations {
   display: flex;

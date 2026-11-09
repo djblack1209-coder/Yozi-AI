@@ -28,12 +28,12 @@
             {{ selected === entry.key ? t('learning.k3h') : t('learning.krs') }}
           </BaseButton>
           <view v-if="selected === entry.key" class="answer-panel" :aria-label="t('learning.kas')">
-            <text class="answer-body" selectable
+            <text class="answer-body muse-ink-reveal" selectable
               ><text
                 v-for="(segment, index) in answerSegments"
                 :key="index"
                 class="answer-segment"
-                :class="{ 'evidence-highlight': segment.highlight }"
+                :class="{ 'evidence-highlight muse-ink-mark': segment.highlight }"
                 >{{ segment.text }}</text
               ></text
             >
@@ -197,7 +197,6 @@ watch(
   overflow-wrap: anywhere;
 }
 .evidence-highlight {
-  background: var(--violet-soft);
   font-weight: var(--weight-ui-emphasis);
   text-decoration: underline;
 }
