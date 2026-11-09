@@ -129,6 +129,12 @@
           >
         </template>
         <template v-else-if="view === 'plan'">
+          <MuseStudyProgress
+            v-if="todayProgress.denominator"
+            :completed="todayProgress.numerator"
+            :total="todayProgress.denominator"
+            :days="studyDays"
+          />
           <ConversationEntries />
           <view v-if="goals.length" class="goals-tracking">
             <text class="goal-section-heading" role="heading" aria-level="2">训练进度</text>
@@ -194,13 +200,14 @@ import '@/i18n/muse.js';
 import '@/i18n/tutor.js';
 import { t } from '@/i18n/index.js';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
-import { dayKey } from '@/services/learning/learning-domain.js';
-import { museGoals, museHistory, museSubjectOptions } from '@/services/learning/muse-workspace-data.js';
+import { dayKey, summarizeLearning } from '@/services/learning/learning-domain.js';
+import { museGoals, museHistory, museSubjectOptions, museUsage } from '@/services/learning/muse-workspace-data.js';
 import { safeNavigateTo } from '@/utils/safe-navigate.js';
 import BaseButton from '@/components/base/base-button/base-button.vue';
 import MuseLibrary from './muse-library.vue';
 import MuseUsageBoard from './muse-usage-board.vue';
 import MuseShareSheet from './muse-share-sheet.vue';
+import MuseStudyProgress from './muse-study-progress.vue';
 defineProps({ view: { type: String, default: 'all' } });
 defineEmits(['view']);
 const learning = useConversationLearningStore();
@@ -247,6 +254,20 @@ const filters = [
 ];
 const goals = computed(() => museGoals(context.state.value, learning.calendarTime));
 const current = computed(() => goals.value[0]);
+const todayProgress = computed(() => {
+  const state = context.state.value;
+  const now = learning.calendarTime;
+  const day = dayKey(now, state.timezone);
+  const training = current.value?.coach.days.find((item) => item.day === day);
+  if (training?.pack.cards.length) {
+    return {
+      numerator: training.pack.cards.filter((card) => training.feedback[`card-${card.id}`]).length,
+      denominator: training.pack.cards.length
+    };
+  }
+  return summarizeLearning(state, now, { range: 'day' }).tasks;
+});
+const studyDays = computed(() => museUsage(context.state.value, learning.calendarTime).submissionDays);
 const EXAM_NAMES = { english1: '英语一', english2: '英语二' };
 // 短标题由已保存的档案派生；未建档时才回落到用户原话。
 function goalTitle(goal) {
