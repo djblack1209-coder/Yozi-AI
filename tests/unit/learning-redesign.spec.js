@@ -77,13 +77,13 @@ describe('learning interface states preserve learning facts', () => {
     await flushPromises();
     expect(wrapper.findAll('.rail-item-tip').map((item) => item.text())).toEqual([
       '对话',
-      '搜索⌘K',
+      '搜索',
       '灵感',
       '计划',
       '资料',
       '用量',
       '登录',
-      '设置⌘,'
+      '设置'
     ]);
     expect(wrapper.findAll('.muse-rail button')).toHaveLength(8);
     await wrapper.get('.directory-pill').trigger('tap');

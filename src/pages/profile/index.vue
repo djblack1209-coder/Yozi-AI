@@ -1,7 +1,7 @@
 <template>
   <view
     ref="root"
-    class="learning-space muse-space muse-settings-page is-settings"
+    class="learning-space muse-space workspace-shell muse-settings-page is-settings"
     :class="{
       'native-settings-page': nativeSettings,
       'is-desktop-settings': nativeSettings,
@@ -16,18 +16,20 @@
       <view class="settings-layout">
         <view class="settings-sidebar" role="navigation" :aria-label="t('nav.settings')">
           <text class="settings-sidebar-title">{{ t('nav.settings') }}</text>
-          <BaseButton
-            v-for="item in settingsSections"
-            :key="item.id"
-            class="settings-nav"
-            :class="{ 'is-current': settingsSection === item.id }"
-            variant="quiet"
-            :icon="item.icon"
-            align="start"
-            :aria-current="settingsSection === item.id ? 'page' : undefined"
-            @tap="settingsSection = item.id"
-            >{{ item.label }}</BaseButton
-          >
+          <view v-for="group in settingsSectionGroups" :key="group.id" class="settings-nav-group" role="group" :aria-label="group.label">
+            <text class="settings-nav-label">{{ group.label }}</text>
+            <BaseButton
+              v-for="item in group.items"
+              :key="item.id"
+              class="settings-nav"
+              :class="{ 'is-current': settingsSection === item.id }"
+              variant="quiet"
+              :icon="item.icon"
+              align="start"
+              :aria-current="settingsSection === item.id ? 'page' : undefined"
+              @tap="settingsSection = item.id"
+            >{{ item.label }}</BaseButton>
+          </view>
           <view class="settings-spacer" />
           <BaseButton
             v-if="isLoggedIn"
@@ -39,7 +41,7 @@
             >{{ t('dashboard.copy110') }}</BaseButton
           >
         </view>
-        <view class="settings-main">
+        <view class="settings-main" role="main">
           <view class="settings-heading"
             ><text class="settings-title" role="heading" aria-level="1">{{
               settingsSections.find((item) => item.id === settingsSection)?.label
@@ -352,17 +354,38 @@ export default {
   },
 
   computed: {
-    settingsSections() {
+    settingsSectionGroups() {
       return [
-        { id: 'general', icon: 'settings', label: t('muse.general') },
-        { id: 'connectors', icon: 'shapes', label: 'AI 连接器' },
-        { id: 'permissions', icon: 'key', label: t('muse.permissions') },
-        { id: 'channels', icon: 'chat', label: t('muse.channels') },
-        { id: 'devices', icon: 'monitor', label: t('muse.devices') },
-        { id: 'data', icon: 'lock', label: t('muse.dataControls') },
-        { id: 'support', icon: 'question', label: t('muse.support') },
-        { id: 'legal', icon: 'shield', label: t('muse.legal') }
+        {
+          id: 'account',
+          label: t('muse.account'),
+          items: [
+            { id: 'general', icon: 'settings', label: t('muse.general') },
+            { id: 'connectors', icon: 'shapes', label: 'AI 连接器' }
+          ]
+        },
+        {
+          id: 'app',
+          label: t('learning.sidebar.appSettings'),
+          items: [
+            { id: 'permissions', icon: 'key', label: t('muse.permissions') },
+            { id: 'channels', icon: 'chat', label: t('muse.channels') },
+            { id: 'devices', icon: 'monitor', label: t('muse.devices') },
+            { id: 'data', icon: 'lock', label: t('muse.dataControls') }
+          ]
+        },
+        {
+          id: 'support',
+          label: t('learning.sidebar.supportSettings'),
+          items: [
+            { id: 'support', icon: 'question', label: t('muse.support') },
+            { id: 'legal', icon: 'shield', label: t('muse.legal') }
+          ]
+        }
       ];
+    },
+    settingsSections() {
+      return this.settingsSectionGroups.flatMap((group) => group.items);
     },
     settingsSectionOptions() {
       return this.settingsSections.map(({ id, label }) => ({ value: id, label }));
@@ -836,22 +859,6 @@ export default {
 .muse-settings-page.space-dark {
   --muse-settings-card: #232324;
 }
-/* Muse's dark settings window: the navigation shares the window's dark ground, set apart by the divider. */
-.space-dark .settings-sidebar {
-  background: #181819;
-}
-.space-dark .settings-sidebar .settings-nav.is-current {
-  background: #ffffff1f;
-}
-.space-dark .settings-main {
-  background: #161617;
-}
-.space-light .settings-sidebar {
-  background: var(--muse-panel);
-}
-.space-light .settings-main {
-  background: #fcfcfc;
-}
 .settings-section-picker,
 .settings-mobile-logout {
   display: none;
@@ -860,10 +867,11 @@ export default {
 .settings-layout {
   width: 100%;
   display: grid;
-  grid-template-columns: 224px minmax(0, 1fr);
+  grid-template-columns: 200px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   height: 100%;
   min-height: 0;
+  background: var(--workspace-side);
 }
 .settings-sidebar {
   display: flex;
@@ -871,12 +879,23 @@ export default {
   gap: 4px;
   min-width: 0;
   padding: 0 12px 12px;
-  background: var(--muse-panel);
-  border-right: 1px solid var(--line-strong);
+  background: var(--workspace-side);
   overflow-y: auto;
 }
+.settings-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 9px;
+}
+.settings-nav-label {
+  padding: 4px 10px;
+  color: var(--workspace-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
 .settings-sidebar .settings-nav {
-  color: var(--ink);
+  color: var(--workspace-ink);
   border-radius: 8px;
   min-height: 44px;
   padding: 0 10px;
@@ -884,7 +903,7 @@ export default {
   font-weight: 400;
 }
 .settings-sidebar .settings-nav.is-current {
-  background: var(--muse-selected);
+  background: var(--workspace-active);
 }
 .settings-spacer {
   flex: 1;
@@ -899,6 +918,10 @@ export default {
   overscroll-behavior: contain;
   overflow-y: auto;
   padding: 28px clamp(16px, 4vw, 48px);
+  margin: 8px 8px 8px 0;
+  border: 1px solid var(--workspace-border);
+  border-radius: 15px;
+  background: var(--workspace-frame);
 }
 .settings-heading {
   display: flex;
@@ -1084,10 +1107,10 @@ export default {
   }
   .muse-settings-page:not(.native-settings-page) .settings-main {
     flex: 1;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
     padding: calc(12px + var(--space-status-top, env(safe-area-inset-top))) 16px max(24px, env(safe-area-inset-bottom));
-  }
-  .muse-settings-page.space-light:not(.native-settings-page) .settings-main {
-    background: var(--yozi-mobile-surface);
   }
   .settings-heading {
     display: flex;
@@ -1120,18 +1143,16 @@ export default {
 </style>
 
 <style scoped>
-/* Muse 2 native/main.swift:1759, 520×680. A native compact window keeps
-   vertical navigation (Settings.css); it is never the phone layout. */
+/* A compact native window retains vertical navigation. */
 .native-settings-page .settings-layout {
   display: grid;
-  grid-template-columns: 148px minmax(0, 1fr);
+  grid-template-columns: 160px minmax(0, 1fr);
   height: 100%;
 }
 .native-settings-page .settings-sidebar {
   flex-direction: column;
   align-items: stretch;
-  padding: 0 8px 8px;
-  border-right: 1px solid var(--line);
+  padding: 10px 8px 8px;
   border-bottom: 0;
   overflow-x: hidden;
   overflow-y: auto;
@@ -1186,8 +1207,8 @@ export default {
 }
 @media (pointer: fine) {
   .native-settings-page .settings-sidebar .settings-nav {
-    min-height: 32px;
-    height: 32px;
+    min-height: 40px;
+    height: 40px;
   }
   .native-settings-page .settings-sidebar .settings-nav :deep(.base-icon) {
     width: 16px !important;

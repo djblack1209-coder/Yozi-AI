@@ -2980,7 +2980,7 @@ describe('学习空间的实际入口与目录', () => {
       expect(JSON.parse(store.exportData())).toEqual(original);
       wrapper.unmount();
       wrapper = mount(LearningPage, { global: { stubs: { ...stubs, LearningLab: true } } });
-      await wrapper.get('.mobile-menu').trigger('tap');
+      await wrapper.get('.workspace-collapse').trigger('tap');
       await wrapper.get('.new-session').trigger('tap');
       await wrapper.get('textarea[aria-label="消息或作答"]').setValue(goal);
       expect(JSON.parse(store.exportData())).toEqual(original);
@@ -3141,18 +3141,25 @@ describe('学习空间的实际入口与目录', () => {
     );
     wrapper.unmount();
   });
-  it('显式打开目录聚焦搜索，收起恢复原按钮焦点', async () => {
+  it('窄窗打开目录聚焦搜索，收起恢复原按钮焦点', async () => {
+    const width = window.innerWidth;
+    window.innerWidth = 390;
     const wrapper = mount(LearningShell, { attachTo: document.body, global: { stubs } });
-    await wrapper.find('.mobile-menu').trigger('tap');
-    await flushPromises();
-    expect(wrapper.find('.space-sidebar').classes()).toContain('sidebar-open');
-    expect(document.activeElement).toBe(wrapper.find('.space-sidebar input').element);
-    expect(wrapper.find('.space-main').attributes()).not.toHaveProperty('inert');
-    await collapseDirectory(wrapper);
-    await flushPromises();
-    expect(wrapper.find('.space-sidebar.sidebar-open').exists()).toBe(false);
-    expect(document.activeElement).toBe(wrapper.find('.mobile-menu').element);
-    wrapper.unmount();
+    try {
+      wrapper.get('.mobile-menu').element.focus();
+      await wrapper.get('.mobile-menu').trigger('tap');
+      await flushPromises();
+      expect(wrapper.get('.space-sidebar').classes()).toContain('sidebar-open');
+      expect(document.activeElement).toBe(wrapper.get('.space-sidebar input').element);
+      expect(wrapper.get('.space-main').attributes()).toHaveProperty('inert');
+      await wrapper.get('.sidebar-close').trigger('tap');
+      await flushPromises();
+      expect(wrapper.find('.space-sidebar.sidebar-open').exists()).toBe(false);
+      expect(document.activeElement).toBe(wrapper.get('.mobile-menu').element);
+    } finally {
+      wrapper.unmount();
+      window.innerWidth = width;
+    }
   });
   it('手机系统返回逐层收起会话目录，保留当前输入草稿', async () => {
     const width = window.innerWidth;
@@ -3271,31 +3278,31 @@ async function collapseDirectory(wrapper) {
   await flushPromises();
 }
 
-it('Muse directory width is keyboard bounded and explicit close restores focus', async () => {
+it('Workspace directory width is keyboard bounded and explicit close restores focus', async () => {
   const wrapper = mount(LearningShell, { global: { stubs }, attachTo: document.body });
   try {
-    await wrapper.get('.mobile-menu').trigger('tap');
+    await wrapper.get('.workspace-collapse').trigger('tap');
     const separator = wrapper.get('[role="separator"]');
     await separator.trigger('keydown', { key: 'End' });
-    expect(separator.attributes('aria-valuenow')).toBe('420');
+    expect(separator.attributes('aria-valuenow')).toBe('384');
     await separator.trigger('keydown', { key: 'ArrowRight' });
-    expect(separator.attributes('aria-valuenow')).toBe('420');
+    expect(separator.attributes('aria-valuenow')).toBe('384');
     await separator.trigger('keydown', { key: 'Home' });
     await separator.trigger('keydown', { key: 'ArrowRight', shiftKey: true });
-    expect(separator.attributes('aria-valuenow')).toBe('244');
+    expect(separator.attributes('aria-valuenow')).toBe('288');
     await separator.trigger('keydown', { key: 'Home' });
     await separator.trigger('keydown', { key: 'ArrowLeft' });
-    expect(separator.attributes('aria-valuenow')).toBe('180');
+    expect(separator.attributes('aria-valuenow')).toBe('224');
     await collapseDirectory(wrapper);
     await flushPromises();
-    expect(wrapper.get('.mobile-menu').attributes('aria-expanded')).toBe('false');
-    expect(document.activeElement).toBe(wrapper.get('.mobile-menu').element);
+    expect(wrapper.get('.workspace-collapse').attributes('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(wrapper.get('.workspace-collapse').element);
   } finally {
     wrapper.unmount();
   }
 });
 
-it('Muse search focuses the query instead of the close button', async () => {
+it('Workspace search focuses the query instead of the close button', async () => {
   const wrapper = mount(LearningShell, { global: { stubs }, attachTo: document.body });
   try {
     await wrapper.get('.rail-item[aria-label="搜索题目、原答或对话"]').trigger('tap');
@@ -3306,66 +3313,66 @@ it('Muse search focuses the query instead of the close button', async () => {
   }
 });
 
-it('Muse drawer resize cancellation preserves width and facts; a handle click preserves it', async () => {
+it('Workspace drawer resize cancellation preserves width and facts; a handle click preserves it', async () => {
   const store = useConversationLearningStore();
   const before = store.exportData();
   const wrapper = mount(LearningShell, { global: { stubs }, attachTo: document.body });
   const pointer = (type, clientX) => new PointerEvent(type, { pointerId: 7, clientX, button: 0 });
   try {
-    await wrapper.get('.mobile-menu').trigger('tap');
+    await wrapper.get('.workspace-collapse').trigger('tap');
     const separator = wrapper.get('[role="separator"]');
-    await separator.trigger('pointerdown', { pointerId: 7, clientX: 217, button: 0 });
+    await separator.trigger('pointerdown', { pointerId: 7, clientX: 224, button: 0 });
     window.dispatchEvent(pointer('pointermove', 320));
     await flushPromises();
     expect(separator.attributes('aria-valuenow')).toBe('320');
     expect(wrapper.classes()).toContain('is-resizing');
     window.dispatchEvent(pointer('pointercancel', 320));
     await flushPromises();
-    expect(separator.attributes('aria-valuenow')).toBe('217');
+    expect(separator.attributes('aria-valuenow')).toBe('224');
     expect(wrapper.get('.space-sidebar').classes()).toContain('sidebar-open');
     expect(wrapper.classes()).not.toContain('is-resizing');
-    await separator.trigger('pointerdown', { pointerId: 7, clientX: 217, button: 0 });
-    window.dispatchEvent(pointer('pointerup', 217));
+    await separator.trigger('pointerdown', { pointerId: 7, clientX: 224, button: 0 });
+    window.dispatchEvent(pointer('pointerup', 224));
     await flushPromises();
     expect(wrapper.get('.space-sidebar').classes()).toContain('sidebar-open');
     await collapseDirectory(wrapper);
-    expect(wrapper.get('.mobile-menu').attributes('aria-expanded')).toBe('false');
-    expect(document.activeElement).toBe(wrapper.get('.mobile-menu').element);
+    expect(wrapper.get('.workspace-collapse').attributes('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(wrapper.get('.workspace-collapse').element);
     expect(store.exportData()).toBe(before);
   } finally {
     wrapper.unmount();
   }
 });
 
-it('Muse edge drag previews the original threshold, ignores other pointers and cancels without opening or saving facts', async () => {
+it('Workspace edge drag previews the existing reveal distance, ignores other pointers and cancels without opening or saving facts', async () => {
   const store = useConversationLearningStore();
   const before = store.exportData();
   const wrapper = mount(LearningShell, { global: { stubs }, attachTo: document.body });
   const pointer = (type, clientX, pointerId = 8) => new PointerEvent(type, { pointerId, clientX, button: 0 });
   try {
     const edge = () => wrapper.get('.directory-edge');
-    await edge().trigger('pointerdown', { pointerId: 8, clientX: 78, button: 0 });
+    await edge().trigger('pointerdown', { pointerId: 8, clientX: 70, button: 0 });
     window.dispatchEvent(pointer('pointermove', 200, 9));
     await flushPromises();
     expect(wrapper.find('.directory-edge-preview').exists()).toBe(false);
-    window.dispatchEvent(pointer('pointermove', 142));
+    window.dispatchEvent(pointer('pointermove', 134));
     await flushPromises();
     expect(wrapper.get('.directory-edge-preview').attributes('style')).toContain('width: 64px');
-    window.dispatchEvent(pointer('pointerup', 142));
+    window.dispatchEvent(pointer('pointerup', 134));
     await flushPromises();
-    expect(wrapper.get('.mobile-menu').attributes('aria-expanded')).toBe('false');
-    await edge().trigger('pointerdown', { pointerId: 8, clientX: 78, button: 0 });
+    expect(wrapper.get('.workspace-collapse').attributes('aria-expanded')).toBe('false');
+    await edge().trigger('pointerdown', { pointerId: 8, clientX: 70, button: 0 });
     window.dispatchEvent(pointer('pointermove', 320));
     window.dispatchEvent(pointer('pointercancel', 320));
     await flushPromises();
     expect(wrapper.find('.directory-edge-preview').exists()).toBe(false);
-    expect(wrapper.get('.mobile-menu').attributes('aria-expanded')).toBe('false');
-    await edge().trigger('pointerdown', { pointerId: 8, clientX: 78, button: 0 });
-    window.dispatchEvent(pointer('pointermove', 143));
-    window.dispatchEvent(pointer('pointerup', 143));
+    expect(wrapper.get('.workspace-collapse').attributes('aria-expanded')).toBe('false');
+    await edge().trigger('pointerdown', { pointerId: 8, clientX: 70, button: 0 });
+    window.dispatchEvent(pointer('pointermove', 135));
+    window.dispatchEvent(pointer('pointerup', 135));
     await flushPromises();
     expect(wrapper.get('.space-sidebar').classes()).toContain('sidebar-open');
-    expect(document.activeElement).toBe(wrapper.get('.space-sidebar input').element);
+    expect(document.activeElement).not.toBe(wrapper.get('.space-sidebar input').element);
     expect(store.exportData()).toBe(before);
   } finally {
     wrapper.unmount();
@@ -3374,12 +3381,12 @@ it('Muse edge drag previews the original threshold, ignores other pointers and c
   expect(store.exportData()).toBe(before);
 });
 
-it('Muse desktop pin preserves chat interaction while the mobile drawer remains modal', async () => {
+it('Workspace desktop pin preserves chat interaction while the mobile drawer remains modal', async () => {
   const store = useConversationLearningStore();
   const before = store.exportData();
   const wrapper = mount(LearningShell, { global: { stubs }, attachTo: document.body });
   try {
-    await wrapper.get('.mobile-menu').trigger('tap');
+    await wrapper.get('.workspace-collapse').trigger('tap');
     await flushPromises();
     expect(wrapper.get('.space-main').attributes()).not.toHaveProperty('inert');
     await wrapper.get('.space-content').trigger('pointerdown');
@@ -3393,6 +3400,7 @@ it('Muse desktop pin preserves chat interaction while the mobile drawer remains 
     const width = window.innerWidth;
     window.innerWidth = 390;
     window.dispatchEvent(new Event('resize'));
+    await flushPromises();
     await wrapper.get('.mobile-menu').trigger('tap');
     await flushPromises();
     expect(wrapper.get('.space-main').attributes()).toHaveProperty('inert');

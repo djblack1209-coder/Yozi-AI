@@ -1,11 +1,10 @@
 import { storageService } from '@/services/storageService.js';
 
-// Frontend bootstrap only. Muse 2 navigation.ts/useNavigation.ts: validate the
-// complete snapshot before replacing it; an invalid refresh keeps current work.
+// Validate the complete navigation snapshot before replacing it.
 export const NAVIGATION_KEY = 'yozi_shell_navigation_v1';
 export const SIDEBAR_KEY = 'yozi_shell_sidebar_v1';
 export const LOCATION_KEY = 'learning_shell_location_v1';
-// Muse rail order: Chat, Search, Ideas, Goals, Library; Feed stays a hidden slot.
+// Keep the established destination identifiers and the hidden Feed slot.
 export const SHELL_ROUTES = Object.freeze({
   learning: '/pages/learning/index',
   search: null,
@@ -77,10 +76,10 @@ export function shellNavigation() {
     }
   };
 }
-// Original Muse desktop capture: approximately 240px, including its search/options row.
-// Existing saved widths and the 180–420 usability clamps remain unchanged.
-export const SIDEBAR_DEFAULT = Object.freeze({ version: 1, collapsed: false, width: 240 });
-export const clampSidebarWidth = (width) => Math.max(180, Math.min(420, width));
+export const SIDEBAR_DEFAULT = Object.freeze({ version: 1, collapsed: false, width: 300 });
+export const SIDEBAR_MIN = 224;
+export const SIDEBAR_MAX = 384;
+export const clampSidebarWidth = (width) => Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, width));
 export function validSidebar(value) {
   return (
     object(value) &&
@@ -93,12 +92,20 @@ export function validSidebar(value) {
 }
 export function readSidebar() {
   const saved = read(SIDEBAR_KEY);
-  return { ...(validSidebar(saved) ? saved : SIDEBAR_DEFAULT) };
+  return validSidebar(saved) ? sidebarPreference(saved) : { ...SIDEBAR_DEFAULT };
+}
+function sidebarPreference({ collapsed, width, historyExpanded }) {
+  return {
+    version: 1,
+    collapsed,
+    width: clampSidebarWidth(width),
+    ...(typeof historyExpanded === 'boolean' ? { historyExpanded } : {})
+  };
 }
 export function saveSidebar(value) {
   if (!validSidebar(value)) return false;
   try {
-    uni.setStorageSync(SIDEBAR_KEY, { version: 1, collapsed: value.collapsed, width: value.width });
+    uni.setStorageSync(SIDEBAR_KEY, sidebarPreference(value));
     return true;
   } catch {
     return false;

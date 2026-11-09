@@ -646,10 +646,10 @@ describe('S3 sidebar and navigation', () => {
     }
   );
 
-  it('defaults to 240/open, keeps a close action for modal search and restores the device layout', async () => {
+  it('defaults to 300/open, keeps a close action for modal search and restores the device layout', async () => {
     let wrapper = render(LearningShell, { LearningShell: false });
     vi.spyOn(wrapper.element, 'getClientRects').mockReturnValue([{}]);
-    expect(wrapper.get('.directory-resize').attributes('aria-valuenow')).toBe('240');
+    expect(wrapper.get('.directory-resize').attributes('aria-valuenow')).toBe('300');
     expect(wrapper.find('.sidebar-close').exists()).toBe(false);
     expect(wrapper.get('.sidebar-options').attributes('aria-label')).toBe('会话选项');
     const facts = store.exportData();
@@ -663,7 +663,7 @@ describe('S3 sidebar and navigation', () => {
     expect(store.exportData()).toBe(facts);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', metaKey: true, bubbles: true }));
     await nextTick();
-    expect(uni.getStorageSync('yozi_shell_sidebar_v1')).toMatchObject({ collapsed: true, width: 240 });
+    expect(uni.getStorageSync('yozi_shell_sidebar_v1')).toMatchObject({ collapsed: true, width: 300 });
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, repeat: true, bubbles: true }));
     expect(uni.getStorageSync('yozi_shell_sidebar_v1').collapsed).toBe(true);
     wrapper.unmount();
@@ -673,12 +673,12 @@ describe('S3 sidebar and navigation', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true }));
     await nextTick();
     await wrapper.get('.directory-resize').trigger('keydown', { key: 'Home' });
-    expect(uni.getStorageSync('yozi_shell_sidebar_v1').width).toBe(180);
+    expect(uni.getStorageSync('yozi_shell_sidebar_v1').width).toBe(224);
     await wrapper.get('.directory-resize').trigger('keydown', { key: 'End' });
-    expect(uni.getStorageSync('yozi_shell_sidebar_v1').width).toBe(420);
+    expect(uni.getStorageSync('yozi_shell_sidebar_v1').width).toBe(384);
     await wrapper.get('.directory-resize').trigger('dblclick');
-    expect(wrapper.get('.directory-resize').attributes('aria-valuenow')).toBe('240');
-    expect(uni.getStorageSync('yozi_shell_sidebar_v1').width).toBe(240);
+    expect(wrapper.get('.directory-resize').attributes('aria-valuenow')).toBe('300');
+    expect(uni.getStorageSync('yozi_shell_sidebar_v1').width).toBe(300);
   });
   it('reorders/hides rail entries and rejects a corrupt config without touching the conversation', async () => {
     const wrapper = render(LearningShell, { LearningShell: false });

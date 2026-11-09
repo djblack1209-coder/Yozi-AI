@@ -1,4 +1,4 @@
-/* Muse 2 layout. Values are maintained in yozi-tokens.scss; no retired App skins. */
+/* Shared learning workspace and page surfaces. */
 .learning-space {
   --space-status-top: var(--status-bar-height, 0px);
   box-sizing: border-box;
@@ -1249,28 +1249,25 @@
   }
 }
 
-/* Search uses Muse's centered command palette; the chat drawer keeps its own width. */
+/* The command dialog sits above the workspace without shifting its columns. */
 .space-sidebar.search-palette {
   --muse-directory-width: 100%;
   position: absolute;
-  top: 25vh;
+  top: clamp(54px, 16vh, 146px);
   bottom: auto;
   left: 50%;
   transform: translateX(-50%);
-  width: min(513px, calc(100% - 32px));
+  width: min(560px, calc(100% - 28px));
   min-height: 159px;
   height: auto;
   max-height: 70%;
   padding: 0;
   border: 1px solid var(--line-strong);
-  border-radius: 22px;
-  background: var(--muse-popover);
+  border-radius: 16px;
+  background: var(--workspace-frame);
+  z-index: 49;
   box-shadow: 0 24px 80px #0005;
   animation: muse-palette-in 180ms var(--ease) both;
-}
-.desktop-overlay .space-sidebar.search-palette {
-  /* 25vh is measured from the window top, including the native 28px strip. */
-  top: calc(25vh - 28px);
 }
 .search-palette .directory-surface {
   padding: 12px;
@@ -1283,6 +1280,7 @@
   animation: muse-palette-out 180ms var(--ease) both;
 }
 .sidebar-scrim.is-search {
+  z-index: 48;
   background: #00000052;
   animation: muse-scrim-in 140ms ease both;
 }
@@ -1333,10 +1331,6 @@
 /* The palette drops the field ring, so its divider marks focus instead. */
 .search-palette .directory-top:focus-within {
   border-bottom-color: var(--focus);
-}
-.has-search .space-main,
-.has-search .muse-rail {
-  visibility: hidden;
 }
 .search-palette .directory-scroll {
   max-height: 52vh;
@@ -1569,88 +1563,343 @@
   --lift-3: 0 18px 60px #00000040;
 }
 
-/* The native traffic lights occupy this transparent, draggable strip. */
+/* Controlled sidebar from Aceternity Sidebar, with an inset frame from shadcn/ui. */
+.workspace-shell {
+  --workspace-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --workspace-fold: 220ms;
+  --workspace-icon-width: 70px;
+  --workspace-frame: var(--canvas);
+  --workspace-side: var(--muse-panel);
+  --workspace-hover: var(--muse-hover);
+  --workspace-active: var(--muse-selected);
+  --workspace-border: var(--line);
+  --workspace-muted: var(--ink-3);
+}
+.workspace-shell.space-light {
+  --workspace-frame: #fdfdfc;
+  --workspace-side: #edf7fd;
+  --workspace-hover: #11243d0b;
+  --workspace-active: #d5effd;
+  --workspace-border: #11243d22;
+  --workspace-muted: #466177;
+  --workspace-ink: #11243d;
+}
+.workspace-shell.space-dark {
+  --workspace-frame: #151e2b;
+  --workspace-side: #0f1723;
+  --workspace-hover: #d5effd0f;
+  --workspace-active: #d5effd20;
+  --workspace-border: #d5effd24;
+  --workspace-muted: #a8bed1;
+  --workspace-ink: #eff4ff;
+}
 .native-titlebar {
   display: none;
 }
 .desktop-overlay .native-titlebar {
-  display: block;
+  display: grid;
+  place-items: center;
   height: 28px;
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  inset: 0 0 auto;
   z-index: 80;
+  border-bottom: 1px solid var(--workspace-border);
+  background: var(--workspace-side);
+  color: var(--workspace-muted);
+  font-size: 11px;
+  line-height: 16px;
+  user-select: none;
+}
+.native-titlebar > text,
+.native-titlebar > uni-text {
+  pointer-events: none;
 }
 .desktop-overlay .space-frame {
   margin-top: 28px;
   height: calc(100% - 28px);
 }
-/* Muse's first rail item is 100px from the window top, including our titlebar. */
-.desktop-overlay .muse-rail {
-  padding-top: 72px;
-}
-/* Desktop conversation uses a shared directory/footer, a reading lane, and study context. */
-.desktop-conversation:not(.has-artifact) .space-frame {
+.workspace-wide .space-frame {
+  --workspace-nav-width: var(--muse-panel-width);
+  --workspace-context-width: 0px;
   display: grid;
-  grid-template-columns: var(--muse-rail-width) minmax(0, 1fr) auto;
-  grid-template-rows: minmax(0, 1fr) auto;
-  transition: grid-template-columns 160ms var(--ease);
+  grid-template-columns: var(--workspace-nav-width) minmax(0, 1fr) var(--workspace-context-width);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: var(--workspace-side);
+  transition: grid-template-columns var(--workspace-fold) var(--workspace-ease);
 }
-.desktop-conversation.has-directory:not(.has-artifact) .space-frame {
-  grid-template-columns: var(--muse-panel-width) minmax(0, 1fr) auto;
+.workspace-collapsed .space-frame {
+  --workspace-nav-width: var(--workspace-icon-width);
 }
-.desktop-conversation:is(.is-resizing, .reduce-motion) .space-frame {
+.workspace-context-open .space-frame {
+  --workspace-context-width: clamp(228px, 21vw, 292px);
+}
+.workspace-wide:is(.is-resizing, .reduce-motion) .space-frame {
   transition: none;
 }
-.desktop-conversation .space-main {
-  grid-area: 1 / 2 / 3;
+.workspace-wide .space-main {
+  grid-area: 1 / 2 / 4;
+  height: auto;
+  min-height: 0;
+  margin: 8px 8px 8px 0;
+  border: 1px solid var(--workspace-border);
+  border-radius: 15px;
+  background: var(--workspace-frame);
 }
-.desktop-conversation .muse-rail {
-  grid-area: 1 / 1 / 3;
+.workspace-wide.has-artifact .space-main {
+  margin-right: calc(clamp(340px, 44%, 520px) + 8px);
 }
-.desktop-directory:not(.has-artifact) .space-sidebar {
+.workspace-wide .muse-rail {
   grid-area: 1 / 1;
   width: 100%;
-  animation: none;
-}
-.desktop-directory:not(.has-artifact) .directory-surface {
-  padding: 8px 10px;
-}
-.desktop-directory:not(.has-artifact) .muse-rail {
-  grid-area: 2 / 1;
-  width: 100%;
   height: auto;
-  padding: 5px 8px 6px;
-  border-top: 1px solid var(--line);
+  min-width: 0;
+  padding: 12px 12px 7px;
+  align-items: stretch;
+  border: 0;
+  background: var(--workspace-side);
+  color: var(--workspace-ink, var(--ink));
 }
-.desktop-directory:not(.has-artifact) .rail-body {
-  flex-flow: row wrap;
+.workspace-side-head {
+  height: 48px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-left: 8px;
 }
-.desktop-directory:not(.has-artifact) .rail-group {
-  flex-direction: row;
-  border-bottom: 1px solid var(--line);
+.workspace-brand-mark {
+  width: 28px;
+  height: 28px;
+  flex: none;
 }
-.desktop-directory.muse-space:not(.has-artifact) .muse-rail .rail-item {
-  width: 34px;
-  height: 40px;
-  min-height: 40px;
-}
-.desktop-directory.muse-space:not(.has-artifact) .muse-rail .rail-group .rail-item {
+.workspace-brand-name {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 650;
 }
-.desktop-directory:not(.has-artifact) .rail-item-surface {
-  width: 34px;
-  height: 34px;
+.workspace-shell .workspace-collapse,
+.workspace-shell .workspace-account-settings {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  flex: none;
   border-radius: 9px;
+  color: var(--workspace-muted);
 }
-.desktop-directory:not(.has-artifact) .rail-divider {
+.workspace-collapsed .workspace-side-head {
+  justify-content: center;
+  padding: 0;
+}
+.workspace-collapsed :is(.workspace-brand-mark, .workspace-brand-name) {
   display: none;
 }
-.desktop-directory:not(.has-artifact) .rail-item-tip {
-  top: auto;
-  bottom: 100%;
+.workspace-wide .rail-body,
+.workspace-wide .rail-group {
+  width: 100%;
+  align-items: stretch;
+  gap: 2px;
+  flex-direction: column;
+}
+.workspace-wide .rail-body {
+  margin-top: 12px;
+}
+.workspace-wide.muse-space .muse-rail .rail-item {
+  width: 100%;
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 8px;
+  justify-content: flex-start;
+  border-radius: 9px;
+  color: var(--workspace-muted);
+  animation: none;
+  transition: color 140ms var(--workspace-ease), background-color 140ms var(--workspace-ease);
+}
+.workspace-wide.muse-space .muse-rail .rail-item:is(:hover, :focus-visible) {
+  background: var(--workspace-hover);
+  color: var(--workspace-ink);
+}
+.workspace-wide.muse-space .muse-rail .rail-item.is-current {
+  background: var(--workspace-active);
+  color: var(--workspace-ink);
+  font-weight: 650;
+}
+.workspace-wide .rail-item .base-button__content {
+  width: 100%;
+  gap: 8px;
+}
+.workspace-wide .rail-item .rail-item-surface {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  background: transparent;
+  color: inherit;
+  border-radius: 0;
+  box-shadow: none;
+  animation: none;
+  transition: transform 140ms var(--workspace-ease);
+}
+.workspace-wide .rail-item:active .rail-item-surface {
+  transform: scale(0.93);
+}
+.workspace-wide .rail-item-tip {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  position: static;
+  padding: 0;
+  opacity: 1;
+  transform: none;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 20px;
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+  transition: transform 160ms var(--workspace-ease);
+}
+.workspace-wide:not(.workspace-collapsed) .rail-item:hover .rail-item-tip {
+  transform: translateX(2px);
+}
+.workspace-wide .rail-shortcut {
+  margin-left: auto;
+  padding: 0 5px;
+  border: 1px solid var(--workspace-border);
+  border-radius: 5px;
+  color: var(--workspace-muted);
+  font: inherit;
+  font-size: 11px;
+}
+.workspace-collapsed.muse-space .muse-rail .rail-item {
+  justify-content: center;
+  padding: 0;
+}
+.workspace-collapsed .rail-item .base-button__content {
+  justify-content: center;
+}
+.workspace-collapsed .rail-item-tip {
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 50%;
+  transform: translate(-4px, -50%);
+  gap: 7px;
+  padding: 5px 8px;
+  opacity: 0;
+  visibility: hidden;
+  border: 1px solid var(--workspace-border);
+  border-radius: 7px;
+  background: var(--workspace-frame);
+  color: var(--workspace-ink);
+  transition: transform 150ms var(--workspace-ease), opacity 150ms var(--workspace-ease);
+}
+.workspace-collapsed .rail-item:is(:hover, :focus-visible) .rail-item-tip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(0, -50%);
+}
+.workspace-account {
+  grid-area: 3 / 1;
+  z-index: 29;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 4px;
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--workspace-border);
+}
+.workspace-shell .workspace-account-primary {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 9px;
+  border-radius: 9px;
+  color: var(--workspace-ink);
+}
+.workspace-account-primary .base-button__content,
+.workspace-account-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-account :is(.workspace-account-primary, .workspace-account-settings):hover,
+.workspace-shell .workspace-collapse:hover {
+  background: var(--workspace-hover);
+}
+.workspace-collapsed .workspace-account {
+  align-items: stretch;
+  flex-direction: column;
+}
+.workspace-collapsed .workspace-account-primary {
+  flex: none;
+  width: 44px;
+  justify-content: center;
+  padding: 0;
+}
+.workspace-collapsed .workspace-account-label {
+  display: none;
+}
+.workspace-wide .space-sidebar:not(.search-palette) {
+  grid-area: 2 / 1;
+  width: 100%;
+  min-height: 0;
+  animation: none;
+}
+.workspace-wide .space-sidebar:not(.search-palette) .directory-surface {
+  width: var(--muse-panel-width);
+  max-width: 100%;
+  padding: 7px 12px;
+  border: 0;
+  border-top: 1px solid var(--workspace-border);
+  background: var(--workspace-side);
+  animation: none;
+}
+.workspace-collapsed .space-sidebar:not(.search-palette) .directory-clip {
+  visibility: hidden;
+}
+.workspace-wide .directory-resize {
+  inset: 0 auto 0 calc(var(--workspace-nav-width) - 8px);
+  z-index: 35;
+}
+.workspace-wide .directory-edge,
+.workspace-wide .directory-edge-preview {
+  left: var(--workspace-icon-width);
+}
+.workspace-shell .workspace-history-toggle {
+  min-width: 0;
+  padding: 0 6px;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--workspace-muted);
+}
+.workspace-history-toggle .base-icon {
+  transition: transform 180ms var(--workspace-ease);
+}
+.workspace-history-toggle[aria-expanded='false'] .base-icon {
+  transform: rotate(-90deg);
+}
+.workspace-history-count {
+  color: var(--workspace-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.workspace-page-bar {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  padding: 0 18px;
+  flex: none;
+  border-bottom: 1px solid var(--workspace-border);
+  color: var(--workspace-muted);
+  font-size: 13px;
 }
 .desktop-directory .desktop-directory-header,
 .desktop-thread-title {
@@ -1661,7 +1910,7 @@
   gap: 6px;
 }
 .desktop-directory .desktop-directory-header {
-  padding-left: 6px;
+  padding-left: 0;
   font-weight: 650;
   line-height: 20px;
 }
@@ -1672,10 +1921,11 @@
 }
 .desktop-directory.muse-space .directory-search {
   border-radius: 9px;
-  background: var(--muse-raised);
+  background: var(--workspace-hover);
 }
 .desktop-directory.muse-space .space-sidebar .recent-conversation .recent-item {
-  height: 58px;
+  min-height: 48px;
+  height: 48px;
   padding: 0 8px;
   border-radius: 10px;
   transition:
@@ -1685,12 +1935,12 @@
 .desktop-thread-icon {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   flex: none;
-  border-radius: 50%;
-  background: var(--blue-soft);
-  color: var(--blue);
+  border-radius: 7px;
+  background: var(--workspace-hover);
+  color: var(--workspace-muted);
 }
 .desktop-thread-summary {
   min-width: 0;
@@ -1708,19 +1958,21 @@
   font-size: 12px;
   line-height: 17px;
 }
-.desktop-conversation.is-chat .space-header {
+.workspace-shell.is-chat .space-header {
   position: relative;
   height: 56px;
   min-height: 56px;
   align-items: center;
   justify-content: flex-start;
   padding: 0 16px;
-  border-bottom: 1px solid var(--line);
+  background: var(--workspace-frame);
+  border-bottom: 1px solid var(--workspace-border);
+  border-radius: 14px 14px 0 0;
 }
-.desktop-conversation .space-heading:empty {
+.workspace-shell .space-heading:empty {
   display: none;
 }
-.desktop-conversation .muse-chat-identity {
+.workspace-shell .muse-chat-identity {
   position: static;
   min-width: 0;
   flex: 1;
@@ -1728,7 +1980,7 @@
   gap: 8px;
   transform: none;
 }
-.desktop-conversation .muse-chat-identity .brand-label {
+.workspace-shell .muse-chat-identity .brand-label {
   position: static;
   min-width: 0;
   max-width: 100%;
@@ -1736,27 +1988,31 @@
   padding: 0;
   background: transparent;
 }
-.desktop-conversation .muse-chat-identity .brand-label:has(.brand-status) .brand-name {
+.workspace-shell .muse-chat-identity .brand-label:has(.brand-status) .brand-name {
   font-size: 11px;
   line-height: 14px;
   color: var(--ink-3);
 }
-.desktop-conversation .muse-chat-identity .brand-status {
+.workspace-shell .muse-chat-identity .brand-status {
   order: -1;
   color: var(--ink);
   font-size: 14px;
   font-weight: 600;
   line-height: 18px;
 }
-.desktop-conversation .muse-chat-identity .brand-mark {
+.workspace-shell .muse-chat-identity .brand-mark {
   flex: none;
 }
-.desktop-conversation .space-header-actions {
+.workspace-shell.is-chat .space-header-actions {
   flex: none;
 }
-.desktop-conversation.is-chat .space-content {
+.workspace-shell.is-chat .space-content {
   margin-top: 0;
   padding-inline: 22px;
+}
+.workspace-shell .space-content > .learning-page,
+.workspace-shell .muse-composer-dock > * {
+  max-width: 74ch;
 }
 .desktop-conversation .message .base-bubble__body {
   border-radius: 15px;
@@ -1766,27 +2022,49 @@
   display: none;
 }
 .desktop-conversation .muse-composer-dock {
-  background: var(--canvas);
+  background: var(--workspace-frame);
   padding: 0 22px 16px;
+  border-radius: 0 0 14px 14px;
 }
-.desktop-conversation .muse-composer-dock .muse-composer {
-  background: var(--muse-popover);
-  border: 1px solid var(--line-strong);
+.workspace-shell .muse-composer-dock .muse-composer {
+  background: var(--workspace-frame);
+  border: 1px solid var(--workspace-border);
+  border-radius: 16px;
+}
+.workspace-shell .muse-composer .muse-send,
+.workspace-shell .muse-composer .muse-send::before {
+  border-radius: 10px;
+}
+.workspace-shell .muse-composer .muse-send::before {
+  inset: 3px;
 }
 .desktop-study-context {
-  grid-area: 1 / 3 / 3;
+  grid-area: 1 / 3 / 4;
   min-width: 0;
-  width: clamp(230px, 23vw, 300px);
-  padding: 17px 16px;
-  border-left: 1px solid var(--line);
-  background: var(--canvas);
-  overflow-y: auto;
-  animation: study-context-in 160ms var(--ease);
+  margin: 8px 8px 8px 0;
+  padding: 16px 12px;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+  border: 1px solid var(--workspace-border);
+  border-radius: 15px;
+  background: var(--workspace-frame);
+  transition: opacity 130ms var(--workspace-ease), visibility 0s linear 220ms;
 }
-@keyframes study-context-in {
+.workspace-context-open .desktop-study-context {
+  visibility: visible;
+  opacity: 1;
+  overflow-y: auto;
+  transition-delay: 70ms, 0s;
+}
+.workspace-wide:not(.workspace-collapsed) .rail-item-tip,
+.workspace-wide .directory-scroll {
+  animation: workspace-label-in 180ms var(--workspace-ease) both;
+}
+@keyframes workspace-label-in {
   from {
     opacity: 0;
-    transform: translateX(6px);
+    transform: translateX(-4px);
   }
 }
 .study-context-title {
@@ -1833,9 +2111,71 @@
 .study-context-links .base-button__content > :nth-child(2) {
   flex: 1;
 }
-.reduce-motion :is(.desktop-study-context, .desktop-directory .recent-item) {
+.workspace-shell.reduce-motion :is(.desktop-study-context, .rail-item-tip, .directory-scroll, .space-sidebar, .workspace-history-toggle .base-icon) {
   animation: none;
   transition: none;
+}
+
+@media (max-width: 760px) {
+  .workspace-shell.is-chat .space-header {
+    height: auto;
+    min-height: calc(62px + var(--space-status-top, 0px));
+    padding: calc(8px + var(--space-status-top, 0px)) calc(10px + var(--space-capsule-right, 0px)) 8px 10px;
+    border-radius: 0;
+    gap: 8px;
+  }
+  .workspace-shell.muse-space.is-chat .space-header {
+    background: var(--workspace-frame);
+  }
+  .workspace-shell.is-chat .space-content {
+    padding-inline: 14px;
+  }
+  .workspace-shell .space-header .directory-pill,
+  .workspace-shell .space-header .header-actions-toggle {
+    border-radius: 10px;
+  }
+  .workspace-shell .space-header-actions.is-compact {
+    top: calc(100% + 4px);
+    background: var(--workspace-frame);
+    border-radius: 12px;
+  }
+  .workspace-shell .muse-composer-actions {
+    gap: 2px;
+    padding-inline: 2px;
+  }
+  .workspace-shell .muse-composer-actions .base-button:not(.is-icon) {
+    padding-inline: 8px;
+  }
+  .workspace-shell .muse-rail {
+    background: var(--workspace-frame);
+    border-color: var(--workspace-border);
+    border-radius: 14px;
+  }
+  .workspace-shell .rail-item.is-current .rail-item-surface {
+    background: var(--workspace-active);
+    border-radius: 8px;
+    color: var(--workspace-ink);
+  }
+  .workspace-shell .space-sidebar:not(.search-palette) {
+    --muse-directory-width: min(320px, calc(100vw - 20px));
+    animation: workspace-drawer-in 240ms var(--workspace-ease) both;
+  }
+  .workspace-shell .space-sidebar.sidebar-leaving:not(.search-palette) {
+    animation: workspace-drawer-out 240ms var(--workspace-ease) both;
+  }
+  .workspace-shell .space-sidebar:not(.search-palette) .directory-surface {
+    background: var(--workspace-frame);
+    animation: none;
+  }
+  .workspace-shell.reduce-motion .space-sidebar:not(.search-palette) {
+    animation: none;
+  }
+}
+@keyframes workspace-drawer-in {
+  from { transform: translateX(-100%); }
+}
+@keyframes workspace-drawer-out {
+  to { transform: translateX(-100%); }
 }
 
 .is-desktop-settings .muse-rail,

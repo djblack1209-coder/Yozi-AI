@@ -1,7 +1,7 @@
 <template>
   <view
     ref="root"
-    class="learning-space muse-space"
+    class="learning-space muse-space workspace-shell"
     :class="{
       'space-dark': theme.isDark,
       'space-light': !theme.isDark,
@@ -9,13 +9,16 @@
       'has-directory': menuOpen && !searchOnOpen,
       'has-side-panel':
         (sidePanel && viewportWidth > 760) || ((menuOpen || menuLeaving || panelOpening) && !searchOnOpen),
-      'has-search': searchOnOpen && (menuOpen || menuLeaving),
+      'has-search': paletteVisible && (menuOpen || menuLeaving),
       'has-conversation': Boolean(learning.active),
       'is-workspace': layout === 'workspace',
       'is-resizing': panelResizing || panelOpening,
       'is-chat': active === 'learning',
+      'workspace-wide': desktopShell,
+      'workspace-collapsed': desktopShell && !sidebarExpanded,
+      'workspace-context-open': canShowContext && contextOpen && !$slots.reader,
       'desktop-conversation': desktopConversation,
-      'desktop-directory': desktopConversation && !searchOnOpen && (menuOpen || menuLeaving),
+      'desktop-directory': desktopShell && !paletteVisible && (menuOpen || menuLeaving),
       'is-library': ['archive', 'plan', 'phrases', 'ideas', 'materials', 'usage'].includes(active),
       'is-settings': active === 'settings' || active === 'profile',
       'is-desktop-settings': nativeSettings,
@@ -33,22 +36,102 @@
       :change:directory-open="directoryView.onDirectoryChange"
     />
     <!-- #endif -->
-    <view class="native-titlebar" data-tauri-drag-region aria-hidden="true" />
+    <view class="native-titlebar" data-tauri-drag-region aria-hidden="true">
+      <text>{{ BRAND.name }}</text>
+    </view>
     <MuseLaunch :scope="learning" :ready="['ready', 'error'].includes(learning.recordReadState)" />
     <view class="space-frame">
       <button
         v-if="(menuOpen || menuLeaving) && directoryModal"
         class="sidebar-scrim"
-        :class="{ 'is-closing': menuLeaving, 'is-search': searchOnOpen }"
+        :class="{ 'is-closing': menuLeaving, 'is-search': paletteVisible }"
         tabindex="-1"
         :disabled="menuLeaving"
         :aria-label="t('learning.kh3')"
         @tap="closeMenu"
       ></button>
       <view
+        id="workspace-navigation"
+        class="muse-rail"
+        role="navigation"
+        :aria-label="t('nav.learningViews')"
+        :inert="(menuOpen && directoryModal) || undefined"
+        :aria-hidden="(searchOnOpen && menuOpen) || undefined"
+      >
+        <view v-if="desktopShell" class="workspace-side-head">
+          <image :src="theme.isDark ? BRAND.markOnDark : BRAND.mark" class="workspace-brand-mark" mode="aspectFit" />
+          <text class="workspace-brand-name">{{ BRAND.name }}</text>
+          <BaseButton
+            ref="sidebarToggle"
+            class="workspace-collapse"
+            variant="quiet"
+            :icon="sidebarExpanded ? 'chevron-left' : 'menu'"
+            icon-only
+            :label="t(sidebarExpanded ? 'learning.sidebar.collapse' : 'learning.sidebar.expand')"
+            :aria-expanded="sidebarExpanded"
+            @tap="toggleMenu"
+          />
+        </view>
+        <view class="rail-body">
+          <view class="rail-group">
+            <BaseButton
+              v-for="(item, index) in navigation"
+              :key="item.id"
+              class="rail-item rail-reveal"
+              :style="{ '--reveal-index': index }"
+              :class="{ 'is-current': railActive(item.id) }"
+              variant="quiet"
+              :label="item.label"
+              :aria-current="railActive(item.id) ? 'page' : undefined"
+              :aria-keyshortcuts="item.id === 'search' ? 'Meta+K Control+K' : undefined"
+              @tap="openView(item.id, $event)"
+            >
+              <view class="rail-item-surface"><BaseIcon :name="item.icon" size="20px" /></view>
+              <text class="rail-item-tip" aria-hidden="true">{{
+                item.id === 'search' ? t('muse.nav.search') : desktopShell ? item.label : item.shortLabel || item.label
+              }}<text v-if="item.id === 'search' && desktopShell" class="rail-shortcut">{{ searchShortcut }}</text></text>
+            </BaseButton>
+          </view>
+          <BaseButton
+            class="rail-item rail-usage"
+            :class="{ 'is-current': active === 'usage', 'narrow-guest-hidden': !loggedIn }"
+            variant="quiet"
+            :label="t('muse.usage')"
+            :aria-current="active === 'usage' ? 'page' : undefined"
+            @tap="openView('usage')"
+          >
+            <view class="rail-item-surface"><BaseIcon name="chart" size="20px" /></view>
+            <text class="rail-item-tip" aria-hidden="true">{{ t(desktopShell ? 'muse.usage' : 'muse.nav.usage') }}</text>
+          </BaseButton>
+          <BaseButton
+            v-if="!desktopShell && !loggedIn"
+            class="rail-item rail-login"
+            variant="quiet"
+            :label="t('learning.sidebar.signIn')"
+            @tap="safeNavigateTo('/pages/login/index')"
+          >
+            <view class="rail-item-surface"><BaseIcon name="user" size="20px" /></view>
+            <text class="rail-item-tip" aria-hidden="true">{{ t('learning.sidebar.signInShort') }}</text>
+          </BaseButton>
+          <BaseButton
+            v-if="!desktopShell"
+            class="rail-item rail-settings"
+            :class="{ 'is-current': active === 'settings' || active === 'profile' }"
+            variant="quiet"
+            :label="t('nav.settings')"
+            :aria-current="active === 'settings' || active === 'profile' ? 'page' : undefined"
+            @tap="openView('settings')"
+          >
+            <view class="rail-item-surface"><BaseIcon name="settings" size="20px" /></view>
+            <text class="rail-item-tip" aria-hidden="true">{{ t('nav.settings') }}</text>
+          </BaseButton>
+        </view>
+      </view>
+      <view
         v-if="menuOpen || menuLeaving"
+        id="learning-directory"
         class="space-sidebar"
-        :class="{ 'sidebar-open': menuOpen, 'sidebar-leaving': menuLeaving, 'search-palette': searchOnOpen }"
+        :class="{ 'sidebar-open': menuOpen, 'sidebar-leaving': menuLeaving, 'search-palette': paletteVisible }"
         :inert="menuLeaving || undefined"
         :role="directoryModal ? 'dialog' : 'complementary'"
         :aria-modal="directoryModal || undefined"
@@ -56,8 +139,19 @@
       >
         <view class="directory-clip"
           ><view class="directory-surface">
-            <view v-if="desktopConversation && !searchOnOpen" class="desktop-directory-header">
-              <text>{{ t('muse.chats') }}</text>
+            <view v-if="desktopShell && !paletteVisible" class="desktop-directory-header">
+              <BaseButton
+                class="workspace-history-toggle"
+                variant="quiet"
+                align="start"
+                :aria-expanded="historyExpanded"
+                aria-controls="learning-directory-list"
+                @tap="toggleHistory"
+              >
+                <BaseIcon name="chevron-down" size="14px" />
+                <text>{{ t('learning.sidebar.recent') }}</text>
+                <text v-if="recent.length" class="workspace-history-count">{{ recent.length }}</text>
+              </BaseButton>
               <BaseButton
                 class="new-session desktop-new-chat"
                 variant="quiet"
@@ -68,7 +162,7 @@
                 @tap="newSession"
               />
             </view>
-            <view class="directory-top">
+            <view v-show="paletteVisible || !desktopShell || historyExpanded" class="directory-top">
               <view class="directory-search"
                 ><BaseIcon name="search" :size="searchOnOpen ? '18px' : '16px'" tone="ink-3" />
                 <BaseInput
@@ -77,12 +171,12 @@
                   input-class="search-input"
                   hide-label
                   focus-visible-only
-                  :placeholder="t(searchOnOpen ? 'learning.ki6' : 'muse.searchChats')"
+                  :placeholder="t(paletteVisible ? 'learning.ki6' : 'muse.searchChats')"
                   maxlength="120"
                   :label="t('learning.ki6')"
               /></view>
               <BaseButton
-                v-if="directoryModal"
+                v-if="directoryModal || paletteVisible"
                 class="sidebar-close"
                 icon-only
                 icon="close"
@@ -91,7 +185,7 @@
                 @tap="closeMenu"
               />
               <BaseButton
-                v-if="!searchOnOpen"
+                v-if="!paletteVisible"
                 ref="closeButton"
                 class="sidebar-options"
                 icon-only
@@ -133,7 +227,11 @@
               @tap="newSession"
               >{{ t('learning.k8t') }}</BaseButton
             >
-            <view class="directory-scroll">
+            <view
+              v-show="paletteVisible || !desktopShell || historyExpanded"
+              id="learning-directory-list"
+              class="directory-scroll"
+            >
               <view v-if="learning.recordReadState === 'error'" class="recent-list" role="status">
                 <text class="sidebar-caption">{{ recordReadMessage }}</text>
               </view>
@@ -276,99 +374,55 @@
             </view>
           </view></view
         >
-        <!-- #ifdef H5 -->
-        <component
-          :is="'div'"
-          v-if="!searchOnOpen"
-          class="directory-resize"
-          role="separator"
-          tabindex="0"
-          aria-orientation="vertical"
-          :aria-label="t('muse.resize')"
-          :aria-valuemin="180"
-          :aria-valuemax="420"
-          :aria-valuenow="panelWidth"
-          @pointerdown="startPanelResize"
-          @keydown="resizePanelKey"
-          @dblclick="resetPanelWidth"
-        />
-        <!-- #endif -->
       </view>
       <view
-        class="muse-rail"
-        role="navigation"
-        :aria-label="t('nav.learningViews')"
+        v-if="desktopShell"
+        class="workspace-account"
+        role="group"
+        :aria-label="t('muse.account')"
         :inert="(menuOpen && directoryModal) || undefined"
-        :aria-hidden="(searchOnOpen && (menuOpen || menuLeaving)) || undefined"
       >
         <BaseButton
-          v-if="active !== 'learning'"
-          class="rail-brand"
+          class="workspace-account-primary"
+          :class="{ 'rail-login': !loggedIn }"
           variant="quiet"
-          :label="BRAND.name"
-          @tap="openView('learning')"
-          ><AnimatedAvatar :size="56" autoplay perceptible :business="avatarBusiness"
-        /></BaseButton>
-        <view class="rail-body">
-          <view class="rail-group">
-            <BaseButton
-              v-for="(item, index) in navigation"
-              :key="item.id"
-              class="rail-item rail-reveal"
-              :style="{ '--reveal-index': index }"
-              :class="{ 'is-current': railActive(item.id) }"
-              variant="quiet"
-              :label="item.label"
-              :aria-current="railActive(item.id) ? 'page' : undefined"
-              @tap="openView(item.id)"
-              ><view class="rail-item-surface"><BaseIcon :name="item.icon" size="24px" /></view
-              ><text class="rail-item-tip" aria-hidden="true"
-                >{{ viewportWidth <= 760 ? item.shortLabel || item.label : item.label
-                }}<text v-if="item.id === 'search'" class="rail-shortcut">⌘K</text></text
-              >
-            </BaseButton>
-          </view>
-          <view class="rail-divider" />
-          <BaseButton
-            class="rail-item rail-usage"
-            :class="{ 'is-current': active === 'usage', 'narrow-guest-hidden': !loggedIn }"
-            variant="quiet"
-            :label="t('muse.usage')"
-            :aria-current="active === 'usage' ? 'page' : undefined"
-            @tap="openView('usage')"
-            ><view class="rail-item-surface"><BaseIcon name="chart" size="24px" /></view
-            ><text class="rail-item-tip" aria-hidden="true">{{
-              t(viewportWidth <= 760 ? 'muse.nav.usage' : 'muse.usage')
-            }}</text></BaseButton
-          >
-          <view class="rail-spacer" />
-          <BaseButton
-            v-if="!loggedIn"
-            class="rail-item rail-login"
-            variant="quiet"
-            label="登录 / 注册"
-            @tap="safeNavigateTo('/pages/login/index')"
-            ><view class="rail-item-surface"><BaseIcon name="user" size="24px" /></view
-            ><text class="rail-item-tip" aria-hidden="true">登录</text></BaseButton
-          >
-          <BaseButton
-            class="rail-item rail-settings"
-            :class="{ 'is-current': active === 'settings' || active === 'profile' }"
-            variant="quiet"
-            :label="t('nav.settings')"
-            :aria-current="active === 'settings' || active === 'profile' ? 'page' : undefined"
-            @tap="openView('settings')"
-            ><view class="rail-item-surface"><BaseIcon name="equal" size="24px" /></view
-            ><text class="rail-item-tip" aria-hidden="true"
-              >{{ t('nav.settings') }}<text class="rail-shortcut">⌘,</text></text
-            ></BaseButton
-          >
-        </view>
+          align="start"
+          icon="user"
+          :label="t(loggedIn ? 'muse.account' : 'learning.sidebar.signIn')"
+          @tap="loggedIn ? openView('profile') : safeNavigateTo('/pages/login/index')"
+        >
+          <text class="workspace-account-label">{{ t(loggedIn ? 'muse.account' : 'learning.sidebar.signIn') }}</text>
+        </BaseButton>
+        <BaseButton
+          class="workspace-account-settings rail-settings"
+          variant="quiet"
+          icon="settings"
+          icon-only
+          :label="t('nav.settings')"
+          :aria-current="active === 'settings' || active === 'profile' ? 'page' : undefined"
+          @tap="openView('settings')"
+        />
       </view>
       <!-- #ifdef H5 -->
       <component
         :is="'div'"
-        v-if="active === 'learning' && !menuOpen && !menuLeaving"
+        v-if="desktopShell && sidebarExpanded && !paletteVisible"
+        class="directory-resize"
+        role="separator"
+        tabindex="0"
+        aria-orientation="vertical"
+        :aria-label="t('muse.resize')"
+        aria-controls="workspace-navigation"
+        :aria-valuemin="SIDEBAR_MIN"
+        :aria-valuemax="SIDEBAR_MAX"
+        :aria-valuenow="panelWidth"
+        @pointerdown="startPanelResize"
+        @keydown="resizePanelKey"
+        @dblclick="resetPanelWidth"
+      />
+      <component
+        :is="'div'"
+        v-if="desktopShell && active === 'learning' && !menuOpen && !menuLeaving"
         class="directory-edge"
         role="separator"
         tabindex="0"
@@ -386,18 +440,23 @@
       <!-- #endif -->
       <view
         class="space-main"
+        role="main"
         :inert="(menuOpen && directoryModal) || undefined"
         :aria-hidden="(searchOnOpen && (menuOpen || menuLeaving)) || undefined"
       >
-        <view v-if="layout !== 'workspace'" class="space-header">
+        <view v-if="layout === 'workspace' && desktopShell" class="workspace-page-bar" role="banner">
+          <text>{{ title }}</text>
+        </view>
+        <view v-if="layout !== 'workspace'" class="space-header" role="banner">
           <view class="space-heading">
             <BaseButton
-              v-if="active === 'learning' && !menuOpen"
+              v-if="active === 'learning' && !desktopShell && !menuOpen"
               ref="menuButton"
               class="mobile-menu directory-pill"
               icon="menu"
               :label="t('learning.openDirectory')"
               :aria-expanded="menuOpen"
+              aria-controls="learning-directory"
               variant="quiet"
               @tap="toggleMenu"
               >{{ t('muse.chats') }}</BaseButton
@@ -475,12 +534,12 @@
       </view>
       <view
         v-if="canShowContext && !$slots.reader"
-        v-show="contextOpen"
         id="desktop-study-context"
         class="desktop-study-context"
         role="complementary"
         aria-labelledby="desktop-study-context-title"
-        :inert="(menuOpen && directoryModal) || undefined"
+        :inert="!contextOpen || (menuOpen && directoryModal) || undefined"
+        :aria-hidden="!contextOpen || undefined"
       >
         <text id="desktop-study-context-title" class="study-context-title" role="heading" aria-level="2">{{
           t('muse.studyContext')
@@ -546,8 +605,7 @@ import {
   onUpdated,
   nextTick,
   useAttrs,
-  watch,
-  TransitionGroup
+  watch
 } from 'vue';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { useThemeStore } from '@/stores/modules/theme.js';
@@ -561,13 +619,14 @@ import { bindBusinessMotion } from '@/design/business-motion.js';
 import { BRAND } from '@/config/brand.js';
 import { currentLanguage, publicError, t } from '@/i18n/index.js';
 import { bindMessageFollow } from './message-follow.js';
-import { isDesktopRuntime } from '@/services/desktop/runtime.js';
 import { isDesktopSettingsWindow } from '@/services/desktop/windows.js';
 import {
   shellNavigation,
   SHELL_MODULES,
   SHELL_ROUTES,
   SIDEBAR_DEFAULT,
+  SIDEBAR_MIN,
+  SIDEBAR_MAX,
   readSidebar,
   saveSidebar,
   clampSidebarWidth
@@ -682,9 +741,9 @@ const sidebar = readSidebar();
 const viewportWidth = ref(
   typeof window !== 'undefined' ? window.innerWidth : uni.getWindowInfo?.().windowWidth || 1024
 );
-const directoryAutoOpenWidth = isDesktopRuntime() ? 800 : 760;
+const desktopShell = computed(() => !nativeSettings && viewportWidth.value > 760);
 const desktopConversation = computed(
-  () => props.active === 'learning' && props.layout !== 'workspace' && viewportWidth.value > 800
+  () => props.active === 'learning' && props.layout !== 'workspace' && desktopShell.value
 );
 const contextOpen = ref(true);
 const canShowContext = computed(
@@ -699,9 +758,16 @@ const todayTasks = computed(() => (learning.journeySummary || learning.todaySumm
 const hasNativeWebView = typeof plus !== 'undefined' && Boolean(plus.webview);
 // #endif
 const canRestoreDirectory = computed(
-  () => props.active === 'learning' && !nativeSettings && viewportWidth.value > directoryAutoOpenWidth
+  () => props.active === 'learning' && desktopShell.value
 );
-const menuOpen = ref(canRestoreDirectory.value && !sidebar.collapsed);
+const sidebarExpanded = ref(!sidebar.collapsed);
+const historyExpanded = ref(sidebar.historyExpanded !== false);
+const sidebarToggle = ref(null);
+const menuOpen = ref(canRestoreDirectory.value && sidebarExpanded.value);
+const searchShortcut =
+  typeof navigator !== 'undefined' && /mac/i.test(navigator.userAgentData?.platform || navigator.platform)
+    ? '⌘K'
+    : 'Ctrl K';
 const navigationConfig = shellNavigation();
 const navigationSnapshot = ref(navigationConfig.snapshot());
 function applyNavigation(value) {
@@ -747,17 +813,47 @@ function headerActionKey(event) {
   }
 }
 watch([compactHeader, () => props.active, () => learning.selectedConversationId], () => closeHeaderActions());
-const directoryModal = computed(() => searchOnOpen.value || viewportWidth.value <= 760);
+const directoryModal = computed(() => paletteVisible.value || !desktopShell.value);
 let previousDirectoryFocus = null;
-function toggleMenu() {
-  searchOnOpen.value = false;
-  menuOpen.value = !menuOpen.value;
+function rememberDirectoryFocus(trigger) {
+  // #ifdef H5
+  const focused = trigger?.currentTarget || document.activeElement;
+  previousDirectoryFocus = focused?.matches?.('button, uni-button, input, textarea, [role="button"]') ? focused : null;
+  // #endif
+}
+function toggleMenu(trigger) {
+  if (searchOnOpen.value || (!desktopShell.value && menuOpen.value)) return closeMenu();
+  if (!desktopShell.value) {
+    rememberDirectoryFocus(trigger);
+    menuOpen.value = true;
+    return;
+  }
+  if (sidebarExpanded.value) return closeMenu();
+  sidebarExpanded.value = true;
+  menuOpen.value = canRestoreDirectory.value;
   persistSidebar();
 }
 const panelWidth = ref(sidebar.width);
 function persistSidebar() {
-  if (props.active === 'learning' && viewportWidth.value > 760 && !nativeSettings)
-    saveSidebar({ version: 1, collapsed: !menuOpen.value, width: panelWidth.value });
+  if (!desktopShell.value) return;
+  const value = {
+    version: 1,
+    collapsed: !sidebarExpanded.value,
+    width: panelWidth.value,
+    historyExpanded: historyExpanded.value
+  };
+  if (saveSidebar(value)) uni.$emit('shellSidebarChanged', value);
+}
+function applySidebarPreferences(value) {
+  sidebarExpanded.value = !value.collapsed;
+  historyExpanded.value = value.historyExpanded;
+  panelWidth.value = value.width;
+  if (desktopShell.value && !searchOnOpen.value) menuOpen.value = canRestoreDirectory.value && sidebarExpanded.value;
+}
+function toggleHistory() {
+  directoryOptions.value = false;
+  historyExpanded.value = !historyExpanded.value;
+  persistSidebar();
 }
 function resetPanelWidth() {
   panelWidth.value = SIDEBAR_DEFAULT.width;
@@ -771,9 +867,10 @@ let releasePanelOpen = () => undefined;
 function openPanelKey(event) {
   if (!['Enter', ' '].includes(event.key)) return;
   event.preventDefault();
-  searchOnOpen.value = false;
+  sidebarExpanded.value = true;
   menuOpen.value = true;
   persistSidebar();
+  nextTick(() => (sidebarToggle.value?.$el || sidebarToggle.value)?.focus?.());
 }
 function startPanelOpen(event) {
   // #ifdef H5
@@ -801,7 +898,7 @@ function startPanelOpen(event) {
     const open = !moved || next.clientX - startX > 64;
     releasePanelOpen();
     if (open) {
-      searchOnOpen.value = false;
+      sidebarExpanded.value = true;
       menuOpen.value = true;
       persistSidebar();
     }
@@ -825,14 +922,19 @@ function startPanelOpen(event) {
   // #endif
 }
 function resizePanelKey(event) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    void closeMenu();
+    return;
+  }
   if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
   event.preventDefault();
   const step = event.shiftKey ? 64 : 16;
   panelWidth.value =
     event.key === 'Home'
-      ? 180
+      ? SIDEBAR_MIN
       : event.key === 'End'
-        ? 420
+        ? SIDEBAR_MAX
         : clampSidebarWidth(panelWidth.value + (event.key === 'ArrowRight' ? step : -step));
   persistSidebar();
 }
@@ -843,20 +945,15 @@ function startPanelResize(event) {
   releasePanelResize();
   const startX = event.clientX,
     startWidth = panelWidth.value;
-  let requested = startWidth;
-  let moved = false;
   panelResizing.value = true;
   const move = (next) => {
     if (next.pointerId !== event.pointerId) return;
-    moved ||= Math.abs(next.clientX - startX) > 4;
-    requested = startWidth + next.clientX - startX;
-    panelWidth.value = clampSidebarWidth(requested);
+    panelWidth.value = clampSidebarWidth(startWidth + next.clientX - startX);
   };
   const finish = (next) => {
     if (next.pointerId !== event.pointerId) return;
     releasePanelResize();
-    if (!moved) return;
-    persistSidebar();
+    if (panelWidth.value !== startWidth) persistSidebar();
   };
   const cancel = (next) => {
     if (next.pointerId !== event.pointerId) return;
@@ -881,8 +978,18 @@ function startPanelResize(event) {
   // #endif
 }
 const menuLeaving = ref(false);
+const paletteLeaving = ref(false);
+const paletteVisible = computed(() => searchOnOpen.value || (menuLeaving.value && paletteLeaving.value));
 const reducedMotion = ref(true);
-const query = ref('');
+const directoryQuery = ref('');
+const paletteQuery = ref('');
+const query = computed({
+  get: () => (paletteVisible.value ? paletteQuery.value : directoryQuery.value),
+  set: (value) => {
+    if (paletteVisible.value) paletteQuery.value = value;
+    else directoryQuery.value = value;
+  }
+});
 const searchQuery = ref('');
 const queryPending = computed(() => query.value !== searchQuery.value);
 let searchTimer = null;
@@ -917,7 +1024,8 @@ watch(
 watch(
   () => JSON.stringify([learning.state.owner, learning.recordContext()]),
   () => {
-    query.value = '';
+    directoryQuery.value = '';
+    paletteQuery.value = '';
   },
   { flush: 'sync' }
 );
@@ -948,13 +1056,11 @@ function updateDockMetrics(event) {
       ? { windowHeight: window.innerHeight, windowWidth: window.innerWidth }
       : event?.size || uni.getWindowInfo?.();
   if (info?.windowHeight) viewportHeight.value = info.windowHeight;
-  if (info?.windowWidth) {
-    const couldRestoreDirectory = canRestoreDirectory.value;
-    viewportWidth.value = info.windowWidth;
-    if (couldRestoreDirectory !== canRestoreDirectory.value && !searchOnOpen.value)
-      menuOpen.value = canRestoreDirectory.value && !readSidebar().collapsed;
-  }
+  if (info?.windowWidth) viewportWidth.value = info.windowWidth;
 }
+watch(canRestoreDirectory, (canRestore) => {
+  if (!searchOnOpen.value) menuOpen.value = canRestore && sidebarExpanded.value;
+});
 let releaseViewport = () => undefined;
 
 const platformInsets = ref({});
@@ -997,29 +1103,33 @@ watch(menuOpen, async (open) => {
     menuExitTimer = setTimeout(
       () => {
         menuLeaving.value = false;
+        paletteLeaving.value = false;
       },
-      reducedMotion.value ? 0 : searchOnOpen.value ? 180 : 160
+      reducedMotion.value ? 0 : paletteLeaving.value ? 180 : desktopShell.value ? 220 : 240
     );
     return;
   }
-  // #ifdef H5
-  const focused = typeof document !== 'undefined' ? document.activeElement : null;
-  previousDirectoryFocus = focused?.matches?.('button, uni-button, input, textarea, [role="button"]') ? focused : null;
-  // #endif
+  if (!directoryModal.value) return;
   await nextTick();
   // #ifdef H5
   if (menuOpen.value) (searchInput.value?.$el || searchInput.value)?.querySelector?.('input')?.focus?.();
   // #endif
 });
-async function closeMenu() {
+async function closeMenu(restoreFocus = true) {
   directoryOptions.value = false;
   const wasSearch = searchOnOpen.value;
-  menuOpen.value = wasSearch && canRestoreDirectory.value && !readSidebar().collapsed;
+  const wasModal = directoryModal.value;
+  if (!wasSearch && desktopShell.value) sidebarExpanded.value = false;
+  const restoreDirectory = wasSearch && canRestoreDirectory.value && sidebarExpanded.value;
+  paletteLeaving.value = wasSearch && !restoreDirectory;
+  menuOpen.value = restoreDirectory;
   searchOnOpen.value = false;
   if (!wasSearch) persistSidebar();
   await nextTick();
   // #ifdef H5
-  (previousDirectoryFocus?.isConnected ? previousDirectoryFocus : menuButton.value?.$el || menuButton.value)?.focus?.();
+  const fallback = desktopShell.value ? sidebarToggle.value : menuButton.value;
+  const target = wasModal && previousDirectoryFocus?.isConnected ? previousDirectoryFocus : fallback?.$el || fallback;
+  if (restoreFocus) target?.focus?.();
   // #endif
 }
 function dismissDirectory() {
@@ -1053,7 +1163,7 @@ function escapeMenu(event) {
     event.key.toLowerCase() === 'b' &&
     !event.shiftKey &&
     !event.altKey &&
-    props.active === 'learning' &&
+    (desktopShell.value || props.active === 'learning') &&
     !nativeSettings
   ) {
     event.preventDefault();
@@ -1082,7 +1192,9 @@ function escapeMenu(event) {
       const index = rows.indexOf(event.target);
       if (event.key !== 'Enter') {
         event.preventDefault();
-        rows[Math.max(0, Math.min(rows.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)))]?.focus();
+        const direction = event.key === 'ArrowDown' ? 1 : -1;
+        const nextIndex = index < 0 ? (direction > 0 ? 0 : rows.length - 1) : (index + direction + rows.length) % rows.length;
+        rows[nextIndex]?.focus();
       } else if (event.target?.tagName === 'INPUT') {
         event.preventDefault();
         rows[0].click();
@@ -1170,10 +1282,14 @@ function escapeGeneration(event) {
     event.preventDefault();
   }
 }
-function openView(view) {
+function openView(view, trigger) {
   directoryOptions.value = false;
   const route = getCurrentRoute();
   if (view === 'search') {
+    if (!searchOnOpen.value) {
+      rememberDirectoryFocus(trigger);
+      paletteQuery.value = '';
+    }
     searchOnOpen.value = true;
     menuOpen.value = true;
     nextTick(() => {
@@ -1192,7 +1308,7 @@ function openView(view) {
     else safeNavigateTo('/pages/profile/index');
     return;
   }
-  if (directoryModal.value) menuOpen.value = false;
+  if (menuOpen.value && directoryModal.value) void closeMenu();
   if (view === 'learning') props.dismissOverlay?.();
   const target =
     SHELL_ROUTES[view] ||
@@ -1207,7 +1323,7 @@ function openView(view) {
 function newSession() {
   if (learning.busy) return;
   learning.selectedConversationId = null;
-  if (directoryModal.value) menuOpen.value = false;
+  if (menuOpen.value && directoryModal.value) void closeMenu();
   emit('new');
   if (getCurrentRoute() !== 'pages/learning/index') safeNavigateTo('/pages/learning/index');
 }
@@ -1216,14 +1332,14 @@ function resume(id) {
   // The data and connection panels stand in for the conversation, so picking one has to bring it back.
   props.dismissOverlay?.();
   learning.locateConversation(id);
-  if (directoryModal.value) menuOpen.value = false;
+  if (menuOpen.value && directoryModal.value) void closeMenu();
   if (getCurrentRoute() !== 'pages/learning/index') safeNavigateTo('/pages/learning/index');
 }
 function openRecord(id, context) {
   try {
     learning.openRecord(id, context);
     error.value = '';
-    if (directoryModal.value) menuOpen.value = false;
+    if (menuOpen.value && directoryModal.value) void closeMenu();
     if (getCurrentRoute() !== 'pages/learning/index') safeNavigateTo('/pages/learning/index');
   } catch (failure) {
     error.value = publicError(failure);
@@ -1231,7 +1347,7 @@ function openRecord(id, context) {
 }
 function locate(id, day, groupId = null) {
   learning.locateConversation(id, day, groupId);
-  if (directoryModal.value) menuOpen.value = false;
+  if (menuOpen.value && directoryModal.value) void closeMenu();
   if (getCurrentRoute() !== 'pages/learning/index') safeNavigateTo('/pages/learning/index');
 }
 function outsideDirectory(event) {
@@ -1239,11 +1355,12 @@ function outsideDirectory(event) {
   if (directoryOptions.value && !event.target?.closest?.('.directory-options-menu, .sidebar-options'))
     directoryOptions.value = false;
   if (!menuOpen.value || directoryModal.value || panelPinned.value) return;
-  if (!event.target?.closest?.('.space-sidebar, .directory-pill')) closeMenu();
+  if (!event.target?.closest?.('.space-sidebar, .muse-rail, .workspace-account, .directory-pill')) closeMenu(false);
 }
 onMounted(() => {
   updateDockMetrics();
   uni.$on('shellNavigationChanged', applyNavigation);
+  uni.$on('shellSidebarChanged', applySidebarPreferences);
   syncLogin();
   releaseIdentity = storageService.onIdentityChange(syncLogin);
   if (typeof uni.onWindowResize === 'function') {
@@ -1282,6 +1399,7 @@ onMounted(() => {
 });
 onUnmounted(() => {
   uni.$off('shellNavigationChanged', applyNavigation);
+  uni.$off('shellSidebarChanged', applySidebarPreferences);
   releaseIdentity();
   releaseViewport();
   releasePanelResize();

@@ -68,19 +68,19 @@ it('a corrupt startup cache leaves bootstrap navigation usable', () => {
   uni.setStorageSync(NAVIGATION_KEY, '{broken');
   expect(shellNavigation().snapshot()).toEqual(parseShellNavigation(DEFAULT_NAVIGATION));
 });
-it('original Muse device layout defaults to 240/open, preserves saved widths and clamps 180–420', () => {
-  expect(readSidebar()).toEqual({ version: 1, width: 240, collapsed: false });
+it('opens the selected 300 px layout and normalizes legacy widths without losing preferences', () => {
+  expect(readSidebar()).toEqual({ version: 1, width: 300, collapsed: false });
   uni.setStorageSync(SIDEBAR_KEY, { version: 1, width: 217, collapsed: false });
-  expect(readSidebar().width).toBe(217);
-  expect(clampSidebarWidth(90)).toBe(180);
-  expect(clampSidebarWidth(999)).toBe(420);
-  expect(saveSidebar({ version: 1, width: 180, collapsed: true })).toBe(true);
-  expect(readSidebar()).toEqual({ version: 1, width: 180, collapsed: true });
-  expect(saveSidebar({ version: 1, width: 420, collapsed: false })).toBe(true);
-  expect(readSidebar().width).toBe(420);
+  expect(readSidebar().width).toBe(224);
+  expect(clampSidebarWidth(90)).toBe(224);
+  expect(clampSidebarWidth(999)).toBe(384);
+  expect(saveSidebar({ version: 1, width: 272, collapsed: true, historyExpanded: false })).toBe(true);
+  expect(readSidebar()).toEqual({ version: 1, width: 272, collapsed: true, historyExpanded: false });
+  uni.setStorageSync(SIDEBAR_KEY, { version: 1, width: 420, collapsed: false });
+  expect(readSidebar().width).toBe(384);
   expect(saveSidebar({ version: 1, width: NaN, collapsed: false })).toBe(false);
   uni.setStorageSync(SIDEBAR_KEY, { version: 8, width: 999 });
-  expect(readSidebar().width).toBe(240);
+  expect(readSidebar().width).toBe(300);
 });
 it('restores only existing conversation identities, including an explicitly empty workspace', () => {
   const state = { conversations: [{ id: 'first' }, { id: 'latest' }] };
