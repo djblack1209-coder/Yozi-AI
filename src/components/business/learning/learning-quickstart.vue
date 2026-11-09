@@ -36,12 +36,12 @@
               <view class="quickstart-sheet quickstart-back first" />
             </template>
             <view v-if="active.id === 'review'" class="quickstart-sheet quickstart-index">
-              <BaseIcon name="book-open" size="18px" />
+              <BaseIcon name="book-open" size="18px" color="#11243d" />
               <view v-for="line in 3" :key="line" class="quickstart-rule" />
             </view>
             <view class="quickstart-sheet quickstart-front">
               <view class="quickstart-sheet-title">
-                <BaseIcon :name="active.icon" size="17px" />
+                <BaseIcon :name="active.icon" size="17px" color="#11243d" />
                 <text>{{ t(`quickstart.${active.id}`) }}</text>
               </view>
               <view v-for="label in active.labels" :key="label" class="quickstart-art-row">
