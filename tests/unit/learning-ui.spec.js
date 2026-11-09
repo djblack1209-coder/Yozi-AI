@@ -2855,6 +2855,22 @@ describe('学习空间的实际入口与目录', () => {
     expect(wrapper.findComponent({ name: 'CustomTabbar' }).exists()).toBe(false);
     wrapper.unmount();
   });
+  it('启动页可进入欢迎页，无需创建学习记录仓库', async () => {
+    vi.useFakeTimers();
+    const stores = [];
+    const pinia = createPinia().use(({ store }) => {
+      stores.push(store.$id);
+    });
+    const wrapper = mount(SplashPage, { global: { plugins: [pinia], stubs: { ...stubs, image: true } } });
+    try {
+      await vi.advanceTimersByTimeAsync(1800);
+      expect(uni.redirectTo).toHaveBeenCalledWith(expect.objectContaining({ url: '/pages/login/onboarding' }));
+      expect(stores).not.toContain('conversation-learning');
+    } finally {
+      wrapper.unmount();
+      vi.useRealTimers();
+    }
+  });
   it('启动入口卸载后收回返回核验，迟到回执不重新跳转', async () => {
     vi.useFakeTimers();
     storageService.save('onboarding_completed', true);

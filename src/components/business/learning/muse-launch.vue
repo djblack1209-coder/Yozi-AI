@@ -18,17 +18,18 @@ const launchedScopes = new WeakSet();
 
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import { getActivePinia } from 'pinia';
 import AnimatedAvatar from '@/components/base/animated-avatar/animated-avatar.vue';
 import { bindBusinessMotion } from '@/design/business-motion.js';
 import { t } from '@/i18n/index.js';
 
 const props = defineProps({
-  scope: { type: Object, required: true },
   ready: { type: Boolean, default: false }
 });
 const emit = defineEmits(['complete']);
-const visible = ref(!launchedScopes.has(props.scope));
-if (visible.value) launchedScopes.add(props.scope);
+const scope = getActivePinia();
+const visible = ref(!launchedScopes.has(scope));
+if (visible.value) launchedScopes.add(scope);
 const leaving = ref(false);
 const reduced = ref(true);
 let mounted = false;
