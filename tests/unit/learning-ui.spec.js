@@ -2698,6 +2698,23 @@ describe('学习空间的实际入口与目录', () => {
       vi.useRealTimers();
     }
   });
+  it('Android 欢迎页重开学习页页面栈，失败时沿用原导航', async () => {
+    vi.stubGlobal('uni', { ...uni, getDeviceInfo: () => ({ platform: 'android' }) });
+    const wrapper = mount(OnboardingPage, { global: { stubs } });
+    try {
+      await wrapper.find('.base-button--primary').trigger('tap');
+      expect(storageService.get('onboarding_completed')).toBe(true);
+      expect(uni.reLaunch).toHaveBeenCalledOnce();
+      const navigation = uni.reLaunch.mock.calls[0][0];
+      expect(navigation.url).toBe('/pages/learning/index');
+      expect(uni.redirectTo).not.toHaveBeenCalled();
+      navigation.fail({ errMsg: 'synthetic reLaunch failure' });
+      expect(uni.redirectTo).toHaveBeenCalledWith(expect.objectContaining({ url: '/pages/learning/index' }));
+    } finally {
+      wrapper.unmount();
+      vi.unstubAllGlobals();
+    }
+  });
   it('欢迎页只需一个开始动作且不再写入考研预设', async () => {
     const wrapper = mount(OnboardingPage, { global: { stubs } });
     try {
