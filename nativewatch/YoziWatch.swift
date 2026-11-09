@@ -60,35 +60,87 @@ private final class PhoneGlance: NSObject, WCSessionDelegate {
 
 private struct TodayView: View {
     let glance: Glance
+    private let ice = Color(red: 0.68, green: 0.86, blue: 0.98)
+    private let lilac = Color(red: 0.82, green: 0.76, blue: 0.99)
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("今日学习").font(.headline).accessibilityAddTraits(.isHeader)
-                if glance.total > 0 {
-                    ProgressView(value: Double(glance.done), total: Double(glance.total)) {
-                        Text("已完成 \(glance.done)／\(glance.total)")
-                    }
-                    .tint(Color(red: 0.68, green: 0.86, blue: 0.98))
-                }
-                Label("待复习 \(glance.due)", systemImage: "books.vertical")
+            VStack(alignment: .leading, spacing: 7) {
+                progressCard
+                detail("待复习", value: "\(glance.due) 项", symbol: "books.vertical", tint: ice)
                 if let date = glance.reminder, date > .now {
                     let time = date.formatted(
                         .dateTime.month().day().hour().minute().locale(Locale(identifier: "zh_CN"))
                     )
-                    Label {
-                        Text(time)
-                    } icon: {
-                        Image(systemName: "bell")
-                    }
-                    .accessibilityLabel(reminderLabel)
-                    .accessibilityValue(time)
-                    Text(reminderLabel).font(.caption2).foregroundStyle(.secondary)
+                    detail(reminderLabel, value: time, symbol: "bell", tint: lilac)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 5)
         }
+    }
+
+    private var progressCard: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("今日学习")
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+            if glance.total > 0 {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(glance.done)")
+                        .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                        .foregroundStyle(ice)
+                    Text("/ \(glance.total) 项")
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(.white.opacity(0.82))
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+                .monospacedDigit()
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("已完成 \(glance.done) 项，共 \(glance.total) 项")
+                ProgressView(value: Double(glance.done), total: Double(glance.total))
+                    .tint(ice)
+                    .accessibilityHidden(true)
+            } else {
+                Text("暂无今日计划")
+                    .font(.footnote)
+                    .foregroundStyle(ice)
+            }
+        }
+        .padding(11)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(alignment: .trailing) {
+            Image(systemName: "book.pages")
+                .font(.system(size: 66, weight: .light))
+                .rotationEffect(.degrees(-18))
+                .foregroundStyle(ice.opacity(0.16))
+                .offset(x: 10, y: -2)
+                .accessibilityHidden(true)
+        }
+        .background(Color(red: 0.10, green: 0.21, blue: 0.32))
+        .clipShape(.rect(cornerRadius: 18))
+    }
+
+    private func detail(_ label: String, value: String, symbol: String, tint: Color) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(tint)
+                .frame(width: 28, height: 28)
+                .background(tint.opacity(0.15), in: .circle)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label).font(.caption2).foregroundStyle(.white.opacity(0.78))
+                Text(value).font(.footnote.weight(.semibold)).monospacedDigit()
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(tint.opacity(0.12), in: .rect(cornerRadius: 14))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(value)
     }
 
     private var reminderLabel: String {
