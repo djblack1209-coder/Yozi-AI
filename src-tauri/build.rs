@@ -46,6 +46,7 @@ fn main() {
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(
         tauri_build::AppManifest::new().commands(&[
             "choose_learning_save",
+            "share_learning_poster",
             "write_learning_selection",
             "discard_learning_selection",
             "read_learning_backup",

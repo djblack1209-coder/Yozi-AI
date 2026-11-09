@@ -9,15 +9,30 @@
     @cancel="close"
   >
     <view class="study-share">
-      <image v-if="image" class="study-share-preview" :src="image" mode="widthFix" alt="学习数据分享图片预览" />
+      <view v-if="image" class="study-share-picture">
+        <image class="study-share-preview" :src="image" mode="widthFix" alt="学习数据分享图片预览" />
+        <StudyShareFlight v-if="giftFlight" :image="image" @finished="giftFlight = false" />
+      </view>
       <view v-else class="study-share-loading" role="status">{{ error || '正在生成…' }}</view>
       <BaseButton v-if="error" variant="quiet" @tap="render">重试</BaseButton>
       <BaseCheckbox :model-value="observations" :disabled="busy" @update:model-value="observations = $event"
         >包含 AI 评估</BaseCheckbox
       >
       <view class="study-share-actions">
-        <BaseButton v-if="canShare" variant="quiet" :disabled="busy || !image" @tap="share">分享</BaseButton>
-        <BaseButton variant="primary" icon="download" :disabled="busy || !image" :loading="busy" @tap="save"
+        <BaseButton
+          v-if="canShare"
+          variant="quiet"
+          :disabled="action === 'save' || !image"
+          :aria-busy="action === 'share'"
+          @tap="share"
+          >分享</BaseButton
+        >
+        <BaseButton
+          variant="primary"
+          icon="download"
+          :disabled="busy || !image"
+          :loading="action === 'save'"
+          @tap="save"
           >保存图片</BaseButton
         >
       </view>
@@ -29,17 +44,19 @@
   <!-- #endif -->
 </template>
 <script setup>
-import { computed, getCurrentInstance, nextTick, onUnmounted, ref, watch } from 'vue';
+import { computed, getCurrentInstance, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import CustomModal from '@/components/common/CustomModal.vue';
 import BaseButton from '@/components/base/base-button/base-button.vue';
 import BaseCheckbox from '@/components/base/base-checkbox/base-checkbox.vue';
+import StudyShareFlight from './study-share-flight.vue';
 import { BRAND } from '@/config/brand.js';
+import { bindBusinessMotion } from '@/design/business-motion.js';
 import { useThemeStore } from '@/stores/modules/theme.js';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { scopeWorkspaceState } from '@/services/learning/workspace-context.js';
 import { captureSession, checkSession } from '@/services/auth-storage.js';
 import { isDesktopRuntime } from '@/services/desktop/runtime.js';
-import { saveDesktopLearningFile } from '@/services/desktop/learning-files.js';
+import { saveDesktopLearningFile, shareDesktopLearningPoster } from '@/services/desktop/learning-files.js';
 import { POSTER_SIZE, paintStudyPoster, studyPosterData } from '@/services/learning/study-poster.js';
 const props = defineProps({
   visible: Boolean,
@@ -53,12 +70,16 @@ const image = ref(''),
   observations = ref(false),
   error = ref(''),
   message = ref(''),
-  busy = ref(false);
+  action = ref(''),
+  giftFlight = ref(false);
+const busy = computed(() => Boolean(action.value));
 const owner = getCurrentInstance()?.proxy,
   canvasId = `study-share-${getCurrentInstance()?.uid || 0}`;
 let serial = 0,
   alive = true,
   rendered = null;
+let reducedMotion = false;
+let releaseMotion;
 const downloads = new Map();
 function releaseDownloads() {
   for (const [url, timer] of downloads) {
@@ -70,15 +91,16 @@ function releaseDownloads() {
 const context = () => JSON.stringify([learning.recordContext(), learning.state.revision, props.day, props.category]);
 const current = (saved) =>
   alive && props.visible && checkSession(saved.session) === 'current' && saved.context === context();
+const desktopShare = () => isDesktopRuntime() && navigator.platform.startsWith('Mac');
 const canShare = computed(() => {
   // #ifdef H5
+  if (!image.value.startsWith('data:image/png;base64,')) return false;
+  if (isDesktopRuntime()) return desktopShare();
   if (!(
-    !isDesktopRuntime() &&
     typeof navigator !== 'undefined' &&
     typeof navigator.share === 'function' &&
     typeof navigator.canShare === 'function' &&
-    typeof File === 'function' &&
-    image.value.startsWith('data:image/png;base64,')
+    typeof File === 'function'
   ))
     return false;
   try {
@@ -87,7 +109,11 @@ const canShare = computed(() => {
     return false;
   }
   // #endif
-  // #ifndef H5
+  // #ifdef APP-PLUS
+  // iOS can hand off the rendered file from private storage and reports the completion.
+  return Boolean(image.value && typeof uni.shareWithSystem === 'function' && uni.getDeviceInfo?.()?.platform === 'ios');
+  // #endif
+  // #ifndef H5 || APP-PLUS
   return false;
   // #endif
 });
@@ -97,10 +123,17 @@ function imageFile(source) {
   return new File([Uint8Array.from(binary, (value) => value.charCodeAt(0))], 'Yozi-AI.png', { type: 'image/png' });
   // #endif
 }
+function desktopPoster(source) {
+  return JSON.stringify({
+    format: 'yozi-learning-poster-v1',
+    png: Array.from(atob(source.split(',')[1]), (value) => value.charCodeAt(0))
+  });
+}
 function close() {
   ++serial;
   image.value = '';
   rendered = null;
+  giftFlight.value = false;
   emit('close');
 }
 async function render() {
@@ -108,6 +141,7 @@ async function render() {
   image.value = '';
   error.value = '';
   message.value = '';
+  giftFlight.value = false;
   rendered = null;
   if (!props.visible) return;
   const saved = { session: captureSession(), context: context() };
@@ -180,18 +214,17 @@ async function save() {
   if (busy.value || !image.value || !rendered) return;
   const saved = rendered,
     source = image.value;
-  busy.value = true;
+  action.value = 'save';
   message.value = '';
+  giftFlight.value = false;
   try {
     assertCurrent(saved);
     // #ifdef H5
     if (isDesktopRuntime()) {
-      const bytes = Array.from(atob(source.split(',')[1]), (value) => value.charCodeAt(0));
-      const result = await saveDesktopLearningFile(
-        'poster',
-        JSON.stringify({ format: 'yozi-learning-poster-v1', png: bytes }),
-        { session: saved.session, isCurrent: () => current(saved) }
-      );
+      const result = await saveDesktopLearningFile('poster', desktopPoster(source), {
+        session: saved.session,
+        isCurrent: () => current(saved)
+      });
       if (result.saved && current(saved)) message.value = '图片已保存';
     } else {
       const bytes = Uint8Array.from(atob(source.split(',')[1]), (value) => value.charCodeAt(0));
@@ -222,24 +255,44 @@ async function save() {
   } catch (failure) {
     if (current(saved)) message.value = failure.message || '图片未保存，请检查相册权限后重试';
   } finally {
-    busy.value = false;
+    action.value = '';
   }
 }
 async function share() {
-  if (busy.value || !image.value || !rendered) return;
+  if (busy.value || !canShare.value || !rendered) return;
   const saved = rendered;
+  const source = image.value;
+  const stillShowing = () => rendered === saved && current(saved);
+  action.value = 'share';
+  message.value = '';
+  giftFlight.value = false;
   try {
     assertCurrent(saved);
     // #ifdef H5
-    const file = imageFile(image.value);
-    if (!navigator.canShare({ files: [file] })) {
-      message.value = '请先保存图片';
-      return;
+    if (desktopShare()) {
+      const shared = await shareDesktopLearningPoster(desktopPoster(source), {
+        session: saved.session,
+        isCurrent: stillShowing
+      });
+      if (!shared) return;
+    } else {
+      await navigator.share({ files: [imageFile(source)] });
     }
-    await navigator.share({ files: [file] });
     // #endif
+    // #ifdef APP-PLUS
+    await new Promise((resolve, reject) =>
+      uni.shareWithSystem({ type: 'image', imageUrl: source, success: resolve, fail: reject })
+    );
+    // #endif
+    if (stillShowing()) {
+      message.value = '已交给系统分享';
+      giftFlight.value = !reducedMotion;
+    }
   } catch (failure) {
-    if (failure.name !== 'AbortError' && current(saved)) message.value = '请先保存图片';
+    const cancelled = failure?.name === 'AbortError' || /\bcancel(?:led|ed)?\b/i.test(failure?.errMsg || '');
+    if (!cancelled && stillShowing()) message.value = '分享未完成，请先保存图片';
+  } finally {
+    action.value = '';
   }
 }
 watch(
@@ -249,13 +302,23 @@ watch(
       ++serial;
       image.value = '';
       rendered = null;
+      giftFlight.value = false;
       observations.value = false;
       return;
     }
     await render();
   }
 );
+onMounted(() => {
+  // #ifdef H5
+  releaseMotion = bindBusinessMotion((reduced) => {
+    reducedMotion = reduced;
+    if (reduced) giftFlight.value = false;
+  });
+  // #endif
+});
 onUnmounted(() => {
+  releaseMotion?.();
   releaseDownloads();
   alive = false;
   ++serial;
@@ -270,8 +333,13 @@ onUnmounted(() => {
   align-items: center;
   gap: 16px;
 }
-.study-share .study-share-preview {
+.study-share-picture {
+  position: relative;
   width: min(100%, 300px);
+}
+.study-share .study-share-preview {
+  display: block;
+  width: 100%;
   border-radius: 12px;
   opacity: 1;
   filter: none;

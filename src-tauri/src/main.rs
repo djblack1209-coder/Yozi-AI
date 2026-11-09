@@ -21,6 +21,8 @@ mod voice;
 use voice::{voice_capability, voice_start, voice_stop, voice_cancel};
 mod workspace_windows;
 use workspace_windows::*;
+#[cfg(target_os = "macos")]
+mod poster_share;
 use notifications::{
     begin_learning_notifications, learning_notification_permission, replace_learning_notifications,
     take_learning_notification_actions, test_learning_notification, open_learning_notification_settings,
@@ -313,6 +315,22 @@ fn poster_bytes(value: &Value) -> Result<Vec<u8>, String> {
     let height = u32::from_be_bytes(bytes[20..24].try_into().unwrap());
     if width != 1080 || height != 1440 || !bytes.ends_with(&[0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130]) { return Err("图片尺寸或结尾无效".into()); }
     Ok(bytes)
+}
+#[tauri::command]
+async fn share_learning_poster(window: tauri::WebviewWindow, content: String) -> Result<bool, String> {
+    #[cfg(target_os = "macos")]
+    {
+        if window.label() != "main" || content.len() as u64 > MAX_BYTES {
+            return Err("无法分享学习图片".into());
+        }
+        let value = serde_json::from_str(&content).map_err(|_| "图片数据无效")?;
+        poster_share::share(window, poster_bytes(&value)?).await
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (window, content);
+        Err("此桌面系统请先保存图片".into())
+    }
 }
 fn take_selection(files: &LearningFiles, id: &str, kind: &str) -> Result<Selection, String> {
     let mut entry = files.selection.lock().map_err(|_| "文件选择状态不可用")?;
@@ -672,6 +690,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             choose_learning_save,
+            share_learning_poster,
             write_learning_selection,
             discard_learning_selection,
             read_learning_backup,

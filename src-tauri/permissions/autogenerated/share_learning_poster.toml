@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-share-learning-poster"
+description = "Enables the share_learning_poster command without any pre-configured scope."
+commands.allow = ["share_learning_poster"]
+
+[[permission]]
+identifier = "deny-share-learning-poster"
+description = "Denies the share_learning_poster command without any pre-configured scope."
+commands.deny = ["share_learning_poster"]

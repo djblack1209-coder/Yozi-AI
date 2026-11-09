@@ -38,6 +38,13 @@ export async function readDesktopLearningBackup({ isCurrent = () => true, sessio
   return content;
 }
 
+export async function shareDesktopLearningPoster(content, { isCurrent = () => true, session = captureSession() } = {}) {
+  assertCurrent(isCurrent, session);
+  const shared = await invoke('share_learning_poster', { content });
+  assertCurrent(isCurrent, session);
+  return shared === true;
+}
+
 const MATERIAL_MAX_BYTES = 10 * 1024 * 1024;
 function materialMetadata(file) {
   if (

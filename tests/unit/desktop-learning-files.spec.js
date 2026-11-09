@@ -6,6 +6,7 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke }));
 import { isDesktopRuntime } from '../../src/services/desktop/runtime.js';
 import {
   saveDesktopLearningFile,
+  shareDesktopLearningPoster,
   readDesktopLearningBackup,
   chooseDesktopMaterialFile,
   readDesktopMaterialFile
@@ -47,6 +48,19 @@ describe('desktop material consent and lifecycle', () => {
     invoke.mockResolvedValueOnce(null);
     expect(await chooseDesktopMaterialFile()).toBeNull();
     expect(invoke).toHaveBeenCalledTimes(1);
+  });
+  it('keeps cancellation and a late share receipt distinct from a completed current handoff', async () => {
+    const content = 'validated PNG fixture';
+    invoke.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    await expect(shareDesktopLearningPoster(content)).resolves.toBe(false);
+    await expect(shareDesktopLearningPoster(content)).resolves.toBe(true);
+    let current = true;
+    invoke.mockImplementationOnce(async () => {
+      current = false;
+      return true;
+    });
+    await expect(shareDesktopLearningPoster(content, { isCurrent: () => current })).rejects.toThrow('账户');
+    expect(invoke.mock.calls).toEqual(Array.from({ length: 3 }, () => ['share_learning_poster', { content }]));
   });
   it('releases a late selection after an account or page change', async () => {
     let current = true;

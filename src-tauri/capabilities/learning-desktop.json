@@ -11,6 +11,7 @@
     "allow-voice-stop",
     "allow-voice-cancel",
     "allow-choose-learning-save",
+    "allow-share-learning-poster",
     "allow-write-learning-selection",
     "allow-discard-learning-selection",
     "allow-read-learning-backup",
