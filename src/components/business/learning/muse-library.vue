@@ -101,9 +101,14 @@
     </view>
     <view class="library-main">
       <view class="library-head"
-        ><text class="library-title" role="heading" aria-level="1" aria-live="polite">{{
-          selecting ? `已选择 ${selected.length} 项` : sectionTitle
-        }}</text
+        ><text
+          ref="libraryTitle"
+          class="library-title"
+          role="heading"
+          aria-level="1"
+          aria-live="polite"
+          tabindex="-1"
+          >{{ selecting ? `已选择 ${selected.length} 项` : sectionTitle }}</text
         ><view v-if="selecting" class="library-head-actions"
           ><BaseButton
             class="lib-action"
@@ -139,6 +144,7 @@
             :aria-expanded="filterOpen"
             @tap="filterOpen = !filterOpen"
           /><BaseButton
+            v-if="items.length || emptyFiltered"
             class="lib-action lib-action-primary"
             variant="primary"
             icon="plus"
@@ -252,10 +258,21 @@
                 />
               </view> </TransitionGroup></view
         ></template>
-        <view v-if="!items.length" class="library-empty" role="status"
-          ><view class="library-empty-mark"><BaseIcon :name="sectionIcon" size="26px" /></view
-          ><text>{{ emptyLabel }}</text></view
-        >
+        <view v-if="!items.length" class="library-empty">
+          <view class="library-empty-stack" aria-hidden="true">
+            <view class="library-empty-card"><BaseIcon name="file-text" size="26px" /></view>
+            <view class="library-empty-card library-empty-card-main"><BaseIcon :name="sectionIcon" size="34px" /></view>
+            <view class="library-empty-card"><BaseIcon name="book-open" size="26px" /></view>
+          </view>
+          <text role="status">{{ emptyLabel }}</text>
+          <BaseButton
+            v-if="!selecting"
+            :variant="emptyFiltered ? 'secondary' : 'primary'"
+            :disabled="!emptyFiltered && learning.busy"
+            @tap="emptyFiltered ? clearEmptyFilters() : createArtifact()"
+            >{{ emptyFiltered ? '清除筛选' : '开始学习' }}</BaseButton
+          >
+        </view>
         <view v-if="selectedMaterial" class="material-reader"
           ><view class="reader-head"
             ><text class="artifact-title">{{ selectedMaterial.name }}</text
@@ -294,6 +311,7 @@ function openSavedView(id) {
 }
 const learning = useConversationLearningStore();
 const root = ref(null),
+  libraryTitle = ref(null),
   filterButton = ref(null),
   query = ref(''),
   section = ref('all'),
@@ -446,8 +464,9 @@ watch(() => [learning.recordContext(), ...library.value.items.filter((i) => i.so
   immediate: true
 });
 const sectionIcon = computed(() => mobileSections.value.find((s) => s.id === section.value)?.icon || 'folder');
+const emptyFiltered = computed(() => Boolean(query.value.trim()) || kind.value !== 'all');
 const emptyLabel = computed(() =>
-  query.value || kind.value !== 'all'
+  emptyFiltered.value
     ? '没有匹配的资料'
     : section.value === 'files'
       ? '还没有原始资料'
@@ -455,6 +474,12 @@ const emptyLabel = computed(() =>
         ? '该学科暂无记录'
         : '还没有学习内容'
 );
+async function clearEmptyFilters() {
+  query.value = '';
+  kind.value = 'all';
+  await nextTick();
+  (libraryTitle.value?.$el || libraryTitle.value)?.focus?.();
+}
 watch(mobileSections, (value) => {
   if (section.value !== 'files' && !value.some((item) => item.id === section.value)) section.value = 'all';
 });
@@ -1280,6 +1305,19 @@ onBeforeUnmount(() => {
   .artifact-emblem {
     transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
   }
+  .artifact-print {
+    transition:
+      transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+      filter 300ms ease-out,
+      opacity 300ms ease-out;
+  }
+  .library-grid:has(.artifact-entry:is(.is-tilted, :focus-within))
+    .artifact-entry:not(.is-tilted, :focus-within)
+    .artifact-print {
+    filter: blur(2px);
+    opacity: 0.72;
+    transform: scale(0.98);
+  }
   .artifact-entry.is-tilted {
     z-index: 1;
   }
@@ -1339,29 +1377,72 @@ onBeforeUnmount(() => {
   color: inherit !important;
 }
 .library-empty > text {
-  margin: 13px 0;
   line-height: 18px;
 }
-.library-empty-mark {
-  width: 56px;
-  height: 56px;
-  border-radius: 18px;
-  background: var(--muse-rich-surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink-3);
-}
 .library-empty {
-  min-height: 220px;
+  min-height: 244px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
+  padding: 20px 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--muse-rich-surface);
   color: var(--ink-2);
   font-size: 14px;
   font-weight: 600;
+}
+.library-empty-stack {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 220px;
+  max-width: 100%;
+  height: 108px;
+}
+.library-empty-card {
+  --stack-x: -52px;
+  --stack-y: 10px;
+  --stack-angle: -11deg;
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 80px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--muse-popover);
+  box-shadow: var(--lift-1);
+  color: var(--ink-3);
+  transform: translate(var(--stack-x), var(--stack-y)) rotate(var(--stack-angle));
+  animation: library-stack-in 540ms cubic-bezier(0.22, 1, 0.36, 1) 110ms both;
+}
+.library-empty-card:last-child {
+  --stack-x: 52px;
+  --stack-angle: 11deg;
+}
+.library-empty-card-main {
+  --stack-x: 0px;
+  --stack-y: 0px;
+  --stack-angle: 0deg;
+  z-index: 1;
+  width: 104px;
+  height: 102px;
+  color: var(--ink);
+  animation-delay: 0ms;
+}
+@keyframes library-stack-in {
+  from {
+    opacity: 0;
+    transform: translate(var(--stack-x), calc(var(--stack-y) + 20px));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .library-empty-card {
+    animation: none;
+  }
 }
 .material-reader {
   margin-top: 24px;

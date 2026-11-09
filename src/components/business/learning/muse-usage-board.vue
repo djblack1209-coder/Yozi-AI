@@ -27,10 +27,17 @@
             t('muse.usage.details')
           }}</BaseButton>
         </view>
-        <view class="quota-stats quota-local-stats">
-          <view v-for="metric in localMetrics" :key="metric.label" class="quota-stat">
-            <text class="quota-stat-label">{{ metric.label }}</text
-            ><text class="quota-stat-value">{{ metric.value }}</text>
+        <view class="quota-local-layout">
+          <MuseStudyTrend
+            :key="JSON.stringify([learning.recordContext(), context.id.value, data.submissionDays[0].day])"
+            :recent="data.submissionDays"
+            :prior="data.priorSubmissionDays"
+          />
+          <view class="quota-local-stats">
+            <view v-for="metric in localMetrics" :key="metric.label" class="quota-stat">
+              <text class="quota-stat-label">{{ metric.label }}</text
+              ><text class="quota-stat-value">{{ metric.value }}</text>
+            </view>
           </view>
         </view>
         <view class="quota-stat quota-request-summary">
@@ -46,11 +53,6 @@
           :recent="data.submissionDays"
           :prior="data.priorSubmissionDays"
           :dark="theme.isDark"
-        />
-        <MuseStudyTrend
-          :key="JSON.stringify([learning.recordContext(), context.id.value, data.submissionDays[0].day])"
-          :days="data.submissionDays"
-          :total="data.weekSubmitted"
         />
         <text class="quota-sub">本机记录，不等于供应商账单。提交含练习原答与段落初稿，不含改写和复习自评。</text>
         <view v-if="account.quota" class="quota-platform">
@@ -217,21 +219,34 @@ onMounted(refresh);
   font-size: 16px;
   font-weight: 600;
 }
+.quota-local-layout,
 .quota-local-stats {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: grid;
+  gap: 10px;
+}
+.quota-local-layout {
+  margin-top: 8px;
+  align-items: start;
+}
+.quota-local-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.quota-local-stats .quota-stat {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--muse-popover);
 }
 .quota-stat.quota-request-summary {
-  border-left: 0;
   border-bottom: 1px solid var(--line);
-  padding-left: 0;
-  padding-right: 0;
+  padding: 20px 0 14px;
 }
 .quota-platform {
   padding-bottom: 20px;
 }
-@media (max-width: 600px) {
-  .quota-local-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@container study-usage (min-width: 620px) {
+  .quota-local-layout {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   }
 }
 .muse-usage {
@@ -275,6 +290,7 @@ onMounted(refresh);
   min-height: 100%;
   margin: 0 auto;
   padding: 36px 48px 40px;
+  container: study-usage / inline-size;
 }
 .quota-head {
   display: flex;
@@ -452,19 +468,8 @@ onMounted(refresh);
   font-size: 13px;
   font-weight: 600;
 }
-.quota-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-bottom: 1px solid var(--line);
-}
 .quota-stat {
   min-width: 0;
-  padding: 24px 28px 26px;
-  border-left: 1px solid var(--line);
-}
-.quota-stat:first-child {
-  border-left: 0;
-  padding-left: 0;
 }
 .quota-stat-label,
 .quota-stat-foot {
@@ -553,23 +558,6 @@ onMounted(refresh);
     border-left: 0;
     border-top: 1px solid var(--line);
     padding: 22px 0 0;
-  }
-  .quota-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .quota-local-stats .quota-stat {
-    border-top: 0;
-  }
-  .quota-local-stats .quota-stat:nth-child(n + 3) {
-    border-top: 1px solid var(--line);
-  }
-  .quota-stat {
-    border-left: 0;
-    border-top: 1px solid var(--line);
-    padding: 20px 0 22px;
-  }
-  .quota-stat:first-child {
-    border-top: 0;
   }
   .quota-big {
     font-size: 84px;

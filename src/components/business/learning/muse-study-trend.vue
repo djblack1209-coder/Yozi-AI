@@ -8,16 +8,27 @@
       aria-controls="study-trend-detail"
       @tap="toggle"
     >
-      <text class="study-trend-total">{{ t('muse.studyTrendTotal', { count: total }) }}</text>
+      <text class="study-trend-total">{{ t(totalLabel, { count: total }) }}</text>
       <image class="study-trend-spark" :src="lineSource" mode="scaleToFill" aria-hidden="true" />
       <BaseIcon class="study-trend-chevron" name="chevron-down" size="18px" />
     </BaseButton>
     <view id="study-trend-detail" class="study-trend-detail" :inert="!expanded || undefined" :aria-hidden="!expanded">
       <view class="study-trend-clip">
         <view class="study-trend-body">
+          <view class="study-trend-periods" role="group" :aria-label="t('muse.studyTrendPeriod')">
+            <BaseButton
+              v-for="option in ['recent', 'prior']"
+              :key="option"
+              variant="quiet"
+              :selected="period === option"
+              :aria-pressed="period === option"
+              @tap="selectPeriod(option)"
+              >{{ t(`muse.studyTrendPeriod.${option}`) }}</BaseButton
+            >
+          </view>
           <text class="study-trend-value">{{ selected.count }}</text>
           <text class="study-trend-date">{{ t('muse.beads.day', { date: selected.day, count: selected.count }) }}</text>
-          <image class="study-trend-graph" :src="lineSource" mode="scaleToFill" aria-hidden="true" />
+          <image :key="period" class="study-trend-graph" :src="lineSource" mode="scaleToFill" aria-hidden="true" />
           <!-- #ifdef H5 -->
           <component
             :is="'input'"
@@ -38,7 +49,7 @@
             :value="index"
             :max="days.length - 1"
             :aria-label="t('muse.studyTrendDay')"
-            activeColor="#2681b8"
+            active-color="#2681b8"
             @changing="index = $event.detail.value"
             @change="index = $event.detail.value"
           />
@@ -56,15 +67,21 @@ import BaseIcon from '@/components/base/base-icon/base-icon.vue';
 import { t } from '@/i18n/index.js';
 
 const props = defineProps({
-  days: { type: Array, required: true },
-  total: { type: Number, required: true }
+  recent: { type: Array, required: true },
+  prior: { type: Array, required: true }
 });
 const expanded = ref(false);
-const index = ref(props.days.length - 1);
-const selected = computed(() => props.days[index.value]);
+const period = ref('recent');
+const days = computed(() => (period.value === 'recent' ? props.recent : props.prior));
+const index = ref(props.recent.length - 1);
+const selected = computed(() => days.value[index.value]);
+const total = computed(() => days.value.reduce((sum, day) => sum + day.count, 0));
+const totalLabel = computed(() => (period.value === 'recent' ? 'muse.studyTrendTotal' : 'muse.studyTrendPriorTotal'));
+const maximum = computed(() =>
+  Math.max(1, ...props.recent.map((day) => day.count), ...props.prior.map((day) => day.count))
+);
 const lineSource = computed(() => {
-  const maximum = Math.max(1, ...props.days.map((day) => day.count));
-  const points = props.days.map((day, position) => [4 + position * 48, 73 - (day.count / maximum) * 62]);
+  const points = days.value.map((day, position) => [4 + position * 48, 73 - (day.count / maximum.value) * 62]);
   const line = points.map((point) => point.join(',')).join(' ');
   const [x, y] = points[index.value];
   const marker = expanded.value
@@ -75,7 +92,12 @@ const lineSource = computed(() => {
 });
 function toggle() {
   expanded.value = !expanded.value;
-  if (!expanded.value) index.value = props.days.length - 1;
+  if (!expanded.value) index.value = days.value.length - 1;
+}
+function selectPeriod(value) {
+  if (period.value === value) return;
+  period.value = value;
+  index.value = days.value.length - 1;
 }
 </script>
 
@@ -84,11 +106,12 @@ function toggle() {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: var(--muse-popover);
+  background: linear-gradient(160deg, var(--muse-rich-surface), transparent 70%), var(--muse-popover);
 }
 .study-trend-trigger {
   width: 100%;
-  padding: 10px 14px;
+  min-height: 60px;
+  padding: 10px 16px;
   color: var(--ink);
 }
 .study-trend-total {
@@ -119,7 +142,25 @@ function toggle() {
   overflow: hidden;
 }
 .study-trend-body {
-  padding: 5px 14px 12px;
+  padding: 5px 16px 12px;
+}
+.study-trend-periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.study-trend-periods .base-button {
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.study-trend-periods .base-button[aria-pressed='true'] {
+  background: var(--muse-rich-surface);
+  color: var(--ink);
+  font-weight: 650;
 }
 .study-trend-value {
   display: block;
@@ -137,6 +178,15 @@ function toggle() {
   height: clamp(68px, 12vw, 118px);
   margin-top: 8px;
 }
+.is-open .study-trend-graph {
+  animation: study-trend-chart-in 260ms ease-out both;
+}
+@keyframes study-trend-chart-in {
+  from {
+    opacity: 0.45;
+    transform: translateY(4px);
+  }
+}
 .study-trend-slider {
   width: 100%;
   min-height: 44px;
@@ -148,6 +198,9 @@ function toggle() {
   .study-trend-chevron,
   .study-trend-detail {
     transition: none;
+  }
+  .is-open .study-trend-graph {
+    animation: none;
   }
 }
 </style>
