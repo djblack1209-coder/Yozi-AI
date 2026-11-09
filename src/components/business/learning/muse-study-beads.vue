@@ -5,6 +5,7 @@
       variant="quiet"
       block
       align="start"
+      :label="`${t('muse.beads.title')} · ${periods[0].summary}`"
       aria-haspopup="dialog"
       :aria-expanded="open"
       @tap="show"
@@ -32,6 +33,7 @@
           v-for="(period, index) in periods"
           :key="period.key"
           variant="quiet"
+          :label="period.label"
           :selected="index === current"
           :aria-pressed="index === current"
           @tap="current = index"
