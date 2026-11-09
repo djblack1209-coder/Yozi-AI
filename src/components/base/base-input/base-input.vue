@@ -346,8 +346,9 @@ import { bindNumericDeleteInk } from '../../../design/numeric-delete-ink.js';
 
 export default {
   methods: {
-    attach(enabled, previous, owner) {
-      if (enabled && !previous) bindNumericDeleteInk(owner.$el.querySelector('.base-field__group'));
+    attach(enabled, _previous, owner) {
+      // App Vue supplies the same value in both slots when the observer mounts.
+      if (enabled) bindNumericDeleteInk(owner.$el.querySelector('.base-field__group'));
     }
   }
 };
