@@ -1,5 +1,6 @@
 <template>
   <LearningShell
+    ref="shell"
     active="learning"
     :waiting-for-answer="Boolean(answerTarget)"
     :notice="cancellationNotice"
@@ -811,6 +812,9 @@ const props = defineProps({
   presentation: { type: Object, default: null }
 });
 const emit = defineEmits(['advanced', 'general']);
+const shell = ref(null);
+defineExpose({ dismissDirectory: () => shell.value?.dismissDirectory() ?? false });
+
 const learning = useConversationLearningStore();
 const presentation = props.presentation || useLearningPresentation(() => learning.recordContext());
 const modelFailure = ref(null);

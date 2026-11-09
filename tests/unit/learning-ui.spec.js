@@ -3154,6 +3154,32 @@ describe('学习空间的实际入口与目录', () => {
     expect(document.activeElement).toBe(wrapper.find('.mobile-menu').element);
     wrapper.unmount();
   });
+  it('手机系统返回逐层收起会话目录，保留当前输入草稿', async () => {
+    const width = window.innerWidth;
+    window.innerWidth = 390;
+    const wrapper = mount(LearningPage, { global: { stubs } });
+    try {
+      const back = loadHooks.backCallbacks.at(-1);
+      const composer = () => wrapper.get('.muse-composer textarea');
+      await composer().setValue('尚未发送的草稿');
+      expect(back({ from: 'backbutton' })).toBe(false);
+      await wrapper.get('.mobile-menu').trigger('tap');
+      await wrapper.get('.sidebar-options').trigger('tap');
+      expect(wrapper.find('.directory-options-menu').exists()).toBe(true);
+      expect(back({ from: 'navigateBack' })).toBe(false);
+      expect(back({ from: 'backbutton' })).toBe(true);
+      await flushPromises();
+      expect(wrapper.find('.directory-options-menu').exists()).toBe(false);
+      expect(wrapper.find('.space-sidebar.sidebar-open').exists()).toBe(true);
+      expect(back({ from: 'backbutton' })).toBe(true);
+      await flushPromises();
+      expect(wrapper.find('.space-sidebar.sidebar-open').exists()).toBe(false);
+      expect(composer().element.value).toBe('尚未发送的草稿');
+    } finally {
+      wrapper.unmount();
+      window.innerWidth = width;
+    }
+  });
 });
 
 it('统一学习页显示保存的完整阅读、指定片段和待核对来源，阅读不改原答或帮助', async () => {

@@ -1,6 +1,7 @@
 <template>
   <WritingCoach
     v-if="writingCoachActive"
+    ref="writingCoach"
     :materials-open="showMaterial"
     :connection-label="emptyConnectionLabel"
     :connection-action="emptyConnectionAction"
@@ -11,6 +12,7 @@
   />
   <LearningShell
     v-else
+    ref="learningShell"
     active="learning"
     :dismiss-overlay="dismissOverlay"
     :notice="cancellationNotice"
@@ -2693,10 +2695,17 @@ watch(
   () => dialogs.invalidate(),
   { flush: 'sync' }
 );
-onBackPress(() => {
-  if (!dialogState.value.visible) return false;
-  dialogs.dismiss();
-  return true;
+const writingCoach = ref(null);
+const learningShell = ref(null);
+onBackPress((event) => {
+  if (dialogState.value.visible) {
+    dialogs.dismiss();
+    return true;
+  }
+  // #ifdef APP-PLUS
+  if (event?.from === 'backbutton') return (writingCoach.value ?? learningShell.value)?.dismissDirectory() ?? false;
+  // #endif
+  return false;
 });
 const showConnections = ref(false);
 const legacyLearningEnabled = import.meta.env.VITE_ENABLE_LEGACY_LEARNING === 'true';

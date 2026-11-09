@@ -898,6 +898,14 @@ async function closeMenu() {
   (previousDirectoryFocus?.isConnected ? previousDirectoryFocus : menuButton.value?.$el || menuButton.value)?.focus?.();
   // #endif
 }
+function dismissDirectory() {
+  if (!menuOpen.value || !directoryModal.value) return false;
+  if (directoryOptions.value) directoryOptions.value = false;
+  else void closeMenu();
+  return true;
+}
+defineExpose({ dismissDirectory });
+
 function escapeMenu(event) {
   const element = root.value?.$el || root.value;
   if (
