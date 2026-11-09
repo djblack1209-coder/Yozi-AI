@@ -151,24 +151,26 @@
                 <text class="sidebar-caption" role="status">{{
                   t('learning.records.count', { count: recordSearch.total })
                 }}</text>
-                <BaseButton
-                  v-for="record in recordSearch.items"
-                  :key="record.id"
-                  class="recent-item"
-                  align="start"
-                  variant="quiet"
-                  :disabled="learning.busy"
-                  :aria-disabled="learning.busy"
-                  @tap="openRecord(record.id, recordSearch.context)"
-                >
-                  <BaseIcon :name="record.kind === 'conversation' ? 'chat' : 'book-open'" tone="ink-3" />
-                  <view class="material-copy">
-                    <text class="sidebar-label">{{ record.label }}</text>
-                    <text class="sidebar-caption record-meta" :title="record.goal"
-                      >{{ record.day }} · {{ record.goal }}</text
-                    >
-                  </view>
-                </BaseButton>
+                <TransitionGroup name="record-search-result">
+                  <BaseButton
+                    v-for="record in recordSearch.items"
+                    :key="record.id"
+                    class="recent-item"
+                    align="start"
+                    variant="quiet"
+                    :disabled="learning.busy"
+                    :aria-disabled="learning.busy"
+                    @tap="openRecord(record.id, recordSearch.context)"
+                  >
+                    <BaseIcon :name="record.kind === 'conversation' ? 'chat' : 'book-open'" tone="ink-3" />
+                    <view class="material-copy">
+                      <text class="sidebar-label">{{ record.label }}</text>
+                      <text class="sidebar-caption record-meta" :title="record.goal"
+                        >{{ record.day }} · {{ record.goal }}</text
+                      >
+                    </view>
+                  </BaseButton>
+                </TransitionGroup>
                 <BaseEmpty
                   v-if="!recordSearch.total"
                   :title="t('learning.records.empty')"
@@ -535,7 +537,18 @@ import MuseLaunch from './muse-launch.vue';
 import AnimatedAvatar from '@/components/base/animated-avatar/animated-avatar.vue';
 import { avatarBusinessForLearning, avatarStateFor } from '@/design/avatar-state.js';
 
-import { computed, ref, onMounted, onUnmounted, onBeforeUpdate, onUpdated, nextTick, useAttrs, watch } from 'vue';
+import {
+  computed,
+  ref,
+  onMounted,
+  onUnmounted,
+  onBeforeUpdate,
+  onUpdated,
+  nextTick,
+  useAttrs,
+  watch,
+  TransitionGroup
+} from 'vue';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { useThemeStore } from '@/stores/modules/theme.js';
 import { safeNavigateTo, requestProfilePanel } from '@/utils/safe-navigate';

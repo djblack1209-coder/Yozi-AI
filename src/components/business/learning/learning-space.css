@@ -1897,6 +1897,22 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+.record-search-result-move,
+.record-search-result-enter-active {
+  transition:
+    transform 240ms var(--muse-spring-pop),
+    opacity 180ms ease;
+}
+.record-search-result-enter-from {
+  transform: translateY(7px) scale(0.98);
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .record-search-result-move,
+  .record-search-result-enter-active {
+    transition: none;
+  }
+}
 
 .muse-composer.is-writing-answer .muse-composer-field textarea {
   font-size: 16px;

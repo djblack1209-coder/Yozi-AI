@@ -70,6 +70,13 @@
           >
         </view>
       </view>
+      <view v-if="highlightedArtifact" class="library-inspector" aria-hidden="true">
+        <text class="library-inspector-kind">{{ kindLabel(highlightedArtifact.kind) }}</text>
+        <text class="library-inspector-title">{{ highlightedArtifact.title }}</text>
+        <text class="library-inspector-copy">{{
+          artifactPreviews[highlightedArtifact.id] || highlightedArtifact.detail
+        }}</text>
+      </view>
       <view class="library-sidebar-footer"
         ><BaseButton
           v-for="item in savedViews"
@@ -180,6 +187,9 @@
         <MuseConversationFilter />
         <BaseInput v-model="query" label="搜索资料库" placeholder="搜索资料库" hide-label maxlength="120" />
       </view>
+      <text v-if="query.trim()" class="library-match-count" role="status">{{
+        t('muse.libraryMatches', { count: items.length })
+      }}</text>
       <view v-if="pinError" class="library-pin-error" role="alert">
         <text class="library-pin-error-copy">{{ pinError }}</text>
         <BaseButton class="library-pin-retry" data-library-pin-retry variant="quiet" @tap="readPins">{{
@@ -190,47 +200,53 @@
         <template v-for="block in blocks" :key="block.id"
           ><text v-if="block.label" class="library-section" role="heading" aria-level="2">{{ block.label }}</text
           ><view class="library-grid"
-            ><view v-for="item in block.items" :key="item.id" class="artifact-entry"
-              ><BaseButton
-                class="artifact"
-                :class="{ 'is-selected': selected.includes(item.id) }"
-                variant="quiet"
-                align="start"
-                :aria-pressed="selecting ? selected.includes(item.id) : undefined"
-                :label="`${selecting ? '选择 ' : '打开 '}${item.title}`"
-                :title="
-                  item.sources.length
-                    ? '来源对话：' + item.sources.map((source) => source.label).join('、')
-                    : '未归类 · 暂无来源对话'
-                "
-                @tap="openArtifact(item)"
-                ><view class="artifact-cover" :class="`artifact-cover-${item.kind}`"
-                  ><view v-if="artifactPreviews[item.id]" class="artifact-preview">
-                    <text class="artifact-preview-title">{{ item.title }}</text>
-                    <text class="artifact-preview-copy">{{ artifactPreviews[item.id] }}</text> </view
-                  ><BaseIcon v-else :name="item.icon" size="30px" /><BaseIcon
-                    v-if="selecting"
-                    class="artifact-selection"
-                    :name="selected.includes(item.id) ? 'checkbox-on' : 'checkbox-off'"
-                    size="20px" /></view
-                ><view class="artifact-meta"
-                  ><text class="artifact-title">{{ item.title }}</text
-                  ><text
-                    >{{ kindLabel(item.kind) }} · {{ dateLabel(item.at, item.day) }} · {{ item.detail }}</text
-                  ></view
-                ></BaseButton
-              ><BaseButton
-                v-if="item.source && !selecting"
-                class="artifact-pin"
-                variant="quiet"
-                icon="star"
-                icon-only
-                :label="pins[item.id] ? '取消置顶' : '置顶'"
-                :selected="pinsReady && !!pins[item.id]"
-                :aria-pressed="pinsReady ? !!pins[item.id] : undefined"
-                :disabled="!pinsReady"
-                @tap="togglePin(item)"
-              /> </view></view
+            ><TransitionGroup name="library-results">
+              <view v-for="item in block.items" :key="item.id" class="artifact-entry" :data-artifact-id="item.id"
+                ><BaseButton
+                  class="artifact"
+                  :class="{ 'is-selected': selected.includes(item.id) }"
+                  variant="quiet"
+                  align="start"
+                  :aria-pressed="selecting ? selected.includes(item.id) : undefined"
+                  :label="`${selecting ? '选择 ' : '打开 '}${item.title}`"
+                  :title="
+                    item.sources.length
+                      ? '来源对话：' + item.sources.map((source) => source.label).join('、')
+                      : '未归类 · 暂无来源对话'
+                  "
+                  @tap="openArtifact(item)"
+                  ><view class="artifact-cover" :class="`artifact-cover-${item.kind}`"
+                    ><view v-if="artifactPreviews[item.id]" class="artifact-preview">
+                      <text class="artifact-preview-title">{{ item.title }}</text>
+                      <text class="artifact-preview-copy">{{ artifactPreviews[item.id] }}</text> </view
+                    ><BaseIcon v-else :name="item.icon" size="30px" />
+                    <text v-if="query.trim()" class="artifact-kind-tag" aria-hidden="true">{{
+                      kindLabel(item.kind)
+                    }}</text>
+                    <BaseIcon
+                      v-if="selecting"
+                      class="artifact-selection"
+                      :name="selected.includes(item.id) ? 'checkbox-on' : 'checkbox-off'"
+                      size="20px" /></view
+                  ><view class="artifact-meta"
+                    ><text class="artifact-title">{{ item.title }}</text
+                    ><text
+                      >{{ kindLabel(item.kind) }} · {{ dateLabel(item.at, item.day) }} · {{ item.detail }}</text
+                    ></view
+                  ></BaseButton
+                ><BaseButton
+                  v-if="item.source && !selecting"
+                  class="artifact-pin"
+                  variant="quiet"
+                  icon="star"
+                  icon-only
+                  :label="pins[item.id] ? '取消置顶' : '置顶'"
+                  :selected="pinsReady && !!pins[item.id]"
+                  :aria-pressed="pinsReady ? !!pins[item.id] : undefined"
+                  :disabled="!pinsReady"
+                  @tap="togglePin(item)"
+                />
+              </view> </TransitionGroup></view
         ></template>
         <view v-if="!items.length" class="library-empty" role="status"
           ><view class="library-empty-mark"><BaseIcon :name="sectionIcon" size="26px" /></view
@@ -249,7 +265,7 @@
   </view>
 </template>
 <script setup>
-import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick, TransitionGroup } from 'vue';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { workspaceConversationContext } from '@/services/learning/workspace-context.js';
 import MuseConversationFilter from './muse-conversation-filter.vue';
@@ -283,7 +299,8 @@ const root = ref(null),
   selecting = ref(false),
   selected = ref([]),
   filterOpen = ref(false),
-  selectedMaterialId = ref('');
+  selectedMaterialId = ref(''),
+  highlightedId = ref('');
 const context = workspaceConversationContext(learning);
 const pins = ref({}),
   pinsReady = ref(false),
@@ -500,6 +517,7 @@ const blocks = computed(() => {
 const allSelected = computed(
   () => !!items.value.length && items.value.every((item) => selected.value.includes(item.id))
 );
+const highlightedArtifact = computed(() => items.value.find((item) => item.id === highlightedId.value));
 const selectedPinnable = computed(() => items.value.filter((item) => item.source && selected.value.includes(item.id)));
 function selectAll() {
   selected.value = allSelected.value ? [] : items.value.map((item) => item.id);
@@ -564,8 +582,41 @@ function keydown(event) {
     closeFilter();
   }
 }
-onMounted(() => (root.value?.$el || root.value)?.addEventListener?.('keydown', keydown));
-onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydown', keydown));
+let rootElement;
+let matrixGrid;
+function highlightArtifact(event) {
+  const id = event.target?.closest?.('[data-artifact-id]')?.dataset.artifactId;
+  if (id) highlightedId.value = id;
+}
+function resetMatrix() {
+  matrixGrid?.style.removeProperty('--matrix-turn');
+  matrixGrid = null;
+}
+function moveMatrix(event) {
+  if (event.pointerType === 'touch') return;
+  const grid = event.target?.closest?.('.library-grid');
+  if (grid !== matrixGrid) resetMatrix();
+  if (!grid) return;
+  matrixGrid = grid;
+  const bounds = grid.getBoundingClientRect();
+  const turn = ((event.clientX - bounds.left) / bounds.width - 0.5) * 17;
+  grid.style.setProperty('--matrix-turn', `${turn}deg`);
+  highlightArtifact(event);
+}
+onMounted(() => {
+  rootElement = root.value?.$el || root.value;
+  rootElement?.addEventListener?.('keydown', keydown);
+  rootElement?.addEventListener?.('pointermove', moveMatrix, { passive: true });
+  rootElement?.addEventListener?.('pointerleave', resetMatrix);
+  rootElement?.addEventListener?.('focusin', highlightArtifact);
+});
+onBeforeUnmount(() => {
+  resetMatrix();
+  rootElement?.removeEventListener?.('keydown', keydown);
+  rootElement?.removeEventListener?.('pointermove', moveMatrix);
+  rootElement?.removeEventListener?.('pointerleave', resetMatrix);
+  rootElement?.removeEventListener?.('focusin', highlightArtifact);
+});
 </script>
 <style scoped>
 .muse-library {
@@ -968,6 +1019,25 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   gap: 19px;
   margin-top: 4px;
 }
+.library-results-move,
+.library-results-enter-active {
+  transition:
+    transform 280ms var(--muse-spring-pop),
+    opacity 190ms ease;
+}
+.library-results-enter-from {
+  transform: translateY(9px) scale(0.97);
+  opacity: 0;
+}
+.library-match-count {
+  display: block;
+  padding: 0 24px 7px;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+.library-inspector {
+  display: none;
+}
 :global(.has-artifact) .library-grid {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -1011,6 +1081,16 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
 }
 .artifact-cover :deep(.base-icon) {
   color: inherit !important;
+}
+.artifact-kind-tag {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--ink);
+  font-size: 10px;
 }
 .artifact-preview {
   display: flex;
@@ -1074,6 +1154,61 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+@media (min-width: 1120px) {
+  .library-grid {
+    grid-template-columns: repeat(3, minmax(0, 264px));
+    perspective: 1000px;
+  }
+  .artifact-entry:nth-child(3n + 1) {
+    --matrix-bend: 15deg;
+  }
+  .artifact-entry:nth-child(3n) {
+    --matrix-bend: -15deg;
+  }
+  .artifact-entry .artifact {
+    width: 100%;
+    transform: rotateY(calc(var(--matrix-bend, 0deg) + var(--matrix-turn, 0deg)));
+    transition:
+      transform 290ms var(--muse-spring-pop),
+      box-shadow 210ms ease;
+  }
+  .artifact-entry:is(:hover, :focus-within) .artifact {
+    transform: rotateY(0deg) translateY(-3px);
+    box-shadow: var(--lift-2);
+  }
+  :global(.has-artifact) .artifact-entry .artifact {
+    transform: none;
+  }
+  .library-inspector {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 8px 10px;
+    padding: 11px 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--muse-rich-surface);
+  }
+  .library-inspector-kind,
+  .library-inspector-copy {
+    color: var(--ink-3);
+    font-size: 11px;
+  }
+  .library-inspector-title {
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 650;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .library-inspector-copy {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
 }
 .library-type-heading {
   display: block;
@@ -1207,6 +1342,9 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   }
 }
 @media (max-width: 760px) {
+  .library-match-count {
+    padding-inline: 16px;
+  }
   .library-pin-error {
     padding: 0 16px 12px;
   }
@@ -1242,6 +1380,12 @@ onUnmounted(() => (root.value?.$el || root.value)?.removeEventListener?.('keydow
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .library-results-move,
+  .library-results-enter-active,
+  .artifact-entry .artifact {
+    transition: none;
+    transform: none;
+  }
   .muse-library {
     animation: none;
   }

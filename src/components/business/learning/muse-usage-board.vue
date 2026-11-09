@@ -42,20 +42,11 @@
           :prior="data.priorSubmissionDays"
           :dark="theme.isDark"
         />
-        <view class="quota-stat quota-week">
-          <text class="quota-stat-label">最近 7 天提交数 · {{ data.weekSubmitted }} 次</text>
-          <view
-            class="quota-bars"
-            role="img"
-            :aria-label="data.submissionDays.map((day) => `${day.day} ${day.count}次`).join('，')"
-          >
-            <view v-for="day in data.submissionDays" :key="day.day" class="quota-bars-col">
-              <view class="quota-bars-bar" :style="{ height: `${(day.count / maxCount) * 54}px` }" /><text>{{
-                day.day.slice(5)
-              }}</text>
-            </view>
-          </view>
-        </view>
+        <MuseStudyTrend
+          :key="JSON.stringify([learning.recordContext(), context.id.value, data.submissionDays[0].day])"
+          :days="data.submissionDays"
+          :total="data.weekSubmitted"
+        />
         <text class="quota-sub">本机记录，不等于供应商账单。提交含练习原答与段落初稿，不含改写和复习自评。</text>
         <view v-if="account.quota" class="quota-platform">
           <text class="quota-section-title">账户总额度</text>
@@ -107,6 +98,7 @@
 <script setup>
 import MuseConversationFilter from './muse-conversation-filter.vue';
 import MuseStudyBeads from './muse-study-beads.vue';
+import MuseStudyTrend from './muse-study-trend.vue';
 import { workspaceConversationContext } from '@/services/learning/workspace-context.js';
 import { computed, ref, watch, onMounted } from 'vue';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
@@ -143,7 +135,6 @@ const localMetrics = computed(() => [
   { label: '待评估', value: data.value.awaitingAssessment },
   { label: '到期复习', value: data.value.due }
 ]);
-const maxCount = computed(() => Math.max(1, ...data.value.submissionDays.map((day) => day.count)));
 function manage() {
   requestProfilePanel('connectors');
   safeNavigateTo('/pages/profile/index');
@@ -178,8 +169,7 @@ onMounted(refresh);
 .quota-local-stats {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
-.quota-stat.quota-request-summary,
-.quota-stat.quota-week {
+.quota-stat.quota-request-summary {
   border-left: 0;
   border-bottom: 1px solid var(--line);
   padding-left: 0;
@@ -429,34 +419,6 @@ onMounted(refresh);
   margin-top: 8px;
   font-size: 11px;
   line-height: 17px;
-}
-.quota-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  height: 78px;
-  margin-top: 14px;
-}
-.quota-bars-col {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-}
-.quota-bars-col > text {
-  font-size: 9px;
-  color: var(--ink-3);
-}
-.quota-bars-bar {
-  width: 100%;
-  flex: none;
-  border-radius: 2px;
-  background: var(--quota-accent);
-  opacity: 0.92;
 }
 .quota-models {
   padding-top: 26px;
