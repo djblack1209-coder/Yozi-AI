@@ -1,6 +1,6 @@
 <template>
   <view ref="splashRoot" class="splash-container muse-space" :class="{ 'space-dark': isDark, 'space-light': !isDark }">
-    <MuseLaunch :ready="!visualSnapshot" @complete="completeLaunch" />
+    <MuseLaunch :scope="learning" :ready="!visualSnapshot" @complete="completeLaunch" />
     <BaseButton v-if="showManualEntry" class="manual-entry" @tap="openHomeTab">{{ $t('nav.home') }}</BaseButton>
   </view>
 </template>
@@ -15,7 +15,9 @@ import { storageService } from '@/services/storageService.js';
 import { DEV_TEST } from '@/config/build-channel.js';
 import { getCurrentRoute, openLearningEntry as navigateHomeTab } from '@/utils/home-navigation.js';
 import { bindLearningKeyboard } from '@/services/learning/keyboard-controls.js';
+import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 
+const learning = useConversationLearningStore();
 const isDark = ref(initTheme());
 const splashRoot = ref(null);
 let unbindKeyboard = () => undefined;

@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bindBusinessMotion } from '@/design/business-motion.js';
 import { mount } from '@vue/test-utils';
-import { h } from 'vue';
 import MuseLaunch from '@/components/business/learning/muse-launch.vue';
 import MuseChatEmpty from '@/components/business/learning/muse-chat-empty.vue';
 
@@ -73,25 +72,6 @@ describe('Muse launch entrance', () => {
     const navigated = launch({ scope, ready: true });
     expect(navigated.find('.muse-launch').exists()).toBe(false);
     expect(navigated.emitted('complete')).toHaveLength(1);
-  });
-  it('shares the default launch scope across pages of the same app', async () => {
-    vi.useFakeTimers();
-    vi.spyOn(window, 'matchMedia').mockReturnValue(legacyMedia(false));
-    const host = {
-      props: ['page'],
-      render() {
-        return h(MuseLaunch, { key: this.page, ready: true });
-      }
-    };
-    const wrapper = mount(host, {
-      props: { page: 'splash' },
-      global: { stubs: { AnimatedAvatar: true } }
-    });
-    wrappers.push(wrapper);
-    expect(wrapper.find('.muse-launch').exists()).toBe(true);
-    await wrapper.setProps({ page: 'learning' });
-    expect(wrapper.find('.muse-launch').exists()).toBe(false);
-    expect(wrapper.getComponent(MuseLaunch).emitted('complete')).toHaveLength(1);
   });
   it('gives the kitten a full visible cycle and completes after 1.3 seconds', async () => {
     vi.useFakeTimers();

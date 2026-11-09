@@ -17,19 +17,18 @@ const launchedScopes = new WeakSet();
 </template>
 
 <script setup>
-import { getCurrentInstance, ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import AnimatedAvatar from '@/components/base/animated-avatar/animated-avatar.vue';
 import { bindBusinessMotion } from '@/design/business-motion.js';
 import { t } from '@/i18n/index.js';
 
 const props = defineProps({
-  scope: { type: Object, default: null },
+  scope: { type: Object, required: true },
   ready: { type: Boolean, default: false }
 });
 const emit = defineEmits(['complete']);
-const scope = props.scope ?? getCurrentInstance().appContext;
-const visible = ref(!launchedScopes.has(scope));
-if (visible.value) launchedScopes.add(scope);
+const visible = ref(!launchedScopes.has(props.scope));
+if (visible.value) launchedScopes.add(props.scope);
 const leaving = ref(false);
 const reduced = ref(true);
 let mounted = false;

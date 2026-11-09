@@ -32,7 +32,7 @@
     />
     <!-- #endif -->
     <view class="native-titlebar" data-tauri-drag-region aria-hidden="true" />
-    <MuseLaunch :ready="['ready', 'error'].includes(learning.recordReadState)" />
+    <MuseLaunch :scope="learning" :ready="['ready', 'error'].includes(learning.recordReadState)" />
     <view class="space-frame">
       <view
         class="muse-rail"
