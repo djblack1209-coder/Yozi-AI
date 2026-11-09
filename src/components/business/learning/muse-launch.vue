@@ -17,17 +17,17 @@ const launchedScopes = new WeakSet();
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
-import { getActivePinia } from 'pinia';
+import { getCurrentInstance, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import AnimatedAvatar from '@/components/base/animated-avatar/animated-avatar.vue';
 import { bindBusinessMotion } from '@/design/business-motion.js';
 import { t } from '@/i18n/index.js';
 
 const props = defineProps({
+  scope: { type: Object, default: null },
   ready: { type: Boolean, default: false }
 });
 const emit = defineEmits(['complete']);
-const scope = getActivePinia();
+const scope = props.scope ?? getCurrentInstance().appContext;
 const visible = ref(!launchedScopes.has(scope));
 if (visible.value) launchedScopes.add(scope);
 const leaving = ref(false);
