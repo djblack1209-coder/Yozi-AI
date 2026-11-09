@@ -126,21 +126,40 @@
                 :disabled="busy || !consentSatisfied || !isEmailValid"
                 @resend="sendEmail"
               />
-              <BaseInput
-                v-if="!friendTrial && (!devTestBuild || isRegister)"
-                v-model="emailForm.password"
-                :label="isRegister ? t('login.setPassword') : t('login.password')"
-                :type="showPassword ? 'text' : 'password'"
-                :maxlength="32"
-                :help="isRegister ? (devTestBuild ? '1–32个字符' : t('login.passwordHelp')) : ''"
-                ><template #suffix
-                  ><BaseButton
-                    variant="quiet"
-                    icon-only
-                    :icon="showPassword ? 'eye-off' : 'eye'"
-                    :label="showPassword ? t('login.hidePassword') : t('login.showPassword')"
-                    @tap="showPassword = !showPassword" /></template
-              ></BaseInput>
+              <template v-if="!friendTrial && (!devTestBuild || isRegister)">
+                <!-- #ifdef H5 -->
+                <component
+                  :is="'div'"
+                  class="password-lamp-field"
+                  @pointermove="aimPasswordLamp"
+                  @pointerleave="resetPasswordLamp"
+                >
+                  <!-- #endif -->
+                  <BaseInput
+                    v-model="emailForm.password"
+                    :label="isRegister ? t('login.setPassword') : t('login.password')"
+                    :type="showPassword ? 'text' : 'password'"
+                    :maxlength="32"
+                    :help="isRegister ? (devTestBuild ? '1–32个字符' : t('login.passwordHelp')) : ''"
+                  >
+                    <template #suffix>
+                      <view class="password-lamp" :class="{ 'is-lit': showPassword }">
+                        <view class="password-lamp__beam" aria-hidden="true" />
+                        <BaseButton
+                          class="password-lamp__trigger"
+                          variant="quiet"
+                          icon-only
+                          icon="lamp-desk"
+                          :label="showPassword ? t('login.hidePassword') : t('login.showPassword')"
+                          @tap="showPassword = !showPassword"
+                        />
+                      </view>
+                    </template>
+                  </BaseInput>
+                  <!-- #ifdef H5 -->
+                </component>
+                <!-- #endif -->
+              </template>
               <BaseButton
                 variant="primary"
                 block
@@ -209,6 +228,10 @@ import BrandScene from '@/components/business/website/brand-scene.vue';
 import AnimatedAvatar from '@/components/base/animated-avatar/animated-avatar.vue';
 import BaseButton from '@/components/base/base-button/base-button.vue';
 import BaseInput from '@/components/base/base-input/base-input.vue';
+// #ifdef H5
+import { aimPasswordLamp, resetPasswordLamp } from '@/utils/password-lamp.js';
+// #endif
+import '@/styles/password-lamp.css';
 import BaseCheckbox from '@/components/base/base-checkbox/base-checkbox.vue';
 import BaseSegmented from '@/components/base/base-segmented/base-segmented.vue';
 import BaseCard from '@/components/base/base-card/base-card.vue';

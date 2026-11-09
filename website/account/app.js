@@ -1,5 +1,6 @@
 // /account/ page behaviour. Signed out shows only the form; signed in shows the saved progress read-only.
 import { websiteProgress } from "../../src/services/learning/website-progress.js";
+import { aimPasswordLamp, resetPasswordLamp } from "../../src/utils/password-lamp.js";
 import { AccountError, clearSession, readSession, readSnapshot, saveSession, signIn } from "./client.mjs";
 
 const LANGUAGE_KEY = "yozi.website.language";
@@ -8,6 +9,8 @@ const copy = {
     titleSignIn: "登录 · Yozi",
     titleProgress: "我的学习进度 · Yozi",
     switchTo: "切换到英语",
+    showPassword: "显示密码",
+    hidePassword: "隐藏密码",
     required: "请输入邮箱和密码。",
     credentials: "邮箱或密码不对，请检查后重新输入。",
     email: "邮箱格式不对，请检查后重新输入。",
@@ -35,6 +38,8 @@ const copy = {
     titleSignIn: "Sign in · Yozi",
     titleProgress: "My progress · Yozi",
     switchTo: "Switch to Chinese",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
     required: "Enter your email and password.",
     credentials: "That email or password isn't right. Check them and try again.",
     email: "That email doesn't look right. Check it and try again.",
@@ -80,6 +85,8 @@ export function mountAccount({ doc = document, send = (...args) => fetch(...args
   const $ = (selector) => doc.querySelector(selector);
   const views = { signin: $('[data-view="signin"]'), progress: $('[data-view="progress"]') };
   const form = $("[data-signin-form]");
+  const passwordField = $("[data-password-field]");
+  const passwordToggle = $("[data-password-toggle]");
   const signInError = $("[data-signin-error]");
   const submit = $("[data-signin-submit]");
   const signOut = $("[data-sign-out]");
@@ -183,8 +190,19 @@ export function mountAccount({ doc = document, send = (...args) => fetch(...args
     const t = copy[lang];
     doc.title = session ? t.titleProgress : t.titleSignIn;
     toggle.setAttribute("aria-label", t.switchTo);
+    paintPassword();
     paintNotice();
     paintProgress();
+  }
+  function paintPassword() {
+    const visible = form.elements.password.type === "text";
+    passwordToggle.parentElement.classList.toggle("is-lit", visible);
+    passwordToggle.setAttribute("aria-label", copy[language(root)][visible ? "hidePassword" : "showPassword"]);
+  }
+  function resetForm() {
+    form.reset();
+    form.elements.password.type = "password";
+    paintPassword();
   }
   function show(view) {
     views.signin.hidden = view !== "signin";
@@ -201,7 +219,7 @@ export function mountAccount({ doc = document, send = (...args) => fetch(...args
     content.hidden = true;
     for (const selector of ["[data-weaknesses]", "[data-subjects]", "[data-nodes]"]) $(selector).replaceChildren();
     for (const node of doc.querySelectorAll("[data-stat]")) node.textContent = "";
-    form.reset();
+    resetForm();
     show("signin");
     setNotice(next ?? null);
     paintLanguage();
@@ -249,7 +267,7 @@ export function mountAccount({ doc = document, send = (...args) => fetch(...args
       const next = await signIn({ email, password }, send);
       if (current !== generation) return;
       saveSession(storage, next);
-      form.reset();
+      resetForm();
       await open(next);
       $("#progress-title").focus();
     } catch (error) {
@@ -264,6 +282,13 @@ export function mountAccount({ doc = document, send = (...args) => fetch(...args
     $("#signin-title").focus();
   });
   retry.addEventListener("click", load);
+  passwordToggle.addEventListener("click", () => {
+    const password = form.elements.password;
+    password.type = password.type === "password" ? "text" : "password";
+    paintPassword();
+  });
+  passwordField.addEventListener("pointermove", aimPasswordLamp);
+  passwordField.addEventListener("pointerleave", resetPasswordLamp);
   toggle.addEventListener("click", () => {
     const lang = language(root) === "zh" ? "en" : "zh";
     root.lang = lang === "en" ? "en" : "zh-CN";

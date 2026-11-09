@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { legalFooterLinks } from "./legal.mjs";
 import { brandUrl } from "./brand.mjs";
 import { buildSync } from "esbuild";
+import { BOARD_ICONS } from "../src/components/base/base-icon/board-icons.js";
 
 const source = (name) => readFileSync(new URL(name, import.meta.url), "utf8");
 export const download = "Yozi-AI-2.3.0-macOS-arm64.zip";
@@ -36,8 +37,7 @@ const paths = {
   layers: '<path d="m12 3 10 6-10 6L2 9ZM2 15l10 6 10-6M2 12l10 6 10-6"/>',
   repeat: '<path d="m17 2 4 4-4 4M3 11V8a2 2 0 0 1 2-2h16M7 22l-4-4 4-4m14-1v3a2 2 0 0 1-2 2H3"/>',
   key: '<circle cx="8" cy="15" r="5"/><path d="m11.5 11.5 9-9L23 5l-3 3-2-2-2 2 2 2-3 3"/>',
-  pause: '<path d="M8 5v14M16 5v14"/>',
-  play: '<path d="m8 5 11 7-11 7Z"/>',
+  lamp: BOARD_ICONS["lamp-desk"],
   monitor: '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/>',
 };
 const icon = (name) =>
@@ -275,7 +275,7 @@ const labels = {
   navLabel: ["主导航", "main navigation"],
   languageLabel: ["切换到英语", "switch to Chinese"],
   menuLabel: ["打开导航", "open navigation"],
-  playLabel: ["暂停动态效果", "pause motion"],
+  motionLabel: ["页面动效", "Page motion"],
   scrubLabel: ["学习场景画面进度", "study scene position"],
   previousLabel: ["上一条理念", "previous principle"],
   nextLabel: ["下一条理念", "next principle"],
@@ -419,11 +419,12 @@ export function renderAccount() {
     favicon: brandUrl("favicon.svg"),
     appleTouchIcon: brandUrl("brand/apple-touch-icon.png"),
     brandMark: brandUrl("brand/mark.svg"),
-    styles: (["site.css", "legal.css", "account/account.css"].map(source).join("\n")).replaceAll("FONT_BASE", "/fonts"),
+    styles: (["site.css", "legal.css", "../src/styles/password-lamp.css", "account/account.css"].map(source).join("\n")).replaceAll("FONT_BASE", "/fonts"),
     bootstrap: `(() => { let lang; try { lang = localStorage.getItem('yozi.website.language'); } catch {} document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN'; })();`,
     homeLabel: label("zh", "返回首页", "Back to home"),
     languageLabel: label("zh", "切换到英语", "Switch to Chinese"),
     ilanguage: icon("language"),
+    ilamp: icon("lamp"),
     symbols,
     script: accountScript(),
     ...Object.fromEntries(Object.entries(accountWords).map(([key, pair]) => [key, tr(...pair)])),

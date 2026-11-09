@@ -68,19 +68,7 @@
     document
       .querySelectorAll("[data-label-zh]")
       .forEach((el) => el.setAttribute("aria-label", el.dataset[lang === "zh" ? "labelZh" : "labelEn"]));
-    mediaButton.setAttribute(
-      "aria-label",
-      lang === "zh"
-        ? motionEnabled
-          ? "暂停动态效果"
-          : "启用动态效果"
-        : motionEnabled
-          ? "pause motion"
-          : "enable motion",
-    );
-    mediaButton.setAttribute("aria-pressed", String(motionEnabled));
-    mediaButton.querySelector(".play-icon").hidden = motionEnabled;
-    mediaButton.querySelector(".pause-icon").hidden = !motionEnabled;
+    mediaButton.setAttribute("aria-checked", String(motionEnabled));
     const menu = document.querySelector(".menu-button");
     menu.setAttribute(
       "aria-label",

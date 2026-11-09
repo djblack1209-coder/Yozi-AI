@@ -80,11 +80,23 @@ describe('/account/ sign-in', () => {
   it('sends the App email payload once to /exam-master/login', async () => {
     const { calls, ready } = page({ responses: [loginOk, pulled(emptyLearningState(owner))] });
     await ready;
+    const field = document.querySelector('input[name="password"]');
+    const toggle = document.querySelector('[data-password-toggle]');
+    field.value = 'correct horse';
+    expect(field.type).toBe('password');
+    toggle.click();
+    expect(field.type).toBe('text');
+    expect(toggle.getAttribute('aria-label')).toBe('隐藏密码');
+    expect(field.value).toBe('correct horse');
+    expect(calls).toEqual([]);
     await submit();
     expect(calls[0].url).toBe('/exam-master/login');
     expect(calls[0].body).toEqual({ region: 'CN', type: 'email', email: 'a@example.cn', password: 'correct horse' });
     expect(calls[0].options.method).toBe('POST');
     expect(calls[0].options.headers.Authorization).toBeUndefined();
+    expect(field.type).toBe('password');
+    expect(field.value).toBe('');
+    expect(toggle.getAttribute('aria-label')).toBe('显示密码');
   });
 
   it.each([

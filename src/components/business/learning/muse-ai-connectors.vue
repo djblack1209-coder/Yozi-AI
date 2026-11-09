@@ -66,7 +66,7 @@
       :show-actions="false"
       close-button
       :mask-closable="!saving"
-      @cancel="close"
+      @cancel="disconnecting ? setDisconnecting(false) : close()"
     >
       <view class="connect-form">
         <template v-if="current?.saved && !editing && !choosing">
@@ -74,16 +74,42 @@
           <text class="connect-model">{{ connectionLabel(current.saved) }}</text>
           <BaseButton
             variant="primary"
-            :disabled="locked || current.saved.requiresModelSelection || !current.saved.configured"
+            :disabled="locked || disconnecting || current.saved.requiresModelSelection || !current.saved.configured"
             @tap="select"
             >{{ learning.modelId === current.saved.id ? '正在使用' : '使用此连接' }}</BaseButton
           >
-          <BaseButton variant="quiet" :disabled="locked || current.saved.requiresModelSelection" @tap="test"
+          <BaseButton
+            variant="quiet"
+            :disabled="locked || disconnecting || current.saved.requiresModelSelection"
+            @tap="test"
             >测试</BaseButton
           >
-          <BaseButton variant="quiet" :disabled="locked" @tap="chooseModels">换型号</BaseButton>
-          <BaseButton variant="quiet" :disabled="locked" @tap="editing = true">换密钥</BaseButton>
-          <BaseButton variant="quiet" :disabled="locked" @tap="disconnecting = true">断开</BaseButton>
+          <BaseButton variant="quiet" :disabled="locked || disconnecting" @tap="chooseModels">换型号</BaseButton>
+          <BaseButton variant="quiet" :disabled="locked || disconnecting" @tap="editing = true">换密钥</BaseButton>
+          <view class="disconnect-control">
+            <BaseButton
+              v-if="!disconnecting"
+              ref="disconnectTrigger"
+              class="disconnect-trigger"
+              variant="quiet"
+              icon-only
+              icon="trash"
+              label="断开连接"
+              :disabled="locked"
+              @tap="setDisconnecting(true)"
+            />
+            <template v-else>
+              <text class="disconnect-question">断开此连接？</text>
+              <view class="disconnect-choices" role="group" aria-label="断开此连接？">
+                <BaseButton variant="danger" danger-secondary :disabled="locked" :loading="saving" @tap="disconnect"
+                  >断开</BaseButton
+                >
+                <BaseButton ref="disconnectCancel" variant="secondary" :disabled="saving" @tap="setDisconnecting(false)"
+                  >取消</BaseButton
+                >
+              </view>
+            </template>
+          </view>
         </template>
         <template v-if="!current?.saved || editing">
           <template v-if="current?.custom && !current.saved">
@@ -166,19 +192,10 @@
       @confirm="goLogin"
       @cancel="loginRequired = false"
     />
-    <CustomModal
-      :visible="disconnecting"
-      title="断开此连接？"
-      :is-dark="theme.isDark"
-      confirm-text="断开"
-      :confirm-loading="saving"
-      @cancel="disconnecting = false"
-      @confirm="disconnect"
-    />
   </view>
 </template>
 <script setup>
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
+import { computed, nextTick, ref, watch, onMounted, onUnmounted } from 'vue';
 import {
   MODEL_ENDPOINTS,
   completeModelEndpoint,
@@ -217,6 +234,15 @@ const query = ref(''),
   operationState = ref({ phase: 'idle' }),
   testRequest = ref(null);
 const locked = computed(() => saving.value || discovering.value || learning.busy || learning.intakeBusy);
+const disconnectTrigger = ref(null);
+const disconnectCancel = ref(null);
+async function setDisconnecting(value) {
+  if (saving.value) return;
+  disconnecting.value = value;
+  await nextTick();
+  const button = value ? disconnectCancel.value : disconnectTrigger.value;
+  (button?.$el || button)?.focus?.();
+}
 const matches = (item) =>
   `${item.provider} ${item.model || ''}`.toLocaleLowerCase().includes(query.value.trim().toLocaleLowerCase());
 const savedModels = computed(() => learning.models.filter((model) => model.source === 'byok').filter(matches));
@@ -468,6 +494,72 @@ onMounted(() => {
 onUnmounted(close);
 </script>
 <style scoped>
+.disconnect-control {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+.disconnect-question {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.disconnect-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.disconnect-trigger {
+  color: var(--muse-rich-danger, var(--coral));
+  border-radius: 50%;
+  transition:
+    background-color 180ms ease-out,
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  animation: disconnect-fold 210ms cubic-bezier(0.18, 0.73, 0.22, 1) both;
+}
+@media (hover: hover) and (pointer: fine) {
+  .disconnect-trigger:hover {
+    background: var(--muse-rich-danger-bg, var(--coral-soft));
+  }
+}
+.disconnect-trigger:active {
+  transform: scale(0.94);
+}
+.disconnect-choices :deep(.base-button) {
+  min-height: 44px;
+  border-radius: 999px;
+  animation: disconnect-pills 260ms cubic-bezier(0.18, 0.73, 0.22, 1) both;
+  transform-origin: right center;
+}
+.disconnect-choices :deep(.base-button:first-child) {
+  --disconnect-offset: 32px;
+}
+@keyframes disconnect-pills {
+  from {
+    opacity: 0;
+    transform: translateX(var(--disconnect-offset, 0px)) scaleX(0.38);
+    filter: blur(2px);
+  }
+}
+@keyframes disconnect-fold {
+  from {
+    opacity: 0.45;
+    transform: scaleX(1.6);
+    filter: blur(2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .disconnect-choices :deep(.base-button) {
+    animation: none;
+  }
+  .disconnect-trigger {
+    animation: none;
+    transition: none;
+  }
+  .disconnect-trigger:active {
+    transform: none;
+  }
+}
 .ai-connectors {
   max-width: 100%;
   display: flex;

@@ -26,7 +26,16 @@
       <h1 id="signin-title" tabindex="-1">{{signInTitle}}</h1>
       <form class="account-form" data-signin-form novalidate>
         <label class="account-field"><span>{{email}}</span><input name="email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required></label>
-        <label class="account-field"><span>{{password}}</span><input name="password" type="password" autocomplete="current-password" required></label>
+        <div class="account-field" data-password-field>
+          <label for="account-password">{{password}}</label>
+          <div class="account-password-input">
+            <input id="account-password" name="password" type="password" autocomplete="current-password" required>
+            <span class="password-lamp">
+              <span class="password-lamp__beam" aria-hidden="true"></span>
+              <button class="password-lamp__trigger" type="button" data-password-toggle aria-label="显示密码" aria-controls="account-password">{{ilamp}}</button>
+            </span>
+          </div>
+        </div>
         <p class="account-error" role="alert" data-signin-error hidden></p>
         <button class="button primary account-submit" type="submit" data-signin-submit>{{signIn}}</button>
       </form>

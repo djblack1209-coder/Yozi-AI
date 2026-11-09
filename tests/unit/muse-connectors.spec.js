@@ -327,13 +327,14 @@ describe('BYOK two-step connector UI', () => {
     await tap('查询原请求');
     expect(harness.store.testModel).toHaveBeenCalledOnce();
     expect(harness.store.recoverConnectionTest).toHaveBeenCalledWith('one', 'original-test-request');
-    await tap('断开');
+    await wrapper.get('[aria-label="断开连接"]').trigger('tap');
+    expect(wrapper.get('.disconnect-choices').attributes('aria-label')).toBe('断开此连接？');
     expect(harness.store.removeModel).not.toHaveBeenCalled();
-    wrapper
-      .findAllComponents(modal)
-      .find((item) => item.props('title') === '断开此连接？')
-      .vm.$emit('confirm');
-    await flushPromises();
+    await tap('取消');
+    expect(wrapper.find('.disconnect-choices').exists()).toBe(false);
+    expect(harness.store.removeModel).not.toHaveBeenCalled();
+    await wrapper.get('[aria-label="断开连接"]').trigger('tap');
+    await tap('断开');
     expect(harness.store.removeModel).toHaveBeenCalledWith('one');
   });
   it('blocks connection changes while teaching is busy', async () => {
