@@ -129,6 +129,9 @@
           >
         </template>
         <template v-else-if="view === 'plan'">
+          <view class="focus-timer-entry">
+            <BaseButton variant="quiet" icon="timer" @tap="focusTimerOpen = true">{{ t('muse.focus.title') }}</BaseButton>
+          </view>
           <MuseStudyProgress
             v-if="todayProgress.denominator"
             :completed="todayProgress.numerator"
@@ -183,6 +186,7 @@
         </template>
       </view>
     </view>
+    <MuseFocusTimer v-if="view === 'plan'" :visible="focusTimerOpen" @close="focusTimerOpen = false" />
     <MuseShareSheet
       :category="context.id.value"
       :visible="Boolean(shareDay)"
@@ -208,10 +212,12 @@ import MuseLibrary from './muse-library.vue';
 import MuseUsageBoard from './muse-usage-board.vue';
 import MuseShareSheet from './muse-share-sheet.vue';
 import MuseStudyProgress from './muse-study-progress.vue';
+import MuseFocusTimer from './muse-focus-timer.vue';
 defineProps({ view: { type: String, default: 'all' } });
 defineEmits(['view']);
 const learning = useConversationLearningStore();
 const context = workspaceConversationContext(learning);
+const focusTimerOpen = ref(false);
 const goalOptionsOpen = ref(false),
   goalOptionsButton = ref(null),
   goalOptionsMenu = ref(null);
@@ -370,6 +376,10 @@ function start() {
 </script>
 <style src="./muse-pages.css"></style>
 <style scoped>
+.focus-timer-entry {
+  display: flex;
+  justify-content: flex-start;
+}
 .history-date-row {
   display: flex;
   align-items: center;
