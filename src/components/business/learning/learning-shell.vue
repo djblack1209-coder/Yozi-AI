@@ -583,7 +583,7 @@ const viewportWidth = ref(
 );
 const directoryAutoOpenWidth = isDesktopRuntime() ? 800 : 760;
 // #ifdef APP-PLUS
-const hasNativeWebView = typeof plus !== 'undefined';
+const hasNativeWebView = typeof plus !== 'undefined' && Boolean(plus.webview);
 // #endif
 const canRestoreDirectory = computed(
   () => props.active === 'learning' && !nativeSettings && viewportWidth.value > directoryAutoOpenWidth
