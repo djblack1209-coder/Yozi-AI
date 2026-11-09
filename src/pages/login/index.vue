@@ -5,6 +5,12 @@
     :style="$yoziInsets"
   >
     <PrivacyPopup />
+    <RegistrationConnectionGuide
+      v-if="registrationGuide"
+      :is-dark="themeStore.isDark"
+      @choose="finishRegistrationGuide(true)"
+      @skip="finishRegistrationGuide(false)"
+    />
     <view class="login-layout"
       ><BrandScene /><view class="login-form-column">
         <view class="login-top">
@@ -104,8 +110,8 @@
               >
               <BaseButton variant="quiet" block @tap="step = 'methods'">{{ t('login.other') }}</BaseButton>
             </view>
-            <view v-else class="login-stack email-form">
-              <text v-if="!WEBSITE_MODE" class="login-title">{{
+            <view v-else class="login-stack email-form" :class="{ 'registration-form': isRegister && !WEBSITE_MODE }">
+              <text v-if="!WEBSITE_MODE" :key="isRegister" class="login-title" role="heading" aria-level="1">{{
                 isRegister ? t('login.create') : t('login.email')
               }}</text>
               <BaseInput
@@ -122,6 +128,7 @@
                 inputmode="numeric"
                 :maxlength="6"
                 :resend-seconds="emailCooldown"
+                :verification-sent="emailCooldown > 0"
                 :verification-labels="WEBSITE_MODE ? websiteCodeLabels : null"
                 :disabled="busy || !consentSatisfied || !isEmailValid"
                 @resend="sendEmail"
@@ -169,7 +176,7 @@
                 @tap="submitEmail"
                 >{{ isRegister ? t('login.register') : t('login.submit') }}</BaseButton
               >
-              <BaseButton v-if="!friendTrial" variant="quiet" block @tap="toggleRegister">{{
+              <BaseButton v-if="!friendTrial" variant="quiet" block :disabled="busy" @tap="toggleRegister">{{
                 isRegister ? t('login.existing') : t('login.create')
               }}</BaseButton>
               <BaseButton variant="quiet" block @tap="step = 'methods'">{{ t('login.other') }}</BaseButton>
@@ -237,6 +244,7 @@ import BaseSegmented from '@/components/base/base-segmented/base-segmented.vue';
 import BaseCard from '@/components/base/base-card/base-card.vue';
 import YoziMascot from '@/components/base/yozi-mascot/yozi-mascot.vue';
 import PrivacyPopup from '@/components/common/privacy-popup.vue';
+import RegistrationConnectionGuide from './registration-connection-guide.vue';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { useAuthStore } from '@/stores/modules/auth';
 import { useUserStore } from '@/stores/modules/user';
@@ -279,6 +287,7 @@ const year = ref(''),
 const emailForm = ref({ email: '', password: '', code: '' }),
   isRegister = ref(false),
   showPassword = ref(false);
+const registrationGuide = ref(null);
 onLoad((options) => {
   if (WEBSITE_MODE && options?.mode === 'register') {
     isRegister.value = true;
@@ -344,6 +353,7 @@ onHide(() => {
   active = false;
   version++;
   clearTimeout(redirectTimer);
+  registrationGuide.value = null;
   year.value = '';
   month.value = '';
 });
@@ -481,7 +491,7 @@ async function proceed(method) {
     });
   }, true);
 }
-async function run(action, accept = false) {
+async function run(action, accept = false, signup = false) {
   if (!consent() || busy.value) return;
   let valid = current();
   busy.value = true;
@@ -502,7 +512,7 @@ async function run(action, accept = false) {
         month.value = '';
         step.value = 'age';
       }
-    } else if (accept && response.data) await saveLoginInfo(response.data, attempt);
+    } else if (accept && response.data) await saveLoginInfo(response.data, attempt, signup);
     return response;
   } catch (failure) {
     if (failure?.code === 'BROWSER_UPGRADE_REQUIRED') error.value = failure.message;
@@ -592,7 +602,8 @@ async function submitEmail() {
     );
     return;
   }
-  if (isRegister.value && needsAge()) {
+  const signup = isRegister.value;
+  if (signup && needsAge()) {
     pendingMethod = 'email';
     step.value = 'age';
     return;
@@ -602,11 +613,11 @@ async function submitEmail() {
     return;
   }
   if (
-    (!devTestBuild || isRegister.value) &&
+    (!devTestBuild || signup) &&
     (emailForm.value.password.length < (devTestBuild ? 1 : 8) ||
       emailForm.value.password.length > 32 ||
       (!devTestBuild &&
-        isRegister.value &&
+        signup &&
         (!/[A-Z]/.test(emailForm.value.password) ||
           !/[a-z]/.test(emailForm.value.password) ||
           !/\d/.test(emailForm.value.password))))
@@ -614,7 +625,7 @@ async function submitEmail() {
     error.value = t('login.passwordHelp');
     return;
   }
-  if (!devTestBuild && isRegister.value && !/^\d{6}$/.test(emailForm.value.code)) {
+  if (!devTestBuild && signup && !/^\d{6}$/.test(emailForm.value.code)) {
     error.value = t('login.invalidCode');
     return;
   }
@@ -622,11 +633,12 @@ async function submitEmail() {
     () =>
       authStore.loginByEmail({
         email: normalizeEmailAddress(emailForm.value.email),
-        ...(devTestBuild && !isRegister.value ? {} : { password: emailForm.value.password }),
-        verifyCode: devTestBuild ? '000000' : isRegister.value ? emailForm.value.code : undefined,
+        ...(devTestBuild && !signup ? {} : { password: emailForm.value.password }),
+        verifyCode: devTestBuild ? '000000' : signup ? emailForm.value.code : undefined,
         ...registration()
       }),
-    true
+    true,
+    signup
   );
 }
 function toggleRegister() {
@@ -661,7 +673,7 @@ async function wechat() {
     return null;
   }, true);
 }
-async function saveLoginInfo(data, attempt) {
+async function saveLoginInfo(data, attempt, signup) {
   if (!data.token || !data.userId) {
     error.value = t('login.retry');
     return;
@@ -682,12 +694,13 @@ async function saveLoginInfo(data, attempt) {
   uni.$emit('auth:userdata', userInfo, session);
   uni.$emit('loginStatusChanged', true);
   uni.$emit('userInfoUpdated', userInfo);
-  toast.success(isRegister.value ? '注册成功' : '登录成功');
+  toast.success(signup ? '注册成功' : '登录成功');
   emailForm.value = { email: '', password: '', code: '' };
   phone.value = '';
   phoneSent.value = false;
   phoneCode.value = '';
   ageTicket = '';
+  const valid = current();
   let connectorRoute = null;
   if (!WEBSITE_MODE) {
     const learning = useConversationLearningStore();
@@ -699,14 +712,23 @@ async function saveLoginInfo(data, attempt) {
       assertSession(session);
     }
   }
-  const valid = current();
+  if (!valid()) return;
   clearTimeout(redirectTimer);
+  if (signup && data.isNewUser === true && connectorRoute) {
+    registrationGuide.value = { connectorRoute, valid };
+    return;
+  }
   redirectTimer = setTimeout(
     () => {
       if (valid()) navigateAfterLogin(connectorRoute);
     },
     devTestBuild ? 0 : 1500
   );
+}
+function finishRegistrationGuide(connect) {
+  const guide = registrationGuide.value;
+  registrationGuide.value = null;
+  if (guide?.valid()) navigateAfterLogin(connect ? guide.connectorRoute : null);
 }
 function navigateAfterLogin(connectorRoute) {
   if (connectorRoute) {
@@ -1074,6 +1096,18 @@ onMounted(async () => {
   .lazy-login:not(.website-login) .login-stack {
     animation: login-sheet-enter 220ms cubic-bezier(0.22, 0.7, 0.25, 1) both;
   }
+  .registration-form {
+    gap: var(--s-3);
+  }
+  .registration-form > .login-title {
+    padding-bottom: var(--s-2);
+  }
+  .registration-form > :nth-child(-n + 5) {
+    animation: login-sheet-enter 240ms cubic-bezier(0.22, 0.7, 0.25, 1) both;
+  }
+  .registration-form > :nth-child(n + 3):nth-child(-n + 5) {
+    animation-delay: 28ms;
+  }
   @keyframes login-sheet-enter {
     from {
       opacity: 0;
@@ -1085,7 +1119,8 @@ onMounted(async () => {
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    .lazy-login:not(.website-login) :is(.login-form-column, .login-stack) {
+    .lazy-login:not(.website-login) :is(.login-form-column, .login-stack),
+    .registration-form > :nth-child(-n + 5) {
       animation: none;
     }
   }

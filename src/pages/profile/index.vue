@@ -16,7 +16,13 @@
       <view class="settings-layout">
         <view class="settings-sidebar" role="navigation" :aria-label="t('nav.settings')">
           <text class="settings-sidebar-title">{{ t('nav.settings') }}</text>
-          <view v-for="group in settingsSectionGroups" :key="group.id" class="settings-nav-group" role="group" :aria-label="group.label">
+          <view
+            v-for="group in settingsSectionGroups"
+            :key="group.id"
+            class="settings-nav-group"
+            role="group"
+            :aria-label="group.label"
+          >
             <text class="settings-nav-label">{{ group.label }}</text>
             <BaseButton
               v-for="item in group.items"
@@ -28,7 +34,8 @@
               align="start"
               :aria-current="settingsSection === item.id ? 'page' : undefined"
               @tap="settingsSection = item.id"
-            >{{ item.label }}</BaseButton>
+              >{{ item.label }}</BaseButton
+            >
           </view>
           <view class="settings-spacer" />
           <BaseButton
@@ -259,6 +266,9 @@
       :is-dark="isDark"
       :title="dialog.title"
       :content="dialog.content"
+      :position="dialog.kind === 'account' ? 'bottom' : 'center'"
+      :transition="dialog.kind === 'account' ? 'slide-up' : 'fade'"
+      :container-class="dialog.kind === 'account' ? 'is-choice-sheet account-sheet' : ''"
       :show-cancel="['logout', 'sync', 'reset'].includes(dialog.kind)"
       :confirm-loading="resetBusy"
       :type="dialog.kind === 'reset' ? 'error' : 'info'"
@@ -275,7 +285,24 @@
                 : t('dashboard.copy111')
       "
       @confirm="confirmDialog"
-    />
+    >
+      <template v-if="dialog.kind === 'account'" #title>
+        <view class="account-sheet-heading">
+          <template v-if="dialog.verified">
+            <image
+              class="avatar account-sheet-avatar"
+              :class="{ 'avatar--brand': !avatarUrl || avatarFailed }"
+              :src="avatarUrl && !avatarFailed ? avatarUrl : defaultAvatar"
+              :mode="avatarUrl && !avatarFailed ? 'aspectFill' : 'aspectFit'"
+              alt=""
+              @error="avatarFailed = true"
+            />
+            <text class="account-sheet-name">{{ userName }}</text>
+          </template>
+          <text>{{ dialog.title }}</text>
+        </view>
+      </template>
+    </CustomModal>
   </view>
 </template>
 <script>
@@ -647,12 +674,16 @@ export default {
       this.showDialog = true;
       const result = await this.userStore.readCurrentProfile({ session });
       if (!this.showDialog || sequence !== this.dialogSequence) return;
-      this.dialog.content =
-        result.success && checkSession(session) === 'current'
+      const verified = result.success && checkSession(session) === 'current';
+      this.dialog = {
+        ...this.dialog,
+        verified,
+        content: verified
           ? [result.email ? `邮箱：${result.email}` : '', `用户编号：${result.uid}`].filter(Boolean).join('\n')
           : result.code === 401
             ? '未认证，请重新登录'
-            : '账户资料读取失败，请重试';
+            : '账户资料读取失败，请重试'
+      };
     },
 
     handleFeedback() {
@@ -1028,6 +1059,25 @@ export default {
   border-radius: 0;
   background: transparent;
   object-fit: contain;
+}
+.account-sheet-heading {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-2);
+  text-align: center;
+}
+.account-sheet-avatar {
+  width: 60px;
+  height: 60px;
+}
+.account-sheet-name {
+  color: var(--ink-2);
+  font-size: var(--size-body);
+}
+:deep(.account-sheet .modal-content) {
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-lg);
+  background: var(--paper-sunk);
 }
 .profile-copy {
   min-width: 0;
