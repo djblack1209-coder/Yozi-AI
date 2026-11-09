@@ -11,6 +11,8 @@ import {
   museTestNotification
 } from '@/services/learning/muse-workspace-data.js';
 import Usage from '@/components/business/learning/muse-usage-board.vue';
+import StudyUsageDetails from '@/components/business/learning/study-usage-details.vue';
+import ModelUsageReceipt from '@/components/business/learning/model-usage-receipt.vue';
 import Library from '@/components/business/learning/muse-library.vue';
 import Pages from '@/components/business/learning/muse-workspace-pages.vue';
 import Overview from '@/components/business/learning/learning-overview.vue';
@@ -248,6 +250,18 @@ describe('12B academic subjects and local usage', () => {
     expect(wrapper.text()).toContain('待确认');
     expect(wrapper.text()).toContain('待结算');
     expect(wrapper.findAll('[role="table"]')).toHaveLength(1);
+    await wrapper.get('.quota-local-head button').trigger('tap');
+    const details = wrapper.getComponent(StudyUsageDetails);
+    expect(details.props('visible')).toBe(true);
+    expect(details.props('metrics').map(({ value }) => value)).toEqual([3, 1, 2, 1]);
+    details.vm.$emit('close');
+    await wrapper.get('.quota-model-action').trigger('tap');
+    expect(wrapper.getComponent(ModelUsageReceipt).props('receipt')).toMatchObject({
+      count: 1,
+      tokenLabel: '待确认',
+      costLabel: '待结算'
+    });
+    expect(JSON.stringify(state)).toBe(before);
   });
   it('full receipts display actual cloud quota and settled costs, then withdraw them on owner switch', async () => {
     setup();
@@ -269,7 +283,12 @@ describe('12B academic subjects and local usage', () => {
     expect(wrapper.text()).toContain('20 / 100');
     expect(wrapper.text()).toContain('30');
     expect(wrapper.text()).toContain('0.0020');
+    await wrapper.get('.quota-model-action').trigger('tap');
+    const receipt = wrapper.getComponent(ModelUsageReceipt);
+    expect(receipt.props('receipt')).toMatchObject({ tokenLabel: 30, costLabel: '0.0020' });
     harness.store.state = emptyLearningState('other');
+    await nextTick();
+    expect(receipt.props('receipt')).toBeNull();
     harness.store.usage = null;
     await nextTick();
     expect(wrapper.text()).not.toContain('0.0020');

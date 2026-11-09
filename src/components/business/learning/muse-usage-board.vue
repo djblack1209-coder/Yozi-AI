@@ -21,7 +21,12 @@
           ><text class="quota-stamp" role="status">{{ refreshed }}</text></view
         >
         <MuseConversationFilter />
-        <text class="quota-section-title" role="heading" aria-level="2">本机学习用量</text>
+        <view class="quota-local-head">
+          <text class="quota-section-title" role="heading" aria-level="2">本机学习用量</text>
+          <BaseButton variant="quiet" icon="chart" @tap="localUsageOpen = true">{{
+            t('muse.usage.details')
+          }}</BaseButton>
+        </view>
         <view class="quota-stats quota-local-stats">
           <view v-for="metric in localMetrics" :key="metric.label" class="quota-stat">
             <text class="quota-stat-label">{{ metric.label }}</text
@@ -63,17 +68,25 @@
             ><text>{{ context.id.value === 'all' ? '第三方模型' : '当前对话的第三方模型回执' }}</text></view
           ><view v-if="account.models.length" class="quota-model-table" role="table" aria-label="第三方模型消耗"
             ><view class="quota-model-grid quota-model-heading" role="row"
-              ><text role="columnheader">模型</text><text role="columnheader">请求</text
-              ><text role="columnheader">词元</text><text role="columnheader">费用 · 美元</text></view
+              ><text role="columnheader">模型</text><text role="columnheader">{{ t('muse.usage.requests') }}</text
+              ><text role="columnheader">{{ t('muse.usage.tokens') }}</text
+              ><text role="columnheader">{{ t('muse.usage.usd') }}</text></view
             ><view v-for="model in account.models" :key="model.id" class="quota-model-grid" role="row"
               ><view role="cell"
-                ><text>{{ model.provider }}</text
-                ><text class="quota-model-id">{{ model.model }}</text></view
+                ><BaseButton
+                  class="quota-model-action"
+                  variant="quiet"
+                  align="start"
+                  icon="file-text"
+                  :label="t('muse.usage.openReceipt', { model: model.model || model.provider })"
+                  @tap="receiptId = model.id"
+                >
+                  <text>{{ model.provider }}</text>
+                  <text class="quota-model-id">{{ model.model }}</text>
+                </BaseButton></view
               ><text role="cell">{{ model.count }}</text
-              ><text role="cell">{{
-                model.missingUsage ? (model.tokens ? `${model.tokens} + 待确认` : '待确认') : model.tokens
-              }}</text
-              ><text role="cell">{{ model.pendingCost ? '待结算' : model.cost.toFixed(4) }}</text></view
+              ><text role="cell">{{ usageTokens(model) }}</text
+              ><text role="cell">{{ usageCost(model) }}</text></view
             ></view
           ><text v-if="!account.models.length" class="quota-no-models">{{
             context.id.value === 'all' ? '暂无第三方模型用量' : '暂无可定位到本对话的用量回执'
@@ -93,12 +106,22 @@
         >
       </view></view
     >
+    <StudyUsageDetails
+      :visible="localUsageOpen"
+      :metrics="localMetrics"
+      :scope="scopeLabel"
+      :dark="theme.isDark"
+      @close="localUsageOpen = false"
+    />
+    <ModelUsageReceipt :receipt="receipt" :scope="scopeLabel" :dark="theme.isDark" @close="receiptId = null" />
   </view>
 </template>
 <script setup>
 import MuseConversationFilter from './muse-conversation-filter.vue';
 import MuseStudyBeads from './muse-study-beads.vue';
 import MuseStudyTrend from './muse-study-trend.vue';
+import StudyUsageDetails from './study-usage-details.vue';
+import ModelUsageReceipt from './model-usage-receipt.vue';
 import { workspaceConversationContext } from '@/services/learning/workspace-context.js';
 import { computed, ref, watch, onMounted } from 'vue';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
@@ -115,7 +138,10 @@ defineEmits(['close']);
 const learning = useConversationLearningStore(),
   theme = useThemeStore(),
   refreshed = ref('');
+const localUsageOpen = ref(false);
+const receiptId = ref(null);
 const context = workspaceConversationContext(learning);
+const scopeLabel = computed(() => context.options.value.find((option) => option.id === context.id.value)?.label);
 const data = computed(() => museUsage(context.state.value, learning.calendarTime));
 const account = computed(() =>
   museAccountUsage(
@@ -129,12 +155,24 @@ const account = computed(() =>
         }
   )
 );
+const receipt = computed(() => {
+  const model = account.value.models.find((row) => row.id === receiptId.value);
+  return model ? { ...model, tokenLabel: usageTokens(model), costLabel: usageCost(model) } : null;
+});
 const localMetrics = computed(() => [
-  { label: '已提交', value: data.value.submitted },
-  { label: '已评估', value: data.value.assessed },
-  { label: '待评估', value: data.value.awaitingAssessment },
-  { label: '到期复习', value: data.value.due }
+  { label: '已提交', value: data.value.submitted, icon: 'book-open', tone: 'is-sky' },
+  { label: '已评估', value: data.value.assessed, icon: 'check', tone: 'is-mint' },
+  { label: '待评估', value: data.value.awaitingAssessment, icon: 'clock', tone: 'is-violet' },
+  { label: '到期复习', value: data.value.due, icon: 'refresh', tone: 'is-honey' }
 ]);
+function usageTokens(model) {
+  if (!model.missingUsage) return model.tokens;
+  const pending = t('muse.usage.tokensPending');
+  return model.tokens ? `${model.tokens} + ${pending}` : pending;
+}
+function usageCost(model) {
+  return model.pendingCost ? t('muse.usage.costPending') : model.cost.toFixed(4);
+}
 function manage() {
   requestProfilePanel('connectors');
   safeNavigateTo('/pages/profile/index');
@@ -151,15 +189,28 @@ async function refresh() {
   if (context === learning.recordContext())
     refreshed.value = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 }
-watch(
-  () => learning.recordContext(),
-  () => {
-    refreshed.value = '';
-  }
-);
+watch([() => learning.recordContext(), context.id], ([owner], [previousOwner]) => {
+  if (owner !== previousOwner) refreshed.value = '';
+  localUsageOpen.value = false;
+  receiptId.value = null;
+});
+watch(receipt, (model) => {
+  if (!model) receiptId.value = null;
+});
 onMounted(refresh);
 </script>
 <style scoped>
+.quota-local-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 14px;
+}
+.quota-local-head .quota-section-title {
+  margin: 0;
+}
 .quota-section-title {
   display: block;
   margin: 24px 0 8px;
@@ -321,6 +372,19 @@ onMounted(refresh);
 }
 .quota-model-table {
   overflow-wrap: anywhere;
+}
+.quota-model-action {
+  width: 100%;
+  padding: 4px 6px;
+  text-align: left;
+  color: var(--ink);
+}
+.quota-model-action :deep(.base-button__content) {
+  min-width: 0;
+  display: block;
+}
+.quota-model-action :deep(.base-icon) {
+  flex: none;
 }
 .quota-plan {
   font-size: 14px;
