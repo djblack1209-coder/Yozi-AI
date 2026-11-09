@@ -48,6 +48,7 @@
     </view>
     <StudyReminderNotice
       v-if="savedTitle && message"
+      tabindex="-1"
       :title="savedTitle"
       :message="message"
       :action-label="t('ui.notificationViewPlan')"
@@ -238,6 +239,15 @@ function save() {
             ? '提醒已保存 · 页面打开时提醒'
             : '时间已保存，当前终端暂不能后台提醒';
     savedKind.value = draft.kind;
+    // #ifdef H5
+    await nextTick();
+    if (current(saved)) {
+      const element = root.value?.$el || root.value;
+      const notice = element?.querySelector?.('.study-reminder-notice');
+      notice?.scrollIntoView?.({ block: 'nearest' });
+      notice?.focus?.({ preventScroll: true });
+    }
+    // #endif
   });
 }
 watch(
