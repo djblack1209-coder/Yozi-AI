@@ -22,6 +22,7 @@ afterEach(() => {
   for (const s of getActivePinia()?._s.values() || []) s.$dispose();
   learningWriteLease.release();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   vi.useRealTimers();
   setLanguage('zh-CN');
   uni.clearStorageSync();
@@ -193,6 +194,7 @@ describe('学习路线的明确操作与阅读', () => {
     }
   });
   it('从其他页面定位长会话旧日时不被当前题分页覆盖，较早日期可达且不改记录', async () => {
+    vi.stubGlobal('innerWidth', 390);
     const query = {
       select: () => query,
       boundingClientRect: () => query,
@@ -252,6 +254,7 @@ describe('学习路线的明确操作与阅读', () => {
     expect(s.exportData()).toBe(before);
   });
   it('模块目录定位同一完整会话，日进度在对话内，导航/展开不改原答或停止状态', async () => {
+    vi.stubGlobal('innerWidth', 390);
     const query = {
       select: () => query,
       boundingClientRect: () => query,

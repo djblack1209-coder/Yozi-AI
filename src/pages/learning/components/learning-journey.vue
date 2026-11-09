@@ -31,8 +31,14 @@
       <BaseInput v-model="form.title" maxlength="160" :label="t('learning.kr3')" />
       <view class="journey-fields">
         <BaseInput v-model="form.startDay" placeholder="YYYY-MM-DD" :label="t('learning.ko5')" />
-        <BaseInput v-model.number="form.durationDays" type="number" :label="t('learning.kpd')" />
-        <BaseInput v-model.number="form.minutes" type="number" :label="t('learning.k8r')" />
+        <BaseInput
+          v-model.number="form.durationDays"
+          type="number"
+          inputmode="numeric"
+          :label="t('learning.kpd')"
+          numeric-delete-ink
+        />
+        <BaseInput v-model.number="form.minutes" type="number" inputmode="numeric" :label="t('learning.k8r')" numeric-delete-ink />
       </view>
       <view class="button-row" :aria-label="t('learning.k6c')">
         <BaseChip

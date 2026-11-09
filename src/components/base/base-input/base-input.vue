@@ -2,6 +2,7 @@
   <view class="base-field">
     <label v-if="label && !hideLabel" :id="`${id}-label`" :for="id" class="base-field__label">{{ label }}</label>
     <view
+      ref="fieldGroup"
       class="base-field__group"
       :class="{
         'is-focused': focused && !focusVisibleOnly,
@@ -10,10 +11,19 @@
         'is-error': error,
         'is-multiline': multiline,
         'is-auto-grow': multiline && autoGrow,
-        'is-disabled': disabled
+        'is-disabled': disabled,
+        'has-numeric-delete-ink': numericDeleteInk
       }"
       :style="autoGrow ? { '--field-max-rows': maxRows } : undefined"
     >
+      <!-- #ifdef APP-PLUS -->
+      <view
+        v-if="numericDeleteInk && hasNativeWebView"
+        hidden
+        :ink-enabled="numericDeleteInk"
+        :change:ink-enabled="numericInkView.attach"
+      />
+      <!-- #endif -->
       <!-- #ifdef H5 -->
       <component
         :is="'select'"
@@ -179,6 +189,9 @@
 import { computed, getCurrentInstance, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
 import { t } from '@/i18n/index.js';
 import { setMascotInputFocused } from '@/design/mascot-motion.js';
+// #ifdef H5
+import { bindNumericDeleteInk } from '@/design/numeric-delete-ink.js';
+// #endif
 import BaseButton from '../base-button/base-button.vue';
 const props = defineProps({
   modelValue: { type: [String, Number], default: '' },
@@ -195,6 +208,7 @@ const props = defineProps({
   hideLabel: Boolean,
   inputClass: { type: String, default: '' },
   focusVisibleOnly: Boolean,
+  numericDeleteInk: Boolean,
   nativeFocus: Boolean,
   disabled: Boolean,
   verification: Boolean,
@@ -208,6 +222,11 @@ const props = defineProps({
 });
 const emit = defineEmits(['update:modelValue', 'resend', 'focus', 'blur', 'input', 'resize']);
 const textarea = ref(null);
+const fieldGroup = ref(null);
+let releaseNumericInk;
+// #ifdef APP-PLUS
+const hasNativeWebView = typeof plus !== 'undefined' && Boolean(plus.webview);
+// #endif
 const nativeRows = ref(1);
 const nativeGrowingStyle = computed(() => ({
   height: `max(var(--field-grow-min, var(--touch-min)), calc(var(--field-grow-line, var(--leading-body)) * ${nativeRows.value} + var(--field-grow-padding, calc(var(--s-2) * 2))))`
@@ -249,6 +268,10 @@ const pointerModality = () => {
 onMounted(() => {
   resizeTextarea();
   // #ifdef H5
+  if (props.numericDeleteInk) {
+    const group = fieldGroup.value?.$el || fieldGroup.value;
+    releaseNumericInk = bindNumericDeleteInk(group);
+  }
   if (props.focusVisibleOnly && typeof document !== 'undefined') {
     document.addEventListener('keydown', keyboardModality, true);
     document.addEventListener('pointerdown', pointerModality, true);
@@ -307,6 +330,7 @@ function resend() {
 }
 onBeforeUnmount(() => {
   clearInterval(timer);
+  releaseNumericInk?.();
   // #ifdef H5
   if (typeof document !== 'undefined') {
     document.removeEventListener('keydown', keyboardModality, true);
@@ -316,6 +340,19 @@ onBeforeUnmount(() => {
   setMascotInputFocused(id, false);
 });
 </script>
+<!-- #ifdef APP-PLUS -->
+<renderjs name="numericInkView">
+import { bindNumericDeleteInk } from '../../../design/numeric-delete-ink.js';
+
+export default {
+  methods: {
+    attach(enabled, previous, owner) {
+      if (enabled && !previous) bindNumericDeleteInk(owner.$el.querySelector('.base-field__group'));
+    }
+  }
+};
+</renderjs>
+<!-- #endif -->
 <style scoped lang="scss">
 .base-field {
   display: grid;
@@ -336,6 +373,16 @@ onBeforeUnmount(() => {
   border-radius: var(--r-md);
   background: var(--paper);
   overflow: hidden;
+}
+.base-field__group.has-numeric-delete-ink {
+  position: relative;
+}
+.base-field__group :deep(.numeric-delete-ink) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 .base-field__group.is-focused {
   border-color: var(--violet);
