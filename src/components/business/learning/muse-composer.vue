@@ -7,7 +7,7 @@
     <view v-if="$slots.actions" class="muse-composer-actions" role="group" aria-label="学习操作">
       <slot name="actions"></slot>
     </view>
-    <view v-if="voice.active" class="muse-dictation" :aria-label="t('muse.dictation')">
+    <view v-if="voice.active" class="muse-dictation" :data-voice-phase="voice.phase" :aria-label="t('muse.dictation')">
       <text class="muse-dictation-status"
         >{{ voice.phase === 'starting' ? t('muse.dictationPreparing') : t('muse.dictation') }} ·
         {{ voice.elapsed }}s</text
@@ -296,9 +296,50 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 .muse-dictation {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--s-2);
+  isolation: isolate;
+  overflow: hidden;
+  padding: 10px 12px 6px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--muse-panel);
+}
+.muse-dictation::before {
+  position: absolute;
+  z-index: -1;
+  inset: auto -12% -26px;
+  height: 72px;
+  background:
+    radial-gradient(ellipse at 26% 88%, #65d7e26b, transparent 46%),
+    radial-gradient(ellipse at 53% 92%, #a48bfc8a, transparent 46%),
+    radial-gradient(ellipse at 72% 96%, #7ac8fb70, transparent 44%);
+  filter: blur(8px);
+  opacity: 0.36;
+  pointer-events: none;
+  content: '';
+}
+.muse-dictation[data-voice-phase='listening']::before {
+  opacity: 0.86;
+  animation: voice-glow-sweep 1.7s cubic-bezier(0.43, 0.05, 0.51, 0.96) infinite alternate;
+}
+.muse-dictation[data-voice-phase='finishing']::before {
+  opacity: 0.25;
+}
+@keyframes voice-glow-sweep {
+  from {
+    transform: translateX(-9%) scaleY(0.83);
+  }
+  to {
+    transform: translateX(9%) scaleY(1.19);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .muse-dictation[data-voice-phase='listening']::before {
+    animation: none;
+  }
 }
 .muse-dictation-status {
   color: var(--ink-3);
