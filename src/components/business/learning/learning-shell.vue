@@ -477,6 +477,7 @@ const props = defineProps({
   notice: { type: String, default: '' },
   sidePanel: { type: Boolean, default: false },
   waitingForAnswer: { type: Boolean, default: false },
+  refreshRecordsOnMount: { type: Boolean, default: true },
   active: { type: String, default: 'learning' },
   title: { type: String, default: '' },
   layout: { type: String, default: 'default' }
@@ -1160,6 +1161,7 @@ onMounted(() => {
   element?.addEventListener?.('keydown', headerActionKey, true);
   element?.addEventListener?.('keyup', headerActionKey);
   element?.addEventListener?.('pointerdown', outsideDirectory);
+  if (!props.refreshRecordsOnMount) return;
   try {
     learning.refresh();
   } catch (e) {

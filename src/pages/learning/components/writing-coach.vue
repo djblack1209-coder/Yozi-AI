@@ -3,6 +3,7 @@
     ref="shell"
     active="learning"
     :waiting-for-answer="Boolean(answerTarget)"
+    :refresh-records-on-mount="props.refreshRecordsOnMount"
     :notice="cancellationNotice"
     :title="
       !coach && entryMode === 'question'
@@ -806,6 +807,7 @@ import BaseOptions from '@/components/base/base-options/base-options.vue';
 import BaseSegmented from '@/components/base/base-segmented/base-segmented.vue';
 const props = defineProps({
   materialsOpen: Boolean,
+  refreshRecordsOnMount: { type: Boolean, default: true },
   connectionLabel: { type: String, default: '' },
   connectionAction: { type: String, default: '' },
   connectionTone: { type: String, default: 'neutral' },

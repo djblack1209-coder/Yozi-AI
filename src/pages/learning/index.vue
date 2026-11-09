@@ -3,6 +3,7 @@
     v-if="writingCoachActive"
     ref="writingCoach"
     :materials-open="showMaterial"
+    :refresh-records-on-mount="false"
     :connection-label="emptyConnectionLabel"
     :connection-action="emptyConnectionAction"
     :connection-tone="connectionTone"
@@ -14,6 +15,7 @@
     v-else
     ref="learningShell"
     active="learning"
+    :refresh-records-on-mount="false"
     :dismiss-overlay="dismissOverlay"
     :notice="cancellationNotice"
     :style="{ '--muse-composer-height': `${composerHeight || 80}px` }"

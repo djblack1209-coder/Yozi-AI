@@ -2,6 +2,7 @@ import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { readFileSync } from 'node:fs';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import {
@@ -100,6 +101,25 @@ function receipt(body, patch = {}) {
     }
   };
 }
+describe('Learning record loading', () => {
+  it.each([false, true])('restores records on page show with writing mode %s', async (writing) => {
+    if (writing) store.startCoach('考研英语二写作');
+    const refresh = vi.spyOn(store, 'refresh');
+    const readAccountRecords = vi.spyOn(store, 'readAccountRecords');
+    const hookIndex = onShow.mock.calls.length;
+    const wrapper = render(LearningPage, { LearningShell: false });
+    expect(wrapper.findComponent(WritingCoach).exists()).toBe(writing);
+    expect(refresh).not.toHaveBeenCalled();
+    await onShow.mock.calls[hookIndex][0]();
+    expect(readAccountRecords).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes records when the shell is mounted on its own', () => {
+    const refresh = vi.spyOn(store, 'refresh');
+    render(LearningShell, { LearningShell: false });
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+});
 describe('S2 continuous reply', () => {
   it('S4 A1 covers the composer and reserved bottom space with an opaque dock', () => {
     const wrapper = render(LearningPage, { LearningShell: false });
