@@ -215,21 +215,25 @@
                       : '未归类 · 暂无来源对话'
                   "
                   @tap="openArtifact(item)"
-                  ><view class="artifact-cover" :class="`artifact-cover-${item.kind}`"
-                    ><view v-if="artifactPreviews[item.id]" class="artifact-preview">
-                      <text class="artifact-preview-title">{{ item.title }}</text>
-                      <text class="artifact-preview-copy">{{ artifactPreviews[item.id] }}</text> </view
-                    ><BaseIcon v-else :name="item.icon" size="30px" />
+                  ><view class="artifact-head"
+                    ><text class="artifact-title">{{ item.title }}</text></view
+                  ><view class="artifact-cover" :class="`artifact-cover-${item.kind}`">
+                    <view class="artifact-print">
+                      <view v-if="artifactPreviews[item.id]" class="artifact-preview">
+                        <text class="artifact-preview-copy">{{ artifactPreviews[item.id] }}</text>
+                      </view>
+                      <BaseIcon v-else :name="item.icon" size="42px" />
+                    </view>
                     <text v-if="query.trim()" class="artifact-kind-tag" aria-hidden="true">{{
                       kindLabel(item.kind)
                     }}</text>
-                    <BaseIcon
-                      v-if="selecting"
-                      class="artifact-selection"
-                      :name="selected.includes(item.id) ? 'checkbox-on' : 'checkbox-off'"
-                      size="20px" /></view
+                    <view v-if="selecting || artifactPreviews[item.id]" class="artifact-emblem" aria-hidden="true">
+                      <BaseIcon
+                        :name="selecting ? (selected.includes(item.id) ? 'checkbox-on' : 'checkbox-off') : item.icon"
+                        size="18px"
+                      />
+                    </view> </view
                   ><view class="artifact-meta"
-                    ><text class="artifact-title">{{ item.title }}</text
                     ><text
                       >{{ kindLabel(item.kind) }} · {{ dateLabel(item.at, item.day) }} · {{ item.detail }}</text
                     ></view
@@ -584,16 +588,29 @@ function keydown(event) {
 }
 let rootElement;
 let matrixGrid;
+let tiltPreference;
+let tiltedCard;
 function highlightArtifact(event) {
   const id = event.target?.closest?.('[data-artifact-id]')?.dataset.artifactId;
   if (id) highlightedId.value = id;
 }
+function resetTilt() {
+  if (!tiltedCard) return;
+  tiltedCard.classList.remove('is-tilted');
+  tiltedCard.style.removeProperty('--card-tilt-x');
+  tiltedCard.style.removeProperty('--card-tilt-y');
+  tiltedCard = null;
+}
 function resetMatrix() {
   matrixGrid?.style.removeProperty('--matrix-turn');
   matrixGrid = null;
+  resetTilt();
 }
 function moveMatrix(event) {
-  if (event.pointerType === 'touch') return;
+  if (event.pointerType === 'touch') {
+    resetMatrix();
+    return;
+  }
   const grid = event.target?.closest?.('.library-grid');
   if (grid !== matrixGrid) resetMatrix();
   if (!grid) return;
@@ -602,9 +619,26 @@ function moveMatrix(event) {
   const turn = ((event.clientX - bounds.left) / bounds.width - 0.5) * 17;
   grid.style.setProperty('--matrix-turn', `${turn}deg`);
   highlightArtifact(event);
+  const card = tiltPreference?.matches ? event.target.closest('[data-artifact-id]') : null;
+  if (card !== tiltedCard) resetTilt();
+  if (!card) return;
+  // The entry stays in the grid plane while its face and print tilt inside it.
+  const frame = card.getBoundingClientRect();
+  const x = Math.max(-1, Math.min(1, ((event.clientX - frame.left) / frame.width) * 2 - 1));
+  const y = Math.max(-1, Math.min(1, ((event.clientY - frame.top) / frame.height) * 2 - 1));
+  card.style.setProperty('--card-tilt-x', `${-y * 7}deg`);
+  card.style.setProperty('--card-tilt-y', `${x * 9}deg`);
+  card.classList.add('is-tilted');
+  tiltedCard = card;
 }
 onMounted(() => {
   rootElement = root.value?.$el || root.value;
+  // #ifdef H5
+  tiltPreference = window.matchMedia?.(
+    '(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)'
+  );
+  tiltPreference?.addEventListener?.('change', resetTilt);
+  // #endif
   rootElement?.addEventListener?.('keydown', keydown);
   rootElement?.addEventListener?.('pointermove', moveMatrix, { passive: true });
   rootElement?.addEventListener?.('pointerleave', resetMatrix);
@@ -612,6 +646,7 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
   resetMatrix();
+  tiltPreference?.removeEventListener?.('change', resetTilt);
   rootElement?.removeEventListener?.('keydown', keydown);
   rootElement?.removeEventListener?.('pointermove', moveMatrix);
   rootElement?.removeEventListener?.('pointerleave', resetMatrix);
@@ -1044,13 +1079,17 @@ onBeforeUnmount(() => {
 .artifact {
   position: relative;
   display: block;
-  padding: 0;
+  width: 100%;
+  padding: 0 10px;
   min-width: 0;
   border: 1px solid var(--line);
-  overflow: hidden;
+  overflow: visible;
   border-radius: 16px;
-  background: var(--muse-rich-surface);
+  background: var(--paper);
   text-align: left;
+}
+.artifact:hover {
+  background: var(--paper);
 }
 .artifact-entry {
   position: relative;
@@ -1058,8 +1097,9 @@ onBeforeUnmount(() => {
 }
 .artifact-pin {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 3px;
+  right: 4px;
+  z-index: 1;
 }
 .artifact :deep(.base-button__content) {
   display: flex;
@@ -1068,74 +1108,93 @@ onBeforeUnmount(() => {
   width: 100%;
   gap: 0;
 }
-.artifact-cover {
+.artifact-head {
   display: flex;
   align-items: center;
-  justify-content: center;
+  min-height: 39px;
+  padding: 6px 34px 6px 4px;
+}
+.artifact-cover {
+  --artifact-tint: var(--blue-soft);
   position: relative;
   width: 100%;
   aspect-ratio: 16/10;
-  height: auto;
-  background: var(--muse-panel);
-  color: var(--ink-3);
 }
-.artifact-cover :deep(.base-icon) {
+.artifact-cover-practice,
+.artifact-cover-summary {
+  --artifact-tint: var(--mint-soft);
+}
+.artifact-cover-writing,
+.artifact-cover-note {
+  --artifact-tint: var(--apricot-soft);
+}
+.artifact-print {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  inset: 0;
+  padding: 16px 24px 16px 14px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--artifact-tint);
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--ink) 12%, transparent) 0.8px, transparent 0.9px);
+  background-size: 8px 8px;
+  color: var(--ink-2);
+}
+.artifact-print :deep(.base-icon),
+.artifact-emblem :deep(.base-icon) {
   color: inherit !important;
 }
 .artifact-kind-tag {
   position: absolute;
-  bottom: 8px;
-  right: 8px;
-  padding: 4px 9px;
+  bottom: 6px;
+  left: 9px;
+  padding: 2px 8px;
   border-radius: 999px;
-  background: var(--blue-soft);
+  background: var(--paper);
   color: var(--ink);
   font-size: 10px;
 }
 .artifact-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   width: 100%;
-  height: 100%;
-  padding: 16px 20px;
-  overflow: hidden;
-  background: #fafafa;
-  color: #24262b;
-  text-align: left;
-}
-.artifact-preview-title {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper);
+  box-shadow: 0 3px 8px #0000000c;
+  color: var(--ink);
 }
 .artifact-preview-copy {
   display: -webkit-box;
-  -webkit-line-clamp: 6;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
   white-space: pre-line;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
-  line-height: 16px;
+  line-height: 18px;
 }
-.artifact-selection {
+.artifact-emblem {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  right: 7px;
+  bottom: 8px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--paper);
+  box-shadow: 0 3px 7px #00000016;
+  color: var(--ink-2);
+  pointer-events: none;
 }
 .artifact.is-selected {
   border-color: var(--blue);
 }
 .artifact-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 10px 12px 12px;
+  padding: 9px 4px 11px;
   font-size: 11px;
   line-height: 16px;
   font-weight: 400;
@@ -1143,7 +1202,7 @@ onBeforeUnmount(() => {
 }
 .artifact-title {
   display: block;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 19px;
   font-weight: 600;
   color: var(--ink);
@@ -1151,6 +1210,7 @@ onBeforeUnmount(() => {
 }
 .artifact-title,
 .artifact-meta > text:last-child {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1167,7 +1227,6 @@ onBeforeUnmount(() => {
     --matrix-bend: -15deg;
   }
   .artifact-entry .artifact {
-    width: 100%;
     transform: rotateY(calc(var(--matrix-bend, 0deg) + var(--matrix-turn, 0deg)));
     transition:
       transform 290ms var(--muse-spring-pop),
@@ -1208,6 +1267,37 @@ onBeforeUnmount(() => {
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .artifact,
+  .artifact :deep(.base-button__content),
+  .artifact-cover {
+    transform-style: preserve-3d;
+  }
+  .artifact-print,
+  .artifact-kind-tag,
+  .artifact-emblem {
+    transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .artifact-entry.is-tilted {
+    z-index: 1;
+  }
+  .artifact-entry.is-tilted .artifact {
+    transform: perspective(1000px) rotateX(var(--card-tilt-x)) rotateY(var(--card-tilt-y)) translateY(-2px);
+    transition:
+      transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 210ms ease;
+    box-shadow: var(--lift-2);
+  }
+  .is-tilted .artifact-print {
+    transform: translateZ(12px);
+  }
+  .is-tilted .artifact-kind-tag {
+    transform: translateZ(20px);
+  }
+  .is-tilted .artifact-emblem {
+    transform: translateZ(30px);
   }
 }
 .library-type-heading {
@@ -1395,7 +1485,7 @@ onBeforeUnmount(() => {
 }
 @media (min-width: 600px) {
   .artifact-cover {
-    height: 166px;
+    height: 150px;
     aspect-ratio: auto;
   }
 }
