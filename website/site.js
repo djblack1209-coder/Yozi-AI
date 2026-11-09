@@ -352,6 +352,21 @@
   collection.addEventListener("keydown", (event) => {
     if (event.key === "Escape") setCollection(false);
   });
+  const collectionControls = collection.querySelector("[data-collection-controls]");
+  const collectionCards = [...collection.querySelectorAll(".collection-card")];
+  const collectionPosition = collectionControls.querySelector("[data-collection-position]");
+  let centeredCard = collectionCards.findIndex((card) => card.dataset.slot === "center");
+  collectionControls.hidden = false;
+  collectionControls.querySelectorAll("[data-collection-step]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const count = collectionCards.length;
+      centeredCard = (centeredCard + Number(button.dataset.collectionStep) + count) % count;
+      collectionCards.forEach((card, index) => {
+        card.dataset.slot = ["center", "right", "left"][(index - centeredCard + count) % count];
+      });
+      collectionPosition.value = `${centeredCard + 1} / ${count}`;
+    });
+  });
 
   demo.addEventListener("click", () => {
     const active = features.classList.toggle("is-practising");

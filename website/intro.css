@@ -484,34 +484,67 @@ html:not(.js) .collection-start {
   font-size: clamp(24px, 4vw, 52px);
 }
 .collection-deck {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(8px, 1.1vw, 16px);
+  display: grid;
+  place-items: center;
+  perspective: 840px;
   padding-top: clamp(28px, 4vw, 54px);
 }
 .collection-card {
+  --slot-x: 0%;
+  --slot-tilt: 0deg;
+  --slot-depth: 0px;
+  --slot-lift: 0px;
+  --deck-glow: #8ee9ff;
   position: relative;
-  flex: 0 1 clamp(160px, 21vw, 265px);
+  grid-area: 1 / 1;
+  width: clamp(148px, 20vw, 254px);
   min-width: 0;
   aspect-ratio: 3 / 4;
   overflow: hidden;
-  border: 5px solid #f7fcff;
+  border: 2px solid #f7fcffba;
   border-radius: 22px;
-  background: #fff;
+  background: var(--navy);
   box-shadow: 0 15px 40px #0f314238;
-  transform: rotate(var(--card-rotation));
-  transform-origin: bottom center;
-  transition: transform .55s cubic-bezier(.22, 1.4, .36, 1);
+  transform: translate3d(var(--slot-x), var(--slot-lift), var(--slot-depth)) rotateY(var(--slot-tilt));
+  transition: transform .54s cubic-bezier(.19, .8, .25, 1);
+  isolation: isolate;
 }
 .collection-card:nth-child(2) {
-  z-index: 1;
-  transform: scale(1.05);
+  --deck-glow: #b7b3ff;
 }
-.collection-card:hover,
-.collection-card:focus-visible {
+.collection-card:nth-child(3) {
+  --deck-glow: #f8c774;
+}
+.collection-card[data-slot="left"] {
+  --slot-x: -94%;
+  --slot-tilt: 40deg;
+  --slot-depth: -85px;
+}
+.collection-card[data-slot="right"] {
+  --slot-x: 94%;
+  --slot-tilt: -40deg;
+  --slot-depth: -85px;
+}
+.collection-card[data-slot="center"] {
   z-index: 2;
-  transform: translate(calc(var(--hover-x) * .55), -16px) rotate(var(--hover-rotation)) scale(1.04);
+}
+.collection-card:is(:hover, :focus-visible) {
+  --slot-lift: -8px;
+  z-index: 3;
+}
+.collection-card::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 82% 76%, var(--deck-glow), transparent 65%);
+  opacity: .32;
+  mix-blend-mode: screen;
+  transition: opacity .44s ease;
+}
+.collection-card[data-slot="center"]::before {
+  opacity: .7;
 }
 .collection-card > img,
 .collection-card > video {
@@ -530,6 +563,7 @@ html:not(.js) .collection-start {
 }
 .collection-note {
   position: absolute;
+  z-index: 2;
   top: 10%;
   inset-inline: 8%;
   padding: 12px;
@@ -548,6 +582,7 @@ html:not(.js) .collection-start {
 }
 .collection-card-title {
   position: absolute;
+  z-index: 2;
   inset: auto 0 0;
   display: flex;
   align-items: center;
@@ -559,6 +594,28 @@ html:not(.js) .collection-start {
   color: var(--cream);
   font: clamp(14px, 1.4vw, 20px)/1.3 "Anton", "Noto Sans SC", sans-serif;
   text-align: left;
+}
+.collection-controls:not([hidden]) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+  color: var(--navy);
+}
+.collection-controls button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ffffffcc;
+  color: inherit;
+}
+.collection-controls output {
+  min-width: 48px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Hover Ink. The mask moves, while the title, poster and controls stay in the DOM. */
@@ -765,11 +822,16 @@ html:not(.js) .ink-hint,
     padding-top: 16px;
   }
   .collection-deck .collection-card {
+    grid-area: auto;
+    width: 100%;
     min-height: 116px;
     aspect-ratio: auto;
     border-width: 2px;
     border-radius: 12px;
     transform: none;
+  }
+  .collection-controls:not([hidden]) {
+    display: none;
   }
   .collection-note {
     top: 8px;

@@ -279,6 +279,8 @@ const labels = {
   scrubLabel: ["学习场景画面进度", "study scene position"],
   previousLabel: ["上一条理念", "previous principle"],
   nextLabel: ["下一条理念", "next principle"],
+  collectionPreviousLabel: ["上一张学习卡", "previous study card"],
+  collectionNextLabel: ["下一张学习卡", "next study card"],
   faqLabel: ["问题分类", "question categories"],
   footerProduct: ["产品链接", "product links"],
   footerUse: ["使用链接", "getting started links"],
@@ -340,7 +342,7 @@ export function renderHome(lang = "zh", root = false) {
     ]
       .map(
         ([title, [href, note]], i) =>
-          `<a class="collection-card" href="${href}" style="--card-rotation:${[-8, 0, 8][i]}deg;--hover-x:${[-60, 0, 60][i]}px;--hover-rotation:${[-12, 0, 12][i]}deg"><img src="${base}/media/feature-day-${i + 1}.jpg" alt=""><video data-deck-film data-src="${base}/media/yozi-learning-sky.mp4" muted loop playsinline preload="none" aria-hidden="true"></video><span class="collection-note" lang="en" aria-hidden="true">${note}</span><span class="collection-card-title">${tr(...title)}${icon("arrow")}</span></a>`,
+          `<a class="collection-card" href="${href}" data-slot="${["left", "center", "right"][i]}"><img src="${base}/media/feature-day-${i + 1}.jpg" alt=""><video data-deck-film data-src="${base}/media/yozi-learning-sky.mp4" muted loop playsinline preload="none" aria-hidden="true"></video><span class="collection-note" lang="en" aria-hidden="true">${note}</span><span class="collection-card-title">${tr(...title)}${icon("arrow")}</span></a>`,
       )
       .join(""),
     principleSlides: principles

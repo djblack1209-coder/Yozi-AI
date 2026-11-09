@@ -125,7 +125,12 @@
           <section class="collection" id="collection" aria-labelledby="collection-title" hidden>
             <button class="collection-back" type="button" data-collection-back>{{ileft}}{{backToStart}}</button>
             <h2 id="collection-title">{{collectionTitle}}</h2>
-            <div class="collection-deck">{{collectionCards}}</div>
+            <div class="collection-deck" id="collection-deck">{{collectionCards}}</div>
+            <div class="collection-controls" data-collection-controls hidden>
+              <button type="button" data-collection-step="-1" aria-controls="collection-deck" {{collectionPreviousLabel}}>{{ileft}}</button>
+              <output data-collection-position aria-live="polite">2 / 3</output>
+              <button type="button" data-collection-step="1" aria-controls="collection-deck" {{collectionNextLabel}}>{{iright}}</button>
+            </div>
           </section>
         </div>
     </div>
