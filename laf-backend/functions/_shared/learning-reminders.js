@@ -1,3 +1,4 @@
+import { dateTimeParts, learningDateTimeFormat } from './learning-date-time.js';
 import { journeyDate } from './learning-journey.js';
 import { reviewFacts, coachReviewId } from './learning-adherence.js';
 import { libraryItemPaused } from './learning-writing-corpus.js';
@@ -193,7 +194,7 @@ export function applyReminderOperation(state, operation, { assert, dayKey, norma
 // 按原时区的日历时间计算；夏令时不存在的时刻不猜成另一个时间。
 export function reminderInstant(day, time, timezone) {
   if (journeyDate(day) === null || !/^(?:[01]\d|2[0-3]):[0-5]\d$/u.test(time || '')) return null;
-  const formatter = new Intl.DateTimeFormat('en-CA', {
+  const formatter = learningDateTimeFormat('en-CA', {
     timeZone: timezone,
     year: 'numeric',
     month: '2-digit',
@@ -206,7 +207,7 @@ export function reminderInstant(day, time, timezone) {
   const target = Date.parse(`${day}T${time}:00Z`);
   let instant = target;
   for (let i = 0; i < 4; i++) {
-    const values = Object.fromEntries(formatter.formatToParts(new Date(instant)).map((p) => [p.type, p.value]));
+    const values = dateTimeParts(formatter, instant);
     const observed = Date.parse(
       `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}:${values.second}Z`
     );

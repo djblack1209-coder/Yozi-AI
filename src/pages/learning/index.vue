@@ -2043,6 +2043,7 @@ import BaseChip from '@/components/base/base-chip/base-chip.vue';
 
 import { workspaceDrafts } from '@/services/learning/workspace-drafts.js';
 import { bindLearningKeyboard } from '@/services/learning/keyboard-controls.js';
+import { createLearningAbortController } from '@/services/learning/cancellation.js';
 import { isDesktopRuntime } from '@/services/desktop/runtime.js';
 // #ifdef H5
 import {
@@ -3944,7 +3945,7 @@ function chooseMaterialFile() {
       if (appFileBusy.value) throw new Error('文件动作仍在执行');
       discardAppFile();
       const owner = learning.recordContext(),
-        controller = new AbortController();
+        controller = createLearningAbortController();
       appFileController = controller;
       appFileContext = owner;
       appFileBusy.value = true;
@@ -4164,7 +4165,7 @@ function parseSelectedAppFile() {
       target = new URL(learning.materialConnection.endpoint).origin,
       allowRecognition = allowMaterialRecognition.value,
       recognitionEngine = materialRecognitionEngine.value,
-      controller = new AbortController();
+      controller = createLearningAbortController();
     appFileController = controller;
     appFileContext = owner;
     appFileBusy.value = true;

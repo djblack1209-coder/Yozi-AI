@@ -207,6 +207,8 @@
   </view>
 </template>
 <script setup>
+import { getCurrentRoute } from '@/utils/home-navigation.js';
+import { learningDateTimeFormat } from '../../../../laf-backend/functions/_shared/learning-date-time.js';
 import '@/i18n/tutor.js';
 import { computed, ref, watch, nextTick, getCurrentInstance, onMounted, onUnmounted } from 'vue';
 import { onShow, onHide } from '@dcloudio/uni-app';
@@ -259,13 +261,13 @@ const unitLimit = ref(12),
 const month = computed(() => chosenMonth.value || data.value.today.slice(0, 7));
 const locale = computed(() => (currentLanguage.value === 'en' ? 'en-US' : 'zh-CN'));
 const monthTitle = computed(() =>
-  new Intl.DateTimeFormat(locale.value, { year: 'numeric', month: 'long', timeZone: 'UTC' }).format(
+  learningDateTimeFormat(locale.value, { year: 'numeric', month: 'long', timeZone: 'UTC' }).format(
     new Date(`${month.value}-01T12:00:00Z`)
   )
 );
 const weekdays = computed(() =>
   Array.from({ length: 7 }, (_, i) =>
-    new Intl.DateTimeFormat(locale.value, { weekday: 'narrow', timeZone: 'UTC' }).format(
+    learningDateTimeFormat(locale.value, { weekday: 'narrow', timeZone: 'UTC' }).format(
       new Date(Date.UTC(2026, 0, 5 + i))
     )
   )
@@ -344,7 +346,7 @@ function goToday() {
   selectDay(data.value.today);
 }
 function timeLabel(at) {
-  return new Intl.DateTimeFormat(locale.value, {
+  return learningDateTimeFormat(locale.value, {
     timeZone: data.value.timezone,
     month: 'short',
     day: 'numeric',
@@ -376,7 +378,7 @@ async function perform(action, openChat = false, expected = data.value.context) 
   try {
     await action();
     if (openChat && expected === learning.recordContext()) {
-      const route = typeof getCurrentPages === 'function' ? getCurrentPages().at(-1)?.route : '';
+      const route = getCurrentRoute();
       if (route !== 'pages/learning/index') safeNavigateTo('/pages/learning/index');
     }
   } catch (error) {

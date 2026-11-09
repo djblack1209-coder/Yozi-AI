@@ -1,3 +1,4 @@
+import { learningDateTimeFormat } from '../../laf-backend/functions/_shared/learning-date-time.js';
 export const US_LOGIN_ENABLED = import.meta.env.VITE_ENABLE_US_LOGIN === 'true';
 const KEY = 'yozi_login_region';
 export function inferLoginRegion({ region, locale, timeZone } = {}) {
@@ -39,7 +40,7 @@ export function readLoginRegion(runtime, { enabled = US_LOGIN_ENABLED } = {}) {
     /* fallback */
   }
   try {
-    timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    timeZone = learningDateTimeFormat().resolvedOptions().timeZone;
   } catch {
     /* fallback */
   }

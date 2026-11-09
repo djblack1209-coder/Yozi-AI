@@ -161,28 +161,30 @@
                 id="e2e-login-agreement"
                 v-model="agreedToTerms"
                 :disabled="busy"
-                :aria-label="`${t('login.agree')} ${t('login.privacy')} ${t('login.and')} ${t('login.terms')}`"
+                :aria-label="t('login.agree') + t('login.privacy') + t('login.and') + t('login.terms')"
                 >{{ t('login.agree') }}</BaseCheckbox
               >
-              <view
-                role="link"
-                tabindex="0"
-                class="policy-link"
-                @tap.stop="openPrivacy"
-                @keydown.enter.stop="openPrivacy"
-                @keydown.space.prevent.stop="openPrivacy"
-                >{{ t('login.privacy') }}</view
-              >
-              <text>{{ t('login.and') }}</text>
-              <view
-                role="link"
-                tabindex="0"
-                class="policy-link"
-                @tap.stop="openTerms"
-                @keydown.enter.stop="openTerms"
-                @keydown.space.prevent.stop="openTerms"
-                >{{ t('login.terms') }}</view
-              >
+              <view>
+                <view
+                  role="link"
+                  tabindex="0"
+                  class="policy-link"
+                  @tap.stop="openPrivacy"
+                  @keydown.enter.stop="openPrivacy"
+                  @keydown.space.prevent.stop="openPrivacy"
+                  >{{ t('login.privacy') }}</view
+                >
+                {{ t('login.and') }}
+                <view
+                  role="link"
+                  tabindex="0"
+                  class="policy-link"
+                  @tap.stop="openTerms"
+                  @keydown.enter.stop="openTerms"
+                  @keydown.space.prevent.stop="openTerms"
+                  >{{ t('login.terms') }}</view
+                >
+              </view>
             </view>
           </BaseCard>
           <view v-if="step === 'methods' && !WEBSITE_MODE" class="login-offline"
@@ -782,7 +784,8 @@ onMounted(async () => {
   column-gap: var(--s-1);
   margin-top: var(--s-6);
   color: var(--ink-3);
-  font: var(--weight-regular) var(--size-small) / var(--leading-small) var(--font-ui);
+  font-size: var(--size-small);
+  line-height: var(--leading-small);
 }
 .policy-link {
   display: inline-flex;

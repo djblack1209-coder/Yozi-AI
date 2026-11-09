@@ -601,8 +601,12 @@ export default {
         restoreDesktopSettingsFocus();
       };
       const pages = getCurrentPages();
-      if (pages.at(-2)?.route === 'pages/learning/index') {
-        uni.navigateBack({ delta: 1, success: restore });
+      const conversationIndex = pages
+        .slice(0, -1)
+        .map((page) => page.route)
+        .lastIndexOf('pages/learning/index');
+      if (conversationIndex >= 0) {
+        uni.navigateBack({ delta: pages.length - 1 - conversationIndex, success: restore });
       } else {
         safeNavigateTo('/pages/learning/index', { success: restore });
       }

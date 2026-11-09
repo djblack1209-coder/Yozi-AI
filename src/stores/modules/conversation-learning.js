@@ -48,6 +48,7 @@ import {
 import { createNewCard, scheduleCard } from '@/services/fsrs-service.js';
 import { captureSession } from '@/services/auth-storage.js';
 import { learningWriteLease, learningWriteProtectionSupported } from '@/services/learning/learning-write-lease.js';
+import { createLearningAbortController } from '@/services/learning/cancellation.js';
 import { publicError, currentLanguage, t } from '@/i18n/index.js';
 import { defineStore } from 'pinia';
 import {
@@ -390,7 +391,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   let boundSession = initialSnapshot.status === 'current' ? initialSnapshot.session : null;
   let sessionEpoch = boundSession?.epoch || null;
   let sessionRevision = 0;
-  let sessionRevocation = new AbortController();
+  let sessionRevocation = createLearningAbortController();
   const operationSessions = [];
   let sessionReady = false;
   let resettingSession = 0;
@@ -581,7 +582,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   let retryOperation = 0;
   const sending = new Map();
   function beginReply(kind, requestId, conversationId = selectedConversationId.value) {
-    const control = new AbortController();
+    const control = createLearningAbortController();
     replyController = control;
     reply.value = {
       kind,
@@ -1419,7 +1420,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     sessionRevision++;
     storageService.getSessionEpoch({ migrateLegacy: false });
     sessionRevocation.abort();
-    sessionRevocation = new AbortController();
+    sessionRevocation = createLearningAbortController();
     const snapshot = readSessionSnapshot();
     boundSession = snapshot.status === 'current' ? snapshot.session : null;
     sessionEpoch = boundSession?.epoch || null;
@@ -2800,7 +2801,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     );
     if (existing) return { reused: true, messageId: existing.id };
     const request = {
-      controller: new AbortController(),
+      controller: createLearningAbortController(),
       context: computeReferenceContext(),
       owner: state.value.owner,
       session: ensureSessionCurrent()
@@ -3470,7 +3471,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       return;
     }
     assert(sharingAllowed.value, 'CONSENT_REQUIRED', '请先确认当前上下文的数据流向');
-    const requestController = options.presentationController || new AbortController();
+    const requestController = options.presentationController || createLearningAbortController();
     const mode = selectedMode.value,
       requestedModelId = modelId.value;
     const lifecycle = learningRepository.lifecycleRevision();
@@ -4213,7 +4214,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     if (existing?.context === context && existing.binding === binding) return existing.promise;
     if (kind === 'discover' && existing) cancelModelReads(kind, 'CONTEXT_CHANGED');
     const status = kind === 'models' ? modelListState : kind === 'discover' ? modelDiscoveryState : modelUsageState;
-    const operation = { context, binding, controller: new AbortController() };
+    const operation = { context, binding, controller: createLearningAbortController() };
     const cancelled = new Promise((_resolve, reject) => (operation.cancel = reject));
     modelReads.set(kind, operation);
     modelResourceContext = context;
@@ -4540,14 +4541,17 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     );
     return result;
   }
-  async function modelAction(action) {
+  async function modelAction(action, cancellation) {
     refresh();
     const context = recordContext();
     const session = ensureSessionCurrent();
     assert(context, 'CONTEXT_CHANGED', '登录会话不可用，请重新核对');
-    const controller = new AbortController();
+    const controller = createLearningAbortController();
+    const cancel = () => controller.abort(cancellation.reason);
     modelActions.add(controller);
     try {
+      if (cancellation?.aborted) cancel();
+      else cancellation?.addEventListener('abort', cancel, { once: true });
       const result = await action({
         session: boundSession,
         expectedOwner: state.value.owner,
@@ -4562,6 +4566,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       );
       return result;
     } finally {
+      cancellation?.removeEventListener('abort', cancel);
       modelActions.delete(controller);
     }
   }
@@ -4644,10 +4649,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
         );
         assert(recover || sharingAllowed.value || !turns.length, 'CONSENT_REQUIRED', '请先允许发送本次建档回答');
         return recover
-          ? fetchLearningResult(requestId, {
-              ...options,
-              signal: globalThis.AbortSignal.any([options.signal, control.signal])
-            })
+          ? fetchLearningResult(requestId, options)
           : binding
             ? generateLearningTurn(
                 {
@@ -4665,16 +4667,14 @@ export const useConversationLearningStore = defineStore('conversation-learning',
                 },
                 {
                   ...options,
-                  model: models.value.find((item) => item.id === id),
-                  signal: globalThis.AbortSignal.any([options.signal, control.signal])
+                  model: models.value.find((item) => item.id === id)
                 }
               )
             : testLearningModel(id, requestId, {
                 ...options,
-                signal: globalThis.AbortSignal.any([options.signal, control.signal]),
                 intake: intakeContext
               });
-      });
+      }, control.signal);
       ensureSessionCurrent(origin);
       assert(!control.signal.aborted && intakeController === control, 'CANCELLED', '请求已取消');
       assert(recordContext() === expected, 'CONTEXT_CHANGED', '学习记录已变化');
@@ -4915,7 +4915,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     materialImportContext = context;
     materialProgress.value = null;
     materialImportState.value = { phase: 'processing' };
-    const requestController = new AbortController();
+    const requestController = createLearningAbortController();
     materialController = requestController;
     materialRequestContext = context;
     const signal = requestController.signal;
@@ -5038,7 +5038,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       owner = state.value.owner;
     const connection = materialConnection.value ? JSON.parse(JSON.stringify(materialConnection.value)) : null;
     materialBusy.value = true;
-    const requestController = new AbortController();
+    const requestController = createLearningAbortController();
     materialController = requestController;
     materialRequestContext = context;
     const signal = requestController.signal;
@@ -5182,7 +5182,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       owner = state.value.owner;
     const connection = materialConnection.value ? JSON.parse(JSON.stringify(materialConnection.value)) : null;
     materialBusy.value = true;
-    const requestController = new AbortController();
+    const requestController = createLearningAbortController();
     materialController = requestController;
     materialRequestContext = context;
     const signal = requestController.signal;
@@ -5235,7 +5235,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     if (deletion.originalStatus !== 'pending') return { status: deletion.originalStatus };
     const context = prepareMaterialAction();
     materialBusy.value = true;
-    const requestController = new AbortController();
+    const requestController = createLearningAbortController();
     materialController = requestController;
     const signal = requestController.signal;
     materialRequestContext = context;
@@ -5415,7 +5415,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     assert(connection, 'PRECONDITION', '请先配置本地连接器');
     const context = recordContext();
     const session = ensureSessionCurrent();
-    const controller = new AbortController();
+    const controller = createLearningAbortController();
     localConnectionController?.abort();
     localConnectionController = controller;
     try {
@@ -5444,7 +5444,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     const session = ensureSessionCurrent();
     assert(context, 'CONTEXT_CHANGED', '本机记录上下文不可用，未发起检查');
     const snapshot = connection ? JSON.parse(JSON.stringify(connection)) : null;
-    const controller = new AbortController();
+    const controller = createLearningAbortController();
     materialConnectionController = controller;
     materialConnectionRequestContext = context;
     materialConnectionBusy.value = true;
@@ -5492,7 +5492,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   }
   async function runHistory(prepare) {
     assert(!historyBusy.value, 'BUSY', '历史校验仍在执行，可先取消');
-    const controller = new AbortController();
+    const controller = createLearningAbortController();
     historyController = controller;
     try {
       historyBusy.value = true;
@@ -5609,7 +5609,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
         : null;
     learningRepository.prepareAsyncAction();
     const request = {
-      controller: new AbortController(),
+      controller: createLearningAbortController(),
       context: recordContext(),
       owner: state.value.owner,
       session: ensureSessionCurrent(),

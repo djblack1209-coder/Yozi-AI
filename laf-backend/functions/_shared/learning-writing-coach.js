@@ -1,3 +1,4 @@
+import { dayKey } from './learning-date-time.js';
 import {
   normalizePersonalCorpus,
   writingPersonalCorpus,
@@ -2696,18 +2697,7 @@ export function writingCoachDashboard(coach, today, timezone = coach?.timezone |
   const studyDays = new Set(
     [
       ...days.map((d) => d.day),
-      ...coach.library.flatMap((item) =>
-        item.reviews.map(
-          (review) =>
-            review.day ||
-            new Intl.DateTimeFormat('en-CA', {
-              timeZone: timezone,
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit'
-            }).format(new Date(review.at))
-        )
-      )
+      ...coach.library.flatMap((item) => item.reviews.map((review) => review.day || dayKey(review.at, timezone)))
     ].filter((day) => Date.parse(day) >= weekStart && day <= today)
   );
   return {

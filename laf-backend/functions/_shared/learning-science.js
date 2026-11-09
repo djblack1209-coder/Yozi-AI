@@ -1,3 +1,4 @@
+import { dayKey } from './learning-date-time.js';
 import {
   visualRecipe,
   MOTION_TEMPLATES,
@@ -269,13 +270,7 @@ export function createScienceQuestion(id, conversationId, raw, parent = null, pl
 function localDay(at, timezone) {
   requireScience(typeof timezone === 'string' && timezone.length <= 80, '复测时区不合法');
   try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).formatToParts(new Date(at));
-    return ['year', 'month', 'day'].map((type) => parts.find((part) => part.type === type).value).join('-');
+    return dayKey(at, timezone);
   } catch {
     requireScience(false, '复测时区不合法');
   }

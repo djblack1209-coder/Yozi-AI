@@ -1,3 +1,4 @@
+import { getCurrentRoute } from '@/utils/home-navigation.js';
 import { reactive } from 'vue';
 import { captureSession, assertSession } from '../auth-storage.js';
 import { storageService } from '../storageService.js';
@@ -346,6 +347,6 @@ export function openStudentArtifact(learning, item) {
     source: clone(item.source),
     owner: learning.state.owner,
     context: learning.recordContext(),
-    route: typeof getCurrentPages === 'function' ? getCurrentPages().at(-1)?.route || '' : ''
+    route: getCurrentRoute()
   };
 }

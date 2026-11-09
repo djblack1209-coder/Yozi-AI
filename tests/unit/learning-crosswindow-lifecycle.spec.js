@@ -434,6 +434,29 @@ describe('模型列表与用量读取的实际请求生命周期', () => {
       expect(store.exportData()).toBe(before);
     }
   );
+  it('opens the learning store and revokes an active request without browser cancellation APIs', async () => {
+    store.$dispose();
+    storageService.saveLoginSession({
+      userId: 'synthetic-crosswindow-owner',
+      token: 'fixture-native-session',
+      userInfo: {}
+    });
+    vi.stubGlobal('AbortController', undefined);
+    vi.stubGlobal('AbortSignal', undefined);
+    setActivePinia(createPinia());
+    store = useConversationLearningStore();
+    const pending = requests();
+    const reading = store.loadModels();
+    const revoked = expect(reading).rejects.toMatchObject({ code: 'CONTEXT_CHANGED' });
+
+    storageService.remove('EXAM_TOKEN', true);
+
+    expect(pending[0].abort).toHaveBeenCalledOnce();
+    await revoked;
+    pending[0].success({ data: modelResult('late-old-account') });
+    await Promise.resolve();
+    expect(store.models).toEqual([]);
+  });
   it('普通学习写入保持读取许可；列表和用量互不取消，取消列表后用量仍可完成', async () => {
     const pending = requests(),
       list = store.loadModels(),

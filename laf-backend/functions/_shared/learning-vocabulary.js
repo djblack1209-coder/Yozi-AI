@@ -1,3 +1,4 @@
+import { dayKey } from './learning-date-time.js';
 import { writingStepsForQuestion, nextNoticeDay } from './learning-writing.js';
 
 export const VOCABULARY_CONTRACT = 'vocabulary-context-v1';
@@ -406,13 +407,7 @@ export function vocabularyReviewDay(day, delayDays = 1) {
 function vocabularyDay(at, timezone) {
   requireVocabulary(typeof timezone === 'string' && timezone.length <= 80, '词义复测时区不合法');
   try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).formatToParts(new Date(at));
-    return ['year', 'month', 'day'].map((type) => parts.find((p) => p.type === type).value).join('-');
+    return dayKey(at, timezone);
   } catch {
     requireVocabulary(false, '词义复测时区不合法');
   }

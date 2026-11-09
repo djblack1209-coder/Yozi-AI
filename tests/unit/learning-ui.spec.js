@@ -2450,6 +2450,24 @@ describe('学习空间的实际入口与目录', () => {
     expect(wrapper.get('.settings-sidebar').element.closest('.space-dark')).toBeNull();
     wrapper.unmount();
   });
+  it('关闭设置返回登录页之前已经打开的学习页', async () => {
+    const wrapper = mount(ProfilePage, { global: { stubs: { ...stubs, image: true } } });
+    try {
+      await flushPromises();
+      globalThis.getCurrentPages.mockReturnValueOnce([
+        { route: 'pages/learning/index' },
+        { route: 'pages/login/index' },
+        { route: 'pages/profile/index' }
+      ]);
+      uni.navigateBack.mockClear();
+      uni.navigateTo.mockClear();
+      await wrapper.get('.settings-back').trigger('tap');
+      expect(uni.navigateBack).toHaveBeenCalledWith(expect.objectContaining({ delta: 2 }));
+      expect(uni.navigateTo).not.toHaveBeenCalled();
+    } finally {
+      wrapper.unmount();
+    }
+  });
   it('账户导航到共享统计后沿原答更新概览，旧题库数据保留独立口径', async () => {
     const store = useConversationLearningStore();
     store.start('12 + 8');
@@ -2505,6 +2523,9 @@ describe('学习空间的实际入口与目录', () => {
       await flushPromises();
       api.mockClear();
       expect(wrapper.find('.qq-btn').exists()).toBe(false);
+      const agreement = wrapper.get('#e2e-login-agreement');
+      expect(wrapper.findAll('.login-agreement [role="link"]')).toHaveLength(2);
+      expect(agreement.find('[role="link"]').exists()).toBe(false);
       const email = wrapper.find('.email-btn');
       expect(email.attributes('aria-disabled')).toBe('false');
       await email.trigger('keydown', { key: 'Enter' });
@@ -2512,7 +2533,7 @@ describe('学习空间的实际入口与目录', () => {
       expect(api).not.toHaveBeenCalled();
       expect(wrapper.find('.email-form').exists()).toBe(false);
       expect(wrapper.get('.login-error').text()).toBe(t('login.consent'));
-      await wrapper.find('#e2e-login-agreement').trigger('keydown', { key: ' ' });
+      await agreement.trigger('keydown', { key: ' ' });
       await email.trigger('keydown', { key: 'Enter' });
       await flushPromises();
       expect(wrapper.find('.email-form').exists()).toBe(true);

@@ -429,6 +429,7 @@
   </view>
 </template>
 <script setup>
+import { getCurrentRoute } from '@/utils/home-navigation.js';
 import '@/i18n/tutor.js';
 import '@/i18n/muse.js';
 import BaseEmpty from '@/components/base/base-empty/base-empty.vue';
@@ -476,7 +477,7 @@ const emit = defineEmits(['materials', 'new', 'connections']);
 const learning = useConversationLearningStore();
 const artifacts = artifactWorkspace(learning);
 const artifactPanel = ref(null);
-const shellRoute = typeof getCurrentPages === 'function' ? getCurrentPages().at(-1)?.route || '' : '';
+const shellRoute = getCurrentRoute();
 const artifactTarget = computed(() =>
   artifacts.target?.route === shellRoute && artifacts.target?.context === learning.recordContext()
     ? artifacts.target
@@ -1039,7 +1040,7 @@ function escapeGeneration(event) {
 }
 function openView(view) {
   directoryOptions.value = false;
-  const route = getCurrentPages().at(-1)?.route;
+  const route = getCurrentRoute();
   if (view === 'search') {
     searchOnOpen.value = true;
     menuOpen.value = true;
@@ -1076,7 +1077,7 @@ function newSession() {
   learning.selectedConversationId = null;
   if (directoryModal.value) menuOpen.value = false;
   emit('new');
-  if (getCurrentPages().at(-1)?.route !== 'pages/learning/index') safeNavigateTo('/pages/learning/index');
+  if (getCurrentRoute() !== 'pages/learning/index') safeNavigateTo('/pages/learning/index');
 }
 function resume(id) {
   if (learning.busy) return;
@@ -1084,14 +1085,14 @@ function resume(id) {
   props.dismissOverlay?.();
   learning.locateConversation(id);
   if (directoryModal.value) menuOpen.value = false;
-  if (getCurrentPages().at(-1)?.route !== 'pages/learning/index') safeNavigateTo('/pages/learning/index');
+  if (getCurrentRoute() !== 'pages/learning/index') safeNavigateTo('/pages/learning/index');
 }
 function openRecord(id, context) {
   try {
     learning.openRecord(id, context);
     error.value = '';
     if (directoryModal.value) menuOpen.value = false;
-    if (getCurrentPages().at(-1)?.route !== 'pages/learning/index') safeNavigateTo('/pages/learning/index');
+    if (getCurrentRoute() !== 'pages/learning/index') safeNavigateTo('/pages/learning/index');
   } catch (failure) {
     error.value = publicError(failure);
   }
@@ -1099,7 +1100,7 @@ function openRecord(id, context) {
 function locate(id, day, groupId = null) {
   learning.locateConversation(id, day, groupId);
   if (directoryModal.value) menuOpen.value = false;
-  if (getCurrentPages().at(-1)?.route !== 'pages/learning/index') safeNavigateTo('/pages/learning/index');
+  if (getCurrentRoute() !== 'pages/learning/index') safeNavigateTo('/pages/learning/index');
 }
 function outsideDirectory(event) {
   if (!event.target?.closest?.('.space-header-actions, .header-actions-toggle')) closeHeaderActions();

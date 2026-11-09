@@ -1,3 +1,4 @@
+import { learningDateTimeFormat } from '../../../laf-backend/functions/_shared/learning-date-time.js';
 import { ENTRY_EVENTS } from '../../../laf-backend/functions/_shared/learning-entries.js';
 import { storageService } from '../storageService.js';
 import { getUserId, captureSession, assertSession } from '../auth-storage.js';
@@ -133,7 +134,8 @@ export function createLearningRepository(
     writeLease?.prepare(owner());
     observeLifecycle();
     const state = storage.get(LEARNING_KEY, null);
-    if (!state) return emptyLearningState(owner(), Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai');
+    if (!state)
+      return emptyLearningState(owner(), learningDateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai');
     assert(state.owner === owner(), 'OWNER_MISMATCH', '学习记录属于其他用户');
     assert(state.version === 1, 'SCHEMA_VERSION', '学习数据版本不支持，原始数据已保留');
     const pending = storage.get(privacyKey, null);
