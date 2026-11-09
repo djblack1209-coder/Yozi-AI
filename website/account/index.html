@@ -23,22 +23,27 @@
   </header>
   <main id="account-main" class="account-main">
     <section class="account-signin" data-view="signin" aria-labelledby="signin-title">
-      <h1 id="signin-title" tabindex="-1">{{signInTitle}}</h1>
-      <form class="account-form" data-signin-form novalidate>
-        <label class="account-field"><span>{{email}}</span><input name="email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required></label>
-        <div class="account-field" data-password-field>
-          <label for="account-password">{{password}}</label>
-          <div class="account-password-input">
-            <input id="account-password" name="password" type="password" autocomplete="current-password" required>
-            <span class="password-lamp">
-              <span class="password-lamp__beam" aria-hidden="true"></span>
-              <button class="password-lamp__trigger" type="button" data-password-toggle aria-label="显示密码" aria-controls="account-password">{{ilamp}}</button>
-            </span>
+      <figure class="account-signin-scene" aria-hidden="true">
+        <figcaption lang="en">A little clearer.<br>Every day.</figcaption>
+      </figure>
+      <div class="account-signin-fields">
+        <h1 id="signin-title" tabindex="-1">{{signInTitle}}</h1>
+        <form class="account-form" data-signin-form novalidate>
+          <label class="account-field"><span>{{email}}</span><input name="email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required></label>
+          <div class="account-field" data-password-field>
+            <label for="account-password">{{password}}</label>
+            <div class="account-password-input">
+              <input id="account-password" name="password" type="password" autocomplete="current-password" required>
+              <span class="password-lamp">
+                <span class="password-lamp__beam" aria-hidden="true"></span>
+                <button class="password-lamp__trigger" type="button" data-password-toggle aria-label="显示密码" aria-controls="account-password">{{ilamp}}</button>
+              </span>
+            </div>
           </div>
-        </div>
-        <p class="account-error" role="alert" data-signin-error hidden></p>
-        <button class="button primary account-submit" type="submit" data-signin-submit>{{signIn}}</button>
-      </form>
+          <p class="account-error" role="alert" data-signin-error hidden></p>
+          <button class="button primary account-submit" type="submit" data-signin-submit>{{signIn}}</button>
+        </form>
+      </div>
     </section>
     <section class="account-progress" data-view="progress" aria-labelledby="progress-title" hidden>
       <h1 id="progress-title" tabindex="-1">{{progressTitle}}</h1>

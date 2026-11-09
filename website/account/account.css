@@ -4,6 +4,38 @@
 .account-tools .button[hidden] { display: none; }
 .account-main { flex: 1; width: min(100% - 2 * var(--gutter), 1080px); margin: 0 auto; padding-block: clamp(20px, 5vw, 56px) var(--section-space); overflow-wrap: anywhere; }
 .account-signin { width: min(100%, 420px); margin: clamp(16px, 9vh, 88px) auto 0; }
+.account-signin-scene { display: none; }
+@media (min-width: 761px) {
+  .account-signin:not([hidden]) {
+    width: 100%;
+    min-height: 500px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    overflow: hidden;
+    margin-top: 0;
+    border: 1px solid var(--line);
+    border-radius: 26px;
+    background: var(--paper);
+  }
+  .account-signin-scene {
+    display: flex;
+    align-items: flex-end;
+    margin: 0;
+    padding: clamp(24px, 4vw, 52px);
+    background: linear-gradient(180deg, transparent 47%, #000 98%), #000 url('/media/yozi-learning-poster.jpg') center / contain no-repeat;
+    color: #fff;
+  }
+  .account-signin-scene figcaption {
+    font: 400 clamp(28px, 4vw, 48px)/1.1 var(--font-display);
+    letter-spacing: -.035em;
+  }
+  .account-signin-fields {
+    align-self: center;
+    min-width: 0;
+    padding: 40px clamp(22px, 5vw, 72px);
+  }
+  .account-signin-fields h1 { font-size: clamp(32px, 3.5vw, 45px); }
+}
 .account-page h1 { color: var(--navy); font: 700 clamp(34px, 5vw, 56px)/1.1 var(--font-display); letter-spacing: -.04em; text-transform: none; }
 .account-page h1:focus { outline: none; }
 .account-form { display: grid; gap: 16px; margin-top: 30px; }

@@ -984,6 +984,49 @@ onMounted(async () => {
 .lazy-login .login-offline {
   margin-top: 28px;
 }
+@media (min-width: 761px) {
+  .lazy-login {
+    --login-margin: clamp(20px, 4vw, 58px);
+    padding: var(--login-margin);
+    background: #e9eef3;
+    color: #172130;
+    --ink: #172130;
+    --ink-2: #37475a;
+    --ink-3: #586778;
+    --ink-placeholder: #586778;
+    --control-line: #d2dbe5;
+    --focus: #0064e0;
+    --violet: #0057bf;
+  }
+  .login-layout {
+    min-height: calc(100dvh - 2 * var(--login-margin));
+    grid-template-columns: minmax(0, 1.1fr) minmax(360px, 1fr);
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--control-line);
+    border-radius: 26px;
+    background: #fcfdff;
+  }
+  .login-layout :deep(.brand-scene) {
+    border-radius: 0;
+  }
+  .login-form-column {
+    padding: 18px clamp(18px, 4vw, 56px) 24px;
+  }
+  .lazy-login .login-title {
+    color: var(--ink);
+    font-weight: 620;
+    letter-spacing: -0.04em;
+  }
+  .lazy-login :deep(.base-button--primary) {
+    background: #172130;
+    border-color: #172130;
+  }
+  .lazy-login .policy-link {
+    color: var(--violet);
+  }
+}
+
 @media (max-width: 760px) {
   .lazy-login {
     padding: 12px;
