@@ -4,7 +4,7 @@
     :duration="reducedMotion ? 0 : motionDuration"
     :close-on-click-modal="maskClosable"
     :z-index="9999"
-    transition="fade"
+    :transition="transition"
     :position="position"
     :custom-style="popupStyle"
     modal-style="background:var(--scrim);"
@@ -108,6 +108,7 @@ const props = defineProps({
   editable: { type: Boolean, default: false },
   placeholderText: { type: String, default: '' },
   position: { type: String, default: 'center', validator: (value) => ['center', 'bottom'].includes(value) },
+  transition: { type: String, default: 'fade' },
   escapeClosable: { type: Boolean, default: undefined },
   closeButton: { type: Boolean, default: false },
   showActions: { type: Boolean, default: true },
@@ -244,6 +245,10 @@ onUnmounted(() => {
 .custom-modal-container.is-bottom {
   border-radius: var(--r-xl) var(--r-xl) 0 0;
   padding-bottom: calc(var(--s-6) + env(safe-area-inset-bottom));
+}
+.custom-modal-container.is-bottom.is-choice-sheet {
+  max-width: var(--dialog-width);
+  margin-inline: auto;
 }
 .modal-icon-wrapper {
   display: flex;

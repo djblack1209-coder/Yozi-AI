@@ -505,6 +505,7 @@
             >
             <LearningProposalCard
               v-if="message.proposal?.data && ['profile.set', 'plan.set'].includes(message.proposal.type)"
+              :key="learning.recordContext()"
               :proposal="message.proposal"
               :status="proposalStatus(learning.state, message.id)"
               :busy="learning.busy || conversationStopped"

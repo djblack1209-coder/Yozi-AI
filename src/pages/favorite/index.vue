@@ -177,7 +177,7 @@
       :show-actions="false"
       close-button
       mask-closable
-      @cancel="showFolderModal = false"
+      @cancel="closeFolderModal"
       ><view class="yozi-page-content"
         ><BaseInput
           v-model="newFolderName"
@@ -193,7 +193,7 @@
             @update:model-value="newFolderIcon = icon"
             ><BaseIcon :name="icon" /></BaseChip></view
         ><view class="button-row"
-          ><BaseButton class="modal-overlay" variant="secondary" @tap="showFolderModal = false">{{
+          ><BaseButton class="modal-overlay" variant="secondary" @tap="closeFolderModal">{{
             t('favorite.copy24')
           }}</BaseButton
           ><BaseButton class="modal-btn primary" @tap="createFolder">{{ t('favorite.copy25') }}</BaseButton></view
@@ -207,18 +207,36 @@
       :title="t('favorite.copy26')"
       :is-dark="isDark"
       :show-actions="false"
+      position="bottom"
+      transition="slide-up"
+      container-class="is-choice-sheet"
+      initial-focus-selector=".favorite-move-options [aria-pressed='true']"
       close-button
       mask-closable
-      @cancel="showMoveModal = false"
-      ><view class="yozi-page-content"
-        ><BaseListRow
+      @cancel="closeMove"
+    >
+      <view class="favorite-move-options" role="group" :aria-label="t('favorite.copy26')">
+        <BaseButton variant="quiet" align="start" icon="plus" @tap="openFolderModal">{{
+          t('favorite.copy21')
+        }}</BaseButton>
+        <BaseButton
           v-for="folder in folders"
           :key="folder.id"
-          :label="builtinFolderText(folder)"
-          :icon="folder.icon"
-          :disabled="folder.id === movingItem?.folderId"
-          @tap="confirmMove(folder.id)" /></view
-    ></CustomModal>
+          variant="secondary"
+          align="start"
+          :icon="folder.id === moveFolderId ? 'check' : folder.icon"
+          :selected="folder.id === moveFolderId"
+          :aria-pressed="folder.id === moveFolderId"
+          @tap="moveFolderId = folder.id"
+        >{{ builtinFolderText(folder) }}</BaseButton>
+      </view>
+      <BaseButton
+        variant="primary"
+        block
+        :disabled="!moveFolderId || moveFolderId === movingItem?.folderId"
+        @tap="confirmMove"
+      >{{ t('favorite.confirmMove') }}</BaseButton>
+    </CustomModal>
 
     <!-- 笔记编辑弹窗 -->
     <CustomModal
@@ -295,7 +313,6 @@ import '@/pages/favorite/messages.js';
 import { publicError, t, translateRegisteredText } from '@/i18n/index.js';
 import { useThemeStore } from '@/stores/modules/theme.js';
 import BaseTag from '@/components/base/base-tag/base-tag.vue';
-import BaseListRow from '@/components/base/base-list-row/base-list-row.vue';
 import BaseEmpty from '@/components/base/base-empty/base-empty.vue';
 import BaseInput from '@/components/base/base-input/base-input.vue';
 import BaseOptions from '@/components/base/base-options/base-options.vue';
@@ -353,6 +370,7 @@ const folderIcons = ['folder', 'star', 'flame', 'bulb', 'books', 'target', 'musc
 
 // 移动操作
 const movingItem = ref(null);
+const moveFolderId = ref('');
 
 // 笔记编辑
 const editingItem = ref(null);
@@ -470,9 +488,8 @@ async function loadData() {
     stats.value = { totalCount: 0 };
     currentFolderId.value = null;
     editingItem.value = null;
-    movingItem.value = null;
     showNoteModal.value = false;
-    showMoveModal.value = false;
+    closeMove();
     showFolderModal.value = false;
     for (const key of Object.keys(showOptions)) delete showOptions[key];
   }
@@ -616,7 +633,14 @@ function confirmDeleteFolder(folder) {
 let folderSession = null;
 function openFolderModal() {
   folderSession = captureSession();
-  if (owned(viewOwner.value)) showFolderModal.value = true;
+  if (!owned(viewOwner.value)) return;
+  showMoveModal.value = false;
+  showFolderModal.value = true;
+}
+
+function closeFolderModal() {
+  showFolderModal.value = false;
+  if (movingItem.value) showMoveModal.value = true;
 }
 
 /** 创建收藏夹 */
@@ -637,7 +661,8 @@ function createFolder() {
 
   if (result.success) {
     toast.success(t('favorite.copy45'));
-    showFolderModal.value = false;
+    if (movingItem.value) moveFolderId.value = result.folder.id;
+    closeFolderModal();
     newFolderName.value = '';
     newFolderIcon.value = 'folder';
     loadData();
@@ -649,20 +674,27 @@ function createFolder() {
 /** 移动到收藏夹（打开弹窗） */
 function moveToFolder(item) {
   movingItem.value = { ...item, favoriteSession: captureSession() };
+  moveFolderId.value = item.folderId;
   showMoveModal.value = true;
 }
 
+function closeMove() {
+  showMoveModal.value = false;
+  movingItem.value = null;
+  moveFolderId.value = '';
+}
+
 /** 确认移动到指定收藏夹 */
-function confirmMove(folderId) {
-  if (!movingItem.value || folderId === movingItem.value.folderId) return;
+function confirmMove() {
+  const folderId = moveFolderId.value;
+  if (!movingItem.value || !folderId || folderId === movingItem.value.folderId) return;
 
   if (!owned(movingItem.value.favoriteOwnerId)) return;
   const result = favoriteStore.moveToFolder(movingItem.value.id, folderId, movingItem.value.favoriteSession);
 
   if (result.success) {
     toast.success(t('favorite.copy47'));
-    showMoveModal.value = false;
-    movingItem.value = null;
+    closeMove();
     loadData();
   } else {
     toast.info(result.error || t('favorite.copy48'));
@@ -757,3 +789,10 @@ onUnload(() => {
   uni.$off('themeUpdate', _themeHandler);
 });
 </script>
+
+<style scoped>
+.favorite-move-options {
+  display: grid;
+  gap: var(--s-2);
+}
+</style>

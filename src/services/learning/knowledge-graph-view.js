@@ -96,9 +96,11 @@ const xml = (value) =>
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]
   );
-export function knowledgeGraphSvg(graph, dark = false, selectedId = '') {
+export function knowledgeGraphSvg(graph, dark = false, selectedId = '', animate = false) {
   const byId = new Map(graph.nodes.map((node) => [node.id, node]));
   const line = dark ? '#a7aaad' : '#65686c';
+  const connectedLine = dark ? '#a6ddff' : '#126895';
+  const reveals = [];
   const paths = graph.edges
     // Keep the complete graph for details; the framework draws local relations
     // and only the selected node's cross-group relations.
@@ -113,6 +115,7 @@ export function knowledgeGraphSvg(graph, dark = false, selectedId = '') {
       const ay = a.y + a.height / 2;
       const lane = left ? 4 + (i % 5) * 3 : graph.width - 4 - (i % 5) * 3;
       const active = selectedId === edge.from || selectedId === edge.to;
+      const reveal = active && animate;
       const opacity = selectedId ? (active ? 0.95 : 0.12) : 0.42;
       let path;
       if (a.chapter === b.chapter && a.y === b.y) {
@@ -136,8 +139,26 @@ export function knowledgeGraphSvg(graph, dark = false, selectedId = '') {
         // selected cross-group relations whose endpoints may be in middle columns.
         path = `M${a.x + a.width / 2} ${start} V${start + (down ? 7 : -7)} H${lane} V${end + (down ? -7 : 7)} H${b.x + b.width / 2} V${end}`;
       }
-      return `<path data-from="${xml(edge.from)}" data-to="${xml(edge.to)}" data-strength="${xml(edge.strength)}" d="${path}" fill="none" stroke="${line}" stroke-width="${active ? 2 : 1.3}" opacity="${opacity}"${edge.strength === 'soft' ? ' stroke-dasharray="5 4"' : ''} marker-end="url(#arrow)"/>`;
+      if (reveal)
+        reveals.push(
+          `<mask id="reveal-${i}" maskUnits="userSpaceOnUse" x="0" y="0" width="${graph.width}" height="${graph.height}"><path class="connection-trace" d="${path}" pathLength="1" fill="none" stroke="white" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/></mask>`
+        );
+      return `<path data-from="${xml(edge.from)}" data-to="${xml(edge.to)}" data-strength="${xml(edge.strength)}" d="${path}" fill="none" stroke="${active ? connectedLine : line}" stroke-width="${active ? 2 : 1.3}" stroke-linejoin="round" opacity="${opacity}"${edge.strength === 'soft' ? ' stroke-dasharray="5 4"' : ''} marker-end="url(#${active ? 'connected-arrow' : 'arrow'})"${reveal ? ` mask="url(#reveal-${i})"` : ''}/>`;
     })
     .join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${graph.width}" height="${graph.height}" viewBox="0 0 ${graph.width} ${graph.height}"><defs><marker id="arrow" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto"><path d="M0 0 L5 2.5 L0 5" fill="${line}"/></marker></defs>${paths}</svg>`;
+  const marker = (id, color) =>
+    `<marker id="${id}" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto"><path d="M0 0 L5 2.5 L0 5" fill="${color}"/></marker>`;
+  const animation = reveals.length
+    ? `<style>
+      .connection-trace {
+        stroke-dasharray: 1;
+        animation: trace-in 420ms cubic-bezier(.2,.72,.3,1) both;
+      }
+      @keyframes trace-in {
+        from { stroke-dashoffset: 1; }
+        to { stroke-dashoffset: 0; }
+      }
+    </style>`
+    : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${graph.width}" height="${graph.height}" viewBox="0 0 ${graph.width} ${graph.height}"><defs>${marker('arrow', line)}${marker('connected-arrow', connectedLine)}${reveals.join('')}${animation}</defs>${paths}</svg>`;
 }

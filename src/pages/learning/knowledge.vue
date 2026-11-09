@@ -35,7 +35,16 @@
       >
         <image
           class="knowledge-edges"
+          :class="{ 'has-motion-layer': selectedId }"
           :src="source"
+          mode="scaleToFill"
+          aria-hidden="true"
+          :style="{ height: `${graph.height}px` }"
+        />
+        <image
+          v-if="selectedId"
+          class="knowledge-edges knowledge-edges--motion"
+          :src="motionSource"
           mode="scaleToFill"
           aria-hidden="true"
           :style="{ height: `${graph.height}px` }"
@@ -48,7 +57,7 @@
           v-for="node in graph.nodes"
           :key="node.id"
           class="knowledge-node"
-          :class="{ 'is-weakness': node.isWeakness }"
+          :class="{ 'is-weakness': node.isWeakness, 'is-connected': connectedIds.has(node.id) }"
           variant="quiet"
           :data-node-id="node.id"
           :selected="selectedId === node.id"
@@ -197,6 +206,14 @@ const graph = computed(() =>
   )
 );
 const detail = computed(() => knowledgeNodeDetail(graph.value, selectedId.value));
+const connectedIds = computed(() => {
+  const ids = new Set();
+  for (const edge of graph.value.edges) {
+    if (edge.from === selectedId.value) ids.add(edge.to);
+    if (edge.to === selectedId.value) ids.add(edge.from);
+  }
+  return ids;
+});
 const nodeEvents = computed(() =>
   progress.value.evidence.filter((event) => detail.value?.evidenceIds.includes(event.id))
 );
@@ -228,6 +245,9 @@ onShow(() => {
 });
 const source = computed(
   () => 'data:image/svg+xml,' + encodeURIComponent(knowledgeGraphSvg(graph.value, theme.isDark, selectedId.value))
+);
+const motionSource = computed(
+  () => 'data:image/svg+xml,' + encodeURIComponent(knowledgeGraphSvg(graph.value, theme.isDark, selectedId.value, true))
 );
 const nodeStyle = (node) => ({
   left: `${node.x}px`,
@@ -362,6 +382,17 @@ function goBack() {
   width: 100%;
   pointer-events: none;
 }
+.knowledge-edges--motion {
+  display: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .knowledge-edges.has-motion-layer {
+    display: none;
+  }
+  .knowledge-edges--motion {
+    display: block;
+  }
+}
 .knowledge-domain {
   position: absolute;
   left: 22px;
@@ -396,6 +427,19 @@ function goBack() {
   border-color: var(--ink-2);
   background: var(--paper-sunk);
   box-shadow: 0 0 0 2px var(--muse-selected);
+}
+.knowledge-node.is-connected {
+  border-color: var(--blue-ink, #126895);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .knowledge-node.is-connected {
+    animation: connection-arrival 460ms ease-out 210ms both;
+  }
+}
+@keyframes connection-arrival {
+  0%,
+  100% { box-shadow: none; }
+  45% { box-shadow: 0 0 0 3px var(--muse-selected); }
 }
 .node-name {
   font-weight: 600;
