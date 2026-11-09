@@ -58,6 +58,7 @@ export function mixedDiagnosticVerification() {
     syntax: [
       {
         id: 's1',
+        hasRelativeClause: true,
         mainSubject: 'The tool',
         mainVerb: 'works',
         clause: 'which we use',
@@ -70,6 +71,7 @@ export function mixedDiagnosticVerification() {
       },
       {
         id: 's2',
+        hasRelativeClause: true,
         mainSubject: 'The scientist',
         mainVerb: 'is',
         clause: 'who visited us',
