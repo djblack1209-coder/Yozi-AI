@@ -76,8 +76,10 @@ export function safeNavigateTo(url, options = {}) {
     return;
   }
 
-  // The reset confirmation belongs to the main window, which owns the write lease.
-  const openProfile = url.split('?')[0] === '/pages/profile/index' && url !== '/pages/profile/index?panel=reset';
+  // Reset and reminder editing use the main window's learning write lease.
+  const openProfile =
+    url.split('?')[0] === '/pages/profile/index' &&
+    !['/pages/profile/index?panel=reset', '/pages/profile/index?panel=reminders'].includes(url);
   if (openProfile) rememberSettingsFocus();
 
   if (isDesktopRuntime()) {

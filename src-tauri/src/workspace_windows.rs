@@ -69,7 +69,7 @@ fn settings_only(window: &WebviewWindow) -> Result<(), String> {
 }
 fn workspace_route(route: &str) -> bool {
     ["/pages/learning/index", "/pages/learning/index?panel=data", "/pages/archive/index", "/pages/archive/index?view=plan", "/pages/archive/index?view=materials", "/pages/mistake/index", "/pages/favorite/index",
-        "/pages/login/index", "/pages/index/index", "/pages/profile/index?panel=reset", "/pages/settings/privacy", "/pages/settings/terms"].contains(&route)
+        "/pages/login/index", "/pages/index/index", "/pages/profile/index?panel=reset", "/pages/profile/index?panel=reminders", "/pages/settings/privacy", "/pages/settings/terms"].contains(&route)
 }
 
 // Muse 2 实现参数: native/main.swift:1759 (independent settings window).
@@ -237,6 +237,7 @@ mod tests {
         assert!(workspace_route("/pages/learning/index?panel=data"));
         assert!(!workspace_route("/pages/learning/index?panel=other"));
         assert!(workspace_route("/pages/archive/index?view=materials"));
+        assert!(workspace_route("/pages/profile/index?panel=reminders"));
         assert!(!workspace_route("/pages/archive/index?view=other"));
         assert!(!workspace_route("https://example.com"));
         assert!(!workspace_route("/pages/learning/index?redirect=https://example.com"));

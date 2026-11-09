@@ -8,9 +8,13 @@ import { assert } from './learning-domain.js';
 import { safeNavigateTo } from '@/utils/safe-navigate.js';
 import { getCurrentRoute } from '@/utils/home-navigation.js';
 import { appleStudyBridge, EMPTY_WATCH_GLANCE, watchGlance } from './apple-study-companion.js';
+import { readonly, shallowReactive, shallowRef } from 'vue';
 
 const CONSENT_KEY = 'learning_notification_consent_v1';
-const controllers = new WeakMap();
+const controllers = shallowReactive(new WeakMap());
+export function currentLearningNotifications(learning) {
+  return controllers.get(learning);
+}
 export function learningNotificationsFor(learning) {
   let controller = controllers.get(learning);
   if (!controller || controller.isDisposed()) {
@@ -55,6 +59,7 @@ export function createLearningNotifications(learning, onOpen, native = invoke, c
   const notices = new Set();
   const delivered = new Map();
   const opened = new Set();
+  const openedNotice = shallowRef(null);
   const waiting = new Map();
   let initialization = null;
   let stopListening = () => undefined;
@@ -69,6 +74,7 @@ export function createLearningNotifications(learning, onOpen, native = invoke, c
     notices.clear();
     waiting.clear();
     delivered.clear();
+    openedNotice.value = null;
     notificationSession = captureSession();
     if (phone) clearPhone();
     if (active) tick();
@@ -103,6 +109,13 @@ export function createLearningNotifications(learning, onOpen, native = invoke, c
       learning.openReminder(job);
       learning.reminderReceipt(job, 'opened', channel, expected);
       opened.add(job.id);
+      openedNotice.value = {
+        id: job.id,
+        kind: job.kind,
+        conversationId: job.conversationId,
+        questionKey: job.questionKey,
+        context: expected
+      };
       onOpen?.(job);
     } catch {
       /* 过期或其他账户提醒不导航、不恢复任务。 */
@@ -361,6 +374,7 @@ export function createLearningNotifications(learning, onOpen, native = invoke, c
     notices.forEach((n) => n.close());
     notices.clear();
     waiting.clear();
+    openedNotice.value = null;
     if (phone && learning.notificationContext() !== trustedIdentity) clearPhone();
     if (channel === 'macos' && token && learning.notificationContext() !== trustedIdentity) {
       native('replace_learning_notifications', { token, sequence: ++sequence, jobs: [], consent: false }).catch(
@@ -394,6 +408,10 @@ export function createLearningNotifications(learning, onOpen, native = invoke, c
     permission,
     test,
     testDelivered,
+    openedNotice: readonly(openedNotice),
+    dismissOpenedNotice(id) {
+      if (openedNotice.value?.id === id) openedNotice.value = null;
+    },
     openSettings,
     refresh,
     show,

@@ -2027,6 +2027,16 @@
       @closed="dialogState.closed"
     />
   </LearningShell>
+  <StudyReminderNotice
+    v-if="openedReminder"
+    :key="openedReminder.id"
+    class="reminder-arrival"
+    :title="t('ui.notificationOpened')"
+    :message="t(reminderMessage)"
+    :action-label="t('ui.notificationContinue')"
+    @action="continueReminder"
+    @dismiss="reminders?.dismissOpenedNotice(openedReminder.id)"
+  />
 </template>
 <script setup>
 import { ENTRY_EVENTS } from '../../../laf-backend/functions/_shared/learning-entries.js';
@@ -2074,10 +2084,12 @@ import { chooseBrowserLearningBackup } from '@/services/learning/record-files.js
 // #endif
 import { learningWriteProtectionSupported } from '@/services/learning/learning-write-lease.js';
 import { HISTORY_LIMITS } from '../../../laf-backend/functions/_shared/learning-history.js';
-import { ref, shallowRef, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, shallowRef, computed, watch, watchEffect, onMounted, onUnmounted, nextTick } from 'vue';
 import { DEV_TEST } from '@/config/build-channel.js';
 import { onShow, onHide, onLoad, onBackPress } from '@dcloudio/uni-app';
 import LearningShell from '@/components/business/learning/learning-shell.vue';
+import StudyReminderNotice from '@/components/business/learning/study-reminder-notice.vue';
+import { currentLearningNotifications } from '@/services/learning/learning-notifications.js';
 import WritingCoach from '@/pages/learning/components/writing-coach.vue';
 import {
   studentEssaySources,
@@ -2724,6 +2736,31 @@ onBackPress((event) => {
 });
 const showConnections = ref(false);
 const legacyLearningEnabled = import.meta.env.VITE_ENABLE_LEGACY_LEARNING === 'true';
+const reminders = computed(() => currentLearningNotifications(learning));
+const currentReminder = (notice) =>
+  notice.context === learning.recordContext() &&
+  notice.conversationId === learning.selectedConversationId &&
+  !learning.active?.stopped;
+const openedReminder = computed(() => {
+  const notice = reminders.value?.openedNotice.value;
+  return notice && currentReminder(notice) ? notice : null;
+});
+const reminderMessage = computed(
+  () =>
+    ({ review: 'ui.notificationReview', recap: 'ui.notificationRecap' })[openedReminder.value?.kind] ||
+    'ui.notificationStudy'
+);
+watchEffect(() => {
+  const notice = reminders.value?.openedNotice.value;
+  if (notice && !currentReminder(notice)) reminders.value.dismissOpenedNotice(notice.id);
+});
+function continueReminder() {
+  const notice = openedReminder.value;
+  if (!notice) return;
+  reminders.value.dismissOpenedNotice(notice.id);
+  const target = notice.questionKey && !writingCoachActive.value ? 'active-learning-question' : '.muse-composer';
+  void nextTick(() => revealLearningTarget(target, () => currentReminder(notice)));
+}
 const writingCoachActive = computed(
   () =>
     import.meta.env.VITE_ENABLE_WRITING_COACH !== 'false' &&
@@ -4726,6 +4763,14 @@ onUnmounted(() => {
 });
 </script>
 <style scoped>
+.reminder-arrival {
+  position: fixed;
+  z-index: 81;
+  top: calc(58px + env(safe-area-inset-top, 0px));
+  inset-inline: 0;
+  width: min(420px, calc(100vw - 24px));
+  margin-inline: auto;
+}
 .conversation-day .message {
   scroll-margin-top: calc(124px + var(--space-status-top, 0px));
 }

@@ -1,5 +1,5 @@
 <template>
-  <view class="study-reminders">
+  <view ref="root" class="study-reminders">
     <view class="settings-group">
       <view v-if="targets.length" class="reminder-target">
         <BaseInput v-model="targetId" label="学习目标" :options="targets" :disabled="busy" />
@@ -9,13 +9,31 @@
           v-for="kind in kinds"
           :key="kind.id"
           :label="kind.label"
+          :data-reminder-kind="kind.id"
           :value="reminderLabel(kind.id)"
+          :actionable="!settingsWindow"
           :disabled="busy"
           @tap="edit(kind.id)"
         />
       </template>
-      <BaseListRow label="系统通知" :value="permissionLabel" :disabled="busy" @tap="allow" />
-      <BaseListRow v-if="permission === 'denied'" label="打开系统通知设置" :disabled="busy" @tap="openSettings" />
+      <BaseListRow
+        label="系统通知"
+        :value="permissionLabel"
+        :actionable="!settingsWindow"
+        :disabled="busy"
+        @tap="allow"
+      />
+      <BaseListRow
+        v-if="!settingsWindow && permission === 'denied'"
+        label="打开系统通知设置"
+        :disabled="busy"
+        @tap="openSettings"
+      />
+      <BaseListRow
+        v-if="settingsWindow"
+        :label="t('ui.notificationManage')"
+        @tap="safeNavigateTo('/pages/profile/index?panel=reminders')"
+      />
     </view>
     <view v-if="form" class="settings-group reminder-editor">
       <text class="reminder-form-title">{{ kinds.find((item) => item.id === form.kind)?.label }}</text>
@@ -28,21 +46,34 @@
         <BaseButton variant="primary" :loading="busy" :disabled="busy" @tap="save">保存</BaseButton>
       </view>
     </view>
-    <view v-if="message" class="reminder-status" :role="failed ? 'alert' : 'status'">{{ message }}</view>
+    <StudyReminderNotice
+      v-if="savedTitle && message"
+      :title="savedTitle"
+      :message="message"
+      :action-label="t('ui.notificationViewPlan')"
+      @action="safeNavigateTo('/pages/archive/index?view=plan')"
+      @dismiss="dismissNotice"
+    />
+    <view v-else-if="message" class="reminder-status" :role="failed ? 'alert' : 'status'">{{ message }}</view>
   </view>
 </template>
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import BaseInput from '@/components/base/base-input/base-input.vue';
 import BaseButton from '@/components/base/base-button/base-button.vue';
 import BaseListRow from '@/components/base/base-list-row/base-list-row.vue';
+import StudyReminderNotice from './study-reminder-notice.vue';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { learningNotificationsFor } from '@/services/learning/learning-notifications.js';
 import { REMINDER_KINDS } from '../../../../laf-backend/functions/_shared/learning-reminders.js';
 import { captureSession, checkSession } from '@/services/auth-storage.js';
-import { publicError } from '@/i18n/index.js';
+import { publicError, t } from '@/i18n/index.js';
+import { safeNavigateTo } from '@/utils/safe-navigate.js';
+import { isDesktopSettingsWindow } from '@/services/desktop/windows.js';
 const learning = useConversationLearningStore();
 const controller = learningNotificationsFor(learning);
+const settingsWindow = isDesktopSettingsWindow();
+const root = ref(null);
 const kinds = REMINDER_KINDS;
 const targets = computed(() =>
   learning.state.conversations
@@ -56,7 +87,9 @@ const targetId = ref(''),
 const handling = ref(false),
   permission = ref('unknown'),
   message = ref(''),
+  savedKind = ref(null),
   failed = ref(false);
+const savedTitle = computed(() => kinds.find((kind) => kind.id === savedKind.value)?.label || '');
 const repeats = computed(() => [
   { value: 'daily', label: '每天' },
   { value: 'weekdays', label: '周一至周五' },
@@ -85,6 +118,21 @@ let editBinding = null,
   mounted = true;
 const binding = () => JSON.stringify([learning.recordContext(), targetId.value]);
 const current = (saved) => mounted && checkSession(saved.session) === 'current' && saved.target === binding();
+function clearMessage() {
+  message.value = '';
+  savedKind.value = null;
+  failed.value = false;
+}
+function dismissNotice() {
+  const kind = savedKind.value;
+  clearMessage();
+  // #ifdef H5
+  void nextTick(() => {
+    const element = root.value?.$el || root.value;
+    element?.querySelector?.(`[data-reminder-kind="${kind}"]`)?.focus?.({ preventScroll: true });
+  });
+  // #endif
+}
 function reminderLabel(kind) {
   const item = target.value?.reminders?.find((value) => value.kind === kind);
   if (!item) return '未设置';
@@ -111,14 +159,13 @@ function edit(kind) {
           ? 'weekends'
           : 'custom';
   enabled.value = item?.enabled === false ? 'off' : 'on';
-  message.value = '';
+  clearMessage();
 }
 async function operation(callback) {
   if (busy.value) return;
   const saved = { session: captureSession(), target: binding() };
   handling.value = true;
-  message.value = '';
-  failed.value = false;
+  clearMessage();
   try {
     await callback(saved);
   } catch (error) {
@@ -134,7 +181,9 @@ function allow() {
   operation(async (saved) => {
     await controller.allow();
     if (!current(saved)) return;
-    permission.value = await controller.permission();
+    const nextPermission = await controller.permission();
+    if (!current(saved)) return;
+    permission.value = nextPermission;
     message.value = permission.value === 'granted' ? '系统通知已允许' : '通知未获授权';
   });
 }
@@ -170,7 +219,9 @@ function save() {
     form.value = null;
     const result = await controller.refresh();
     if (!current(saved)) return;
-    permission.value = await controller.permission();
+    const nextPermission = await controller.permission();
+    if (!current(saved)) return;
+    permission.value = nextPermission;
     message.value = !active
       ? '提醒已暂停'
       : result?.status === 'scheduled' || result?.status === 'partial-scheduled'
@@ -186,6 +237,7 @@ function save() {
           : controller.channel === 'web'
             ? '提醒已保存 · 页面打开时提醒'
             : '时间已保存，当前终端暂不能后台提醒';
+    savedKind.value = draft.kind;
   });
 }
 watch(
@@ -201,7 +253,7 @@ watch(
 watch(binding, () => {
   form.value = null;
   editBinding = null;
-  message.value = '';
+  clearMessage();
   permission.value = 'unknown';
 });
 onMounted(async () => {

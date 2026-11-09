@@ -295,6 +295,17 @@ describe('提醒日期、原任务、权限与回执', () => {
     expect(s.state.attempts).toHaveLength(0);
     expect(s.active.reminderReceipts.filter((r) => r.status === 'opened')).toHaveLength(1);
     expect(opened).toHaveBeenCalledTimes(1);
+    expect(controller.openedNotice.value).toMatchObject({
+      id: job.id,
+      kind: job.kind,
+      conversationId: job.conversationId,
+      context: s.recordContext()
+    });
+    controller.dismissOpenedNotice('unrelated');
+    expect(controller.openedNotice.value?.id).toBe(job.id);
+    controller.dismissOpenedNotice(job.id);
+    host.listener({ payload: job });
+    expect(controller.openedNotice.value).toBeNull();
   });
   it('启动页完成前保留系统点击，学习入口就绪后只返回原任务一次', async () => {
     host.desktop = true;

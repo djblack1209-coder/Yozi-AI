@@ -149,7 +149,7 @@
           </template>
           <template v-if="settingsSection === 'general'">
             <text class="settings-label">通知</text>
-            <MuseStudyReminders />
+            <MuseStudyReminders id="study-reminders" tabindex="-1" />
           </template>
           <template v-if="settingsSection === 'permissions'">
             <text class="settings-label">需要权限</text>
@@ -506,7 +506,11 @@ export default {
   },
 
   onLoad(options) {
-    this.setProfilePanel(options?.panel === 'reset' ? 'reset' : consumeProfilePanel() || options?.panel || 'profile');
+    this.setProfilePanel(
+      ['reset', 'reminders'].includes(options?.panel)
+        ? options.panel
+        : consumeProfilePanel() || options?.panel || 'profile'
+    );
     uni.$on('profilePanel', this.setProfilePanel);
     this.syncTheme();
     this.initLayout();
@@ -583,13 +587,22 @@ export default {
   methods: {
     setProfilePanel(panel) {
       const target = panel || consumeProfilePanel();
-      this.settingsMode = ['settings', 'connectors', 'reset', 'legal'].includes(target);
+      this.settingsMode = ['settings', 'connectors', 'reset', 'legal', 'reminders'].includes(target);
       if (target === 'reset') {
         this.settingsSection = 'data';
         this.handleLocalReset();
       }
       if (['connectors', 'legal'].includes(target)) this.settingsSection = target;
-      else if (['settings', 'profile'].includes(target)) this.settingsSection = 'general';
+      else if (['settings', 'profile', 'reminders'].includes(target)) this.settingsSection = 'general';
+      if (target === 'reminders') {
+        this.$nextTick(() => {
+          // #ifdef H5
+          const section = document.getElementById('study-reminders');
+          section?.scrollIntoView({ block: 'start' });
+          section?.focus({ preventScroll: true });
+          // #endif
+        });
+      }
       this.syncPanelTitle();
     },
     syncPanelTitle() {
