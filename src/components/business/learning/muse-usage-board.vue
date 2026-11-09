@@ -36,6 +36,12 @@
             }}</text
           >
         </view>
+        <MuseStudyBeads
+          :key="JSON.stringify([learning.recordContext(), context.id.value])"
+          :recent="data.submissionDays"
+          :prior="data.priorSubmissionDays"
+          :dark="theme.isDark"
+        />
         <view class="quota-stat quota-week">
           <text class="quota-stat-label">最近 7 天提交数 · {{ data.weekSubmitted }} 次</text>
           <view
@@ -100,6 +106,7 @@
 </template>
 <script setup>
 import MuseConversationFilter from './muse-conversation-filter.vue';
+import MuseStudyBeads from './muse-study-beads.vue';
 import { workspaceConversationContext } from '@/services/learning/workspace-context.js';
 import { computed, ref, watch, onMounted } from 'vue';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';

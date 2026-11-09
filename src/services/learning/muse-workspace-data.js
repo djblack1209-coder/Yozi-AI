@@ -566,22 +566,27 @@ export function museUsage(state, now = Date.now()) {
     if (effectiveGrade(attempt)?.status === 'reliable') assessed++;
   }
 
-  const days = Array.from({ length: 7 }, (_, index) => {
+  const dates = Array.from({ length: 14 }, (_, index) => {
     const date = new Date(`${today}T12:00:00Z`);
-    date.setUTCDate(date.getUTCDate() - 6 + index);
-    const day = date.toISOString().slice(0, 10);
-    return { day, count: requests.filter((r) => dayKey(r.at, state.timezone) === day).length };
+    date.setUTCDate(date.getUTCDate() - 13 + index);
+    return date.toISOString().slice(0, 10);
   });
+  const days = dates.slice(7).map((day) => ({
+    day,
+    count: requests.filter((request) => dayKey(request.at, state.timezone) === day).length
+  }));
   const models = new Map();
   for (const request of requests) {
     const id = request.modelId || '未记录模型';
     models.set(id, (models.get(id) || 0) + 1);
   }
-  const submissionDays = days.map(({ day }) => ({
-    day,
-    count: submissions.filter((item) => (Number.isFinite(item.at) ? dayKey(item.at, state.timezone) : item.day) === day)
-      .length
-  }));
+  const submissionsByDay = new Map();
+  for (const item of submissions) {
+    const day = Number.isFinite(item.at) ? dayKey(item.at, state.timezone) : item.day;
+    submissionsByDay.set(day, (submissionsByDay.get(day) || 0) + 1);
+  }
+  const activity = dates.map((day) => ({ day, count: submissionsByDay.get(day) || 0 }));
+  const submissionDays = activity.slice(7);
   const due = state.conversations.flatMap((c) => c.coach?.library || []).filter((item) => item.due <= now).length;
   return {
     submitted: submissions.length,
@@ -598,6 +603,7 @@ export function museUsage(state, now = Date.now()) {
     unconfirmed: requests.filter((r) => !['completed', 'closed', 'failed'].includes(r.status) && r.outcome !== 'failed')
       .length,
     submissionDays,
+    priorSubmissionDays: activity.slice(0, 7),
     weekSubmitted: submissionDays.reduce((sum, day) => sum + day.count, 0),
     total: requests.length,
     completed: requests.filter((r) => r.status === 'completed').length,
