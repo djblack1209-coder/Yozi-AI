@@ -8,13 +8,22 @@
     "
     aria-live="polite"
   >
-    <text>{{
-      state.phase === 'running'
-        ? '正在处理，请稍候…'
-        : state.phase === 'succeeded' && !failure
-          ? '已收到结果'
-          : presentation.message
-    }}</text>
+    <view :key="resultTone" class="model-feedback__status" :class="resultTone">
+      <BaseIcon
+        v-if="resultTone"
+        class="model-feedback__icon"
+        :name="resultTone === 'request-arrival' ? 'check' : 'alert-circle'"
+        size="16px"
+        aria-hidden="true"
+      />
+      <text>{{
+        state.phase === 'running'
+          ? '正在处理，请稍候…'
+          : state.phase === 'succeeded' && !failure
+            ? '已收到结果'
+            : presentation.message
+      }}</text>
+    </view>
     <BaseButton
       v-if="(failure || state.phase === 'failed') && presentation.action"
       variant="quiet"
@@ -28,6 +37,8 @@
 import { computed } from 'vue';
 import { modelErrorPresentation } from '../../../../laf-backend/functions/_shared/model-errors.js';
 import BaseButton from '@/components/base/base-button/base-button.vue';
+import BaseIcon from '@/components/base/base-icon/base-icon.vue';
+import '@/styles/request-motion.css';
 const props = defineProps({
   failure: { type: [Object, String], default: null },
   state: { type: Object, default: () => ({}) },
@@ -49,6 +60,11 @@ const presentation = computed(() => {
       : props.failure || { error: props.state.errorCode, status: props.state.status };
   return modelErrorPresentation({ ...failure, retryAllowed: props.state.operation === 'requestCoach' });
 });
+const resultTone = computed(() => {
+  if (props.state.phase === 'running' || presentation.value.code === 'NEEDS_CONNECTION') return '';
+  if (props.failure || props.state.phase === 'failed') return 'request-failure';
+  return props.state.phase === 'succeeded' ? 'request-arrival' : '';
+});
 </script>
 <style scoped>
 .model-feedback {
@@ -63,6 +79,16 @@ const presentation = computed(() => {
 }
 .model-feedback .base-button {
   min-height: 44px;
+}
+.model-feedback__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  border-radius: var(--r-sm);
+}
+.model-feedback__icon {
+  flex-shrink: 0;
 }
 .is-guide {
   color: var(--blue);

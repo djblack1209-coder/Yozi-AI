@@ -210,6 +210,7 @@ describe('S2 continuous reply', () => {
     await nextTick();
     const node = wrapper.get('[id="same-node:reply"]').element;
     expect(node.querySelector('.learning-message-origin')).toBeNull();
+    expect(node.querySelector('.reply-progress')).not.toBeNull();
     expect(wrapper.get('[data-avatar-state="working"]').exists()).toBe(true);
     await flushPromises();
     const [body, options] = generateLearningTurn.mock.calls.at(-1);
@@ -230,6 +231,7 @@ describe('S2 continuous reply', () => {
     await sending;
     await nextTick();
     expect(wrapper.get('[id="same-node:reply"]').element).toBe(node);
+    expect(node.querySelector('.learning-message-origin.request-arrival')).not.toBeNull();
     expect(wrapper.get('[id="same-node:reply"]').classes()).not.toContain('base-bubble--rich');
     const ids = wrapper.findAll('.conversation-day .message').map((message) => message.attributes('id'));
     expect(ids.indexOf('same-node:reply')).toBe(ids.indexOf('same-node:message') + 1);
@@ -250,6 +252,7 @@ describe('S2 continuous reply', () => {
     async (kind) => {
       const wait = deferred();
       generateLearningTurn.mockReturnValue(wait.promise);
+      const wrapper = render();
       const pending = store.send('请讲解', { id: 'late' });
       await flushPromises();
       const [body, options] = generateLearningTurn.mock.calls.at(-1);
@@ -273,6 +276,7 @@ describe('S2 continuous reply', () => {
       await pending;
       expect(store.reply.pending).toBe(false);
       expect(store.reply.content).toBe(kind === 'stop' ? '临时说明' : '');
+      expect(wrapper.find('[id="late:reply"]').exists()).toBe(kind === 'stop');
       expect(store.state.plans).toHaveLength(0);
       expect(store.state.attempts).toHaveLength(0);
       if (kind === 'stop') expect(store.exportData()).toBe(snapshot);

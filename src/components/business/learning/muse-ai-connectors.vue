@@ -152,7 +152,20 @@
           >
         </template>
         <template v-if="choosing">
-          <text v-if="discovering" role="status">正在读取实时型号…</text>
+          <view
+            v-if="discovering || modelOptions.length"
+            class="connect-discovery"
+            :class="{ 'is-reading': discovering, 'is-ready': !discovering }"
+          >
+            <view class="connect-discovery__mark" aria-hidden="true">
+              <template v-if="discovering">
+                <view v-for="dot in 3" :key="dot" class="connect-discovery__dot" />
+              </template>
+              <BaseIcon v-else name="plug" size="22px" />
+            </view>
+            <text role="status">{{ discovering ? '正在读取实时型号…' : '型号列表已读取' }}</text>
+            <view class="connect-discovery__track" aria-hidden="true"><view /></view>
+          </view>
           <BaseInput
             v-if="modelOptions.length && !manual"
             v-model="draft.model"
@@ -389,6 +402,7 @@ async function chooseModels() {
   choosing.value = true;
   discovering.value = true;
   failure.value = null;
+  operationState.value = { phase: 'idle' };
   modelOptions.value = [];
   manual.value = false;
   try {
@@ -494,6 +508,94 @@ onMounted(() => {
 onUnmounted(close);
 </script>
 <style scoped>
+.connect-discovery {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.connect-discovery__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 42px;
+  min-height: 32px;
+  color: var(--ink);
+}
+.connect-discovery__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ink);
+  animation: connector-orbit 920ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.connect-discovery__dot:nth-child(2) {
+  animation-delay: -300ms;
+}
+.connect-discovery__dot:nth-child(3) {
+  animation-delay: -600ms;
+}
+.connect-discovery__track {
+  width: min(184px, 100%);
+  height: 3px;
+  overflow: hidden;
+  border-radius: var(--r-pill);
+  background: var(--line);
+}
+.connect-discovery__track > view {
+  height: 100%;
+  width: 31%;
+  border-radius: inherit;
+  background: var(--blue);
+  transition: width 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.is-reading .connect-discovery__track > view {
+  animation: connector-scan 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite alternate;
+}
+.is-ready .connect-discovery__track > view {
+  width: 100%;
+}
+.is-ready .connect-discovery__mark {
+  animation: connector-ready 290ms cubic-bezier(0.2, 0.72, 0.2, 1) both;
+}
+@keyframes connector-orbit {
+  0%,
+  100% {
+    transform: translateY(1px) scale(0.55);
+  }
+  45% {
+    transform: translateY(-3px) scale(1.15);
+  }
+}
+@keyframes connector-scan {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(220%);
+  }
+}
+@keyframes connector-ready {
+  from {
+    transform: scale(0.65);
+    opacity: 0.3;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .connect-discovery__mark,
+  .connect-discovery__dot,
+  .connect-discovery__track > view {
+    animation: none !important;
+    transition: none;
+  }
+}
 .disconnect-control {
   display: grid;
   justify-items: end;

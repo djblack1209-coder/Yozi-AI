@@ -110,8 +110,7 @@ export function restoredConversation(location, state, fallback) {
     ? location.conversationId
     : fallback;
 }
-export const visibleReply = (reply) =>
-  Boolean(reply && !(reply.cancelled && !reply.content?.trim() && !reply.contentBlocks));
+export const visibleReply = (reply) => Boolean(reply?.pending || reply?.content?.trim() || reply?.contentBlocks);
 
 export const cancelledNotice = (error) => (error === '请求已取消，费用状态请查看模型用量' ? error : '');
 

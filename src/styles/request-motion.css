@@ -1,0 +1,58 @@
+.request-arrival,
+.request-failure {
+  position: relative;
+  isolation: isolate;
+}
+.request-arrival::after,
+.request-failure::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.request-arrival::after {
+  background: linear-gradient(
+    135deg,
+    transparent 18%,
+    color-mix(in srgb, var(--blue) 25%, transparent) 66%,
+    transparent 94%
+  );
+  animation: request-arrive 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.request-failure::after {
+  border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent);
+  animation: request-impact 530ms cubic-bezier(0.22, 0.72, 0.26, 1) both;
+}
+@keyframes request-arrive {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 85% 85%);
+  }
+  52% {
+    opacity: 1;
+    clip-path: inset(0);
+  }
+  to {
+    opacity: 0;
+    clip-path: inset(0);
+  }
+}
+@keyframes request-impact {
+  from {
+    opacity: 0.75;
+    transform: translateY(-4px) scale(0.87);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(2px) scale(1.05);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .request-arrival::after,
+  .request-failure::after {
+    animation: none;
+    opacity: 0;
+  }
+}

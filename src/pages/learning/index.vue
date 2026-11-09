@@ -515,6 +515,12 @@
               :generated="message.role === 'assistant' && message.id.endsWith(':reply')"
               :presentation="presentation.mode"
               :pending="!!message.pending"
+              :received="
+                message.role === 'assistant' &&
+                message.id === learning.reply?.id &&
+                !learning.reply.pending &&
+                !learning.reply.cancelled
+              "
               :content="message.role === 'notice' ? learningText(message.content) : message.content"
             />
             <text v-else class="message-content" selectable>{{ message.content }}</text>
@@ -1017,7 +1023,12 @@
           >
         </view>
         <view v-if="learning.error && !cancellationNotice" id="learning-request-error" tabindex="-1">
-          <BaseEmpty v-if="publicError(learning.error, null)" state="error" :title="publicError(learning.error)" />
+          <BaseEmpty
+            v-if="publicError(learning.error, null)"
+            class="request-failure"
+            state="error"
+            :title="publicError(learning.error)"
+          />
           <MuseModelFeedback
             v-else
             :failure="modelFailure || { error: learning.retryState?.errorCode || 'MODEL_FAILED' }"
