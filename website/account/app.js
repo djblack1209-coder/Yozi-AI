@@ -85,6 +85,28 @@ export function mountAccount({ doc = document, send = (...args) => fetch(...args
   const $ = (selector) => doc.querySelector(selector);
   const views = { signin: $('[data-view="signin"]'), progress: $('[data-view="progress"]') };
   const form = $("[data-signin-form]");
+  const film = $("[data-signin-motion]");
+  const filmMedia = film && doc.defaultView?.matchMedia?.("(min-width: 761px) and (prefers-reduced-motion: no-preference)");
+  const syncFilm = () => {
+    if (!filmMedia) return;
+    let paused = false;
+    try {
+      paused = persistent.getItem("yozi.website.motion") === "paused";
+    } catch {}
+    const playing = filmMedia.matches && !views.signin.hidden && !doc.hidden && !paused;
+    film.hidden = !playing;
+    if (!playing) {
+      film.pause();
+      return;
+    }
+    if (!film.hasAttribute("src")) film.src = film.dataset.src;
+    film.play()?.catch(() => {});
+  };
+  filmMedia?.addEventListener("change", syncFilm);
+  if (filmMedia) {
+    doc.addEventListener("visibilitychange", syncFilm);
+    doc.defaultView.addEventListener("storage", syncFilm);
+  }
   const passwordField = $("[data-password-field]");
   const passwordToggle = $("[data-password-toggle]");
   const signInError = $("[data-signin-error]");
@@ -208,6 +230,7 @@ export function mountAccount({ doc = document, send = (...args) => fetch(...args
     views.signin.hidden = view !== "signin";
     views.progress.hidden = view !== "progress";
     signOut.hidden = view !== "progress";
+    syncFilm();
   }
   function endSession(next) {
     generation++;

@@ -11,6 +11,12 @@ const website = path.join(project, 'website');
 const archive = path.join(project, 'public/downloads', download);
 const additionalFonts = ['PlayfairDisplay-normal-400.woff2', 'OFL-playfairdisplay.txt'];
 const languages = ['zh', 'en'];
+const signinAssets = {
+  'scene.mp4': 'video/mp4',
+  'scene.webp': 'image/webp'
+};
+const signinSource = path.join(project, 'src/static/signin');
+const signinPrefix = '/media/signin/';
 
 const retirementWorker = `self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil((async () => {
@@ -51,6 +57,10 @@ export function buildWebsite(output = path.join(project, 'dist/website')) {
     fs.copyFileSync(path.join(project, 'public/fonts', file), path.join(destination, 'fonts', file));
   // The existing public media URL may still have consumers outside the homepage.
   fs.cpSync(path.join(website, 'media'), path.join(destination, 'media'), { recursive: true });
+  fs.mkdirSync(path.join(destination, 'media/signin'), { recursive: true });
+  for (const file of Object.keys(signinAssets)) {
+    fs.copyFileSync(path.join(signinSource, file), path.join(destination, 'media/signin', file));
+  }
   // Brand slots come from the official logo source (website/brand.mjs).
   for (const published of Object.keys(BRAND_FILES)) {
     fs.mkdirSync(path.dirname(path.join(destination, published)), { recursive: true });
@@ -96,6 +106,10 @@ export function websiteLaunchPlugin(enabled) {
         } else if (lang || route === '/404.html') {
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.end(lang ? renderHome(lang) : renderNotFound());
+        } else if (route.startsWith(signinPrefix) && Object.hasOwn(signinAssets, route.slice(signinPrefix.length))) {
+          const file = route.slice(signinPrefix.length);
+          res.setHeader('Content-Type', signinAssets[file]);
+          fs.createReadStream(path.join(signinSource, file)).pipe(res);
         } else if (route === '/fonts/inter-latin-300-500.woff2') {
           res.setHeader('Content-Type', 'font/woff2');
           fs.createReadStream(path.join(website, route)).pipe(res);

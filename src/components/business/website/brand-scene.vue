@@ -1,19 +1,10 @@
 <template>
   <view class="brand-scene" aria-hidden="true">
-    <img
-      v-if="WEBSITE_MODE"
-      class="brand-scene__media"
-      :src="'/public/visual/nomi/kitten-960.webp'"
-      width="960"
-      height="543"
-      alt=""
-      decoding="async"
-    />
-    <image v-else class="brand-scene__media" :src="POSTER" mode="aspectFill" alt="" />
+    <image class="brand-scene__media" :src="POSTER" mode="aspectFill" alt="" />
     <!-- #ifdef H5 -->
     <component
       :is="'video'"
-      v-if="enabled && !WEBSITE_MODE"
+      v-if="enabled"
       ref="video"
       class="brand-scene__media"
       muted
@@ -25,30 +16,28 @@
       :src="VIDEO"
     />
     <!-- #endif -->
-    <view class="brand-scene__brand"><image :src="BRAND.mark" mode="aspectFit" alt="" /><text>Yozi AI</text></view>
+    <view class="brand-scene__brand"
+      ><image :src="BRAND.markOnDark" mode="aspectFit" alt="" /><text>Yozi AI</text></view
+    >
     <view class="brand-scene__copy"
       ><text lang="en">A little clearer.</text><text lang="en">Every day.</text
-      ><text class="brand-scene__caption">{{
-        WEBSITE_MODE ? '你的考研英语写作教练。' : 'Your personal AI learning coach.'
-      }}</text></view
+      ><text class="brand-scene__caption">Your personal AI learning coach.</text></view
     >
   </view>
 </template>
 <script setup>
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { onHide, onShow } from '@dcloudio/uni-app';
-import { WEBSITE_MODE } from '@/config/website.js';
 import { BRAND } from '@/config/brand.js';
-const POSTER = '/public/visual/nomi/kitten.png',
-  VIDEO = '/public/visual/nomi/kitten.mp4';
+const POSTER = '/static/signin/scene.webp',
+  VIDEO = '/static/signin/scene.mp4';
 const video = ref(null),
   enabled = ref(false);
 let query,
   pageVisible = true;
 function sync() {
   // #ifdef H5
-  if (WEBSITE_MODE) return;
-  enabled.value = !query?.matches;
+  enabled.value = query?.matches === true;
   nextTick(() => {
     const node = video.value;
     if (!node) return;
@@ -60,8 +49,7 @@ function sync() {
 }
 onMounted(() => {
   // #ifdef H5
-  if (WEBSITE_MODE) return;
-  query = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  query = window.matchMedia?.('(min-width: 761px) and (prefers-reduced-motion: no-preference)');
   query?.addEventListener('change', sync);
   document.addEventListener('visibilitychange', sync);
   window.addEventListener('focus', sync);
@@ -93,8 +81,8 @@ onBeforeUnmount(() => {
   min-width: 0;
   overflow: hidden;
   border-radius: 24px;
-  background: #e7e7e7;
-  color: #181817;
+  background: #101827;
+  color: #fff;
   isolation: isolate;
 }
 .brand-scene__media {
@@ -103,8 +91,15 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 66% 40%;
+  object-position: center;
   z-index: -1;
+}
+.brand-scene::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, #10182799, transparent 28%, transparent 55%, #101827d9);
+  content: '';
 }
 .brand-scene__brand {
   position: absolute;
@@ -164,7 +159,7 @@ onBeforeUnmount(() => {
     margin-top: 12px;
   }
   .brand-scene__media {
-    object-position: 65% 38%;
+    object-position: center;
   }
 }
 </style>

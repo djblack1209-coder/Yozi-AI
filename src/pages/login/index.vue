@@ -1091,15 +1091,11 @@ onMounted(async () => {
   }
   .lazy-login:not(.website-login) :deep(.brand-scene) {
     min-height: 216px;
-    background: var(--yozi-mobile-sky);
-    color: var(--yozi-mobile-ink);
   }
   .lazy-login:not(.website-login) :deep(.brand-scene__media) {
     left: 44%;
     width: 56%;
-    object-position: 80% center;
     mask-image: linear-gradient(to right, transparent, #000 22%);
-    mix-blend-mode: multiply;
   }
   .lazy-login:not(.website-login) :deep(.brand-scene__copy) {
     right: 45%;
