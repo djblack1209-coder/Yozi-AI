@@ -1,5 +1,13 @@
 <template>
   <view ref="root" class="muse-library">
+    <!-- #ifdef APP-PLUS -->
+    <view
+      v-if="hasNativeWebView"
+      hidden
+      :empty-filter-clear="emptyFilterClear"
+      :change:empty-filter-clear="libraryView.restoreHeading"
+    />
+    <!-- #endif -->
     <view class="library-sidebar" role="navigation" aria-label="资料库分类">
       <view class="library-sidebar-search"
         ><view class="lib-search"
@@ -324,6 +332,10 @@ const root = ref(null),
   selectedMaterialId = ref(''),
   highlightedId = ref('');
 const context = workspaceConversationContext(learning);
+// #ifdef APP-PLUS
+const hasNativeWebView = typeof plus !== 'undefined' && Boolean(plus.webview);
+const emptyFilterClear = ref(0);
+// #endif
 const pins = ref({}),
   pinsReady = ref(false),
   pinError = ref('');
@@ -477,8 +489,13 @@ const emptyLabel = computed(() =>
 async function clearEmptyFilters() {
   query.value = '';
   kind.value = 'all';
+  // #ifdef APP-PLUS
+  emptyFilterClear.value += 1;
+  // #endif
+  // #ifdef H5
   await nextTick();
-  (libraryTitle.value?.$el || libraryTitle.value)?.focus?.();
+  (libraryTitle.value?.$el || libraryTitle.value)?.focus?.({ preventScroll: true });
+  // #endif
 }
 watch(mobileSections, (value) => {
   if (section.value !== 'files' && !value.some((item) => item.id === section.value)) section.value = 'all';
@@ -678,6 +695,19 @@ onBeforeUnmount(() => {
   rootElement?.removeEventListener?.('focusin', highlightArtifact);
 });
 </script>
+<!-- #ifdef APP-PLUS -->
+<renderjs name="libraryView">
+export default {
+  methods: {
+    restoreHeading(version, previous, owner) {
+      if (version && version !== previous) {
+        owner.$el.querySelector('.library-title')?.focus({ preventScroll: true });
+      }
+    }
+  }
+};
+</renderjs>
+<!-- #endif -->
 <style scoped>
 .muse-library {
   display: flex;

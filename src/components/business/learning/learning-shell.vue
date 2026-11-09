@@ -1436,7 +1436,7 @@ export default {
       if (
         event.defaultPrevented ||
         !['Enter', ' '].includes(event.key) ||
-        !button.matches?.('uni-button.mobile-menu, .space-sidebar uni-button.base-button') ||
+        !button.matches?.('uni-button.mobile-menu, uni-button.base-button') ||
         button.hasAttribute('disabled')
       ) return;
       event.preventDefault();
