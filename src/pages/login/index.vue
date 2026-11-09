@@ -156,33 +156,36 @@
               <BaseButton variant="quiet" block @tap="step = 'methods'">{{ t('login.other') }}</BaseButton>
             </view>
             <text v-if="error" class="login-error" role="alert">{{ error }}</text>
-            <BaseCheckbox
-              v-if="!['age', 'blocked'].includes(step)"
-              id="e2e-login-agreement"
-              v-model="agreedToTerms"
-              :disabled="busy"
-              class="login-agreement"
-              >{{ t('login.agree') }}
-              <view
-                role="link"
-                tabindex="0"
-                class="policy-link"
-                @tap.stop="openPrivacy"
-                @keydown.enter.stop="openPrivacy"
-                @keydown.space.prevent.stop="openPrivacy"
-                >{{ t('login.privacy') }}</view
+            <view v-if="!['age', 'blocked'].includes(step)" class="login-agreement">
+              <BaseCheckbox
+                id="e2e-login-agreement"
+                v-model="agreedToTerms"
+                :disabled="busy"
+                :aria-label="t('login.agree') + t('login.privacy') + t('login.and') + t('login.terms')"
+                >{{ t('login.agree') }}</BaseCheckbox
               >
-              {{ t('login.and') }}
-              <view
-                role="link"
-                tabindex="0"
-                class="policy-link"
-                @tap.stop="openTerms"
-                @keydown.enter.stop="openTerms"
-                @keydown.space.prevent.stop="openTerms"
-                >{{ t('login.terms') }}</view
-              ></BaseCheckbox
-            >
+              <view>
+                <view
+                  role="link"
+                  tabindex="0"
+                  class="policy-link"
+                  @tap.stop="openPrivacy"
+                  @keydown.enter.stop="openPrivacy"
+                  @keydown.space.prevent.stop="openPrivacy"
+                  >{{ t('login.privacy') }}</view
+                >
+                {{ t('login.and') }}
+                <view
+                  role="link"
+                  tabindex="0"
+                  class="policy-link"
+                  @tap.stop="openTerms"
+                  @keydown.enter.stop="openTerms"
+                  @keydown.space.prevent.stop="openTerms"
+                  >{{ t('login.terms') }}</view
+                >
+              </view>
+            </view>
           </BaseCard>
           <view v-if="step === 'methods' && !WEBSITE_MODE" class="login-offline"
             ><text>{{ t('login.offline') }}</text
@@ -775,7 +778,14 @@ onMounted(async () => {
   gap: var(--s-4);
 }
 .login-agreement {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--s-1);
   margin-top: var(--s-6);
+  color: var(--ink-3);
+  font-size: var(--size-small);
+  line-height: var(--leading-small);
 }
 .policy-link {
   display: inline-flex;

@@ -2505,6 +2505,9 @@ describe('学习空间的实际入口与目录', () => {
       await flushPromises();
       api.mockClear();
       expect(wrapper.find('.qq-btn').exists()).toBe(false);
+      const agreement = wrapper.get('#e2e-login-agreement');
+      expect(wrapper.findAll('.login-agreement [role="link"]')).toHaveLength(2);
+      expect(agreement.find('[role="link"]').exists()).toBe(false);
       const email = wrapper.find('.email-btn');
       expect(email.attributes('aria-disabled')).toBe('false');
       await email.trigger('keydown', { key: 'Enter' });
@@ -2512,7 +2515,7 @@ describe('学习空间的实际入口与目录', () => {
       expect(api).not.toHaveBeenCalled();
       expect(wrapper.find('.email-form').exists()).toBe(false);
       expect(wrapper.get('.login-error').text()).toBe(t('login.consent'));
-      await wrapper.find('#e2e-login-agreement').trigger('keydown', { key: ' ' });
+      await agreement.trigger('keydown', { key: ' ' });
       await email.trigger('keydown', { key: 'Enter' });
       await flushPromises();
       expect(wrapper.find('.email-form').exists()).toBe(true);
