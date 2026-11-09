@@ -31,6 +31,7 @@
   /></view>
 </template>
 <script setup>
+import { learningDateTimeFormat } from '../../../../laf-backend/functions/_shared/learning-date-time.js';
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { t, currentLanguage } from '@/i18n/index.js';
 import BaseButton from '@/components/base/base-button/base-button.vue';
@@ -83,7 +84,7 @@ function formatDate(date) {
  * 格式化显示日期
  */
 function formatDisplayDate(date) {
-  return new Intl.DateTimeFormat(currentLanguage.value, { month: 'short', day: 'numeric', weekday: 'short' }).format(
+  return learningDateTimeFormat(currentLanguage.value, { month: 'short', day: 'numeric', weekday: 'short' }).format(
     date
   );
 }
@@ -92,7 +93,7 @@ function formatDisplayDate(date) {
  * 获取月份标签
  */
 function getMonthLabel(date) {
-  return new Intl.DateTimeFormat(currentLanguage.value, { month: 'short' }).format(date);
+  return learningDateTimeFormat(currentLanguage.value, { month: 'short' }).format(date);
 }
 
 /**

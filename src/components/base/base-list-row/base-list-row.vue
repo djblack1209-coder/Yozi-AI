@@ -24,9 +24,18 @@ const props = defineProps({
   actionable: { type: Boolean, default: true },
   disabled: Boolean
 });
-const emit = defineEmits(['tap']);
+const emit = defineEmits([
+  'tap',
+  // #ifdef APP-PLUS
+  'click'
+  // #endif
+]);
 function activate(event) {
-  if (props.actionable && !props.disabled) emit('tap', event);
+  if (!props.actionable || props.disabled) return;
+  emit('tap', event);
+  // #ifdef APP-PLUS
+  emit('click', event);
+  // #endif
 }
 function keydown(event) {
   if (!['Enter', ' '].includes(event.key) || event.target !== event.currentTarget) return;

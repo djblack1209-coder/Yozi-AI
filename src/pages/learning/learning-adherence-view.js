@@ -1,3 +1,4 @@
+import { dateTimeParts, learningDateTimeFormat } from '../../../laf-backend/functions/_shared/learning-date-time.js';
 import {
   reviewFacts,
   reviewLimit,
@@ -154,11 +155,12 @@ export function weeklyAdherence(state, at = Date.now(), options = {}) {
   for (const e of events.filter((e) =>
     ['answer.submitted', 'review.skipped', 'review.rescheduled', 'learning.left'].includes(e.action)
   )) {
-    const hour = new Intl.DateTimeFormat('en-GB', {
+    const clock = learningDateTimeFormat('en-GB', {
       timeZone: state.timezone,
       hour: '2-digit',
       hourCycle: 'h23'
-    }).format(e.at);
+    });
+    const { hour } = dateTimeParts(clock, e.at);
     hours[hour] = (hours[hour] || 0) + 1;
   }
   const completed = count('review.completed');

@@ -1,3 +1,11 @@
+// #ifdef APP-PLUS
+import 'core-js/modules/es.array.at.js';
+import 'core-js/modules/es.array.find-last.js';
+import 'core-js/modules/es.array.find-last-index.js';
+import 'core-js/modules/es.object.has-own.js';
+import 'core-js/modules/es.string.replace-all.js';
+import 'core-js/modules/web.url.constructor.js';
+// #endif
 import { createSSRApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
@@ -6,12 +14,19 @@ import { logger } from '@/utils/logger.js';
 import { applyTheme, getCurrentTheme } from '@/design/theme-runtime.js';
 import { readNativeInsets } from '@/design/native-theme.js';
 import { installI18n } from '@/i18n/index.js';
+// #ifdef APP-PLUS
+import { androidDateTimeFormat } from '@/services/learning/android-date-time.js';
+import { setLearningDateTimeFormatter } from '../laf-backend/functions/_shared/learning-date-time.js';
+// #endif
 // #ifdef H5
 import { bindAppBoot } from '@/design/app-boot.js';
 import { WEBSITE_MODE, installWebsiteRouteFallback } from '@/config/website.js';
 // #endif
 
 export function createApp() {
+  // #ifdef APP-PLUS
+  setLearningDateTimeFormatter(androidDateTimeFormat);
+  // #endif
   // #ifdef H5
   const releaseWebsiteFallback = WEBSITE_MODE ? installWebsiteRouteFallback(window) : () => undefined;
   // #endif

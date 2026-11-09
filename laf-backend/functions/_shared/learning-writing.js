@@ -1,3 +1,4 @@
+import { dayKey } from './learning-date-time.js';
 // 原创通知任务；信息条件和量表可追溯，不提供可执行判分或官方等级。
 export const NOTICE_CONTRACT = 'english-notice-v1';
 export const GUIDED_WRITING_CONTRACT = 'guided-writing-v1';
@@ -569,14 +570,7 @@ export function nextNoticeDay(day) {
 function noticePlanningDay(at, timezone) {
   requireNotice(typeof timezone === 'string' && timezone.length <= 80, '复测时区不合法');
   try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).formatToParts(new Date(at));
-    const value = (type) => parts.find((part) => part.type === type).value;
-    return `${value('year')}-${value('month')}-${value('day')}`;
+    return dayKey(at, timezone);
   } catch {
     requireNotice(false, '复测时区不合法');
   }

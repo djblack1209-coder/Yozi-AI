@@ -295,6 +295,7 @@
   </BaseCard>
 </template>
 <script setup>
+import { getCurrentRoute } from '@/utils/home-navigation.js';
 import BaseEmpty from '@/components/base/base-empty/base-empty.vue';
 import BaseStat from '@/components/base/base-stat/base-stat.vue';
 import BaseSegmented from '@/components/base/base-segmented/base-segmented.vue';
@@ -515,8 +516,7 @@ function editPlan() {
 }
 function openView(view) {
   const path = `/pages/${view}/index`;
-  const current = getCurrentPages().at(-1);
-  if (current?.route === path.slice(1)) return;
+  if (getCurrentRoute() === path.slice(1)) return;
   safeNavigateTo(path);
 }
 function refresh() {

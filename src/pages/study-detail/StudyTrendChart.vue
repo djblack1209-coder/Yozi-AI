@@ -22,6 +22,7 @@
   /></view>
 </template>
 <script setup>
+import { learningDateTimeFormat } from '../../../laf-backend/functions/_shared/learning-date-time.js';
 import { computed, ref, watch, onMounted, onBeforeUnmount, getCurrentInstance, nextTick } from 'vue';
 
 const props = defineProps({
@@ -347,7 +348,7 @@ function formatDate(date) {
  * 获取日期标签
  */
 function getDateLabel(date) {
-  return new Intl.DateTimeFormat(currentLanguage.value, { month: 'numeric', day: 'numeric' }).format(date);
+  return learningDateTimeFormat(currentLanguage.value, { month: 'numeric', day: 'numeric' }).format(date);
 }
 </script>
 <style scoped>

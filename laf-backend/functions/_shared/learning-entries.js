@@ -1,3 +1,4 @@
+import { dateTimeParts, dayKey, learningDateTimeFormat } from './learning-date-time.js';
 import { coachAssessmentCounts } from './learning-writing-coach.js';
 import { reviewGoalProgress } from './learning-adherence.js';
 import { normalizeStudyProfile } from './learning-intake.js';
@@ -461,23 +462,23 @@ function validDate(value) {
 export function normalizeEntrySchedule(s) {
   validateEntrySchema(scheduleSchema, s);
   check(/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(s.time));
-  new Intl.DateTimeFormat('en', { timeZone: s.timezone }).format(0);
+  const clock = learningDateTimeFormat('en-CA', {
+    timeZone: s.timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  });
   if (s.mode === 'once') {
     check(validDate(s.date));
     const instant = reminderInstant(s.date, s.time, s.timezone);
     check(instant !== null, '提醒时间不存在');
     // Reject ambiguous DST folds instead of silently choosing either instant.
     for (const delta of [-7200000, -3600000, -1800000, 1800000, 3600000, 7200000]) {
-      const parts = new Intl.DateTimeFormat('sv-SE', {
-        timeZone: s.timezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hourCycle: 'h23'
-      }).format(instant + delta);
-      check(parts !== `${s.date} ${s.time}`, '夏令时重复时间需要明确选择');
+      const { year, month, day, hour, minute } = dateTimeParts(clock, instant + delta);
+      check(`${year}-${month}-${day} ${hour}:${minute}` !== `${s.date} ${s.time}`, '夏令时重复时间需要明确选择');
     }
   }
   return { ...s, ...(s.repeatDays ? { repeatDays: [...s.repeatDays].sort() } : {}) };
@@ -909,10 +910,7 @@ export function aggregateEntries(state, args, context, now = Date.now()) {
   } else if (args.metric === 'completed') evidence = rows.filter((e) => e.status === 'completed');
   else if (args.metric === 'due') {
     const due = new Set(
-      reminderJobs(state, now, {
-        dayKey: (at, timeZone) =>
-          new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(at)
-      })
+      reminderJobs(state, now, { dayKey })
         .filter((j) => j.dueAt <= now)
         .map((j) => j.reminderId)
     );

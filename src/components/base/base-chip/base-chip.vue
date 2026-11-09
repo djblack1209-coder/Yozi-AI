@@ -43,7 +43,7 @@ function toggle(event) {
   if (!props.action) emit('update:modelValue', !props.modelValue);
   else {
     emit('tap', event);
-    // #ifdef H5
+    // #ifdef H5 || APP-PLUS
     emit('click', event);
     // #endif
   }

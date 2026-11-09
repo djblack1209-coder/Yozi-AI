@@ -85,9 +85,8 @@ const tone = computed(
 function activate(event) {
   if (blocked.value) return;
   emit('tap', event);
-  // uni-app compiles H5 callers' @tap to a component click listener.
-  // Declare and emit it so pointer and keyboard activation share one path.
-  // #ifdef H5
+  // uni-app compiles @tap on components to a click listener on App and H5.
+  // #ifdef H5 || APP-PLUS
   emit('click', event);
   // #endif
 }

@@ -101,6 +101,7 @@
   </view>
 </template>
 <script setup>
+import { dateTimeParts, learningDateTimeFormat } from '../../../../laf-backend/functions/_shared/learning-date-time.js';
 import BaseEmpty from '@/components/base/base-empty/base-empty.vue';
 import { learningText } from '@/i18n/learning.js';
 import { publicError, t } from '@/i18n/index.js';
@@ -174,12 +175,14 @@ function currentEdit() {
 const kindName = (id) => REMINDER_KINDS.find((k) => k.id === id)?.label || '提醒';
 function nearbyTime() {
   try {
-    form.value.time = new Intl.DateTimeFormat('en-GB', {
+    const clock = learningDateTimeFormat('en-GB', {
       timeZone: form.value.timezone,
       hour: '2-digit',
       minute: '2-digit',
       hourCycle: 'h23'
-    }).format(new Date(Date.now() + 3 * 60000));
+    });
+    const { hour, minute } = dateTimeParts(clock, Date.now() + 3 * 60000);
+    form.value.time = `${hour}:${minute}`;
   } catch {
     message.value = '请先填写有效时区';
     failed.value = true;

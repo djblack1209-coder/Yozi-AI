@@ -100,6 +100,7 @@
   </LearningShell>
 </template>
 <script setup>
+import { learningDateTimeFormat } from '../../../laf-backend/functions/_shared/learning-date-time.js';
 import { computed, ref, watch } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import LearningShell from '@/components/business/learning/learning-shell.vue';
@@ -147,7 +148,7 @@ const prompt = (item) =>
       : learning.state.questions.find((q) => `${q.id}@${q.version}` === item.questionKey)?.prompt ||
         '原题已随旧题库下线';
 const dueLabel = (at) =>
-  new Intl.DateTimeFormat('zh-CN', { timeZone: learning.state.timezone, month: 'numeric', day: 'numeric' }).format(at);
+  learningDateTimeFormat('zh-CN', { timeZone: learning.state.timezone, month: 'numeric', day: 'numeric' }).format(at);
 watch(
   () => learning.recordContext(),
   () => {

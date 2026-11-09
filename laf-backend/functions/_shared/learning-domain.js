@@ -1,3 +1,4 @@
+import { dayKey } from './learning-date-time.js';
 import { ENTRY_EVENTS, applyEntryOperation, normalizeEntrySchedule } from './learning-entries.js';
 import { applyAdherenceOperation, ADHERENCE_EVENTS, reviewFacts } from './learning-adherence.js';
 import { normalizeLearningProposal, assertLearningProposalAcceptance } from './learning-proposals.js';
@@ -245,16 +246,7 @@ export function learningCapabilitiesData(input) {
     officialScore: 'unverified'
   };
 }
-export function dayKey(time, timezone) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).formatToParts(new Date(time));
-  const get = (type) => parts.find((part) => part.type === type)?.value;
-  return `${get('year')}-${get('month')}-${get('day')}`;
-}
+export { dayKey };
 function validateTimezone(time, timezone, message) {
   assert(typeof timezone === 'string' && timezone.length >= 1 && timezone.length <= 80, 'INVALID_INPUT', message);
   try {

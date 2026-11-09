@@ -1,3 +1,4 @@
+import { dayKey as date } from './learning-date-time.js';
 import { coachErrorReviews } from './learning-coach-review.js';
 import { libraryItemPaused } from './learning-writing-corpus.js';
 // Read-only views over the existing private event stream. No network, grades or BKT estimates.
@@ -19,15 +20,6 @@ export const ADHERENCE_EVENTS = [
 const DAY = 86400000;
 const grade = (a) => a.corrections?.at(-1)?.grade || a.grade;
 const keyOf = (q) => `${q.id}@${q.version}`;
-const date = (at, zone) => {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: zone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).formatToParts(at);
-  return ['year', 'month', 'day'].map((k) => parts.find((p) => p.type === k).value).join('-');
-};
 function scope(state, owner, conversationId) {
   if (owner !== state.owner) throw Object.assign(new Error('账户已变化'), { code: 'OWNER_MISMATCH' });
   if (conversationId && !state.conversations.some((c) => c.id === conversationId))
