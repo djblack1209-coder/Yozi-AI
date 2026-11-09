@@ -23,6 +23,14 @@
     }"
     :style="[platformInsets, dockStyle, { '--muse-panel-width': `${panelWidth}px` }]"
   >
+    <!-- #ifdef APP-PLUS -->
+    <view
+      v-if="hasNativeWebView"
+      hidden
+      :directory-open="menuOpen"
+      :change:directory-open="directoryView.onDirectoryChange"
+    />
+    <!-- #endif -->
     <view class="native-titlebar" data-tauri-drag-region aria-hidden="true" />
     <MuseLaunch :scope="learning" :ready="['ready', 'error'].includes(learning.recordReadState)" />
     <view class="space-frame">
@@ -574,6 +582,9 @@ const viewportWidth = ref(
   typeof window !== 'undefined' ? window.innerWidth : uni.getWindowInfo?.().windowWidth || 1024
 );
 const directoryAutoOpenWidth = isDesktopRuntime() ? 800 : 760;
+// #ifdef APP-PLUS
+const hasNativeWebView = typeof plus !== 'undefined';
+// #endif
 const canRestoreDirectory = computed(
   () => props.active === 'learning' && !nativeSettings && viewportWidth.value > directoryAutoOpenWidth
 );
@@ -1178,3 +1189,43 @@ onUnmounted(() => {
   element?.removeEventListener?.('pointerdown', outsideDirectory);
 });
 </script>
+<!-- #ifdef APP-PLUS -->
+<renderjs name="directoryView">
+export default {
+  data: () => ({ openedFromTrigger: false }),
+  mounted() {
+    const shell = this.$ownerInstance.$el;
+    // The App event bridge does not serialize KeyboardEvent.key.
+    shell.addEventListener('keydown', this.activateButton, true);
+    shell.addEventListener('click', this.rememberTrigger, true);
+  },
+  methods: {
+    activateButton(event) {
+      const button = event.target;
+      if (
+        event.defaultPrevented ||
+        !['Enter', ' '].includes(event.key) ||
+        !button.matches?.('uni-button.mobile-menu, .space-sidebar uni-button.base-button') ||
+        button.hasAttribute('disabled')
+      ) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (!event.repeat) button.click();
+    },
+    rememberTrigger(event) {
+      if (event.target.closest?.('.mobile-menu')) this.openedFromTrigger = true;
+    },
+    onDirectoryChange(open, wasOpen, owner) {
+      if (!this.openedFromTrigger || open === wasOpen) return;
+      const shell = owner.$el;
+      if (open) {
+        shell.querySelector('.sidebar-open .sidebar-close')?.focus({ preventScroll: true });
+      } else {
+        this.openedFromTrigger = false;
+        shell.querySelector('.mobile-menu')?.focus({ preventScroll: true });
+      }
+    }
+  }
+};
+</renderjs>
+<!-- #endif -->
