@@ -1,15 +1,13 @@
 <template>
   <view v-if="visible" class="offline-indicator" :class="[statusClass, { 'offline-indicator--expanded': expanded }]">
     <!-- 简洁模式 -->
-    <view
+    <BaseButton
       class="offline-indicator__compact"
-      role="button"
-      tabindex="0"
-      :aria-label="statusText"
+      variant="quiet"
+      align="start"
+      :label="statusText"
       :aria-expanded="expanded"
       @tap="toggleExpand"
-      @keydown.enter="toggleExpand"
-      @keydown.space.prevent="toggleExpand"
     >
       <view class="offline-indicator__icon">
         <BaseIcon v-if="isOffline" name="offline" :size="20" />
@@ -22,7 +20,7 @@
       <view v-if="pendingCount > 0" class="offline-indicator__badge">
         {{ pendingCount > 99 ? '99+' : pendingCount }}
       </view>
-    </view>
+    </BaseButton>
 
     <!-- 展开详情 -->
     <view v-if="expanded" class="offline-indicator__details">
@@ -396,11 +394,8 @@ defineExpose({ show, hide });
     background: var(--mint-soft);
   }
   &__compact {
-    display: flex;
-    align-items: center;
-    gap: var(--s-2);
     min-height: var(--touch-min);
-    cursor: pointer;
+    padding: 0;
   }
   &__compact:focus-visible {
     outline: var(--border-selected) solid var(--focus);
@@ -472,5 +467,21 @@ defineExpose({ show, hide });
 }
 .quality-bar--active {
   background: var(--violet-ink);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .offline-indicator--offline .offline-indicator__icon {
+    animation: offline-symbol-settle 450ms cubic-bezier(0.21, 0.78, 0.35, 1) both;
+  }
+}
+@keyframes offline-symbol-settle {
+  0% {
+    transform: translateY(-5px) rotate(-10deg);
+  }
+  68% {
+    transform: translateY(1px) rotate(4deg);
+  }
+  100% {
+    transform: none;
+  }
 }
 </style>

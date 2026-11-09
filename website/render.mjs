@@ -437,7 +437,7 @@ export function renderNotFound() {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <meta name="theme-color" content="#fdfdfc">
+  <meta name="theme-color" content="#d5effd">
   <title>找不到页面 · Yozi</title>
   <link rel="icon" type="image/svg+xml" href="${brandUrl("favicon.svg")}">
   <style>${source("site.css").replaceAll("FONT_BASE", "/fonts")}</style>
@@ -448,16 +448,39 @@ export function renderNotFound() {
       <a href="/" class="not-found-brand"><img src="${brandUrl("brand/mark.svg")}" width="36" height="36" alt="">Yozi AI</a>
       <button class="button secondary" type="button" data-language-link hidden>${tr("EN", "中文")}</button>
     </div>
-    <p class="not-found-code">404</p>
-    <h1>${tr("这一页找不到了。", "Page not found.")}</h1>
-    <p>${tr("这个地址可能有误，也可能已移动。", "This address may be incorrect or the page may have moved.")}</p>
-    <a class="button primary" href="/">${tr("返回首页", "Back to home")}</a>
+    <div class="not-found-copy">
+      <h1>${tr("这一页找不到了。", "Page not found.")}</h1>
+      <p>${tr("这个地址可能有误，也可能已移动。", "This address may be incorrect or the page may have moved.")}</p>
+      <a class="button primary" href="/">${tr("返回首页", "Back to home")}</a>
+    </div>
+    <div class="not-found-code" role="img" aria-label="404">
+      <span class="not-found-digit" aria-hidden="true"><span>4</span></span>
+      <span class="not-found-digit" aria-hidden="true"><span>0</span></span>
+      <span class="not-found-digit" aria-hidden="true"><span>4</span></span>
+    </div>
   </main>
   <script>
     const button = document.querySelector('[data-language-link]');
+    const digits = document.querySelector('.not-found-code');
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)');
     const selected = new URLSearchParams(location.search).get('lang');
-    let saved;
-    try { saved = localStorage.getItem('yozi.website.language'); } catch {}
+    let saved, paused;
+    try {
+      saved = localStorage.getItem('yozi.website.language');
+      paused = localStorage.getItem('yozi.website.motion') === 'paused';
+    } catch {}
+    digits.toggleAttribute('data-motion', !paused && !reduced.matches);
+    digits.addEventListener('pointerdown', (event) => {
+      const digit = event.target.closest('.not-found-digit')?.firstElementChild;
+      if (!digit || paused || reduced.matches) return;
+      digit.getAnimations().forEach((animation) => animation.cancel());
+      digit.animate([
+        { transform: 'translateY(0) rotate(0)' },
+        { transform: 'translateY(-19%) rotate(13deg)', offset: .3 },
+        { transform: 'translateY(2%) rotate(-4deg)', offset: .72 },
+        { transform: 'translateY(0) rotate(0)' }
+      ], { duration: 750, easing: 'cubic-bezier(.24,.7,.33,1)' });
+    });
     function setLanguage(lang) {
       const english = lang === 'en';
       document.documentElement.lang = english ? 'en' : 'zh-CN';

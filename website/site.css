@@ -570,8 +570,8 @@ html:not(.js) .category-list {
   }
 }
 .site-footer {
-  background: var(--sky);
-  color: var(--navy);
+  background: var(--navy);
+  color: var(--cream);
 }
 .footer-inner {
   width: min(100% - 2 * var(--gutter), var(--site-max) - 2 * var(--gutter));
@@ -622,8 +622,8 @@ html:not(.js) .category-list {
   gap: 0 18px;
   margin-top: 16px;
   padding-top: 6px;
-  border-top: 1px solid var(--line);
-  color: var(--muted);
+  border-top: 1px solid #8db9e239;
+  color: #bcd1e7;
   font-size: 13px;
   line-height: 1.5;
 }
@@ -631,31 +631,58 @@ html:not(.js) .category-list {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  color: var(--navy);
+  color: var(--cream);
 }
 .footer-legal > span {
   margin-left: auto;
+}
+.footer-wordmark {
+  display: flex;
+  justify-content: space-between;
+  padding-block: clamp(26px, 5vw, 72px) clamp(16px, 2.4vw, 35px);
+  color: #436480;
+  font: 520 clamp(66px, 24vw, 330px)/.78 var(--font-display);
+  letter-spacing: -.1em;
+  user-select: none;
+}
+.footer-wordmark > span {
+  display: block;
+  transform-origin: 50% 85%;
 }
 .not-found {
   min-height: 100svh;
   display: grid;
   place-items: center;
   padding: var(--gutter);
-  background: linear-gradient(var(--sky), var(--paper));
+  background:
+    radial-gradient(ellipse at 12% 10%, #e9edff 0%, transparent 55%),
+    radial-gradient(ellipse at 92% 89%, #7cc6f0 0%, transparent 58%),
+    linear-gradient(153deg, #e4f5fd, #b2dcf3 58%, #d5eafb);
 }
 .not-found main {
-  width: min(100%, 540px);
-  padding: clamp(20px, 4vw, 48px);
-  border: 1px solid var(--line);
-  border-radius: 24px;
-  background: var(--paper);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, .98fr);
+  grid-template-rows: auto 1fr;
+  gap: clamp(18px, 5vw, 60px);
+  width: min(100%, 1120px);
+  min-height: min(650px, 86svh);
+  padding: clamp(21px, 4vw, 56px);
+  border: 1px solid #f7fbff8c;
+  border-radius: 28px;
+  background: #edf7ff36;
+  overflow: hidden;
 }
 .not-found-bar {
   display: flex;
+  grid-column: 1 / -1;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: clamp(30px, 6vw, 66px);
+}
+.not-found-copy {
+  position: relative;
+  z-index: 1;
+  align-self: center;
 }
 .not-found h1 {
   margin-block: 8px 12px;
@@ -668,13 +695,59 @@ html:not(.js) .category-list {
   line-height: 1.6;
 }
 .not-found-code {
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-self: end;
+  justify-content: end;
+  margin-inline-end: .11em;
+  padding-block-end: .14em;
+  color: #133956;
+  font: 490 clamp(108px, 17vw, 230px)/.86 var(--font-display);
+  letter-spacing: -.13em;
+  text-shadow: 0 10px 32px #0f4b7132;
+  user-select: none;
 }
-.not-found main > .button {
+.not-found-digit {
+  display: block;
+  --landing-angle: -15deg;
+  transform: rotate(var(--landing-angle));
+  transform-origin: 50% 80%;
+}
+.not-found-digit:nth-child(2) {
+  --landing-angle: 14deg;
+  --digit-delay: 250ms;
+}
+.not-found-digit:nth-child(3) {
+  --landing-angle: 26deg;
+  --digit-delay: 480ms;
+}
+.not-found-digit > span {
+  display: block;
+}
+.not-found-code[data-motion] .not-found-digit {
+  animation: not-found-tumble 1.55s linear var(--digit-delay, 0ms) both;
+}
+@keyframes not-found-tumble {
+  0% { opacity: 0; transform: translateY(-135%) rotate(-34deg); }
+  16% { opacity: 1; }
+  58% { transform: translateY(4%) rotate(calc(var(--landing-angle) - 11deg)); }
+  74% { transform: translateY(-15%) rotate(calc(var(--landing-angle) + 9deg)); }
+  88% { transform: translateY(2%) rotate(calc(var(--landing-angle) - 5deg)); }
+  100% { transform: rotate(var(--landing-angle)); }
+}
+.not-found-copy > .button {
   margin-top: 24px;
 }
+@media (prefers-reduced-motion: reduce) {
+  .not-found-code[data-motion] .not-found-digit { animation: none; }
+}
 @media (max-width: 767px) {
+  .not-found main {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+  }
+  .not-found-code {
+    font-size: clamp(105px, 28vw, 172px);
+  }
   .section-heading {
     flex-direction: column;
     align-items: flex-start;

@@ -58,6 +58,35 @@ const poses = { empty: 'think', loading: 'idle', error: 'encourage' };
   border-radius: var(--r-pill);
   background: transparent;
 }
+.base-state--empty:not(.is-compact) .base-state__halo,
+.base-state--error:not(.is-compact) .base-state__halo {
+  animation: state-illustration-settle 520ms cubic-bezier(0.21, 0.78, 0.35, 1) both;
+}
+.base-state--empty:not(.is-compact) .base-state__halo {
+  background: radial-gradient(circle, var(--blue-soft) 20%, transparent 72%);
+}
+.base-state--error:not(.is-compact) .base-state__halo {
+  background: radial-gradient(circle, var(--coral-soft) 20%, transparent 72%);
+}
+@keyframes state-illustration-settle {
+  0% {
+    opacity: 0.35;
+    transform: translateY(-12px) rotate(-8deg) scale(0.94);
+  }
+  64% {
+    transform: translateY(2px) rotate(3deg) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .base-state--empty:not(.is-compact) .base-state__halo,
+  .base-state--error:not(.is-compact) .base-state__halo {
+    animation: none;
+  }
+}
 .base-state__title {
   color: var(--ink);
   font: var(--weight-ui-emphasis) var(--size-title-3)/var(--leading-title-3) var(--font-ui);

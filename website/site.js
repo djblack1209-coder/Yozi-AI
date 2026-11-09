@@ -219,6 +219,18 @@
   heroOpening.addEventListener("pointermove", rippleHero, { passive: true });
   heroOpening.addEventListener("pointerdown", rippleHero, { passive: true });
 
+  document.querySelector(".footer-wordmark").addEventListener("pointerover", (event) => {
+    const letter = event.target.closest("span");
+    if (!motionEnabled || !letter) return;
+    letter.getAnimations().forEach((animation) => animation.cancel());
+    letter.animate([
+      { transform: "scale(1)", color: "#436480" },
+      { transform: "translateY(-.035em) scale(.92,1.19)", color: "#bdeaff", offset: .24 },
+      { transform: "scale(1.065,.92)", color: "#7bc9f4", offset: .57 },
+      { transform: "scale(1)", color: "#436480" }
+    ], { duration: 720, easing: "cubic-bezier(.2,.74,.32,1)" });
+  });
+
   // Keep a single seek in flight, including when the range changes before metadata loads.
   function seekScene() {
     if (requestedFrame === null || !Number.isFinite(video.duration) || video.seeking) return;

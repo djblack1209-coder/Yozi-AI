@@ -78,6 +78,13 @@ const uni = {
   ...(globalRef['uni'] || {})
 };
 
+function browserIsOffline() {
+  // #ifdef H5
+  if (typeof navigator !== 'undefined') return navigator.onLine === false;
+  // #endif
+  return false;
+}
+
 /**
  * 网络类型定义
  */
@@ -191,7 +198,7 @@ class NetworkMonitor {
         const wasConnected = this.status.isConnected;
         const oldType = this.status.networkType;
 
-        this.status.networkType = res.networkType || NETWORK_TYPES.UNKNOWN;
+        this.status.networkType = browserIsOffline() ? NETWORK_TYPES.NONE : res.networkType || NETWORK_TYPES.UNKNOWN;
         this.status.isConnected = this.status.networkType !== NETWORK_TYPES.NONE;
         this.status.quality = this._evaluateQuality(this.status.networkType);
 
@@ -217,8 +224,9 @@ class NetworkMonitor {
       const wasConnected = this.status.isConnected;
       const oldQuality = this.status.quality;
 
-      this.status.isConnected = res.isConnected;
-      this.status.networkType = res.networkType || NETWORK_TYPES.UNKNOWN;
+      const offline = browserIsOffline();
+      this.status.isConnected = !offline && res.isConnected;
+      this.status.networkType = offline ? NETWORK_TYPES.NONE : res.networkType || NETWORK_TYPES.UNKNOWN;
       this.status.quality = this._evaluateQuality(this.status.networkType);
 
       logger.log('[NetworkMonitor] 网络变化: [省略] (连接: [省略])');
@@ -226,6 +234,14 @@ class NetworkMonitor {
       this._handleStatusChange(wasConnected, oldQuality);
     };
     uni.onNetworkStatusChange(this._networkChangeHandler);
+    // #ifdef H5
+    // Chromium may signal reachability changes without a NetworkInformation change event.
+    if (typeof window !== 'undefined') {
+      this._browserNetworkHandler = () => this._checkNetworkStatus();
+      window.addEventListener('offline', this._browserNetworkHandler);
+      window.addEventListener('online', this._browserNetworkHandler);
+    }
+    // #endif
   }
 
   /**
@@ -526,6 +542,14 @@ class NetworkMonitor {
    */
   destroy() {
     this._stopPingTimer();
+
+    // #ifdef H5
+    if (this._browserNetworkHandler) {
+      window.removeEventListener('offline', this._browserNetworkHandler);
+      window.removeEventListener('online', this._browserNetworkHandler);
+      this._browserNetworkHandler = null;
+    }
+    // #endif
 
     // [AUDIT FIX] 注销平台网络监听器，防止内存泄漏
     if (this._networkChangeHandler) {
