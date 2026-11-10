@@ -295,20 +295,18 @@ async function share() {
     action.value = '';
   }
 }
-watch(
-  () => [props.visible, props.day, observations.value, context()],
-  async () => {
-    if (!props.visible) {
-      ++serial;
-      image.value = '';
-      rendered = null;
-      giftFlight.value = false;
-      observations.value = false;
-      return;
-    }
-    await render();
+// A refresh with the same inputs must keep the poster used by an in-flight share.
+watch([() => props.visible, observations, context], async () => {
+  if (!props.visible) {
+    ++serial;
+    image.value = '';
+    rendered = null;
+    giftFlight.value = false;
+    observations.value = false;
+    return;
   }
-);
+  await render();
+});
 onMounted(() => {
   // #ifdef H5
   releaseMotion = bindBusinessMotion((reduced) => {
