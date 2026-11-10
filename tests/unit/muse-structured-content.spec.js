@@ -92,7 +92,10 @@ describe('Muse structured assistant output', () => {
   it('expands feedback locally and adopts a phrase only through the explicit action', async () => {
     const feedback = {
       id: 'saved-feedback',
-      lines: [{ original: 'I likes books.', rewrite: 'I like books.', advice: '主谓一致。' }],
+      lines: [
+        { original: 'I likes books.', rewrite: 'I like books.', advice: '主谓一致。' },
+        { original: 'in', rewrite: 'in', advice: 'look forward to 为固定搭配。' }
+      ],
       dimensions: [{ name: '语法', comment: '主谓一致待加强' }],
       weaknesses: ['主谓一致'],
       phrases: ['I am writing to invite you.']
@@ -102,6 +105,11 @@ describe('Muse structured assistant output', () => {
     expect(wrapper.get('.feedback-title').text()).toBe('搭配 · AI 评估');
     expect(wrapper.get('.feedback-ink-source').element.textContent).toBe(feedback.lines[0].original);
     expect(wrapper.get('.feedback-ink-revision').element.textContent).toBe(feedback.lines[0].rewrite);
+    const unchanged = wrapper.findAll('.feedback-line')[1];
+    expect(unchanged.get('.feedback-ink-source').text()).toBe('in');
+    expect(unchanged.find('.feedback-rewrite').exists()).toBe(false);
+    await unchanged.get('button[aria-label="展开解析"]').trigger('tap');
+    expect(unchanged.text()).toContain('look forward to 为固定搭配。');
     expect(wrapper.get('.muse-ink-strike').text()).toBe('likes');
     expect(wrapper.get('.muse-ink-mark').text()).toBe('like');
     expect(wrapper.text()).not.toContain('主谓一致。');

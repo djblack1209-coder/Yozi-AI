@@ -21,12 +21,7 @@
         ><text class="muse-ink-strike">{{ comparisons[index].removed }}</text
         ><text>{{ comparisons[index].suffix }}</text></text
       >
-      <view
-        v-if="!DEV_TEST || line.rewrite !== line.original"
-        class="feedback-rewrite"
-        role="group"
-        aria-label="建议改写"
-      >
+      <view v-if="line.rewrite !== line.original" class="feedback-rewrite" role="group" aria-label="建议改写">
         <BaseIcon name="arrow-right" :size="16" />
         <text class="feedback-ink-revision muse-ink-reveal" selectable
           ><text>{{ comparisons[index].prefix }}</text
