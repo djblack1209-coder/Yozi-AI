@@ -187,7 +187,7 @@ describe('3B practice: draft → explicit submit → read-only receipt', () => {
     expect(order).toEqual(['update', 'submit']);
     await wrapper.setProps({ answers: [{ cardId: 'c1', answer: 'to' }], currentId: 'c2' });
     expect(wrapper.findComponent(BaseOptions).props('modelValue')).toBe('');
-    await wrapper.get('[aria-label="第 1 题，已提交"]').trigger('tap');
+    await wrapper.get('[aria-label="固定搭配，已提交"]').trigger('tap');
     expect(wrapper.findComponent(BaseOptions).props()).toMatchObject({ disabled: true, modelValue: 'to' });
     expect(wrapper.text()).toContain('已提交，等待 AI 评估');
     expect(wrapper.text()).not.toContain('未提交');

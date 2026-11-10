@@ -16,10 +16,12 @@ async function openSettingsSection(wrapper, label) {
 }
 async function openLearningSettings(wrapper) {
   const control = wrapper.find('.connection-pill');
-  if (control.attributes('aria-expanded') !== 'true') {
+  if (!control.exists()) {
+    for (const load of loadHooks.callbacks) load({ panel: 'legacyConnections' });
+  } else if (control.attributes('aria-expanded') !== 'true') {
     await control.trigger('tap');
-    await flushPromises();
   }
+  await flushPromises();
 }
 import CustomModal from '@/components/common/CustomModal.vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -2752,9 +2754,8 @@ describe('学习空间的实际入口与目录', () => {
     expect(store.state.attempts).toHaveLength(1);
     wrapper.unmount();
     const shell = mount(LearningShell, { global: { stubs } });
-    expect(shell.find('.brand-name').text()).toContain(BRAND.chinese);
-    expect(shell.find('.brand-mark').classes()).toContain('animated-avatar');
-    expect(shell.find('.brand-status').attributes('role')).toBe('status');
+    expect(shell.get('.workspace-brand-name').text()).toBe(BRAND.name);
+    expect(shell.get('.workspace-brand-mark').attributes('src')).toBe(BRAND.mark);
     shell.unmount();
   });
   it('聊天发送向辅助工具说明禁用状态，填写目标后才创建学习记录', async () => {
@@ -2980,8 +2981,7 @@ describe('学习空间的实际入口与目录', () => {
       expect(JSON.parse(store.exportData())).toEqual(original);
       wrapper.unmount();
       wrapper = mount(LearningPage, { global: { stubs: { ...stubs, LearningLab: true } } });
-      await wrapper.get('.workspace-collapse').trigger('tap');
-      await wrapper.get('.new-session').trigger('tap');
+      await wrapper.get('.workspace-new-chat').trigger('tap');
       await wrapper.get('textarea[aria-label="消息或作答"]').setValue(goal);
       expect(JSON.parse(store.exportData())).toEqual(original);
       await wrapper.get('[aria-label="发送"]').trigger('tap');

@@ -306,9 +306,7 @@
 
       <template v-else>
         <view class="coach-session-state">
-          <text v-if="!quietDesktop" class="coach-muted" role="status"
-            >建档已保存：{{ profileDescription(coach.profile) }}</text
-          >
+          <text class="coach-muted" role="status">建档已保存：{{ profileDescription(coach.profile) }}</text>
           <text v-if="!quietDesktop && coach.profile.examScope" class="coach-muted">{{
             examScopeLabel(coach.profile.examScope)
           }}</text>
@@ -443,7 +441,7 @@
           </view>
         </view>
 
-        <text v-if="!quietDesktop" class="coach-muted" role="status"
+        <text v-if="!quietDesktop || assessmentCounts.submitted" class="coach-muted" role="status"
           >已提交 {{ assessmentCounts.submitted }} 题，{{ assessmentCounts.assessed }} 题已评估，{{
             assessmentCounts.pending
           }}

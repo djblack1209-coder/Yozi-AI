@@ -259,7 +259,7 @@ describe('batch9 -fixture 状态与计数', () => {
       wrapper.findComponent({ name: 'muse-practice-sheet' }).exists() ||
         wrapper.find('[data-test="coach-practice-sheet"]').exists()
     ).toBe(true);
-    expect(wrapper.get('[data-test="coach-practice-sheet"]').text()).toContain('第 02 题');
+    expect(wrapper.get('[data-test="coach-practice-sheet"]').text()).toContain('依次入栈1和2，先弹出哪个？');
   });
 });
 describe('batch9 -fixture 资料与逐字证据', () => {

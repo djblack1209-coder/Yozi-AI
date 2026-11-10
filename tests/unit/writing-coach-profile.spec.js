@@ -337,7 +337,7 @@ describe('Muse navigation keeps unfinished profile choices as drafts', () => {
   });
 });
 
-it('Muse 答题卡明确提交原答，题号回看与重新进入不改写历史事实', async () => {
+it('Muse 答题卡明确提交原答，按题名回看与重新进入不改写历史事实', async () => {
   const store = useConversationLearningStore();
   store.startCoach('考研英语一写作');
   store.coachSave('profile', { profile: { exam: 'english1', deadline: null, minutes: 25 } });
@@ -361,7 +361,7 @@ it('Muse 答题卡明确提交原答，题号回看与重新进入不改写历�
   await flushPromises();
   expect(store.active.coach.diagnostic.answers[0]).toMatchObject({ cardId: 'd1', answer: raw });
   const before = store.exportData();
-  await wrapper.get('button[aria-label="第 1 题，已提交"]').trigger('tap');
+  await wrapper.get('button[aria-label="成分识别，已提交"]').trigger('tap');
   expect(wrapper.get('.practice-answer').text()).toBe(raw);
   expect(store.exportData()).toBe(before);
   wrapper.unmount();
