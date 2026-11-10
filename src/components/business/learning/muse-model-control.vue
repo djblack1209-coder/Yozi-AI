@@ -1,8 +1,10 @@
 <template>
   <view class="model-control" aria-label="当前 AI 连接">
-    <text v-if="current" class="model-current">{{ current.provider }} · {{ current.model || '请选择型号' }}</text>
+    <text v-if="current && !permissionOnly" class="model-current"
+      >{{ current.provider }} · {{ current.model || '请选择型号' }}</text
+    >
     <BaseInput
-      v-if="choices.length"
+      v-if="choices.length && !permissionOnly"
       :model-value="learning.modelId"
       label="切换 AI 连接"
       hide-label
@@ -11,17 +13,25 @@
       :disabled="locked"
       @update:model-value="select"
     />
-    <BaseButton v-if="!needsConnectionPrompt" variant="quiet" :disabled="locked" @tap="$emit('connect')"
+    <BaseButton
+      v-if="!needsConnectionPrompt && !permissionOnly"
+      variant="quiet"
+      :disabled="locked"
+      @tap="$emit('connect')"
       >AI 连接器</BaseButton
     >
-    <text v-if="current?.connectionStatus === 'failed'" class="model-unavailable" role="status">{{
+    <text v-if="!permissionOnly && current?.connectionStatus === 'failed'" class="model-unavailable" role="status">{{
       modelErrorPresentation({ error: current.lastError }).message
     }}</text>
-    <BaseCheckbox v-if="current" :model-value="learning.sharingAllowed" :disabled="locked" @update:model-value="share"
+    <BaseCheckbox
+      v-if="current || (permissionOnly && learning.modelId)"
+      :model-value="learning.sharingAllowed"
+      :disabled="locked"
+      @update:model-value="share"
       >同意共享本次原答和必要资料片段</BaseCheckbox
     >
     <MuseModelFeedback
-      v-if="failure || learning.modelListState?.selectionError || needsConnectionPrompt"
+      v-if="failure || (!permissionOnly && (learning.modelListState?.selectionError || needsConnectionPrompt))"
       :failure="failure || { error: learning.modelListState?.selectionError || 'NEEDS_CONNECTION' }"
       :busy="locked"
       @action="$emit('connect')"
@@ -36,6 +46,7 @@ import BaseInput from '@/components/base/base-input/base-input.vue';
 import BaseButton from '@/components/base/base-button/base-button.vue';
 import BaseCheckbox from '@/components/base/base-checkbox/base-checkbox.vue';
 import MuseModelFeedback from './muse-model-feedback.vue';
+defineProps({ permissionOnly: Boolean });
 defineEmits(['connect']);
 const learning = useConversationLearningStore(),
   failure = ref(null),

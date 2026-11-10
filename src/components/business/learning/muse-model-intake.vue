@@ -62,8 +62,16 @@
           >重新选择方向</BaseButton
         >
         <template v-else>
+          <LearningChatChoice
+            v-if="choiceSheet && reply.intake.options.length"
+            :title="t('muse.chooseAnswer')"
+            :label="t('muse.chooseAnswer')"
+            :options="reply.intake.options"
+            :busy="learning.intakeBusy"
+            @apply="applyChoice"
+          />
           <BaseOptions
-            v-if="reply.intake.options.length"
+            v-else-if="reply.intake.options.length"
             v-model="choice"
             :class="{ 'intake-capsules': intake.contract === MODEL_INTAKE_V2_CONTRACT }"
             :label="reply.message"
@@ -78,7 +86,13 @@
             placeholder="输入你的回答"
             maxlength="500"
           />
-          <BaseButton variant="primary" :disabled="learning.intakeBusy || !answer" @tap="submit">发送</BaseButton>
+          <BaseButton
+            v-if="!choiceSheet || !reply.intake.options.length || (!sharedInput && choice === 'other')"
+            variant="primary"
+            :disabled="learning.intakeBusy || !answer"
+            @tap="submit"
+            >发送</BaseButton
+          >
           <BaseButton
             v-if="!reply.intake.options.some((item) => /尚未确定|不确定|跳过/.test(item.label))"
             variant="quiet"
@@ -121,6 +135,9 @@ import BaseOptions from '@/components/base/base-options/base-options.vue';
 import BaseBubble from '@/components/base/base-bubble/base-bubble.vue';
 import LearningMessage from '@/pages/learning/components/learning-message.vue';
 import MuseModelFeedback from './muse-model-feedback.vue';
+import LearningChatChoice from './learning-chat-choice.vue';
+import '@/i18n/muse.js';
+import { t } from '@/i18n/index.js';
 import { modelErrorPresentation } from '../../../../laf-backend/functions/_shared/model-errors.js';
 import { safeNavigateTo } from '@/utils/safe-navigate.js';
 import { studentAvatar } from '@/services/learning/shell-navigation.js';
@@ -131,6 +148,7 @@ const props = defineProps({
   emptyGreeting: Boolean,
   newGoal: Boolean,
   autoOpen: Boolean,
+  choiceSheet: Boolean,
   modelValue: { type: String, default: '' }
 });
 const emit = defineEmits(['accepted', 'update:modelValue']);
@@ -190,6 +208,10 @@ async function act(action) {
 }
 function submit() {
   if (answer.value) return act(() => learning.answerModelIntake(answer.value));
+}
+function applyChoice(value) {
+  choice.value = value;
+  if (value !== 'other') return submit();
 }
 let openingKey = null;
 watch(

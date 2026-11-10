@@ -16,7 +16,7 @@ import { onHide } from '@dcloudio/uni-app';
 import { coachFixture } from '../fixtures/writing-coach.js';
 import { PRESENTATION_CONTRACT } from '../../laf-backend/functions/_shared/learning-content-blocks.js';
 import { SINGLE_QUESTION_CONTRACT } from '../../laf-backend/functions/_shared/learning-intake.js';
-import BaseSegmented from '@/components/base/base-segmented/base-segmented.vue';
+import LearningChatChoice from '@/components/business/learning/learning-chat-choice.vue';
 vi.mock('@dcloudio/uni-app', () => ({ onShow: vi.fn(), onLoad: vi.fn(), onBackPress: vi.fn(), onHide: vi.fn() }));
 let previousBaseUrl;
 const stores = [];
@@ -259,6 +259,7 @@ it('S22 binds advertised presentation to a new request and saves only the valida
 });
 
 it('S22 explicit display input changes only the account view preference and never sends or saves a learning turn', async () => {
+  vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(390);
   const harness = setup(),
     { store } = harness;
   const wrapper = mount(LearningPage, {
@@ -376,11 +377,9 @@ it('S23 question selection and restart stay local drafts; explicit send skips in
   let wrapper = mount(LearningPage, { global: { stubs: { BaseIcon: true, AnimatedAvatar: true, YoziMascot: true } } });
   wrappers.push(wrapper);
   await flushPromises();
-  wrapper
-    .findAllComponents(BaseSegmented)
-    .find((item) => item.props('label') === '开始方式')
-    .vm.$emit('update:modelValue', 'question');
-  wrapper.findComponent(MuseComposer).vm.$emit('update:modelValue', '怎样区分事实、推测和建议？');
+  wrapper.getComponent(MuseComposer).vm.$emit('update:modelValue', '怎样区分事实、推测和建议？');
+  await flushPromises();
+  wrapper.get('.coach-entry-choice').getComponent(LearningChatChoice).vm.$emit('apply', 'question');
   await flushPromises();
   expect(store.state).toEqual(before);
   expect(harness.fetch).not.toHaveBeenCalled();
@@ -389,12 +388,7 @@ it('S23 question selection and restart stay local drafts; explicit send skips in
   wrapper = mount(LearningPage, { global: { stubs: { BaseIcon: true, AnimatedAvatar: true, YoziMascot: true } } });
   wrappers.push(wrapper);
   await flushPromises();
-  expect(
-    wrapper
-      .findAllComponents(BaseSegmented)
-      .find((item) => item.props('label') === '开始方式')
-      .props('modelValue')
-  ).toBe('question');
+  expect(wrapper.get('.coach-entry-choice').getComponent(LearningChatChoice).props('initialChoice')).toBe('question');
   expect(wrapper.findComponent(MuseComposer).props('modelValue')).toBe('怎样区分事实、推测和建议？');
   wrapper.findComponent(MuseComposer).vm.$emit('submit');
   await flushPromises();

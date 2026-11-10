@@ -1,7 +1,7 @@
 <template>
   <view
     ref="root"
-    class="learning-space muse-space workspace-shell muse-settings-page is-settings"
+    class="learning-space muse-space workspace-shell quiet-workspace muse-settings-page is-settings"
     :class="{
       'native-settings-page': nativeSettings,
       'is-desktop-settings': nativeSettings,
@@ -848,15 +848,6 @@ export default {
 </script>
 
 <style scoped>
-.learning-space.muse-space.muse-settings-page {
-  --violet-soft: rgba(10, 132, 255, 0.16);
-  --violet-ink: #0a84ff;
-  --clay-face: #0a84ff;
-  --clay-face-hover: #0077ed;
-  --on-clay: #fff;
-  --clay-shadow: none;
-  --clay-shadow-press: none;
-}
 .space-light {
   --muse-settings-card: #fff;
 }

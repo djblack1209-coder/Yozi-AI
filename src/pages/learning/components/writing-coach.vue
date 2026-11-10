@@ -2,6 +2,7 @@
   <LearningShell
     ref="shell"
     active="learning"
+    :center-composer="centerComposer"
     :waiting-for-answer="Boolean(answerTarget)"
     :refresh-records-on-mount="props.refreshRecordsOnMount"
     :notice="cancellationNotice"
@@ -66,7 +67,10 @@
         "
         @height="composerHeight = $event"
       >
-        <template v-if="coach || learning.singleQuestionAvailable || entryMode === 'question'" #actions>
+        <template
+          v-if="!quietDesktop && (coach || learning.singleQuestionAvailable || entryMode === 'question')"
+          #actions
+        >
           <BaseSegmented
             v-if="!coach"
             v-model="entryMode"
@@ -103,7 +107,11 @@
         </template>
       </MuseComposer>
     </template>
-    <MuseModelControl @connect="openConnections" />
+    <MuseModelControl
+      v-if="!quietDesktop || (permissionRequested && learning.modelId && !learning.sharingAllowed)"
+      :permission-only="quietDesktop"
+      @connect="openConnections"
+    />
     <MuseModelFeedback
       :failure="modelFailure"
       :state="coachModelFeedbackState"
@@ -208,15 +216,30 @@
       >
 
       <template v-if="!coach">
-        <MuseChatEmpty v-if="showChatEmpty && entryMode === 'study'" connected @draft="goal = $event" />
+        <MuseChatEmpty
+          v-if="!quietDesktop && showChatEmpty && entryMode === 'study'"
+          connected
+          @draft="goal = $event"
+        />
+        <BaseBubble v-if="quietDesktop && showEntryChoice" class="coach-entry-choice">
+          <LearningChatChoice
+            :title="t('muse.entryKind')"
+            :label="t(entryMode === 'study' ? 'muse.modeStudy' : 'muse.modeQuestion')"
+            :options="entryOptions"
+            :initial-choice="entryMode"
+            :busy="learning.busy || learning.intakeBusy || !!learning.reply?.pending"
+            @apply="entryMode = $event"
+          />
+        </BaseBubble>
         <MuseModelIntake
           v-if="usesModelIntake"
           ref="intakePanel"
           v-model="goal"
-          :empty-greeting="showChatEmpty"
+          :empty-greeting="quietDesktop || showChatEmpty"
+          :choice-sheet="quietDesktop"
           shared-input
           new-goal
-          auto-open
+          :auto-open="Boolean(shell) && !quietDesktop"
           @accepted="acceptedProfile"
         />
       </template>
@@ -283,8 +306,12 @@
 
       <template v-else>
         <view class="coach-session-state">
-          <text class="coach-muted" role="status">建档已保存：{{ profileDescription(coach.profile) }}</text>
-          <text v-if="coach.profile.examScope" class="coach-muted">{{ examScopeLabel(coach.profile.examScope) }}</text>
+          <text v-if="!quietDesktop" class="coach-muted" role="status"
+            >建档已保存：{{ profileDescription(coach.profile) }}</text
+          >
+          <text v-if="!quietDesktop && coach.profile.examScope" class="coach-muted">{{
+            examScopeLabel(coach.profile.examScope)
+          }}</text>
 
           <view v-if="learning.personalCorpusChoices.length" class="coach-corpus-control">
             <BaseCheckbox
@@ -416,15 +443,33 @@
           </view>
         </view>
 
-        <text class="coach-muted" role="status"
+        <text v-if="!quietDesktop" class="coach-muted" role="status"
           >已提交 {{ assessmentCounts.submitted }} 题，{{ assessmentCounts.assessed }} 题已评估，{{
             assessmentCounts.pending
           }}
           题待评估</text
         >
+        <template v-if="quietDesktop">
+          <LearningActivityGroup
+            v-for="group in visibleActivity"
+            :key="group.day"
+            :day="group.day"
+            :items="group.items"
+          />
+        </template>
         <view id="coach-current-turn" class="coach-current-turn">
           <BaseBubble avatar rich class="coach-agent-turn coach-card-turn">
-            <text v-if="coach" class="coach-muted" role="status" aria-live="polite"
+            <view v-if="quietDesktop && answerTarget" class="coach-turn-actions">
+              <LearningChatChoice
+                :title="t('muse.turnActions')"
+                :label="t('muse.turnActions')"
+                :options="coachTurnOptions"
+                :busy="learning.busy"
+                icon-only
+                @apply="applyCoachTurnAction"
+              />
+            </view>
+            <text v-if="!quietDesktop" class="coach-muted" role="status" aria-live="polite"
               >当前教法：{{
                 { hint: '只给提示', steps: '分步讲解', example: '例子讲解', explain: '直接讲解', question: '引导提问' }[
                   learning.activeStrategy.method
@@ -801,6 +846,10 @@ import {
 } from '../../../../laf-backend/functions/_shared/learning-writing-coach.js';
 import { subjectCoachMethod } from '../../../../laf-backend/functions/_shared/learning-coach-methods.js';
 import LearningShell from '@/components/business/learning/learning-shell.vue';
+import LearningChatChoice from '@/components/business/learning/learning-chat-choice.vue';
+import LearningActivityGroup from '@/components/business/learning/learning-activity-group.vue';
+import { coachActivitiesByDay } from '@/services/learning/learning-activity.js';
+import { isDesktopRuntime } from '@/services/desktop/runtime.js';
 import PrivacyPopup from '@/components/common/privacy-popup.vue';
 import CustomModal from '@/components/common/CustomModal.vue';
 import BaseCheckbox from '@/components/base/base-checkbox/base-checkbox.vue';
@@ -820,6 +869,8 @@ const props = defineProps({
 });
 const emit = defineEmits(['advanced', 'general']);
 const shell = ref(null);
+const quietDesktop = computed(() => shell.value?.quietDesktop ?? isDesktopRuntime());
+const permissionRequested = ref(false);
 defineExpose({ dismissDirectory: () => shell.value?.dismissDirectory() ?? false });
 
 const learning = useConversationLearningStore();
@@ -856,6 +907,24 @@ const goal = ref(''),
   answer = ref(''),
   materialText = ref(''),
   message = ref('');
+const showEntryChoice = computed(
+  () =>
+    learning.singleQuestionAvailable &&
+    Boolean(goal.value.trim()) &&
+    (!learning.state.intake || learning.state.intake.acceptedConversationId || learning.state.intake.finalFailure)
+);
+const entryOptions = computed(() => [
+  { value: 'study', label: t('muse.modeStudy') },
+  { value: 'question', label: t('muse.modeQuestion') }
+]);
+const centerComposer = computed(
+  () =>
+    !coach.value &&
+    (!learning.state.intake || learning.state.intake.acceptedConversationId) &&
+    !learning.reply?.pending &&
+    !permissionRequested.value &&
+    !modelFailure.value
+);
 const showMaterials = ref(props.materialsOpen),
   materialEntry = ref(''),
   fileBusy = ref(false);
@@ -1029,11 +1098,17 @@ const essayArtifacts = computed(() =>
 );
 const artifactForDay = (day) => essayArtifacts.value.filter((item) => item.day === day).at(-1);
 const visiblePractice = computed(() => savedPractice.value.slice(-historyLimit.value));
+const visibleActivity = computed(() => {
+  const groups = coachActivitiesByDay(coach.value?.requests);
+  const days = new Set([learningDay.value, ...visiblePractice.value.map((record) => record.day)]);
+  return [...groups].filter(([day]) => days.has(day)).map(([day, items]) => ({ day, items }));
+});
 watch(
   () => learning.selectedConversationId,
   () => {
     historyLimit.value = 1;
     skippedCards.value = [];
+    permissionRequested.value = false;
   }
 );
 watch(
@@ -1145,6 +1220,7 @@ async function submitComposer() {
   if (!coach.value) {
     const input = goal.value.trim();
     if (!input) return;
+    permissionRequested.value = true;
     const submittedDraft = draftBinding;
     const previousConversation = learning.selectedConversationId;
     if (entryMode.value === 'question') {
@@ -1366,6 +1442,15 @@ function pauseLearning() {
     learning.commit('task.stop', { conversationId: learning.active.id });
   });
 }
+const coachTurnOptions = computed(() => [
+  { value: 'change_method', label: t('muse.turnChange') },
+  { value: 'hint_only', label: t('muse.turnHint') },
+  { value: 'pause', label: t('muse.turnPause') }
+]);
+function applyCoachTurnAction(action) {
+  if (action === 'pause') return pauseLearning();
+  return act(() => learning.dispatchLearningAction({ type: action }));
+}
 function saveProfile(skip) {
   act(() =>
     learning.coachSave('profile', {
@@ -1551,6 +1636,10 @@ function login() {
 }
 </script>
 <style scoped>
+.coach-turn-actions {
+  display: flex;
+  justify-content: flex-end;
+}
 .coach-connection-label {
   max-width: 250px;
   overflow: hidden;

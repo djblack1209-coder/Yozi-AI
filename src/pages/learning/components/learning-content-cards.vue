@@ -7,14 +7,6 @@
       :class="`card-${card.kind}`"
       :padding="['stat', 'chart', 'figure'].includes(card.kind) ? 'none' : 'large'"
     >
-      <view class="card-eyebrow"
-        ><BaseIcon :name="icons[card.kind]" tone="ink-3" /><text
-          >{{
-            t(['table', 'checklist'].includes(card.kind) ? `presentation.${card.kind}` : `tutor.card.${card.kind}`)
-          }}
-          · {{ index + 1 }}/{{ normalized.items.length }}</text
-        ></view
-      >
       <view v-if="card.formula" class="card-formula-block"
         ><text class="card-formula">{{ card.formula }}</text></view
       >
@@ -53,16 +45,16 @@
           >
         </template>
       </view>
-      <view v-for="(point, pointIndex) in card.points || []" :key="pointIndex" class="card-point"
-        ><BaseIcon name="check" tone="violet-ink" /><text selectable>{{ point }}</text></view
-      >
+      <view v-for="(point, pointIndex) in card.points || []" :key="pointIndex" class="card-point">
+        <text selectable>{{ point }}</text>
+      </view>
       <view
         v-for="(step, stepIndex) in (card.steps || []).slice(0, mode === 'text' ? undefined : steps[index] || 1)"
         :key="stepIndex"
         class="example-step"
-        ><text class="step-number">{{ stepIndex + 1 }}</text
-        ><text selectable>{{ step }}</text></view
       >
+        <text selectable>{{ step }}</text>
+      </view>
       <view class="card-actions">
         <BaseButton
           v-if="mode !== 'text' && card.steps && (steps[index] || 1) < card.steps.length"
@@ -91,7 +83,6 @@ import MuseChart from './muse-chart.vue';
 import MuseFigure from './muse-figure.vue';
 import BaseCard from '@/components/base/base-card/base-card.vue';
 import BaseButton from '@/components/base/base-button/base-button.vue';
-import BaseIcon from '@/components/base/base-icon/base-icon.vue';
 import BaseCheckbox from '@/components/base/base-checkbox/base-checkbox.vue';
 const props = defineProps({
   content: { type: Object, required: true },
@@ -111,16 +102,6 @@ const count = ref(1),
 const visible = computed(() =>
   mode.value === 'guided' ? normalized.value.items.slice(0, count.value) : normalized.value.items
 );
-const icons = {
-  knowledge: 'book-open',
-  example: 'pen',
-  note: 'note',
-  stat: 'chart',
-  chart: 'chart',
-  figure: 'shapes',
-  table: 'shapes',
-  checklist: 'check'
-};
 function toggleCheck(index, id, value) {
   checked.value = { ...checked.value, [index]: { ...checked.value[index], [id]: value === true } };
 }
@@ -146,13 +127,6 @@ watch(
   border-radius: 16px;
   background: var(--muse-rich-surface);
 }
-.card-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  color: var(--ink-3);
-  font-size: var(--size-caption);
-}
 .card-formula-block {
   margin: 16px 0;
   padding: 16px;
@@ -173,14 +147,9 @@ watch(
 }
 .card-point,
 .example-step {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s-3);
   margin-top: var(--s-4);
-}
-.step-number {
-  color: var(--violet-ink);
-  font-variant-numeric: tabular-nums;
+  padding-inline-start: var(--s-3);
+  border-inline-start: 2px solid var(--line);
 }
 .card-formula {
   font-size: var(--size-title-2);
@@ -229,9 +198,6 @@ watch(
   border: 0;
   background: transparent;
   box-shadow: none;
-}
-.content-cards--text .card-eyebrow {
-  display: none;
 }
 .content-cards--text :deep(.base-card__body) {
   padding: 0;

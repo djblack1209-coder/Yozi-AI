@@ -76,7 +76,7 @@
         @submit="send"
         @height="composerHeight = $event"
       >
-        <template v-if="learning.active" #actions>
+        <template v-if="learning.active && !quietDesktop" #actions>
           <MusePresentationControl :presentation="presentation" />
           <BaseButton
             v-if="learning.active"
@@ -125,7 +125,11 @@
       :class="{ 'with-insights': showInsights }"
       :style="composerHeight ? { '--learning-composer-height': `${composerHeight}px` } : undefined"
     >
-      <MuseModelControl @connect="openAIConnectors" />
+      <MuseModelControl
+        v-if="!quietDesktop || (permissionRequested && learning.modelId && !learning.sharingAllowed)"
+        :permission-only="quietDesktop"
+        @connect="openAIConnectors"
+      />
       <MuseModelFeedback
         :failure="modelFailure"
         :state="learning.retryState"
@@ -147,7 +151,7 @@
       </BaseCard>
       <LearningInsights v-if="showInsights" compact class="chat-insights" />
       <LearningProfileDraft
-        v-if="showIntake && learning.active"
+        v-if="!quietDesktop && showIntake && learning.active"
         :key="`${learning.recordContext()}:${learning.selectedConversationId}`"
         :goal="learning.active.goal"
         :busy="learning.busy"
@@ -400,7 +404,7 @@
         </view>
       </BaseCard>
       <view v-if="learning.active" class="conversation-area">
-        <view class="conversation-toolbar">
+        <view v-if="!quietDesktop" class="conversation-toolbar">
           <view>
             <text class="conversation-title">{{ learning.active?.goal }}</text>
           </view>
@@ -483,62 +487,92 @@
               <BaseIcon name="arrow-right" tone="ink-3" />
             </BaseButton>
           </view>
-          <BaseBubble
-            v-for="message in chapter.messages"
-            :id="message.id"
-            :key="message.id"
-            :data-reply-pending="message.pending ? 'true' : undefined"
-            class="message"
-            :class="[message.role, { 'sentence-hint-target': message.id === sentenceHintTargetId }]"
-            :tabindex="message.id === sentenceHintTargetId ? -1 : undefined"
-            :author="message.role === 'user' ? 'user' : 'assistant'"
-            :group="message.groupPosition"
-            :rich="message.rich && !message.id.endsWith(':reply')"
-            avatar
-            :avatar-src="message.role === 'user' ? userAvatar : ''"
-            :avatar-identity="message.id"
-            :avatar-business="{ busy: !!message.pending, producing: !!message.pending && !!message.content }"
-          >
-            <template v-if="message.groupTime" #time>{{ message.groupTime }}</template>
-            <text v-if="sentenceAnswersByFeedback[message.id]" class="message-content sentence-saved-answer" selectable
-              >{{ t('learning.kcd') }}{{ sentenceAnswersByFeedback[message.id] }}</text
+          <template v-for="message in chapter.messages" :key="message.id">
+            <BaseBubble
+              :id="message.id"
+              :data-reply-pending="message.pending ? 'true' : undefined"
+              class="message"
+              :class="[message.role, { 'sentence-hint-target': message.id === sentenceHintTargetId }]"
+              :tabindex="message.id === sentenceHintTargetId ? -1 : undefined"
+              :author="message.role === 'user' ? 'user' : 'assistant'"
+              :group="message.groupPosition"
+              :rich="message.rich && !message.id.endsWith(':reply')"
+              avatar
+              :avatar-src="message.role === 'user' ? userAvatar : ''"
+              :avatar-identity="message.id"
+              :avatar-business="{ busy: !!message.pending, producing: !!message.pending && !!message.content }"
             >
-            <LearningProposalCard
-              v-if="message.proposal?.data && ['profile.set', 'plan.set'].includes(message.proposal.type)"
-              :key="learning.recordContext()"
-              :proposal="message.proposal"
-              :status="proposalStatus(learning.state, message.id)"
-              :busy="learning.busy || conversationStopped"
-              @resolve="resolveProposal(message, $event)"
+              <template v-if="message.groupTime" #time>{{ message.groupTime }}</template>
+              <text
+                v-if="sentenceAnswersByFeedback[message.id]"
+                class="message-content sentence-saved-answer"
+                selectable
+                >{{ t('learning.kcd') }}{{ sentenceAnswersByFeedback[message.id] }}</text
+              >
+              <LearningProposalCard
+                v-if="message.proposal?.data && ['profile.set', 'plan.set'].includes(message.proposal.type)"
+                :key="learning.recordContext()"
+                :proposal="message.proposal"
+                :status="proposalStatus(learning.state, message.id)"
+                :busy="learning.busy || conversationStopped"
+                @resolve="resolveProposal(message, $event)"
+              />
+              <LearningMessage
+                v-else-if="message.role !== 'user'"
+                :content-blocks="message.contentBlocks"
+                :generated="message.role === 'assistant' && message.id.endsWith(':reply')"
+                :presentation="presentation.mode"
+                :pending="!!message.pending"
+                :received="
+                  message.role === 'assistant' &&
+                  message.id === learning.reply?.id &&
+                  !learning.reply.pending &&
+                  !learning.reply.cancelled
+                "
+                :content="message.role === 'notice' ? learningText(message.content) : message.content"
+              />
+              <text v-else class="message-content" selectable>{{ message.content }}</text>
+              <BaseButton
+                v-if="message.id === lastEditableMessage?.id"
+                icon="edit"
+                icon-only
+                variant="quiet"
+                label="修改回答"
+                @tap="editLastMessage"
+              />
+            </BaseBubble>
+            <LearningActivityGroup
+              v-if="quietDesktop && activityByMessage.has(message.id)"
+              :items="activityByMessage.get(message.id)"
             />
-            <LearningMessage
-              v-else-if="message.role !== 'user'"
-              :content-blocks="message.contentBlocks"
-              :generated="message.role === 'assistant' && message.id.endsWith(':reply')"
-              :presentation="presentation.mode"
-              :pending="!!message.pending"
-              :received="
-                message.role === 'assistant' &&
-                message.id === learning.reply?.id &&
-                !learning.reply.pending &&
-                !learning.reply.cancelled
-              "
-              :content="message.role === 'notice' ? learningText(message.content) : message.content"
-            />
-            <text v-else class="message-content" selectable>{{ message.content }}</text>
-            <BaseButton
-              v-if="message.id === lastEditableMessage?.id"
-              icon="edit"
-              icon-only
-              variant="quiet"
-              label="修改回答"
-              @tap="editLastMessage"
-            />
-          </BaseBubble>
+          </template>
         </view>
+        <LearningProfileDraft
+          v-if="quietDesktop && showIntake"
+          :key="`${learning.recordContext()}:${learning.selectedConversationId}`"
+          :goal="learning.active.goal"
+          :busy="learning.busy"
+          @cancel="showIntake = false"
+          @confirm="confirmProfileDraft"
+        />
         <view id="learning-chat-latest" tabindex="-1" />
         <view
-          v-if="learning.active && !learning.activeQuestion && !conversationStopped && chatTopics.length"
+          v-if="quietDesktop && !conversationStopped && (conversationMessages.length || learning.activeQuestion)"
+          class="conversation-turn-actions"
+        >
+          <LearningChatChoice
+            :title="t('muse.turnActions')"
+            :label="t('muse.turnActions')"
+            :options="turnOptions"
+            :busy="learning.busy"
+            icon-only
+            @apply="applyTurnAction"
+          />
+        </view>
+        <view
+          v-if="
+            !quietDesktop && learning.active && !learning.activeQuestion && !conversationStopped && chatTopics.length
+          "
           class="button-row chat-topics"
           :aria-label="t('learning.chatTopics')"
         >
@@ -2116,6 +2150,9 @@ import { dayKey } from '@/services/learning/learning-domain.js';
 import LearningProfileDraft from '@/components/business/learning/learning-profile-draft.vue';
 import LearningInsights from '@/components/business/learning/learning-insights.vue';
 import LearningProposalCard from '@/components/business/learning/learning-proposal-card.vue';
+import LearningChatChoice from '@/components/business/learning/learning-chat-choice.vue';
+import LearningActivityGroup from '@/components/business/learning/learning-activity-group.vue';
+import { toolActivitiesByMessage } from '@/services/learning/learning-activity.js';
 import { proposalStatus } from '../../../laf-backend/functions/_shared/learning-proposals.js';
 import LearningLab from './components/learning-lab.vue';
 import DensityPractice from '@/components/business/learning/density-practice.vue';
@@ -2436,6 +2473,12 @@ const visibleChapters = computed(() =>
         chapter.day === learning.timeline.at(-1)?.day
     )
 );
+const activityByMessage = computed(() =>
+  toolActivitiesByMessage(
+    presentedTimeline.value.flatMap((chapter) => chapter.messages),
+    learning.state.executions
+  )
+);
 watch(
   () => learning.conversationLocation,
   async (location) => {
@@ -2724,6 +2767,32 @@ watch(
 );
 const writingCoach = ref(null);
 const learningShell = ref(null);
+const quietDesktop = computed(() => learningShell.value?.quietDesktop === true);
+const permissionRequested = ref(false);
+watch(
+  () => learning.selectedConversationId,
+  () => {
+    permissionRequested.value = false;
+  }
+);
+const turnOptions = computed(() => [
+  ...(learning.activeQuestion
+    ? [
+        { value: 'change_method', label: t('muse.turnChange') },
+        { value: 'hint_only', label: t('muse.turnHint') }
+      ]
+    : []),
+  { value: 'profile', label: t('muse.turnProfile') },
+  { value: 'overview', label: t('muse.turnOverview') },
+  { value: 'pause', label: t('muse.turnPause') }
+]);
+function applyTurnAction(action) {
+  if (action === 'profile') showIntake.value = !showIntake.value;
+  else if (action === 'overview') showInsights.value = !showInsights.value;
+  else if (action === 'pause') return sendDirective('停止当前任务');
+  else if (action === 'hint_only') return sendDirective('提示');
+  else if (action === 'change_method') return run(() => learning.dispatchLearningAction({ type: 'change_method' }));
+}
 onBackPress((event) => {
   if (dialogState.value.visible) {
     dialogs.dismiss();
@@ -3434,6 +3503,7 @@ async function send() {
     return;
   }
   if (!input || learning.active?.stopped) return;
+  permissionRequested.value = true;
   const ticket = prepareSubmission('send', input);
   const previousQuestion = learning.active?.activeQuestionKey;
   let result;
@@ -4355,10 +4425,10 @@ function confirmProfileDraft(fields) {
     showIntake.value = false;
   });
 }
-function resolveProposal(message, action) {
+async function resolveProposal(message, action) {
   const context = learning.recordContext(),
     conversationId = learning.selectedConversationId;
-  return run(() => {
+  const result = await run(() => {
     if (
       learning.recordContext() !== context ||
       learning.selectedConversationId !== conversationId ||
@@ -4379,6 +4449,12 @@ function resolveProposal(message, action) {
       `${message.id}:dismiss`
     );
   });
+  if (result && quietDesktop.value && typeof document !== 'undefined') {
+    await nextTick();
+    if (learning.recordContext() === context && learning.selectedConversationId === conversationId)
+      document.getElementById(message.id)?.querySelector('.proposal-resolution')?.focus({ preventScroll: true });
+  }
+  return result;
 }
 function saveFoundation() {
   return run(() =>

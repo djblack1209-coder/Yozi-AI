@@ -1,18 +1,15 @@
 <template>
   <BaseCard class="proposal-card" padding="large" data-test="learning-proposal">
-    <view class="proposal-heading"
-      ><BaseIcon :name="plan ? 'calendar' : 'user'" /><text>{{
-        proposal.entry ? entryTitle : t(plan ? 'tutor.proposal.plan' : 'tutor.proposal.profile')
-      }}</text></view
-    >
+    <text class="proposal-heading" role="heading" aria-level="3">{{
+      proposal.entry ? entryTitle : t(plan ? 'tutor.proposal.plan' : 'tutor.proposal.profile')
+    }}</text>
     <view v-if="proposal.entry" class="proposal-row"
-      ><text>{{ entryTitle }}</text
       ><text>{{ entryText }}</text></view
     >
     <template v-else-if="plan"
       ><text class="proposal-reason">{{ proposal.data.reason }}</text
       ><view v-for="(task, index) in proposal.data.tasks" :key="index" class="proposal-row proposal-task"
-        ><BaseIcon name="circle" tone="ink-3" /><text class="proposal-task-title">{{ task.title }}</text></view
+        ><text class="proposal-task-title">{{ task.title }}</text></view
       ></template
     >
     <view v-else class="proposal-row"
@@ -20,16 +17,14 @@
       ><text>{{ proposal.data.value }}</text></view
     >
     <view v-if="status === 'pending'" class="proposal-actions">
-      <BaseButton
+      <LearningChatChoice
         v-if="plan"
-        variant="secondary"
-        icon="chevron-down"
-        aria-haspopup="dialog"
-        :aria-expanded="planSheet"
-        :disabled="busy"
-        @tap="reviewPlan"
-        >{{ t('tutor.proposal.reviewPlan') }}</BaseButton
-      >
+        :title="t('tutor.proposal.plan')"
+        :label="t('tutor.proposal.reviewPlan')"
+        :options="planOptions"
+        :busy="busy"
+        @apply="$emit('resolve', $event)"
+      />
       <template v-else>
         <BaseButton variant="quiet" :disabled="busy" @tap="$emit('resolve', 'dismiss')">{{
           t('tutor.proposal.keep')
@@ -39,68 +34,35 @@
         }}</BaseButton>
       </template>
     </view>
-    <text v-else class="proposal-status" role="status">{{
-      statusLabels[status] || t(`tutor.proposal.${status}`)
-    }}</text>
-    <CustomModal
-      v-if="plan && status === 'pending'"
-      v-model:visible="planSheet"
-      :title="t('tutor.proposal.plan')"
-      :is-dark="theme.isDark"
-      :confirm-text="t('tutor.proposal.applyChoice')"
-      :confirm-disabled="busy || !planChoice"
-      position="bottom"
-      transition="slide-up"
-      container-class="is-choice-sheet"
-      initial-focus-selector=".proposal-choice"
-      mask-closable
-      @confirm="$emit('resolve', planChoice)"
-    >
-      <view class="proposal-choices" role="group" :aria-label="t('tutor.proposal.plan')">
-        <BaseButton
-          v-for="option in planOptions"
-          :key="option.value"
-          class="proposal-choice"
-          variant="secondary"
-          align="start"
-          block
-          :icon="planChoice === option.value ? 'check' : 'circle'"
-          :selected="planChoice === option.value"
-          :aria-pressed="planChoice === option.value"
-          :disabled="busy"
-          @tap="planChoice = option.value"
-          >{{ t(option.label) }}</BaseButton
-        >
-      </view>
-    </CustomModal>
+    <view v-else class="proposal-resolution" tabindex="-1">
+      <LearningActivityGroup
+        v-if="status === 'accepted' && ['plan.set', 'profile.set'].includes(proposal.type)"
+        :items="[{ id: 'accepted', action: plan ? 'applyPlan' : 'applyProfile', status: 'success' }]"
+      />
+      <text v-else class="proposal-status" role="status">{{
+        statusLabels[status] || t(`tutor.proposal.${status}`)
+      }}</text>
+    </view>
   </BaseCard>
 </template>
 <script setup>
 import '@/i18n/tutor.js';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { t } from '@/i18n/index.js';
-import { useThemeStore } from '@/stores/modules/theme.js';
 import BaseCard from '@/components/base/base-card/base-card.vue';
 import BaseButton from '@/components/base/base-button/base-button.vue';
-import BaseIcon from '@/components/base/base-icon/base-icon.vue';
-import CustomModal from '@/components/common/CustomModal.vue';
+import LearningChatChoice from './learning-chat-choice.vue';
+import LearningActivityGroup from './learning-activity-group.vue';
 const props = defineProps({
   proposal: { type: Object, required: true },
   status: { type: String, default: 'pending' },
   busy: Boolean
 });
 defineEmits(['resolve']);
-const theme = useThemeStore();
-const planSheet = ref(false);
-const planChoice = ref('');
-const planOptions = [
-  { value: 'accept', label: 'tutor.proposal.adopt' },
-  { value: 'dismiss', label: 'tutor.proposal.keep' }
-];
-function reviewPlan() {
-  planChoice.value = '';
-  planSheet.value = true;
-}
+const planOptions = computed(() => [
+  { value: 'accept', label: t('tutor.proposal.adopt') },
+  { value: 'dismiss', label: t('tutor.proposal.keep') }
+]);
 const statusLabels = { kept: '已保留', expired: '已过期', promoted: '已转计划' };
 const entryTitle = computed(
   () => ({ Goal: '学习目标', Reminder: '学习提醒', Idea: '想法', Memory: '学习偏好' })[props.proposal.entry?.kind]
@@ -137,7 +99,6 @@ const plan = computed(() => props.proposal.type === 'plan.set');
   max-width: 680px;
   width: 100%;
 }
-.proposal-heading,
 .proposal-row,
 .proposal-actions {
   display: flex;
@@ -145,6 +106,7 @@ const plan = computed(() => props.proposal.type === 'plan.set');
   gap: var(--s-3);
 }
 .proposal-heading {
+  display: block;
   color: var(--violet-ink);
   font-size: var(--size-title-3);
   margin-bottom: var(--s-4);
@@ -173,9 +135,5 @@ const plan = computed(() => props.proposal.type === 'plan.set');
   justify-content: flex-end;
   margin-top: var(--s-5);
   flex-wrap: wrap;
-}
-.proposal-choices {
-  display: grid;
-  gap: var(--s-2);
 }
 </style>

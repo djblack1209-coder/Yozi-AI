@@ -15,6 +15,8 @@
       'is-resizing': panelResizing || panelOpening,
       'is-chat': active === 'learning',
       'workspace-wide': desktopShell,
+      'quiet-workspace': quietDesktop,
+      'composer-centered': quietDesktop && centerComposer,
       'workspace-collapsed': desktopShell && !sidebarExpanded,
       'workspace-context-open': canShowContext && contextOpen && !$slots.reader,
       'desktop-conversation': desktopConversation,
@@ -36,9 +38,7 @@
       :change:directory-open="directoryView.onDirectoryChange"
     />
     <!-- #endif -->
-    <view class="native-titlebar" data-tauri-drag-region aria-hidden="true">
-      <text>{{ BRAND.name }}</text>
-    </view>
+    <view class="native-titlebar" data-tauri-drag-region aria-hidden="true" />
     <MuseLaunch :scope="learning" :ready="['ready', 'error'].includes(learning.recordReadState)" />
     <view class="space-frame">
       <button
@@ -59,7 +59,7 @@
         :aria-hidden="(searchOnOpen && menuOpen) || undefined"
       >
         <view v-if="desktopShell" class="workspace-side-head">
-          <image :src="theme.isDark ? BRAND.markOnDark : BRAND.mark" class="workspace-brand-mark" mode="aspectFit" />
+          <image :src="BRAND.mark" class="workspace-brand-mark" mode="aspectFit" />
           <text class="workspace-brand-name">{{ BRAND.name }}</text>
           <BaseButton
             ref="sidebarToggle"
@@ -73,6 +73,17 @@
           />
         </view>
         <view class="rail-body">
+          <BaseButton
+            v-if="desktopShell"
+            class="rail-item workspace-new-chat"
+            variant="quiet"
+            :label="t('learning.k8t')"
+            :disabled="learning.busy || learning.intakeBusy"
+            @tap="newSession"
+          >
+            <view class="rail-item-surface"><BaseIcon name="plus" size="18px" /></view>
+            <text class="rail-item-tip" aria-hidden="true">{{ t('learning.k8t') }}</text>
+          </BaseButton>
           <view class="rail-group">
             <BaseButton
               v-for="(item, index) in navigation"
@@ -87,17 +98,9 @@
               @tap="openView(item.id, $event)"
             >
               <view class="rail-item-surface"><BaseIcon :name="item.icon" size="20px" /></view>
-              <text class="rail-item-tip" aria-hidden="true"
-                >{{
-                  item.id === 'search'
-                    ? t('muse.nav.search')
-                    : desktopShell
-                      ? item.label
-                      : item.shortLabel || item.label
-                }}<text v-if="item.id === 'search' && desktopShell" class="rail-shortcut">{{
-                  searchShortcut
-                }}</text></text
-              >
+              <text class="rail-item-tip" aria-hidden="true">{{
+                item.id === 'search' ? t('muse.nav.search') : desktopShell ? item.label : item.shortLabel || item.label
+              }}</text>
             </BaseButton>
           </view>
           <BaseButton
@@ -160,19 +163,20 @@
               >
                 <BaseIcon name="chevron-down" size="14px" />
                 <text>{{ t('learning.sidebar.recent') }}</text>
-                <text v-if="recent.length" class="workspace-history-count">{{ recent.length }}</text>
               </BaseButton>
               <BaseButton
-                class="new-session desktop-new-chat"
-                variant="quiet"
-                icon="plus"
+                ref="closeButton"
+                class="sidebar-options"
                 icon-only
-                :label="t('learning.k8t')"
-                :disabled="learning.busy"
-                @tap="newSession"
+                icon="ellipsis"
+                label="会话选项"
+                variant="quiet"
+                aria-haspopup="menu"
+                :aria-expanded="directoryOptions"
+                @tap="directoryOptions = !directoryOptions"
               />
             </view>
-            <view v-show="paletteVisible || !desktopShell || historyExpanded" class="directory-top">
+            <view v-show="paletteVisible || !desktopShell || directoryFilterOpen" class="directory-top">
               <view class="directory-search"
                 ><BaseIcon name="search" :size="searchOnOpen ? '18px' : '16px'" tone="ink-3" />
                 <BaseInput
@@ -195,7 +199,7 @@
                 @tap="closeMenu"
               />
               <BaseButton
-                v-if="!paletteVisible"
+                v-if="!paletteVisible && !desktopShell"
                 ref="closeButton"
                 class="sidebar-options"
                 icon-only
@@ -222,7 +226,10 @@
                 @tap="panelPinned = !panelPinned"
                 ><BaseIcon :name="panelPinned ? 'checkbox-on' : 'checkbox-off'" size="16px" />固定会话列表</BaseButton
               >
-              <BaseButton variant="quiet" align="start" icon="plus" :disabled="learning.busy" @tap="newSession"
+              <BaseButton v-if="desktopShell" variant="quiet" align="start" icon="search" @tap="toggleDirectoryFilter">
+                {{ t('muse.searchChats') }}
+              </BaseButton>
+              <BaseButton v-else variant="quiet" align="start" icon="plus" :disabled="learning.busy" @tap="newSession"
                 >新建会话</BaseButton
               >
               <BaseButton variant="quiet" align="start" icon="chevron-left" @tap="closeMenu">收起会话列表</BaseButton>
@@ -293,13 +300,8 @@
                   t('learning.records.next')
                 }}</BaseButton>
               </view>
-              <view v-else-if="!recent.length && !searchOnOpen" class="directory-empty"
-                ><BaseIcon name="chat" size="32px" tone="ink-3" /><text class="directory-empty-title"
-                  >开始一段新对话</text
-                ><text class="directory-empty-copy">按主题整理你的学习</text
-                ><BaseButton v-if="!desktopConversation" variant="quiet" :disabled="learning.busy" @tap="newSession"
-                  >新建会话</BaseButton
-                ></view
+              <view v-else-if="!recent.length && !searchOnOpen && !desktopShell" class="directory-empty"
+                ><BaseButton variant="quiet" :disabled="learning.busy" @tap="newSession">新建会话</BaseButton></view
               >
               <view v-else class="recent-list" :aria-label="t('learning.k5p')">
                 <view v-for="conversation in recent" :key="conversation.id" class="recent-conversation">
@@ -315,9 +317,6 @@
                     variant="quiet"
                     @tap="resume(conversation.id)"
                   >
-                    <view v-if="desktopConversation && !searchOnOpen" class="desktop-thread-icon" aria-hidden="true">
-                      <BaseIcon :name="conversation.coach ? 'edit' : 'chat'" size="17px" />
-                    </view>
                     <view v-if="desktopConversation && !searchOnOpen" class="desktop-thread-summary">
                       <view class="desktop-thread-title">
                         <text class="sidebar-label">{{ conversation.goal }}</text>
@@ -328,9 +327,6 @@
                           )
                         }}</text>
                       </view>
-                      <text v-if="conversation.messages.at(-1)?.content" class="desktop-thread-preview">{{
-                        conversation.messages.at(-1).content
-                      }}</text>
                     </view>
                     <template v-else>
                       <text class="sidebar-label">{{ conversation.goal }}</text>
@@ -454,10 +450,11 @@
         :inert="(menuOpen && directoryModal) || undefined"
         :aria-hidden="(searchOnOpen && (menuOpen || menuLeaving)) || undefined"
       >
-        <view v-if="layout === 'workspace' && desktopShell" class="workspace-page-bar" role="banner">
-          <text>{{ title }}</text>
-        </view>
-        <view v-if="layout !== 'workspace'" class="space-header" role="banner">
+        <view
+          v-if="layout !== 'workspace' && (!desktopShell || !centerComposer || learning.active)"
+          class="space-header"
+          role="banner"
+        >
           <view class="space-heading">
             <BaseButton
               v-if="active === 'learning' && !desktopShell && !menuOpen"
@@ -473,7 +470,15 @@
             >
             <text v-if="active !== 'learning'" class="space-title">{{ title }}</text>
           </view>
-          <view v-if="active === 'learning'" class="muse-chat-identity"
+          <text
+            v-if="active === 'learning' && quietDesktop"
+            class="workspace-thread-title"
+            role="heading"
+            aria-level="1"
+          >
+            {{ learning.active?.goal || t('learning.k8t') }}
+          </text>
+          <view v-else-if="active === 'learning'" class="muse-chat-identity"
             ><AnimatedAvatar
               class="brand-mark"
               :size="desktopConversation || viewportWidth <= 760 ? 32 : 56"
@@ -502,7 +507,10 @@
             @tap="toggleHeaderActions"
           />
           <view
-            v-if="learning.recordReadState === 'ready'"
+            v-if="
+              learning.recordReadState === 'ready' &&
+              (!quietDesktop || canShowContext || (active !== 'learning' && $slots.controls))
+            "
             v-show="!compactHeader || headerActionsOpen"
             id="learning-header-actions"
             class="space-header-actions"
@@ -511,7 +519,7 @@
             :aria-label="t('muse.headerActions')"
             @tap="closeHeaderActions(true)"
           >
-            <slot name="controls"></slot>
+            <slot v-if="!quietDesktop || active !== 'learning'" name="controls"></slot>
             <BaseButton
               v-if="canShowContext && !$slots.reader"
               class="context-toggle"
@@ -589,7 +597,7 @@
         :target="artifactTarget"
         @close="artifacts.target = null"
       />
-      <slot name="reader" />
+      <slot name="reader"></slot>
     </view>
     <BaseEmpty v-if="error" class="shell-error" state="error" :title="learningText(error)" />
   </view>
@@ -620,6 +628,7 @@ import { BRAND } from '@/config/brand.js';
 import { currentLanguage, publicError, t } from '@/i18n/index.js';
 import { bindMessageFollow } from './message-follow.js';
 import { isDesktopSettingsWindow } from '@/services/desktop/windows.js';
+import { isDesktopRuntime } from '@/services/desktop/runtime.js';
 import {
   shellNavigation,
   SHELL_MODULES,
@@ -636,6 +645,7 @@ const props = defineProps({
   notice: { type: String, default: '' },
   sidePanel: { type: Boolean, default: false },
   waitingForAnswer: { type: Boolean, default: false },
+  centerComposer: Boolean,
   refreshRecordsOnMount: { type: Boolean, default: true },
   active: { type: String, default: 'learning' },
   title: { type: String, default: '' },
@@ -666,7 +676,7 @@ const syncLogin = () => {
   }
 };
 syncLogin();
-let releaseIdentity = () => {};
+let releaseIdentity = () => undefined;
 // 顶部小猫跟随真实学习事件切换状态；空闲时状态行显示当前目标。
 const avatarEvent = ref(null);
 const avatarPresentation = ref(null);
@@ -707,7 +717,7 @@ const root = ref(null);
 // follows composer height changes; message/stream updates keep their own lifecycle.
 // #ifdef H5
 let composerResizeFrame;
-let releaseMessageFollow = () => {};
+let releaseMessageFollow = () => undefined;
 const shellAttrs = useAttrs();
 onBeforeUpdate(() => {
   composerResizeFrame = null;
@@ -742,13 +752,15 @@ const viewportWidth = ref(
   typeof window !== 'undefined' ? window.innerWidth : uni.getWindowInfo?.().windowWidth || 1024
 );
 const desktopShell = computed(() => !nativeSettings && viewportWidth.value > 760);
+const quietDesktop = computed(() => desktopShell.value || isDesktopRuntime());
 const desktopConversation = computed(
   () => props.active === 'learning' && props.layout !== 'workspace' && desktopShell.value
 );
-const contextOpen = ref(true);
+const contextOpen = ref(false);
 const canShowContext = computed(
   () =>
     desktopConversation.value &&
+    Boolean(learning.active) &&
     viewportWidth.value >= 1120 &&
     learning.recordReadState === 'ready' &&
     !artifactTarget.value
@@ -762,10 +774,6 @@ const sidebarExpanded = ref(!sidebar.collapsed);
 const historyExpanded = ref(sidebar.historyExpanded !== false);
 const sidebarToggle = ref(null);
 const menuOpen = ref(canRestoreDirectory.value && sidebarExpanded.value);
-const searchShortcut =
-  typeof navigator !== 'undefined' && /mac/i.test(navigator.userAgentData?.platform || navigator.platform)
-    ? '⌘K'
-    : 'Ctrl K';
 const navigationConfig = shellNavigation();
 const navigationSnapshot = ref(navigationConfig.snapshot());
 function applyNavigation(value) {
@@ -773,8 +781,20 @@ function applyNavigation(value) {
 }
 const searchOnOpen = ref(false);
 const directoryOptions = ref(false);
+const directoryFilterOpen = ref(false);
+async function toggleDirectoryFilter() {
+  directoryFilterOpen.value = !directoryFilterOpen.value;
+  directoryOptions.value = false;
+  if (!directoryFilterOpen.value) {
+    query.value = '';
+    return;
+  }
+  historyExpanded.value = true;
+  await nextTick();
+  (searchInput.value?.$el || searchInput.value)?.querySelector?.('input')?.focus?.();
+}
 const panelPinned = ref(true);
-const compactHeader = computed(() => props.active === 'learning' && viewportWidth.value <= 480);
+const compactHeader = computed(() => props.active === 'learning' && !quietDesktop.value && viewportWidth.value <= 480);
 const headerActionsOpen = ref(false);
 const headerActionsButton = ref(null);
 let headerActionKeyboard = false;
@@ -1136,7 +1156,7 @@ function dismissDirectory() {
   else void closeMenu();
   return true;
 }
-defineExpose({ dismissDirectory });
+defineExpose({ dismissDirectory, quietDesktop });
 
 function escapeMenu(event) {
   const element = root.value?.$el || root.value;
@@ -1177,6 +1197,17 @@ function escapeMenu(event) {
   if (event.key === 'Escape' && directoryOptions.value) {
     event.preventDefault();
     directoryOptions.value = false;
+    nextTick(() => (closeButton.value?.$el || closeButton.value)?.focus?.());
+    return;
+  }
+  if (
+    event.key === 'Escape' &&
+    directoryFilterOpen.value &&
+    !searchOnOpen.value &&
+    event.target?.closest?.('.directory-top')
+  ) {
+    event.preventDefault();
+    void toggleDirectoryFilter();
     nextTick(() => (closeButton.value?.$el || closeButton.value)?.focus?.());
     return;
   }
@@ -1320,7 +1351,8 @@ function openView(view, trigger) {
   else if (props.active !== view) uni.redirectTo({ url: target });
 }
 function newSession() {
-  if (learning.busy) return;
+  if (learning.busy || learning.intakeBusy) return;
+  props.dismissOverlay?.();
   learning.selectedConversationId = null;
   if (menuOpen.value && directoryModal.value) void closeMenu();
   emit('new');

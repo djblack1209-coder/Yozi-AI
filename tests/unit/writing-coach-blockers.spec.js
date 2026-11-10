@@ -538,6 +538,7 @@ it.each(['model', 'mode', 'consent'])('等待带练时变更%s，迟到回复不
 
 it('带练失败留在当前带练中；连接器入口不改学习事实，回读终态不重发模型且切换对话不残留错误', async () => {
   vi.stubEnv('VITE_ENABLE_WRITING_COACH', 'true');
+  const viewport = vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(390);
   const message = '模型任务未完成或已取消，没有可应用的结果；请查看实际用量';
   vi.mocked(generateLearningTurn).mockClear().mockResolvedValueOnce({ success: false, code: 503, message });
   vi.mocked(fetchLearningResult)
@@ -574,6 +575,7 @@ it('带练失败留在当前带练中；连接器入口不改学习事实，回�
     expect(store.exportData()).toBe(closed);
   } finally {
     wrapper?.unmount();
+    viewport.mockRestore();
     store.$dispose();
     learningWriteLease.release();
     vi.unstubAllEnvs();

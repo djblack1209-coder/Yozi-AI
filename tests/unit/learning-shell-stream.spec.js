@@ -194,7 +194,8 @@ describe('S2 continuous reply', () => {
     const css = readFileSync('src/components/business/learning/learning-space.css', 'utf8');
     expect(css).toContain('.has-composer.has-notice .space-content');
   });
-  it('S3 reserves the header kitten outside the history scroller', () => {
+  it('S3 reserves the narrow header kitten outside the history scroller', () => {
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(390);
     const wrapper = render(LearningShell, { LearningShell: false });
     expect(wrapper.find('.muse-chat-identity animated-avatar-stub.brand-mark').exists()).toBe(true);
     const css = readFileSync('src/components/business/learning/learning-space.css', 'utf8');
@@ -646,10 +647,10 @@ describe('S3 sidebar and navigation', () => {
     }
   );
 
-  it('defaults to 300/open, keeps a close action for modal search and restores the device layout', async () => {
+  it('defaults to 224/open, keeps a close action for modal search and restores the device layout', async () => {
     let wrapper = render(LearningShell, { LearningShell: false });
     vi.spyOn(wrapper.element, 'getClientRects').mockReturnValue([{}]);
-    expect(wrapper.get('.directory-resize').attributes('aria-valuenow')).toBe('300');
+    expect(wrapper.get('.directory-resize').attributes('aria-valuenow')).toBe('224');
     expect(wrapper.find('.sidebar-close').exists()).toBe(false);
     expect(wrapper.get('.sidebar-options').attributes('aria-label')).toBe('会话选项');
     const facts = store.exportData();
@@ -663,7 +664,7 @@ describe('S3 sidebar and navigation', () => {
     expect(store.exportData()).toBe(facts);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', metaKey: true, bubbles: true }));
     await nextTick();
-    expect(uni.getStorageSync('yozi_shell_sidebar_v1')).toMatchObject({ collapsed: true, width: 300 });
+    expect(uni.getStorageSync('yozi_shell_sidebar_v1')).toMatchObject({ collapsed: true, width: 224 });
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, repeat: true, bubbles: true }));
     expect(uni.getStorageSync('yozi_shell_sidebar_v1').collapsed).toBe(true);
     wrapper.unmount();
@@ -677,8 +678,8 @@ describe('S3 sidebar and navigation', () => {
     await wrapper.get('.directory-resize').trigger('keydown', { key: 'End' });
     expect(uni.getStorageSync('yozi_shell_sidebar_v1').width).toBe(384);
     await wrapper.get('.directory-resize').trigger('dblclick');
-    expect(wrapper.get('.directory-resize').attributes('aria-valuenow')).toBe('300');
-    expect(uni.getStorageSync('yozi_shell_sidebar_v1').width).toBe(300);
+    expect(wrapper.get('.directory-resize').attributes('aria-valuenow')).toBe('224');
+    expect(uni.getStorageSync('yozi_shell_sidebar_v1').width).toBe(224);
   });
   it('reorders/hides rail entries and rejects a corrupt config without touching the conversation', async () => {
     const wrapper = render(LearningShell, { LearningShell: false });

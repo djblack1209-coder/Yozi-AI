@@ -12,6 +12,7 @@ import AnimatedAvatar from '@/components/base/animated-avatar/animated-avatar.vu
 import { avatarStateFor } from '@/design/avatar-state.js';
 import MuseChatEmpty from '@/components/business/learning/muse-chat-empty.vue';
 import LearningShell from '@/components/business/learning/learning-shell.vue';
+import LearningChatChoice from '@/components/business/learning/learning-chat-choice.vue';
 import MuseComposer from '@/components/business/learning/muse-composer.vue';
 import BaseButton from '@/components/base/base-button/base-button.vue';
 import BaseChip from '@/components/base/base-chip/base-chip.vue';
@@ -41,6 +42,7 @@ function pose(wrapper, name) {
   return wrapper.findAllComponents(YoziMascot).find((child) => child.props('pose') === name);
 }
 beforeEach(() => {
+  vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(390);
   // 保留模块在明确开启时仍须通过原安全和恢复合同。
   vi.stubEnv('VITE_ENABLE_WRITING_COACH', 'false');
   vi.stubEnv('VITE_ENABLE_LEGACY_LEARNING', 'true');
@@ -142,12 +144,17 @@ describe('learning interface states preserve learning facts', () => {
     expect(group.isVisible()).toBe(false);
     expect(store.exportData()).toBe(before);
   });
-  it('desktop header keeps its direct controls and no overflow trigger', async () => {
+  it('keeps one conversation title and new chat action on desktop', async () => {
     vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(1090);
+    useConversationLearningStore().start('12 + 8');
     const wrapper = render(LearningShell);
     await flushPromises();
+    expect(wrapper.classes()).toContain('quiet-workspace');
     expect(wrapper.find('.header-actions-toggle').exists()).toBe(false);
-    expect(wrapper.get('.space-header-actions').isVisible()).toBe(true);
+    expect(wrapper.find('.space-header-actions').exists()).toBe(false);
+    expect(wrapper.find('.muse-chat-identity').exists()).toBe(false);
+    expect(wrapper.get('.workspace-thread-title').text()).toBe('12 + 8');
+    expect(wrapper.findAll('.workspace-new-chat')).toHaveLength(1);
   });
   it.each([
     ['offline', null, 'idle'],
@@ -321,22 +328,24 @@ describe('learning interface states preserve learning facts', () => {
       Element.prototype.scrollIntoView = originalScroll;
     }
   });
-  it('the composer action bar stops through a structured action without submitting an answer', async () => {
+  it('a confirmed conversation action stops without submitting an answer', async () => {
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(1090);
     const store = useConversationLearningStore();
     store.start('12 + 8');
     const wrapper = render();
     await flushPromises();
     const action = vi.spyOn(store, 'dispatchLearningAction');
-    const stop = wrapper.findAll('button').find((button) => button.attributes('aria-label') === '停止当前任务');
-    expect(stop.element.closest('#learning-composer')).toBe(wrapper.get('#learning-composer').element);
-    expect(wrapper.find('.space-header [aria-label="停止当前任务"]').exists()).toBe(false);
-    await stop.trigger('tap');
+    expect(wrapper.find('.muse-composer-actions').exists()).toBe(false);
+    const choice = wrapper.get('.conversation-turn-actions').getComponent(LearningChatChoice);
+    expect(choice.props('options')).toEqual(expect.arrayContaining([expect.objectContaining({ value: 'pause' })]));
+    expect(action).not.toHaveBeenCalled();
+    choice.vm.$emit('apply', 'pause');
     await flushPromises();
     expect(action).toHaveBeenCalledWith({ type: 'stop' });
     expect(store.active.stopped).toBe(true);
     expect(store.state.attempts).toHaveLength(0);
     expect(document.activeElement).toBe(wrapper.get('#learning-stop-state').element);
-    expect(wrapper.findAll('button').some((button) => button.attributes('aria-label') === '停止当前任务')).toBe(false);
+    expect(wrapper.find('.conversation-turn-actions').exists()).toBe(false);
   });
   it('resuming a completed group locates its saved results without adding an answer', async () => {
     const store = useConversationLearningStore();

@@ -129,12 +129,11 @@
       </view>
       <view class="journey-route" :aria-label="t('learning.ko')">
         <view
-          v-for="(module, index) in program.modules"
+          v-for="module in program.modules"
           :key="module.id"
           class="journey-step"
           :class="{ 'is-current': program.current?.id === module.id }"
         >
-          <text class="journey-step-number">{{ index + 1 }}</text>
           <view class="journey-step-copy">
             <text class="journey-step-title">{{ learningText(module.label) }}</text>
             <text class="journey-meta">{{ learningText(module.goal) }}</text>
@@ -389,13 +388,6 @@ onUnmounted(() => unbind());
   align-items: center;
   padding: var(--s-4) 0;
   border-bottom: var(--border-thin) solid var(--line);
-}
-.journey-step-number {
-  font-size: var(--size-body);
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-3);
-  width: var(--s-6);
-  flex-shrink: 0;
 }
 .journey-step-copy {
   flex: 1;

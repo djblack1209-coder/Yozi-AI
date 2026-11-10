@@ -76,7 +76,7 @@ export function shellNavigation() {
     }
   };
 }
-export const SIDEBAR_DEFAULT = Object.freeze({ version: 1, collapsed: false, width: 300 });
+export const SIDEBAR_DEFAULT = Object.freeze({ version: 1, collapsed: false, width: 224 });
 export const SIDEBAR_MIN = 224;
 export const SIDEBAR_MAX = 384;
 export const clampSidebarWidth = (width) => Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, width));

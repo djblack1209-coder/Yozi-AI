@@ -16,16 +16,6 @@
       class="feedback-line"
       :style="isEssay ? { '--essay-line-delay': `${Math.min(index, 6) * 70}ms` } : undefined"
     >
-      <view class="feedback-line-head"
-        ><text>第 {{ String(index + 1).padStart(2, '0') }} 句</text
-        ><BaseButton
-          variant="quiet"
-          :label="expanded[index] ? '收起解析' : '展开解析'"
-          :aria-expanded="Boolean(expanded[index])"
-          @tap="expanded[index] = !expanded[index]"
-          >{{ expanded[index] ? '收起解析' : '展开解析' }}</BaseButton
-        ></view
-      >
       <text class="feedback-original feedback-ink-source muse-ink-reveal" selectable
         ><text>{{ comparisons[index].prefix }}</text
         ><text class="muse-ink-strike">{{ comparisons[index].removed }}</text
@@ -42,6 +32,15 @@
           ><text>{{ comparisons[index].prefix }}</text
           ><text class="muse-ink-mark">{{ comparisons[index].inserted }}</text
           ><text>{{ comparisons[index].suffix }}</text></text
+        >
+      </view>
+      <view class="feedback-line-head">
+        <BaseButton
+          variant="quiet"
+          :label="expanded[index] ? '收起解析' : '展开解析'"
+          :aria-expanded="Boolean(expanded[index])"
+          @tap="expanded[index] = !expanded[index]"
+          >{{ expanded[index] ? '收起解析' : '展开解析' }}</BaseButton
         >
       </view>
       <MuseRichText v-if="expanded[index]" :content="line.advice" class="feedback-explanation" />

@@ -19,24 +19,23 @@
     </view>
     <view class="practice-sheet" role="group" :aria-label="title"
       ><BaseButton
-        v-for="(card, index) in cards"
+        v-for="card in cards"
         :key="card.id"
         variant="quiet"
-        :label="`第 ${index + 1} 题${answers.some((a) => a.cardId === card.id) ? '，已提交' : '，未提交'}`"
+        :label="`${card.title}${answers.some((a) => a.cardId === card.id) ? '，已提交' : '，未提交'}`"
         :aria-pressed="selected?.id === card.id"
         :disabled="card.id !== currentId && !answers.some((a) => a.cardId === card.id)"
         :class="{ 'is-picked': answers.some((a) => a.cardId === card.id), 'is-current': selected?.id === card.id }"
         @tap="viewedId = card.id"
-        ><text>{{ String(index + 1).padStart(2, '0') }}</text
+        ><text class="practice-tab-title">{{ card.title }}</text
         ><BaseIcon v-if="answers.some((a) => a.cardId === card.id)" name="check" :size="14" /></BaseButton
     ></view>
     <template v-if="selected">
       <view class="practice-question-head"
-        ><text>第 {{ String(cards.indexOf(selected) + 1).padStart(2, '0') }} 题</text
+        ><text class="practice-question-title">{{ selected.title }}</text
         ><text class="practice-count">{{ selectedAnswer ? '已提交' : '待作答' }}</text></view
       >
-      <text class="practice-question-title">{{ selected.title }}</text
-      ><MuseRichText :content="selected.prompt" /><MuseRichText
+      <MuseRichText :content="selected.prompt" /><MuseRichText
         v-if="selected.example && (selectedAnswer || !['trace', 'apply'].includes(selected.kind))"
         :content="selected.example"
         class="practice-example"
@@ -180,10 +179,10 @@ function submitChoice() {
   border-bottom: 1px solid var(--line);
 }
 .practice-sheet :deep(.base-button) {
-  width: 44px;
+  max-width: 100%;
   min-width: 44px;
-  height: 48px;
-  padding: 5px 2px;
+  min-height: 44px;
+  padding: 6px 10px;
   border-radius: 9px;
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--line-strong);
@@ -191,10 +190,16 @@ function submitChoice() {
 }
 .practice-sheet :deep(.base-button__content) {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 10px;
-  line-height: 14px;
+  gap: 5px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 16px;
+}
+.practice-tab-title {
+  max-width: 16ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .practice-sheet :deep(.is-picked),
 .practice-sheet :deep(.is-current) {

@@ -9,6 +9,9 @@
   overflow: hidden;
   animation: muse-page-in 320ms var(--muse-spring-pop) both;
 }
+.quiet-workspace .muse-page {
+  animation: muse-page-in var(--workspace-fold) var(--workspace-ease) both;
+}
 .muse-page-head {
   flex: none;
   display: flex;

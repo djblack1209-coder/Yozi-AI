@@ -68,8 +68,8 @@ it('a corrupt startup cache leaves bootstrap navigation usable', () => {
   uni.setStorageSync(NAVIGATION_KEY, '{broken');
   expect(shellNavigation().snapshot()).toEqual(parseShellNavigation(DEFAULT_NAVIGATION));
 });
-it('opens the selected 300 px layout and normalizes legacy widths without losing preferences', () => {
-  expect(readSidebar()).toEqual({ version: 1, width: 300, collapsed: false });
+it('opens the selected 224 px layout and normalizes legacy widths without losing preferences', () => {
+  expect(readSidebar()).toEqual({ version: 1, width: 224, collapsed: false });
   uni.setStorageSync(SIDEBAR_KEY, { version: 1, width: 217, collapsed: false });
   expect(readSidebar().width).toBe(224);
   expect(clampSidebarWidth(90)).toBe(224);
@@ -80,7 +80,7 @@ it('opens the selected 300 px layout and normalizes legacy widths without losing
   expect(readSidebar().width).toBe(384);
   expect(saveSidebar({ version: 1, width: NaN, collapsed: false })).toBe(false);
   uni.setStorageSync(SIDEBAR_KEY, { version: 8, width: 999 });
-  expect(readSidebar().width).toBe(300);
+  expect(readSidebar().width).toBe(224);
 });
 it('restores only existing conversation identities, including an explicitly empty workspace', () => {
   const state = { conversations: [{ id: 'first' }, { id: 'latest' }] };

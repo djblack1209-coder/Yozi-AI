@@ -23,12 +23,10 @@
           :aria-pressed="current === index"
           @tap="select(index)"
         >
-          <text class="quickstart-step-number" aria-hidden="true">0{{ index + 1 }}</text>
           <text>{{ t(`quickstart.${step.id}`) }}</text>
         </BaseButton>
       </view>
       <view class="quickstart-stage" :class="{ 'is-moving': !reduced }" aria-hidden="true">
-        <text class="quickstart-caption">{{ t('quickstart.diagram') }}</text>
         <Transition name="quickstart-swap">
           <view :key="`${current}:${replay}`" class="quickstart-scene" :class="active.id">
             <template v-if="active.id === 'practice'">
@@ -37,7 +35,6 @@
             </template>
             <view v-if="active.id === 'review'" class="quickstart-sheet quickstart-index">
               <BaseIcon name="book-open" size="18px" color="#11243d" />
-              <view v-for="line in 3" :key="line" class="quickstart-rule" />
             </view>
             <view class="quickstart-sheet quickstart-front">
               <view class="quickstart-sheet-title">
@@ -46,14 +43,12 @@
               </view>
               <view v-for="label in active.labels" :key="label" class="quickstart-art-row">
                 <text>{{ t(`quickstart.${label}`) }}</text>
-                <view class="quickstart-rule" />
               </view>
             </view>
           </view>
         </Transition>
       </view>
       <view class="quickstart-details" @focusin="stop" @pointerdown="stop" @touchstart="stop">
-        <text>{{ t(`quickstart.${active.id}Description`) }}</text>
         <BaseButton variant="secondary" @tap="openActive">{{ t(`quickstart.${active.id}Action`) }}</BaseButton>
       </view>
     </view>
@@ -177,10 +172,6 @@ onBeforeUnmount(() => {
   background: var(--workspace-active);
   color: var(--ink);
 }
-.quickstart-step-number {
-  color: var(--ink-3);
-  font-variant-numeric: tabular-nums;
-}
 .quickstart-stage {
   position: relative;
   isolation: isolate;
@@ -199,18 +190,6 @@ onBeforeUnmount(() => {
     radial-gradient(ellipse at 82% 24%, #8cd0f7 0, transparent 58%), #aedcf9;
   filter: blur(18px);
   content: '';
-}
-.quickstart-caption {
-  position: relative;
-  z-index: 2;
-  align-self: start;
-  justify-self: start;
-  margin: 10px;
-  padding: 4px 8px;
-  border-radius: 5px;
-  background: #fdfdfcd9;
-  color: #11243d;
-  font-size: 11px;
 }
 .quickstart-scene {
   position: absolute;
@@ -244,12 +223,6 @@ onBeforeUnmount(() => {
 }
 .quickstart-art-row:last-child {
   border-bottom: 0;
-}
-.quickstart-rule {
-  flex: 0 0 20%;
-  height: 4px;
-  border-radius: 2px;
-  background: #aedcf9;
 }
 .quickstart-back {
   inset: 16% 15% auto;
