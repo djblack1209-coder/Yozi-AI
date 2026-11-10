@@ -1,10 +1,12 @@
 package cn.yozi.connector;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import com.alibaba.fastjson.JSONObject;
 import io.dcloud.feature.uniapp.annotation.UniJSMethod;
 import io.dcloud.feature.uniapp.bridge.UniJSCallback;
 import io.dcloud.feature.uniapp.common.UniDestroyableModule;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,6 +14,7 @@ import java.util.Map;
 public final class YoziConnectorModule extends UniDestroyableModule {
     private final ConnectorTransport transport = new ConnectorTransport();
     private final MaterialFiles files=new MaterialFiles();
+    private final AndroidPosterShare posterShare = new AndroidPosterShare();
     private static final int PICK_DOCUMENT=0x57E1;
     private String pickerId;
     private UniJSCallback pickerCallback;
@@ -33,6 +36,10 @@ public final class YoziConnectorModule extends UniDestroyableModule {
         catch(Exception error){pickerId=null;pickerCallback=null;fail(callback,id,"FILE_READ_FAILED");}
     }
     @Override public void onActivityResult(int requestCode,int resultCode,Intent data){
+        if (requestCode == AndroidPosterShare.REQUEST_CODE) {
+            posterShare.returned();
+            return;
+        }
         if(requestCode!=PICK_DOCUMENT || pickerId==null)return;
         String id=pickerId;UniJSCallback callback=pickerCallback;pickerId=null;pickerCallback=null;
         if(callback==null || destroyed)return;
@@ -42,5 +49,14 @@ public final class YoziConnectorModule extends UniDestroyableModule {
     @UniJSMethod(uiThread=false) public void readMaterialFile(JSONObject options,UniJSCallback callback){if(callback==null)return;if(options==null){fail(callback,"","INVALID_REQUEST");return;}files.read(options.getString("id"),options.getString("handle"),Boolean.TRUE.equals(options.get("consent")),callback::invoke);}
     @UniJSMethod(uiThread=false) public void releaseMaterialFile(JSONObject options){if(options!=null)files.release(options.getString("handle"));}
     @UniJSMethod(uiThread=true) public void cancelFileOperation(JSONObject options){String id=options==null?null:options.getString("id");if(id==null)return;if(id.equals(pickerId)){UniJSCallback callback=pickerCallback;pickerCallback=null;fail(callback,id,"CANCELLED");}files.cancel(id);}
-    @Override public void destroy(){destroyed=true;transport.close();files.close();if(pickerCallback!=null)fail(pickerCallback,pickerId,"CANCELLED");pickerCallback=null;}
+    @UniJSMethod(uiThread=false) public boolean canShareStudyPoster() {
+        return AndroidPosterShare.supported();
+    }
+    @UniJSMethod(uiThread=true) public void shareStudyPoster(String base64, UniJSCallback callback) {
+        if (callback == null) return;
+        Context context = mUniSDKInstance.getContext();
+        Activity activity = !destroyed && context instanceof Activity ? (Activity) context : null;
+        posterShare.open(activity, base64, status -> callback.invoke(Collections.singletonMap("status", status)));
+    }
+    @Override public void destroy(){destroyed=true;posterShare.dispose();transport.close();files.close();if(pickerCallback!=null)fail(pickerCallback,pickerId,"CANCELLED");pickerCallback=null;}
 }

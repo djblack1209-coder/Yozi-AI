@@ -35,7 +35,7 @@ const exists = async (file) => {
 };
 if (android) {
   if (!classpath.length || !(await Promise.all(classpath.map(exists))).every(Boolean))
-    missing.push('Android官方SDK classpath未配置/不完整（android.jar、DCloud及FastJSON依赖）');
+    missing.push('Android官方SDK classpath未配置/不完整（android.jar、DCloud、FastJSON及AndroidX Core依赖）');
   if (!(await exists(path.join(javaHome, 'bin/javac')))) missing.push('Android Java编译器未配置');
 }
 let iphoneSDK;
@@ -83,7 +83,10 @@ if (missing.length) {
     if (!ios) delete metadata._dp_nativeplugin.ios;
     if (android) {
       const classes = path.join(work, 'classes');
+      const library = path.join(work, 'android-aar');
+      const resources = path.join('res', 'xml');
       await mkdir(classes);
+      await mkdir(path.join(library, resources), { recursive: true });
       await mkdir(path.join(plugin, 'android'));
       run(path.join(javaHome, 'bin/javac'), [
         '--release',
@@ -95,10 +98,15 @@ if (missing.length) {
         path.join(source, 'android/src/cn/yozi/connector/ConnectorTransport.java'),
         path.join(source, 'android/src/cn/yozi/connector/MaterialFiles.java'),
         path.join(source, 'android/src/cn/yozi/connector/AndroidMaterialSource.java'),
+        path.join(source, 'android/src/cn/yozi/connector/AndroidPosterShare.java'),
         path.join(source, 'android/src/cn/yozi/connector/YoziConnectorModule.java')
       ]);
-      run(path.join(javaHome, 'bin/jar'), ['cf', path.join(plugin, 'android/YoziConnector.jar'), '-C', classes, '.']);
-      await copyFile(path.join(source, 'android/proguard-rules.pro'), path.join(plugin, 'android/proguard-rules.pro'));
+      run(path.join(javaHome, 'bin/jar'), ['cf', path.join(library, 'classes.jar'), '-C', classes, '.']);
+      await copyFile(path.join(source, 'android/AndroidManifest.xml'), path.join(library, 'AndroidManifest.xml'));
+      await copyFile(path.join(source, 'android/proguard-rules.pro'), path.join(library, 'proguard.txt'));
+      const paths = path.join(resources, 'yozi_poster_share_paths.xml');
+      await copyFile(path.join(source, 'android', paths), path.join(library, paths));
+      run(path.join(javaHome, 'bin/jar'), ['cMf', path.join(plugin, 'android/YoziConnector.aar'), '-C', library, '.']);
       for (const p of classpath)
         sdkHashes[p] = createHash('sha256')
           .update(await readFile(p))

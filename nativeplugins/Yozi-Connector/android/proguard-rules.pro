@@ -1,1 +1,3 @@
 -keep public class cn.yozi.connector.YoziConnectorModule { *; }
+-keep public class cn.yozi.connector.AndroidPosterShare$Provider { public <init>(); }
+-keep public class cn.yozi.connector.AndroidPosterShare$SelectionReceiver { public <init>(); }

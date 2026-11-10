@@ -1,0 +1,14 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="cn.yozi.connector">
+    <application>
+        <provider
+            android:name="cn.yozi.connector.AndroidPosterShare$Provider"
+            android:authorities="${applicationId}.yozi.studyshare"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/yozi_poster_share_paths" />
+        </provider>
+        <receiver android:name="cn.yozi.connector.AndroidPosterShare$SelectionReceiver" android:exported="false" />
+    </application>
+</manifest>

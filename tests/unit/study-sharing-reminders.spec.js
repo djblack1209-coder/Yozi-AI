@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, getActivePinia, setActivePinia } from 'pinia';
 import { applyLearningOperation, emptyLearningState, dayKey } from '@/services/learning/learning-domain.js';
 import { reminderJobs, coachDueItem } from '../../laf-backend/functions/_shared/learning-reminders.js';
 import { studyPosterData } from '@/services/learning/study-poster.js';
+import { androidPosterShare } from '@/services/learning/app-poster-share.js';
 import { useConversationLearningStore } from '@/stores/modules/conversation-learning.js';
 import { learningWriteLease } from '@/services/learning/learning-write-lease.js';
 
@@ -54,9 +55,38 @@ beforeEach(() => {
   setActivePinia(createPinia());
 });
 afterEach(() => {
+  vi.unstubAllGlobals();
   for (const store of getActivePinia()?._s.values() || []) store.$dispose();
   learningWriteLease.release();
   uni.clearStorageSync();
+});
+it('Android sharing rechecks the preview after reading and requires the system selection receipt', async () => {
+  let status = 'selected';
+  const shareStudyPoster = vi.fn((bytes, callback) => callback({ status }));
+  vi.stubGlobal('uni', { ...uni, requireNativePlugin: () => ({ canShareStudyPoster: () => true, shareStudyPoster }) });
+  vi.stubGlobal('plus', {
+    os: { name: 'Android' },
+    io: {
+      resolveLocalFileSystemURL: (_source, resolve) => resolve({ file: (done) => done({}) }),
+      FileReader: class {
+        readAsDataURL() {
+          this.result = 'data:image/png;base64,cG5n';
+          this.onload();
+        }
+      }
+    }
+  });
+  const share = androidPosterShare();
+  let current = true;
+  const stale = share('_doc/poster.png', () => current);
+  current = false;
+  await expect(stale).resolves.toBe(false);
+  expect(shareStudyPoster).not.toHaveBeenCalled();
+
+  await expect(share('_doc/poster.png', () => true)).resolves.toBe(true);
+  expect(shareStudyPoster).toHaveBeenCalledWith('cG5n', expect.any(Function));
+  status = 'cancelled';
+  await expect(share('_doc/poster.png', () => true)).resolves.toBe(false);
 });
 describe('新版带练提醒使用保存事实', () => {
   it('没有旧路线也可设定未来四周提醒；漏学不编造作答或欠课', () => {

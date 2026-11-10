@@ -400,7 +400,7 @@ learning-records.before-signing.json与learning-records.after-signing.json完整
 App连接器新增两个命令（运行条件/SDK边界见[09C](09C-APP-CONNECTOR.md)）：
 
 - `npm run test:app:connector` → `node scripts/build/verify-app-connector.mjs`：真实JDK/Foundation双内核回环HTTP/TLS，不调用模型；随机本机端口、合成密钥/编译产物在忽略tmp，完成清理，报告保留。需要macOS及实际Java工具链。
-- `npm run build:app:connector` → `node scripts/build/build-app-connector.mjs --build-only`：实际移动SDK本地编译，缺SDK退出2，不下载/装配/部署。成功新建唯一tmp插件包和SDK哈希，不覆盖已有包；单平台显式追加`-- --android`/`-- --ios`。
+- `npm run build:app:connector` → `node scripts/build/build-app-connector.mjs --build-only`。用本机移动 SDK 编译到独立的 tmp 插件包，可用 `-- --android` 或 `-- --ios` 指定平台。Android 输出 `YoziConnector.aar`，包含图片分享的 provider 和资源。编译类路径使用 DCloud 5.34 基座的 Android SDK 36、FastJSON 和 AndroidX Core。缺少 SDK 时退出 2。
 
 新增 npm run dev:local-model → node scripts/build/local-model-connector.mjs：启动只监听本机的文本连接器，health 不推理；/chat 会调用用户配置的模型服务，须核对固定目标、真实型号、流向和会话硬预算。参数与令牌存储见[09A](09A-LAF-BACKEND-DEPLOYMENT.md)。原资料解析器 /chat 已退役，不把连接测试当成所有模型能力验证。
 

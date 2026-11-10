@@ -40,7 +40,7 @@
     </view>
   </CustomModal>
   <!-- #ifndef H5 -->
-  <canvas :canvas-id="canvasId" :id="canvasId" class="study-share-canvas" />
+  <canvas :id="canvasId" :canvas-id="canvasId" class="study-share-canvas"></canvas>
   <!-- #endif -->
 </template>
 <script setup>
@@ -57,6 +57,7 @@ import { scopeWorkspaceState } from '@/services/learning/workspace-context.js';
 import { captureSession, checkSession } from '@/services/auth-storage.js';
 import { isDesktopRuntime } from '@/services/desktop/runtime.js';
 import { saveDesktopLearningFile, shareDesktopLearningPoster } from '@/services/desktop/learning-files.js';
+import { androidPosterShare } from '@/services/learning/app-poster-share.js';
 import { POSTER_SIZE, paintStudyPoster, studyPosterData } from '@/services/learning/study-poster.js';
 const props = defineProps({
   visible: Boolean,
@@ -110,8 +111,8 @@ const canShare = computed(() => {
   }
   // #endif
   // #ifdef APP-PLUS
-  // iOS can hand off the rendered file from private storage and reports the completion.
-  return Boolean(image.value && typeof uni.shareWithSystem === 'function' && uni.getDeviceInfo?.()?.platform === 'ios');
+  const ios = uni.getDeviceInfo?.()?.platform === 'ios' && typeof uni.shareWithSystem === 'function';
+  return Boolean(image.value && (ios || androidPosterShare()));
   // #endif
   // #ifndef H5 || APP-PLUS
   return false;
@@ -280,9 +281,15 @@ async function share() {
     }
     // #endif
     // #ifdef APP-PLUS
-    await new Promise((resolve, reject) =>
-      uni.shareWithSystem({ type: 'image', imageUrl: source, success: resolve, fail: reject })
-    );
+    if (uni.getDeviceInfo?.()?.platform === 'ios') {
+      await new Promise((resolve, reject) =>
+        uni.shareWithSystem({ type: 'image', imageUrl: source, success: resolve, fail: reject })
+      );
+    } else {
+      const handoff = androidPosterShare();
+      if (!handoff) throw new Error('分享未完成');
+      if (!(await handoff(source, stillShowing))) return;
+    }
     // #endif
     if (stillShowing()) {
       message.value = '已交给系统分享';
