@@ -314,7 +314,7 @@ export function renderHome(lang = 'zh', root = false) {
       .join('\n')
       .replaceAll('FONT_BASE', base + '/fonts'),
     bootstrap: `(() => { let lang = ${JSON.stringify(root ? '' : lang)}; if (!lang) { try { lang = localStorage.getItem('yozi.website.language'); } catch {} } document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN'; document.documentElement.classList.add('js'); })();`,
-    script: source('site.js').replace('LOCALE_METADATA', JSON.stringify(metadata)),
+    script: source('site.js').replace('LOCALE_METADATA', JSON.stringify(metadata)) + visitScript,
     sampleAttempt: sample.attempt,
     sampleCorrection: sample.correction,
     featureCards: featureCards().replaceAll('{{base}}', base),
@@ -427,6 +427,8 @@ function accountScript() {
   });
   return outputFiles[0].text.replaceAll('</script', '<\\/script');
 }
+const visitScript = `\nfetch('/exam-master/site-visit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ page: location.pathname }), credentials: 'omit', keepalive: true }).catch(() => {});`;
+
 export function renderAccount() {
   return fill(source('account/index.html'), {
     favicon: brandUrl('favicon.svg'),
@@ -442,8 +444,17 @@ export function renderAccount() {
     ilanguage: icon('language'),
     ilamp: icon('lamp'),
     symbols,
-    script: accountScript(),
+    script: accountScript() + visitScript,
     ...Object.fromEntries(Object.entries(accountWords).map(([key, pair]) => [key, tr(...pair)]))
+  });
+}
+
+export function renderOperations() {
+  return fill(source('ops/index.html'), {
+    favicon: brandUrl('favicon.svg'),
+    brandMark: brandUrl('brand/mark.png'),
+    styles: (source('site.css') + '\n' + source('ops/ops.css')).replaceAll('FONT_BASE', '/fonts'),
+    script: source('ops/app.js').replaceAll('</script', '<\\/script')
   });
 }
 export function renderNotFound() {

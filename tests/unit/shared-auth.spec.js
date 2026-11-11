@@ -21,6 +21,20 @@ afterEach(() => {
 });
 
 describe('shared auth verifyJWT', () => {
+  it('marks activity only after authentication has passed', async () => {
+    process.env.JWT_SECRET = 'unit_test_secret';
+    const { requireAuth } = await import('../../laf-backend/functions/_shared/auth-middleware');
+    const ctx = {
+      headers: {
+        authorization: 'Bearer ' + buildJwt({ userId: 'active_user', exp: Date.now() + 60_000 }, process.env.JWT_SECRET)
+      }
+    };
+    expect(requireAuth(ctx).userId).toBe('active_user');
+    expect(ctx.authenticatedUserId).toBe('active_user');
+    const denied = { headers: { authorization: 'Bearer invalid' } };
+    expect(requireAuth(denied).code).toBe(401);
+    expect(denied.authenticatedUserId).toBeUndefined();
+  });
   it('returns payload for valid token', async () => {
     process.env.JWT_SECRET = 'unit_test_secret';
     const { verifyJWT } = await import('../../laf-backend/functions/_shared/auth');

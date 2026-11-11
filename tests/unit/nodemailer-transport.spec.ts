@@ -69,6 +69,7 @@ beforeEach(() => {
   vi.stubEnv('SMTP_FROM', 'Yozi AI <fixture@yozi.invalid>');
   vi.stubEnv('SMTP_PORT', '465');
   vi.stubEnv('SMTP_RETRY_TIMES', '1');
+  vi.stubEnv('MAIL_POOL_URL', '');
   Object.assign(fixture, {
     options: null,
     message: null,
@@ -136,4 +137,29 @@ describe('installed Nodemailer compatibility without sending mail', () => {
     expect(fixture.sends).toBe(1);
     expect(fixture.removed).toEqual(['offline-code']);
   });
+
+  it.each(['sent', 'uncertain', 'failed'])(
+    'uses a configured pool without bypassing its %s outcome',
+    async (status) => {
+      vi.stubEnv('MAIL_POOL_URL', 'http://127.0.0.1:3002');
+      vi.stubEnv('MAIL_POOL_SECRET', 'TEST_ONLY_product_pool_secret');
+      const send = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValue({ ok: true, json: async () => ({ status }) } as Response);
+      const result = await requestCode();
+      expect(result.success).toBe(status !== 'failed');
+      if (status === 'uncertain') expect(result.pendingDelivery).toBe(true);
+      expect(fixture.sends).toBe(0);
+      expect(send).toHaveBeenCalledTimes(1);
+      const [url, options] = send.mock.calls[0];
+      expect(url).toBe('http://127.0.0.1:3002/mail-pool');
+      expect(options.headers['x-mail-product']).toBe('yozi');
+      const payload = JSON.parse(options.body as string);
+      expect(payload.text).toContain(fixture.row.code);
+      expect(payload.subject).toContain(fixture.row.code);
+      expect(payload.attachments[0].content).toMatch(/^[A-Za-z0-9+/]+=*$/);
+      expect(payload.attachments[0].cid).toBeTruthy();
+      expect(fixture.removed).toEqual(status === 'failed' ? ['offline-code'] : []);
+    }
+  );
 });

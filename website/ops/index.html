@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#f7f8fa" />
+    <title>运营 · Yozi</title>
+    <link rel="icon" type="image/svg+xml" href="{{favicon}}" />
+    <style>
+      {{styles}}
+    </style>
+  </head>
+  <body class="ops-page">
+    <a class="skip" href="#ops-main">跳到主要内容</a>
+    <header class="ops-header">
+      <a class="ops-brand" href="/"
+        ><img src="{{brandMark}}" width="32" height="32" alt="" /><span>Yozi AI</span
+        ><span class="ops-wordmark">运营</span></a
+      >
+      <div class="ops-actions" data-authenticated hidden>
+        <button type="button" data-refresh>刷新</button><button type="button" data-signout>退出</button>
+      </div>
+    </header>
+    <main id="ops-main">
+      <form class="ops-login" data-login>
+        <h1>运营管理</h1>
+        <label for="ops-secret">运营密钥</label>
+        <input id="ops-secret" name="secret" type="password" autocomplete="off" required />
+        <button class="ops-primary" type="submit">进入后台</button>
+        <p role="alert" data-login-error hidden></p>
+      </form>
+      <div data-dashboard hidden>
+        <div class="ops-heading">
+          <h1 tabindex="-1">运营总览</h1>
+          <p role="status" data-updated></p>
+        </div>
+        <p class="ops-error" role="alert" data-error hidden></p>
+        <nav class="ops-nav" aria-label="运营导航">
+          <a href="#overview">总览</a><a href="#users">用户</a><a href="#mail">发信池</a><a href="#usage">功能用量</a
+          ><a href="#maintenance">维护</a><a href="#anomalies">异常</a>
+        </nav>
+        <section id="overview" aria-label="关键指标">
+          <dl class="ops-stats" data-stats></dl>
+          <div class="ops-trends">
+            <article>
+              <h2>首页与账号访问</h2>
+              <div class="ops-chart" data-visits></div>
+            </article>
+            <article>
+              <h2>接口异常</h2>
+              <div class="ops-chart" data-failures></div>
+            </article>
+          </div>
+        </section>
+        <section id="users" class="ops-section" aria-labelledby="users-title">
+          <div class="ops-section-heading">
+            <h2 id="users-title">用户</h2>
+            <form data-user-search>
+              <label class="ops-sr" for="ops-search">查找邮箱或昵称</label
+              ><input id="ops-search" name="search" type="search" placeholder="邮箱或昵称" /><button type="submit">
+                查找
+              </button>
+            </form>
+          </div>
+          <p class="ops-meta">订阅服务未启用</p>
+          <div class="ops-table" data-users></div>
+          <button class="ops-more" type="button" data-more hidden>继续加载</button>
+        </section>
+        <section id="mail" class="ops-section" aria-labelledby="mail-title">
+          <div class="ops-section-heading">
+            <h2 id="mail-title">发信池</h2>
+            <span class="ops-meta">UTC · 本池用量</span>
+          </div>
+          <div class="ops-providers" data-providers></div>
+          <div class="ops-table" data-deliveries></div>
+        </section>
+        <section id="usage" class="ops-section" aria-labelledby="usage-title">
+          <div class="ops-section-heading">
+            <h2 id="usage-title">功能请求</h2>
+            <span class="ops-meta">近 7 日</span>
+          </div>
+          <div class="ops-table" data-usage></div>
+        </section>
+        <section id="maintenance" class="ops-section" aria-labelledby="maintenance-title">
+          <h2 id="maintenance-title">维护日志</h2>
+          <ul class="ops-log" data-maintenance></ul>
+        </section>
+        <section id="anomalies" class="ops-section" aria-labelledby="anomalies-title">
+          <h2 id="anomalies-title">异常活动</h2>
+          <div class="ops-table" data-anomalies></div>
+        </section>
+      </div>
+    </main>
+    <!-- prettier-ignore -->
+    <script>{{script}}</script>
+  </body>
+</html>

@@ -67,3 +67,11 @@ PWA 应用壳只处理根路径与 index.html 的 uni-app 哈希路由，避免�
 后端每个执行器按owner/requestId独立隔离，最多128个进程内在途任务，数据库取消检查每500ms顺序进行、无重叠；多实例通过原成本账确认取消。响应通过AsyncLocalStorage绑定请求，移除全局response回退，避免并发流串线。客户端断开/取消或无法确认账本时停止新增输出；已经产生的供应商费用如实待结算。
 
 H5 fetch Reader及微信原生RequestTask分块各自适配；当前App明确不支持此传输。start/preview/result/error有版本和严格顺序，预览只在内存且只提取教学message，完整EOF前不能落工具/题目/教学事实。恢复读取相同用户原请求结果，未调用模型；历史导入的请求意图只作历史，不授权恢复执行。
+
+## 邮件池与运营后台
+
+现有 Express 进程的 `standalone/mail-pool.ts` 复用 Nodemailer 与 MongoDB。`MAIL_POOL_PROVIDERS` 保存供应商 SMTP 配置及实际免费额度，`MAIL_POOL_CLIENTS` 保存各产品的身份、秘密与固定发件地址，均只进入服务器受保护配置。Yozi 与 Lazy 通过回环 `/mail-pool` 调用同一层，各自保留邮件模板及账户数据；Yozi 使用 `MAIL_POOL_URL`／`MAIL_POOL_SECRET`，Lazy 使用 `LAZY_MAIL_POOL_URL`／`LAZY_MAIL_POOL_SECRET`。模板附件在调用端转换为字节，池接口不接受本地路径或外部资源 URL。
+
+`mail_pool_usage` 按 UTC 原子预留每日／每月额度并轮换供应商；接入前的实际用量作为初始基线。额度拒绝切换下一通道，无法确认接收结果时保留待确认收据，不跨通道盲目重发。`mail_pool_receipts` 只保存产品、服务、状态、时间和幂等指纹，不保存收件人、验证码或正文。
+
+官网 `/ops/` 使用既有管理员鉴权读取 `/operations`，密钥仅保留在页面内存。账户查询使用安全字段投影，订阅服务按当前未启用状态展示。`operations_requests`、`operations_visits`、`operations_activity`、`operations_maintenance` 分别记录归一化接口用量、无 Cookie 的首页／账号访问计数、已认证账号最近活动及实际启动记录；异常沿用 `security_audit_logs`。采集前的数据保持「未记录」。

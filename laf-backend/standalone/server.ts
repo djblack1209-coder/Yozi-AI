@@ -18,6 +18,8 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { closeDb, getDb, runWithResponse } from './cloud-shim.js';
 import { createSecurityAudit } from './security-audit.js';
+import { createMailPool } from './mail-pool.js';
+import { createOperations } from './operations.js';
 import { DEV_TEST } from '../functions/_shared/build-channel.js';
 
 Object.defineProperty(globalThis, '__YOZI_DEV_TEST__', { value: DEV_TEST });
@@ -32,6 +34,8 @@ const STORAGE_DIR = process.env.STORAGE_DIR || '/app/storage';
 
 const app = express();
 const securityAudit = createSecurityAudit(getDb);
+const mailPool = createMailPool({ getDb });
+const operations = createOperations(getDb, mailPool);
 
 // Compile once before listening; reject invalid or hop-count configuration at startup.
 app.set('trust proxy', compileTrustedProxies());
@@ -93,6 +97,13 @@ app.use((req, _res, next) => {
     const duration = Date.now() - start;
     if (req.path !== '/health' && req.path !== '/health-check') {
       console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} ${_res.statusCode} ${duration}ms`);
+      operations.recordRequest(
+        `${req.method} ${req.route?.path || 'unmatched'}`,
+        Math.max(_res.statusCode, Number(_res.locals.businessCode) || 0),
+        duration
+      );
+      if (req.route?.path === '/operations' || req.route?.path === '/mail-pool')
+        securityAudit.record(req.route.path, _res.statusCode);
     }
   });
   next();
@@ -135,6 +146,14 @@ app.get('/health', (_req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString()
   });
+});
+
+app.post('/operations', operations.handler);
+app.post('/mail-pool', mailPool.handler);
+app.post('/site-visit', (req, res) => {
+  if (typeof req.body?.page !== 'string' || !req.body.page.startsWith('/')) return res.status(400).end();
+  operations.recordVisit(req.body.page.split('?')[0]);
+  res.status(204).end();
 });
 
 // YAML 元数据读取 — 获取允许的 HTTP 方法
@@ -243,6 +262,10 @@ async function registerFunctions() {
       // 使用 AsyncLocalStorage 隔离并发请求，避免 SSE 数据发送到错误客户端
       try {
         const result = await runWithResponse(res, () => mod.default(ctx));
+        res.locals.businessCode = result?.code;
+        const activeUser =
+          ctx.authenticatedUserId || (funcName === 'login' && result?.code === 0 ? result.data?.userId : null);
+        if (typeof activeUser === 'string') operations.recordActivity(activeUser);
         securityAudit.record(funcName, res.statusCode, result?.code);
 
         // 如果函数已经通过 cloud.res 发送了响应 (SSE), 不再发送
@@ -349,6 +372,7 @@ async function main() {
     console.log(`\n[shutdown] Received ${signal}, graceful shutdown...`);
     server.close(async () => {
       await securityAudit.flush();
+      await operations.flush();
       await closeDb();
       console.log('[shutdown] Server closed');
       process.exit(0);
@@ -368,6 +392,7 @@ async function main() {
     const listeningPort = typeof address === 'object' && address ? address.port : PORT;
     console.log(`\n[server] Listening on http://${HOST}:${listeningPort}`);
     console.log(`[server] Health check: http://${HOST}:${PORT}/health`);
+    operations.recordMaintenance();
   });
 }
 

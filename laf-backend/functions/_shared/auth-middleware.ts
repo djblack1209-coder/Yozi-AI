@@ -29,6 +29,7 @@ export function requireAuth(ctx: any): AuthResult | ApiResponse {
     return unauthorized('登录已过期，请重新登录');
   }
 
+  ctx.authenticatedUserId = payload.userId;
   return {
     userId: payload.userId,
     payload

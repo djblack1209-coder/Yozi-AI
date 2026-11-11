@@ -1,4 +1,5 @@
 import { renderTransactionalEmail } from './_shared/transactional-email.js';
+import { sendThroughMailPool } from './_shared/pooled-email.js';
 /**
  * 发送邮箱验证码云函数
  *
@@ -257,6 +258,8 @@ export default async function (ctx) {
  * 发送邮件
  */
 async function sendEmail(to, code, requestId) {
+  if (process.env.MAIL_POOL_URL)
+    return sendThroughMailPool(to, renderTransactionalEmail('verification', { code }), requestId);
   // 如果没有配置SMTP，跳过发送
   if (!SMTP_USER || !SMTP_PASS) {
     logger.warn('SMTP未配置，跳过邮件发送');
