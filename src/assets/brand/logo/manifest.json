@@ -63,7 +63,8 @@
       "frames": 24,
       "frameDurationMs": 80,
       "plays": 2,
-      "motion": "Gentle lift and tilt; first and final frames use the resting portrait."
+      "motion": "Gentle lift and tilt; first and final frames use the resting portrait.",
+      "embedded": "laf-backend/functions/_shared/yozi-email-logo.gif"
     }
   },
   "previous": "archive/study-index-2026-11-10"

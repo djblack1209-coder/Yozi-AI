@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 const SITE = 'https://yozi.bot.cd';
 const BLUE = '#0549ff';
 const FONT = "Inter, 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif";
@@ -15,8 +17,9 @@ const heading = (text) =>
 const paragraph = (text) => `<p style="margin:16px 0;font-size:16px;line-height:1.7">${text}</p>`;
 const row = (content, style = '') => `<tr><td class="section" style="padding:38px 40px;${style}">${content}</td></tr>`;
 const logoStyle = 'vertical-align:middle;margin-right:10px;border:0;width:56px;height:56px';
-// Outlook and reduced-motion clients use the same transparent Pudding resting frame.
-const brand = `<a href="${SITE}/" style="color:inherit;font-size:22px;font-weight:700;text-decoration:none"><!--[if !mso]><!--><img class="email-logo-animated" src="${SITE}/brand/email-logo.gif" width="56" height="56" alt="" style="${logoStyle}"><!--<![endif]--><img class="email-logo-static" src="${SITE}/brand/email-logo.png" width="56" height="56" alt="" style="${logoStyle};display:none;mso-hide:all"><!--[if mso]><img src="${SITE}/brand/email-logo.png" width="56" height="56" alt="" style="${logoStyle}"><![endif]-->Yozi AI</a>`;
+// Embed the artwork so blocked remote images cannot remove the brand. The GIF
+// stops at its resting portrait; clients without animation show its first frame.
+const brand = `<a href="${SITE}/" style="color:inherit;font-size:22px;font-weight:700;text-decoration:none"><img src="cid:pudding-logo@yozi" width="56" height="56" alt="" style="${logoStyle}">Yozi AI</a>`;
 const footer = (dark = false) =>
   row(
     `<p style="margin:0 0 14px;font-size:18px;font-weight:600">Yozi AI</p><a href="mailto:yozi@245334.xyz" style="color:inherit">yozi@245334.xyz</a><p style="margin:18px 0 0;font-size:12px;line-height:1.8"><a href="${SITE}/zh/privacy/" style="color:inherit">隐私政策</a>&nbsp;&nbsp; <a href="${SITE}/zh/terms/" style="color:inherit">用户协议</a><br>© 2026 Yozi</p>`,
@@ -123,6 +126,19 @@ export function renderTransactionalEmail(kind, data = {}) {
     default:
       throw new Error('Unknown transactional email');
   }
-  const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${escape(subject)}</title><style>@media(max-width:600px){.section{padding:28px 22px!important}h1{font-size:30px!important}}@media(prefers-reduced-motion:reduce){.email-logo-animated{display:none!important}.email-logo-static{display:inline-block!important}}</style></head><body style="margin:0;padding:0;background:#f5f5f5;color:#171717;font-family:${FONT}"><div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${escape(preview)}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center"><table role="presentation" class="email" width="680" cellspacing="0" cellpadding="0" style="width:100%;max-width:680px;background:#ffffff;font-family:${FONT}">${rows}</table></td></tr></table></body></html>`;
-  return { subject, text, html };
+  const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${escape(subject)}</title><style>@media(max-width:600px){.section{padding:28px 22px!important}h1{font-size:30px!important}}</style></head><body style="margin:0;padding:0;background:#f5f5f5;color:#171717;font-family:${FONT}"><div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${escape(preview)}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center"><table role="presentation" class="email" width="680" cellspacing="0" cellpadding="0" style="width:100%;max-width:680px;background:#ffffff;font-family:${FONT}">${rows}</table></td></tr></table></body></html>`;
+  return {
+    subject,
+    text,
+    html,
+    attachments: [
+      {
+        filename: 'pudding-logo.gif',
+        path: fileURLToPath(new URL('./yozi-email-logo.gif', import.meta.url)),
+        cid: 'pudding-logo@yozi',
+        contentType: 'image/gif',
+        contentDisposition: 'inline'
+      }
+    ]
+  };
 }

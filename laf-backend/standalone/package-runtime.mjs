@@ -77,6 +77,10 @@ copyFileSync(
   path.join(backend, 'functions/_shared/learning-sympy-worker.py'),
   path.join(output, 'functions/_shared/learning-sympy-worker.py')
 );
+copyFileSync(
+  path.join(backend, 'functions/_shared/yozi-email-logo.gif'),
+  path.join(output, 'functions/_shared/yozi-email-logo.gif')
+);
 const bundle = path.join(output, 'functions/_shared/ts-fsrs-bundle.js');
 // The vendored .ts file is already JavaScript/CommonJS. Copy its bytes unchanged;
 // TypeScript's Node16 emit appends `export {}`, which is invalid in CommonJS.
