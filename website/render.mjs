@@ -69,11 +69,16 @@ const features = [
     back: 'pay attention <ins>to</ins> + noun'
   }
 ];
+function studyImage(src, className = '') {
+  const attributes = `${className ? ` class="${className}"` : ''} alt="" width="1600" height="1200" loading="lazy" decoding="async" fetchpriority="low"`;
+  return `<img data-study-image="${src}"${attributes}><noscript><img src="${src}"${attributes}></noscript>`;
+}
+
 function featureCards() {
   return features
     .map(
       (f, i) =>
-        `<article class="feature-card" data-delay="${i * 80}"><div class="feature-artboard"><img class="feature-still" src="{{base}}/media/feature-day-${i + 2}.jpg" alt="" width="1600" height="1200" loading="lazy" decoding="async" fetchpriority="low"><div class="feature-scrim" aria-hidden="true"></div><div class="feature-copy"><div class="feature-name">${icon(f.icon)}<h3>${tr(...f.title)}</h3></div>${f.assessment ? `<p>${tr(...f.assessment)}</p>` : ''}</div></div></article>`
+        `<article class="feature-card" data-delay="${i * 80}"><div class="feature-artboard">${studyImage(`{{base}}/media/feature-day-${i + 2}.jpg`, 'feature-still')}<div class="feature-scrim" aria-hidden="true"></div><div class="feature-copy"><div class="feature-name">${icon(f.icon)}<h3>${tr(...f.title)}</h3></div>${f.assessment ? `<p>${tr(...f.assessment)}</p>` : ''}</div></div></article>`
     )
     .join('');
 }
@@ -315,7 +320,7 @@ export function renderHome(lang = 'zh', root = false) {
     expoBays: features
       .map(
         (feature, index) =>
-          `<div class="expo-bay" data-expo-bay${index === 0 ? ' data-expo-active' : ''}><div class="expo-bay-heading"><h4>${tr(...expoSteps[index])}</h4></div><div class="expo-bay-content"><img src="${base}/media/feature-day-${index + 2}.jpg" alt="" loading="lazy"><p lang="en">${feature.back}</p></div></div>`
+          `<div class="expo-bay" data-expo-bay${index === 0 ? ' data-expo-active' : ''}><div class="expo-bay-heading"><h4>${tr(...expoSteps[index])}</h4></div><div class="expo-bay-content">${studyImage(`${base}/media/feature-day-${index + 2}.jpg`)}<p lang="en">${feature.back}</p></div></div>`
       )
       .join(''),
     expoSteps: expoSteps
@@ -346,7 +351,7 @@ export function renderHome(lang = 'zh', root = false) {
     ]
       .map(
         ([title, [href, note]], i) =>
-          `<a class="collection-card" href="${href}" data-slot="${['left', 'center', 'right'][i]}"><img src="${base}/media/feature-day-${i + 2}.jpg" alt="" width="1600" height="1200" loading="lazy" decoding="async" fetchpriority="low"><video data-deck-film data-src="${base}/media/yozi-glass-route.mp4" muted loop playsinline preload="none" aria-hidden="true"></video><span class="collection-note" lang="en" aria-hidden="true">${note}</span><span class="collection-card-title">${tr(...title)}${icon('arrow')}</span></a>`
+          `<a class="collection-card" href="${href}" data-slot="${['left', 'center', 'right'][i]}">${studyImage(`${base}/media/feature-day-${i + 2}.jpg`)}<video data-deck-film data-src="${base}/media/yozi-glass-route.mp4" muted loop playsinline preload="none" aria-hidden="true"></video><span class="collection-note" lang="en" aria-hidden="true">${note}</span><span class="collection-card-title">${tr(...title)}${icon('arrow')}</span></a>`
       )
       .join(''),
     principleSlides: principles

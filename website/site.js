@@ -33,6 +33,20 @@
   root.classList.toggle('motion-paused', !motionEnabled);
   const currentLanguage = () => (root.lang === 'en' ? 'en' : 'zh');
 
+  const studyImages = [...document.querySelectorAll('img[data-study-image]')];
+  const loadStudyImage = (image) => { image.src = image.dataset.studyImage; };
+  // Native lazy loading can fetch several screens ahead on mobile connections.
+  if ('IntersectionObserver' in window) {
+    const images = new IntersectionObserver((entries, observer) => {
+      for (const { target, isIntersecting } of entries) {
+        if (!isIntersecting) continue;
+        loadStudyImage(target);
+        observer.unobserve(target);
+      }
+    }, { rootMargin: '480px 0px' });
+    studyImages.forEach((image) => images.observe(image));
+  } else studyImages.forEach(loadStudyImage);
+
   const macCard = document.querySelector('.mac-card');
   const copyLink = macCard.querySelector('[data-copy-link]');
   const copyFallback = macCard.querySelector('[data-copy-fallback]');
@@ -177,11 +191,12 @@
   function prepareNearbyFilms() {
     const openingBounds = openingFilm.getBoundingClientRect();
     const openingReady =
-      openingFilm.readyState === HTMLMediaElement.HAVE_ENOUGH_DATA ||
+      (openingFilm.buffered.length > 0 &&
+        openingFilm.buffered.end(openingFilm.buffered.length - 1) >= openingFilm.duration) ||
       openingBounds.bottom <= 0 || openingBounds.top >= innerHeight;
     for (const film of nearbyFilms) {
       if (film.dataset.poster && !film.hasAttribute('poster')) film.poster = film.dataset.poster;
-      // Keep decorative downloads behind the Hero's uninterrupted-playback readiness.
+      // canplaythrough predicts readiness before all bytes arrive on a variable connection.
       if (motionEnabled && openingReady) loadFilm(film);
     }
   }
@@ -204,6 +219,7 @@
     }
   }
   openingFilm.addEventListener('canplaythrough', prepareNearbyFilms);
+  openingFilm.addEventListener('progress', prepareNearbyFilms);
   if ('IntersectionObserver' in window) {
     // Prepare nearby scenes before they enter view, without competing with the first screen.
     const preparation = new IntersectionObserver(

@@ -524,6 +524,7 @@ html:not(.js) .collection-start {
   opacity: 0.7;
 }
 .collection-card > img,
+.collection-card > noscript > img,
 .collection-card > video {
   position: absolute;
   inset: 0;
@@ -860,6 +861,7 @@ html:not(.js) .ink-hint,
 
 .collection-scene .collection-card::before,
 .collection-scene .collection-card > img,
+.collection-scene .collection-card > noscript > img,
 .collection-scene .collection-card > video {
   display: none;
 }
