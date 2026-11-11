@@ -136,7 +136,7 @@ export function websiteLaunchPlugin(enabled) {
         } else if (BRAND_FILES[route.slice(1)]) {
           res.setHeader(
             'Content-Type',
-            { svg: 'image/svg+xml', ico: 'image/x-icon', png: 'image/png', jpg: 'image/jpeg', gif: 'image/gif' }[
+            { svg: 'image/svg+xml', ico: 'image/x-icon', png: 'image/png', jpg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' }[
               route.split('.').pop()
             ]
           );

@@ -602,7 +602,7 @@ html:not(.js) .collection-start {
 .ink-block {
   max-width: var(--site-max);
   margin-inline: auto;
-  padding: 0 var(--gutter) var(--section-space);
+  padding: clamp(64px, 8vw, 120px) var(--gutter) var(--section-space);
 }
 .ink-surface {
   position: relative;

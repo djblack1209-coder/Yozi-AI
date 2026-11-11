@@ -100,12 +100,14 @@ export function mountAccount({ doc = document, send = (...args) => fetch(...args
       return;
     }
     if (!film.hasAttribute("src")) film.src = film.dataset.src;
-    film.play()?.catch(() => {});
+    if (film.paused) film.play()?.catch(() => {});
   };
   filmMedia?.addEventListener("change", syncFilm);
   if (filmMedia) {
+    film.addEventListener("canplay", syncFilm);
     doc.addEventListener("visibilitychange", syncFilm);
     doc.defaultView.addEventListener("storage", syncFilm);
+    doc.defaultView.addEventListener("pageshow", syncFilm);
   }
   const passwordField = $("[data-password-field]");
   const passwordToggle = $("[data-password-toggle]");

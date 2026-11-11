@@ -46,7 +46,7 @@
     align-items: flex-end;
     margin: 0;
     padding: clamp(24px, 4vw, 52px);
-    background: #101827 url('/media/signin/scene.webp') center / cover no-repeat;
+    background: #e9edf3 url('/media/yozi-study-console.webp') center / cover no-repeat;
     color: #fff;
   }
   .account-signin-film,

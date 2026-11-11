@@ -434,6 +434,75 @@ html:not(.js) .carousel-controls {
   font: 650 17px/1.3 var(--font-display);
   text-transform: none;
 }
+.price-heading,
+.price-month {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.price-badge {
+  padding: 5px 9px;
+  border: 1px solid #ffffff52;
+  border-radius: 99px;
+  font-size: 11px;
+  line-height: 1.25;
+}
+.price-purpose {
+  margin-top: 18px;
+  font-weight: 650;
+}
+.price-month {
+  justify-content: flex-start;
+}
+.price-unit,
+.price-annual {
+  font-size: 13px;
+  opacity: 0.78;
+}
+.price-annual {
+  margin-top: 6px;
+}
+.price-description {
+  margin-top: 24px;
+  min-height: 4.8em;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.price-benefits {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 20px 0 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.featured .price-benefits {
+  border-top-color: #ffffff40;
+}
+.price-benefits li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+.price-benefits .icon {
+  flex: 0 0 17px;
+  width: 17px;
+  height: 20px;
+}
+.price-details {
+  display: grid;
+  gap: 8px;
+  margin-top: 24px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.price-availability {
+  color: var(--ink);
+}
 .price-value {
   display: block;
   margin-top: 14px;
@@ -744,11 +813,11 @@ html:not(.js) .category-list {
     gap: 8px;
   }
   .price-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    padding-block: 10px;
+    padding: 24px;
+  }
+  .price-description {
+    min-height: 0;
+    margin-top: 18px;
   }
   .price-value {
     margin-top: 0;

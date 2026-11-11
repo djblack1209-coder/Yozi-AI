@@ -73,7 +73,7 @@ function featureCards() {
   return features
     .map(
       (f, i) =>
-        `<article class="feature-card" data-delay="${i * 80}"><div class="feature-artboard"><img class="feature-still" src="{{base}}/media/feature-day-${i + 2}.jpg" alt="" loading="lazy"><div class="feature-scrim" aria-hidden="true"></div><div class="feature-copy"><div class="feature-name">${icon(f.icon)}<h3>${tr(...f.title)}</h3></div>${f.assessment ? `<p>${tr(...f.assessment)}</p>` : ''}</div></div></article>`
+        `<article class="feature-card" data-delay="${i * 80}"><div class="feature-artboard"><img class="feature-still" src="{{base}}/media/feature-day-${i + 2}.jpg" alt="" width="1600" height="1200" loading="lazy" decoding="async" fetchpriority="low"><div class="feature-scrim" aria-hidden="true"></div><div class="feature-copy"><div class="feature-name">${icon(f.icon)}<h3>${tr(...f.title)}</h3></div>${f.assessment ? `<p>${tr(...f.assessment)}</p>` : ''}</div></div></article>`
     )
     .join('');
 }
@@ -233,15 +233,9 @@ const words = {
   expoHint: ['滚动浏览，或选择一站。', 'Scroll through the route or choose a stop.'],
   expoStaticHint: ['选择一站查看示例。', 'Choose a stop to see its example.'],
   principlesTitle: ['学习方法', 'How Yozi helps you learn'],
-  pricingTitle: ['订阅价格', 'Plans'],
   keyAction: ['了解模型连接', 'About model connections'],
   faqTitle: ['常见问题', 'Frequently asked questions'],
   signupLink: ['注册与登录', 'Sign up or sign in'],
-  signupTitle: ['在 App 内注册或登录。', 'Sign up or sign in to Yozi.'],
-  signupBody: [
-    '安装后注册或登录，再到 AI 连接器接入自己的 API，选择型号。',
-    'Install Yozi to sign up or sign in. Then connect your own API and choose a model.'
-  ],
   downloadOne: ['带上 Yozi。', 'TAKE YOZI'],
   downloadTwo: ['接着学。', 'WITH YOU.'],
   downloadMac: ['下载 Mac 版', 'Download for Mac'],
@@ -288,8 +282,8 @@ export function renderHome(lang = 'zh', root = false) {
   return fill(source('index.html'), {
     ...metadata[lang],
     base,
-    brandMark: brandUrl('brand/mark.png', base),
-    brandMarkReverse: brandUrl('brand/mark.png', base),
+    brandMark: brandUrl('brand/mark-small.webp', base),
+    brandMarkReverse: brandUrl('brand/mark-small.webp', base),
     favicon: brandUrl('favicon.svg'),
     appleTouchIcon: brandUrl('brand/apple-touch-icon.png'),
     shareImage: brandUrl('media/yozi-hero-share.jpg', 'https://yozi.bot.cd'),
@@ -352,7 +346,7 @@ export function renderHome(lang = 'zh', root = false) {
     ]
       .map(
         ([title, [href, note]], i) =>
-          `<a class="collection-card" href="${href}" data-slot="${['left', 'center', 'right'][i]}"><img src="${base}/media/feature-day-${i + 2}.jpg" alt=""><video data-deck-film data-src="${base}/media/yozi-learning-sky.mp4" muted loop playsinline preload="none" aria-hidden="true"></video><span class="collection-note" lang="en" aria-hidden="true">${note}</span><span class="collection-card-title">${tr(...title)}${icon('arrow')}</span></a>`
+          `<a class="collection-card" href="${href}" data-slot="${['left', 'center', 'right'][i]}"><img src="${base}/media/feature-day-${i + 2}.jpg" alt="" width="1600" height="1200" loading="lazy" decoding="async" fetchpriority="low"><video data-deck-film data-src="${base}/media/yozi-glass-route.mp4" muted loop playsinline preload="none" aria-hidden="true"></video><span class="collection-note" lang="en" aria-hidden="true">${note}</span><span class="collection-card-title">${tr(...title)}${icon('arrow')}</span></a>`
       )
       .join(''),
     principleSlides: principles
@@ -374,13 +368,25 @@ export function renderHome(lang = 'zh', root = false) {
       )
       .join(''),
     priceCards: [
-      { name: 'Plus', amount: 19 },
-      { name: 'Pro', amount: 39, featured: true },
-      { name: 'Max', amount: 68 }
+      {
+        name: 'Plus', amount: 19,
+        purpose: 'A steady daily habit',
+        description: 'For short daily practice and follow-up questions.'
+      },
+      {
+        name: 'Pro', amount: 39, featured: true,
+        purpose: 'Room to go deeper',
+        description: 'For regular training, detailed feedback and steady preparation.'
+      },
+      {
+        name: 'Max', amount: 68,
+        purpose: 'For intensive study',
+        description: 'For frequent questions, intensive practice and longer study sessions.'
+      }
     ]
       .map(
-        ({ name, amount, featured }, i) =>
-          `<article class="price-card${featured ? ' featured' : ''} reveal" data-delay="${i * 80}"><h3>${name}</h3><data class="price-value" value="${amount}">¥${amount}</data></article>`
+        ({ name, amount, featured, purpose, description }, i) =>
+          `<article class="price-card${featured ? ' featured' : ''} reveal" data-delay="${i * 80}"><div class="price-heading"><h3>${name}</h3>${featured ? '<span class="price-badge">Recommended</span>' : ''}</div><p class="price-purpose">${purpose}</p><div class="price-month"><data class="price-value" value="${amount}">¥${amount}</data><span class="price-unit">/ month</span></div><p class="price-annual">Approx. ¥${amount * 10} / year</p><p class="price-description">${description}</p><ul class="price-benefits"><li>${icon('check')}Monthly study points</li><li>${icon('check')}Flash and Pro model usage</li></ul></article>`
       )
       .join(''),
     archive: `/downloads/${download}`,

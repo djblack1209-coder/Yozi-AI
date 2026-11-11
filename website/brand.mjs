@@ -11,6 +11,7 @@ export const BRAND_FILES = Object.freeze({
   "favicon.svg": "website/brand/favicon.svg",
   "favicon.ico": "public/website/favicon.ico",
   "brand/mark.png": "src/static/images/logo.png",
+  "brand/mark-small.webp": "website/brand/mark-small.webp",
   "brand/email-logo.gif": "brand/logo-2026-11-10/yozi-email-logo.gif",
   "brand/email-logo.png": "brand/logo-2026-11-10/yozi-email-logo.png",
   // Compatibility URLs serve the same transparent portrait.

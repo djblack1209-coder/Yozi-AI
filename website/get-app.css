@@ -38,6 +38,7 @@
   gap: 10px;
   font-size: 19px;
   font-weight: 650;
+  color: var(--ink);
 }
 .signup-brand img {
   object-fit: contain;
@@ -93,16 +94,16 @@
   height: 16px;
 }
 
-/* Seed Ark composition with Yozi’s own study film and approved download. */
+/* Seed Ark composition with the owner-selected soft color-field direction. */
 .download {
-  --warm-ink: #24160b;
-  --paper-cream: #fefcf7;
+  --warm-ink: #11243d;
+  --paper-cream: #fdfdfc;
   position: relative;
   display: grid;
   min-height: clamp(510px, 71svh, 720px);
   overflow: hidden;
   isolation: isolate;
-  background: #e9c390;
+  background: #f7f8fa;
   color: var(--warm-ink);
 }
 .download-media {
@@ -114,13 +115,12 @@
 }
 .download-media video {
   object-position: 60% 49%;
-  filter: sepia(.84) saturate(1.18) hue-rotate(-13deg) brightness(.94);
 }
 .download-media::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(102deg, #f8e4c0da 0%, #eed0a169 37%, #f3be7a00 72%);
+  background: linear-gradient(102deg, #f7f8fa75 0%, #f7f8fa20 37%, transparent 72%);
 }
 .download-inner {
   width: min(100%, var(--site-max));
@@ -320,7 +320,7 @@ html:not([lang="en"]) #download-title {
     object-position: 58% 50%;
   }
   .download-media::after {
-    background: linear-gradient(180deg, #f6e4c7db, transparent 52%, #e1bd8d8f);
+    background: linear-gradient(180deg, #f7f8fa75, transparent 52%, #f7f8fa20);
   }
   .download-actions {
     grid-template-columns: minmax(0, 1fr);

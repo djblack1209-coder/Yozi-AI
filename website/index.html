@@ -24,6 +24,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{{appleTouchIcon}}" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preload" href="{{base}}/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="{{base}}/media/yozi-pudding-hero-poster.webp" as="image" fetchpriority="high" />
     <script type="application/ld+json">
       {{structuredData}}
     </script>
@@ -41,15 +42,15 @@
         <div class="hero-stage" data-hero-stage aria-hidden="true">
           <img
             class="hero-backdrop"
-            src="{{base}}/media/yozi-pudding-hero-poster.jpg"
-            width="1920"
-            height="1080"
+            src="{{base}}/media/yozi-pudding-hero-poster.webp"
+            width="1280"
+            height="720"
             fetchpriority="high"
             alt=""
           />
           <video
             class="hero-backdrop hero-opening-film"
-            data-src="{{base}}/media/yozi-pudding-hero.mp4"
+            data-src="{{base}}/media/yozi-pudding-hero-web.mp4"
             muted
             loop
             playsinline
@@ -127,7 +128,7 @@
       </div>
       <section class="ink-block" aria-labelledby="ink-title">
         <div
-          class="ink-surface"
+          class="ink-surface reveal"
           id="study-scene"
           data-ink-surface
           tabindex="0"
@@ -143,8 +144,8 @@
               loop
               playsinline
               preload="none"
-              poster="{{base}}/media/yozi-learning-sky-poster.jpg"
-              data-src="{{base}}/media/yozi-learning-sky.mp4"
+              data-poster="{{base}}/media/yozi-glass-route.webp"
+              data-src="{{base}}/media/yozi-glass-route.mp4"
             ></video>
           </div>
           <svg class="ink-mask-defs" aria-hidden="true" focusable="false">
@@ -215,8 +216,8 @@
               <div class="collection-companion" aria-hidden="true">
                 <video
                   data-collection-film
-                  data-src="{{base}}/media/yozi-pudding-hero.mp4"
-                  poster="{{base}}/media/yozi-pudding-hero-poster.jpg"
+                  data-src="{{base}}/media/yozi-pudding-hero-web.mp4"
+                  data-poster="{{base}}/media/yozi-pudding-hero-poster.webp"
                   muted
                   loop
                   playsinline
@@ -286,10 +287,15 @@
           </div>
         </div>
       </section>
-      <section class="pricing section" id="pricing" aria-labelledby="pricing-title">
+      <section class="pricing section" id="pricing" aria-labelledby="pricing-title" lang="en">
         <div class="contained">
-          <div class="section-heading reveal"><h2 id="pricing-title">{{pricingTitle}}</h2></div>
+          <div class="section-heading reveal"><h2 id="pricing-title">Plans</h2></div>
           <div class="price-grid">{{priceCards}}</div>
+          <div class="price-details">
+            <p>Monthly study points fund explanations, practice and AI feedback. Point allowances will be announced before subscriptions open.</p>
+            <p>DeepSeek Flash 1× · Pro model 3.5×. Points do not roll over. Top-ups: ¥10 / ¥30. No free tier.</p>
+            <p class="price-availability">Subscriptions and top-ups are not on sale yet. Bring your own API to use the app today.</p>
+          </div>
         </div>
       </section>
       <section class="faq section" id="faq" aria-labelledby="faq-title">
@@ -311,8 +317,8 @@
         <div class="signup-media">
           <video
             data-ambient-film
-            data-src="{{base}}/media/yozi-learning-motion-v1.mp4"
-            poster="{{base}}/media/yozi-learning-poster.jpg"
+            data-src="{{base}}/media/yozi-study-console.mp4"
+            data-poster="{{base}}/media/yozi-study-console.webp"
             muted
             loop
             playsinline
@@ -325,8 +331,8 @@
         </div>
         <div class="signup-panel">
           <div class="signup-inner reveal">
-            <h2 id="signup-title">{{signupTitle}}</h2>
-            <p>{{signupBody}}</p>
+            <h2 id="signup-title" lang="en">Sign up or sign in to Yozi.</h2>
+            <p lang="en">Install Yozi to sign up or sign in. Then connect your own API and choose a model.</p>
             <a class="button signup-download" href="#download">{{navDownload}}{{iarrow}}</a>
             <a class="signup-models" href="#faq-models" data-faq-link="models">{{keyAction}}{{iarrow}}</a>
           </div>
@@ -337,8 +343,8 @@
         <div class="download-media" aria-hidden="true">
           <video
             data-ambient-film
-            data-src="{{base}}/media/yozi-learning-sky.mp4"
-            poster="{{base}}/media/yozi-learning-sky-poster.jpg"
+            data-src="{{base}}/media/yozi-neon-field.mp4"
+            data-poster="{{base}}/media/yozi-neon-field.webp"
             muted
             loop
             playsinline

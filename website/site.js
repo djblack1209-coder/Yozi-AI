@@ -16,6 +16,8 @@
   const features = document.querySelector('.features');
   const films = [...document.querySelectorAll('video[data-src]')];
   const visibleFilms = new Set();
+  const nearbyFilms = new Set();
+  const openingFilm = document.querySelector('.hero-opening-film');
   const mediaError = document.querySelector('.media-error');
   const particles = [];
   let inkOpen = false;
@@ -145,6 +147,7 @@
   });
 
   function loadFilm(film) {
+    if (film.dataset.poster && !film.hasAttribute('poster')) film.poster = film.dataset.poster;
     if (!film.hasAttribute('src')) {
       film.preload = 'auto';
       film.src = film.dataset.src;
@@ -163,7 +166,7 @@
       if (film.hasAttribute('data-deck-film')) play &&= film.closest('a').matches(':hover, :focus-within');
       if (play) {
         loadFilm(film);
-        film.play().catch(() => {});
+        if (film.paused) film.play().catch(() => {});
       } else {
         film.pause();
         delete film.dataset.playing;
@@ -171,9 +174,23 @@
     }
   }
 
+  function prepareNearbyFilms() {
+    const openingBounds = openingFilm.getBoundingClientRect();
+    const openingReady =
+      openingFilm.readyState === HTMLMediaElement.HAVE_ENOUGH_DATA ||
+      openingBounds.bottom <= 0 || openingBounds.top >= innerHeight;
+    for (const film of nearbyFilms) {
+      if (film.dataset.poster && !film.hasAttribute('poster')) film.poster = film.dataset.poster;
+      // Keep decorative downloads behind the Hero's uninterrupted-playback readiness.
+      if (motionEnabled && openingReady) loadFilm(film);
+    }
+  }
+
   for (const film of films) {
+    film.addEventListener('canplay', syncFilms);
     film.addEventListener('playing', () => {
       film.dataset.playing = '';
+      if (film === openingFilm) prepareNearbyFilms();
     });
     if (film.hasAttribute('data-feature-film')) {
       film.addEventListener('loadedmetadata', () => {
@@ -186,7 +203,20 @@
       }
     }
   }
+  openingFilm.addEventListener('canplaythrough', prepareNearbyFilms);
   if ('IntersectionObserver' in window) {
+    // Prepare nearby scenes before they enter view, without competing with the first screen.
+    const preparation = new IntersectionObserver(
+      (entries) => {
+        for (const { target, isIntersecting } of entries) {
+          if (isIntersecting) nearbyFilms.add(target);
+          else nearbyFilms.delete(target);
+        }
+        prepareNearbyFilms();
+      },
+      { rootMargin: '480px 0px' }
+    );
+    films.filter((film) => !film.matches('.hero-opening-film')).forEach((film) => preparation.observe(film));
     const visibility = new IntersectionObserver(
       (entries) => {
         for (const { target, isIntersecting } of entries) {
@@ -198,6 +228,7 @@
           else visibleFilms.delete(target);
         }
         syncFilms();
+        prepareNearbyFilms();
       },
       { threshold: 0.05 }
     );
@@ -205,7 +236,7 @@
     visibility.observe(heroStage);
   } else {
     films
-      .filter((film) => film === video || film.matches('.hero-opening-film,[data-feature-film]'))
+      .filter((film) => film === video || film.matches('.hero-opening-film,[data-feature-film],[data-ambient-film]'))
       .forEach((film) => visibleFilms.add(film));
   }
 
@@ -447,6 +478,7 @@
     }
     updateLabels();
     syncFilms();
+    prepareNearbyFilms();
     syncExpoMotion();
   }
   mediaButton.addEventListener('click', () => {
@@ -460,6 +492,7 @@
     if (document.hidden) clearTrail();
     syncFilms();
   });
+  window.addEventListener('pageshow', syncFilms);
   reduced.addEventListener('change', (event) => {
     if (event.matches) applyMotion(false);
     else syncExpoMotion();
