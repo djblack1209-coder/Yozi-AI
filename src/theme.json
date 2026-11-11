@@ -1,20 +1,20 @@
 {
   "light": {
-    "navBackground": "#f2effb",
+    "navBackground": "#ffffff",
     "navText": "black",
-    "pageBackground": "#f2effb",
+    "pageBackground": "#ffffff",
     "backgroundText": "dark",
-    "tabText": "#65618a",
-    "tabSelected": "#5b3bd6",
+    "tabText": "#666666",
+    "tabSelected": "#0549ff",
     "tabBackground": "#ffffff"
   },
   "dark": {
-    "navBackground": "#110f27",
+    "navBackground": "#0a0a0a",
     "navText": "white",
-    "pageBackground": "#110f27",
+    "pageBackground": "#0a0a0a",
     "backgroundText": "light",
-    "tabText": "#a39fcb",
-    "tabSelected": "#bba9ff",
-    "tabBackground": "#1c1938"
+    "tabText": "#a1a1a1",
+    "tabSelected": "#7aa2ff",
+    "tabBackground": "#171717"
   }
 }

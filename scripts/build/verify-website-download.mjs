@@ -173,7 +173,7 @@ async function verifyShareAssets(page) {
     }, src);
     assert.deepEqual(actual, [200, type, width, height], src);
   }
-  await verifyBrandSlots(page, ['link[rel="icon"]', '.brand-pill img', '.signup-brand img', '.footer-brand img']);
+  await verifyBrandSlots(page, ['link[rel="icon"]', '.brand-pill img', '.signup-brand img']);
   console.log(
     `Share image and four icons decoded at their declared sizes. ZIP matched all ${expectedZip.length} bytes.`
   );
@@ -222,9 +222,9 @@ async function verifyLegal(lang, width) {
         .locator('.legal-footer a')
         .evaluateAll((links) => links.map((link) => new URL(link.href).pathname));
       assert.deepEqual(footer, [`/${lang}/privacy/`, `/${lang}/terms/`]);
-      // The homepage footer line reaches this document in the same language.
+      // The FAQ legal line reaches this document in the same language.
       await open(`/${lang}/`);
-      const link = page.locator(`.footer-legal a[href="/${lang}/${doc}/"]`);
+      const link = page.locator(`.faq-legal a[href="/${lang}/${doc}/"]`);
       assert.equal(await link.isVisible(), true);
       await Promise.all([page.waitForURL(`**/${lang}/${doc}/`), link.click()]);
       assert.equal(await page.locator('h1').textContent(), legalTitles[lang][doc]);
@@ -233,7 +233,7 @@ async function verifyLegal(lang, width) {
     await Promise.all([page.waitForURL(`**/${other}/terms/`), page.locator('[data-language-link]').click()]);
     assert.equal(await page.evaluate(() => localStorage.getItem('yozi.website.language')), other);
     assert.deepEqual(errors, []);
-    console.log(`${lang} ${width}px legal pages and footer links passed`);
+    console.log(`${lang} ${width}px legal pages and FAQ links passed`);
   } finally {
     await context.close();
   }

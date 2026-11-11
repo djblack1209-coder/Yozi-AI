@@ -24,7 +24,7 @@ describe('website legal pages', () => {
     }
   });
 
-  it('links both documents from the homepage footer in both languages', () => {
+  it('links both documents from the FAQ legal area in both languages', () => {
     for (const html of [renderHome('zh'), renderHome('en'), renderHome('zh', true)])
       for (const lang of LEGAL_LANGUAGES)
         for (const doc of LEGAL_DOCS) expect(html).toContain(`href="${legalPath(lang, doc)}" data-copy="${lang}"`);

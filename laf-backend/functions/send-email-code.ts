@@ -1,3 +1,4 @@
+import { renderTransactionalEmail } from './_shared/transactional-email.js';
 /**
  * 发送邮箱验证码云函数
  *
@@ -280,28 +281,7 @@ async function sendEmail(to, code, requestId) {
   const mailOptions = {
     from: SMTP_FROM,
     to,
-    subject: '【Yozi AI】邮箱验证码',
-    html: `
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #2E7D32; margin: 0;">Yozi AI</h1>
-            <p style="color: #666; margin-top: 8px;">AI助力，一战成硕</p>
-          </div>
-          
-          <div style="background: #f5f5f5; border-radius: 12px; padding: 30px; text-align: center;">
-            <p style="color: #333; font-size: 16px; margin: 0 0 20px;">您的验证码是：</p>
-            <div style="background: #fff; border-radius: 8px; padding: 20px; display: inline-block;">
-              <span style="font-size: 32px; font-weight: bold; color: #2E7D32; letter-spacing: 8px;">${code}</span>
-            </div>
-            <p style="color: #999; font-size: 14px; margin-top: 20px;">验证码10分钟内有效，请勿泄露给他人</p>
-          </div>
-          
-          <div style="text-align: center; margin-top: 30px; color: #999; font-size: 12px;">
-            <p>如果您没有请求此验证码，请忽略此邮件</p>
-            <p>© 2026 Yozi AI. All rights reserved.</p>
-          </div>
-        </div>
-      `
+    ...renderTransactionalEmail('verification', { code })
   };
 
   for (let attempt = 1; attempt <= SMTP_RETRY_TIMES; attempt++) {

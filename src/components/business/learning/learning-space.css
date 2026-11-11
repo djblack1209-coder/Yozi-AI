@@ -1369,8 +1369,8 @@
   }
 }
 
-/* Muse opens Settings as its own window: only the settings navigation remains. */
-.muse-space.is-settings .muse-rail,
+/* Legacy settings windows retain only their own navigation. */
+.muse-space.is-desktop-settings .muse-rail,
 .muse-space.is-settings .space-header {
   display: none;
 }
@@ -1576,38 +1576,38 @@
   --workspace-muted: var(--ink-3);
 }
 .workspace-shell.space-light {
-  --workspace-frame: #fdfdfc;
-  --workspace-side: #eff4ff;
-  --workspace-hover: #11243d0b;
-  --workspace-active: #d5effd;
-  --workspace-border: #11243d22;
-  --workspace-muted: #466177;
-  --workspace-ink: #11243d;
+  --workspace-frame: #ffffff;
+  --workspace-side: #fafafa;
+  --workspace-hover: #00000008;
+  --workspace-active: #eaeaea;
+  --workspace-border: #eaeaea;
+  --workspace-muted: #666666;
+  --workspace-ink: #171717;
 }
 .workspace-shell.space-dark {
-  --workspace-frame: #151e2b;
-  --workspace-side: #0f1723;
-  --workspace-hover: #d5effd0f;
-  --workspace-active: #d5effd20;
-  --workspace-border: #d5effd24;
-  --workspace-muted: #a8bed1;
-  --workspace-ink: #eff4ff;
+  --workspace-frame: #0a0a0a;
+  --workspace-side: #111111;
+  --workspace-hover: #ffffff0c;
+  --workspace-active: #ffffff12;
+  --workspace-border: #ffffff24;
+  --workspace-muted: #a1a1a1;
+  --workspace-ink: #ededed;
 }
 .workspace-shell.quiet-workspace.space-light,
 .workspace-shell.quiet-workspace.space-light .custom-modal-container {
   --canvas: var(--workspace-frame);
   --paper: var(--workspace-frame);
-  --paper-sunk: #eff4ff;
+  --paper-sunk: #fafafa;
   --ink: var(--workspace-ink);
   --ink-2: var(--workspace-muted);
-  --muse-raised: #eff4ff;
-  --muse-selected: #d5effd;
+  --muse-raised: #fafafa;
+  --muse-selected: #eaeaea;
   --violet-ink: var(--workspace-ink);
-  --violet-soft: #d5effd;
-  --focus: #385570;
-  --clay-face: #11243d;
-  --clay-face-hover: #263e58;
-  --on-clay: #fdfdfc;
+  --violet-soft: #eaeaea;
+  --focus: #0549ff;
+  --clay-face: #171717;
+  --clay-face-hover: #333333;
+  --on-clay: #ffffff;
 }
 .workspace-shell.quiet-workspace.space-dark,
 .workspace-shell.quiet-workspace.space-dark .custom-modal-container {
@@ -1616,12 +1616,12 @@
   --paper-sunk: var(--workspace-side);
   --ink: var(--workspace-ink);
   --ink-2: var(--workspace-muted);
-  --violet-ink: #d5effd;
-  --violet-soft: #d5effd20;
-  --focus: #aedcf9;
-  --clay-face: #d5effd;
-  --clay-face-hover: #aedcf9;
-  --on-clay: #11243d;
+  --violet-ink: #7aa2ff;
+  --violet-soft: #14224b;
+  --focus: #7aa2ff;
+  --clay-face: #eaeaea;
+  --clay-face-hover: #c9c9c9;
+  --on-clay: #171717;
 }
 .native-titlebar {
   display: none;

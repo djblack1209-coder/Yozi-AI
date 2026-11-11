@@ -23,14 +23,25 @@ export function restoreDesktopSettingsFocus() {
 export function openDesktopSettings(panel) {
   if (!['settings', 'connectors', 'profile', 'legal'].includes(panel))
     return Promise.reject(new Error('设置分组不合法'));
-  // Sequence different panels; merge duplicate rapid clicks while native creation is pending.
+  // Settings shares the workspace; rapid panel changes still keep one route transition.
   if (settingsOpening?.panel === panel) return settingsOpening.promise;
   rememberSettingsFocus();
   const previous = settingsOpening?.promise;
   const operation = { panel };
   operation.promise = Promise.resolve(previous)
     .catch(() => undefined)
-    .then(() => invoke('open_desktop_settings', { panel }))
+    .then(
+      () =>
+        new Promise((resolve, reject) => {
+          const current = typeof getCurrentPages === 'function' ? getCurrentPages().at(-1)?.route : '';
+          if (current === 'pages/profile/index') {
+            uni.$emit('profilePanel', panel);
+            resolve();
+          } else {
+            uni.navigateTo({ url: `/pages/profile/index?panel=${panel}`, success: resolve, fail: reject });
+          }
+        })
+    )
     .catch((error) => {
       restoreDesktopSettingsFocus();
       throw error;
@@ -91,6 +102,13 @@ export function completeDesktopModelIntake(id, success) {
 export function syncDesktopAppearance(dark) {
   if (isDesktopRuntime()) void invoke('set_desktop_appearance', { dark }).catch(() => undefined);
 }
+export function handleDesktopTitlebar(event) {
+  if (event.button !== 0 || !event.target?.closest?.('.native-titlebar')) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const current = getCurrentWindow();
+  void (event.detail === 2 ? current.toggleMaximize() : current.startDragging()).catch(() => undefined);
+}
 export async function bindDesktopWorkspace({ onRoute, onPreferences, onModelIntake }) {
   if (!isDesktopRuntime()) return () => undefined;
   document.documentElement.classList.add('desktop-overlay');
@@ -106,8 +124,10 @@ export async function bindDesktopWorkspace({ onRoute, onPreferences, onModelInta
   }
   releases.push(await listen('desktop-preferences-changed', onPreferences));
   window.addEventListener('focus', onPreferences);
+  document.addEventListener('mousedown', handleDesktopTitlebar, true);
   return () => {
     releases.forEach((release) => release());
     window.removeEventListener('focus', onPreferences);
+    document.removeEventListener('mousedown', handleDesktopTitlebar, true);
   };
 }

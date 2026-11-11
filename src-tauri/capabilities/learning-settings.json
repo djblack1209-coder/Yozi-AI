@@ -2,14 +2,9 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "learning-settings",
   "description": "设置窗口只可打开白名单工作区、修改外观和请求主窗口刷新提醒；不拥有通知调度或文件权限。",
-  "windows": [
-    "settings"
-  ],
+  "windows": ["settings"],
   "local": true,
-  "platforms": [
-    "macOS",
-    "windows"
-  ],
+  "platforms": ["macOS", "windows"],
   "permissions": [
     "allow-close-desktop-settings",
     "allow-open-desktop-workspace",
@@ -21,6 +16,7 @@
     "allow-open-learning-notification-settings",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
-    "core:window:allow-start-dragging"
+    "core:window:allow-start-dragging",
+    "core:window:allow-toggle-maximize"
   ]
 }

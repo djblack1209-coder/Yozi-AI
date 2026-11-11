@@ -815,6 +815,7 @@ import MuseComposer from '@/components/business/learning/muse-composer.vue';
 import MusePresentationControl from '@/components/business/learning/muse-presentation-control.vue';
 import { useLearningPresentation } from '@/composables/useLearningPresentation.js';
 import { toast } from '@/utils/toast.js';
+import { savedLearningFeedback, playLearningFeedback, stopLearningFeedback } from '@/design/learning-feedback.js';
 import MuseChatEmpty from '@/components/business/learning/muse-chat-empty.vue';
 import MuseModelControl from '@/components/business/learning/muse-model-control.vue';
 import MuseModelFeedback from '@/components/business/learning/muse-model-feedback.vue';
@@ -1369,6 +1370,7 @@ watch(
 );
 watch([answer, goal, entryMode, analysis, profile, profileStep], saveDraft, { deep: true, flush: 'sync' });
 onBeforeUnmount(() => {
+  stopLearningFeedback();
   saveDraft();
   draftAlive = false;
 });
@@ -1393,6 +1395,7 @@ watch([() => savedPractice.value.length, () => coach.value?.profile], revealCurr
 async function act(action) {
   const context = learning.recordContext(),
     previous = learning.reply?.operationId;
+  const beforeFeedback = learning.state;
   let operation;
   const current = () =>
     context === learning.recordContext() &&
@@ -1402,14 +1405,38 @@ async function act(action) {
     modelFailure.value = null;
     const pending = action();
     operation = learning.reply?.operationId !== previous ? learning.reply?.operationId : null;
+    const submittedState = learning.state;
+    const submissionFeedback = savedLearningFeedback(beforeFeedback, submittedState);
+    if (submissionFeedback) {
+      await nextTick();
+      if (current()) playLearningFeedback(submissionFeedback, shell.value);
+    }
     const result = await pending;
     if (!current()) return result;
-    if (result?.success === false) modelFailure.value = result;
+    if (result?.success === false) {
+      modelFailure.value = result;
+      await nextTick();
+      if (!current()) return result;
+      playLearningFeedback(
+        ['CONSENT_REQUIRED', 'NEEDS_CONNECTION'].includes(result.error) ? 'warning' : 'error',
+        shell.value
+      );
+    } else {
+      await nextTick();
+      if (!current()) return result;
+      playLearningFeedback(savedLearningFeedback(submittedState, learning.state), shell.value);
+    }
     return result;
   } catch (error) {
     if (!current()) return;
     modelFailure.value = { error: error.code || 'MODEL_FAILED' };
     message.value = modelErrorPresentation(modelFailure.value).message;
+    await nextTick();
+    if (!current()) return;
+    playLearningFeedback(
+      ['CONSENT_REQUIRED', 'NEEDS_CONNECTION'].includes(error.code) ? 'warning' : 'error',
+      shell.value
+    );
     if (DEV_TEST) {
       await nextTick();
       if (typeof document !== 'undefined')

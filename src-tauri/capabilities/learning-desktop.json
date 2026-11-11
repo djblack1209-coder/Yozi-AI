@@ -34,6 +34,7 @@
     "allow-complete-desktop-model-intake",
     "allow-set-desktop-appearance",
     "allow-complete-settings-notification-refresh",
-    "core:window:allow-start-dragging"
+    "core:window:allow-start-dragging",
+    "core:window:allow-toggle-maximize"
   ]
 }

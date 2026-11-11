@@ -182,7 +182,7 @@ pub fn set_desktop_appearance(app: AppHandle, window: WebviewWindow, dark: bool)
     for label in ["main", "settings"] {
         if let Some(view) = app.get_webview_window(label) {
             view.set_theme(Some(if dark { tauri::Theme::Dark } else { tauri::Theme::Light })).map_err(|_| "外观尚未同步")?;
-            view.set_background_color(Some(tauri::window::Color(if dark { 22 } else { 252 }, if dark { 22 } else { 252 }, if dark { 23 } else { 252 }, 255)))
+            view.set_background_color(Some(tauri::window::Color(if dark { 10 } else { 255 }, if dark { 10 } else { 255 }, if dark { 10 } else { 255 }, 255)))
                 .map_err(|_| "窗口颜色尚未同步")?;
             if view.label() != window.label() { let _ = view.emit("desktop-preferences-changed", ()); }
         }

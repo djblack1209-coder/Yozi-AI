@@ -2135,6 +2135,7 @@ import MusePresentationControl from '@/components/business/learning/muse-present
 import { useLearningPresentation } from '@/composables/useLearningPresentation.js';
 import { SINGLE_QUESTION_CONTRACT } from '../../../laf-backend/functions/_shared/learning-intake.js';
 import { toast } from '@/utils/toast.js';
+import { savedLearningFeedback, playLearningFeedback, stopLearningFeedback } from '@/design/learning-feedback.js';
 import { groupLearningMessages } from '@/services/learning/message-groups.js';
 import CustomModal from '@/components/common/CustomModal.vue';
 import { createLearningDialog } from '@/services/learning/learning-dialog.js';
@@ -3328,6 +3329,7 @@ onLoad((options) => {
 async function run(action) {
   const context = learning.recordContext(),
     previous = learning.reply?.operationId;
+  const beforeFeedback = learning.state;
   let operation;
   const current = () =>
     context === learning.recordContext() &&
@@ -3337,9 +3339,27 @@ async function run(action) {
   try {
     const pending = action();
     operation = learning.reply?.operationId !== previous ? learning.reply?.operationId : null;
+    const submittedState = learning.state;
+    const submissionFeedback = savedLearningFeedback(beforeFeedback, submittedState);
+    if (submissionFeedback) {
+      await nextTick();
+      if (current()) playLearningFeedback(submissionFeedback, learningShell.value);
+    }
     const result = await pending;
     if (!current()) return result;
-    if (result?.success === false) modelFailure.value = result;
+    if (result?.success === false) {
+      modelFailure.value = result;
+      await nextTick();
+      if (!current()) return result;
+      playLearningFeedback(
+        ['CONSENT_REQUIRED', 'NEEDS_CONNECTION'].includes(result.error) ? 'warning' : 'error',
+        learningShell.value
+      );
+    } else {
+      await nextTick();
+      if (!current()) return result;
+      playLearningFeedback(savedLearningFeedback(submittedState, learning.state), learningShell.value);
+    }
     return result;
   } catch (e) {
     if (!current()) return;
@@ -3349,6 +3369,12 @@ async function run(action) {
       modelFailure.value = { error: e.code || 'MODEL_FAILED' };
       feedback.value = modelErrorPresentation(modelFailure.value).message;
     }
+    await nextTick();
+    if (!current()) return;
+    playLearningFeedback(
+      ['CONSENT_REQUIRED', 'NEEDS_CONNECTION'].includes(e.code) ? 'warning' : 'error',
+      learningShell.value
+    );
   }
 }
 function handleModelAction(action) {
@@ -4816,6 +4842,7 @@ onHide(() => {
   learning.cancelSync({ clearFeedback: true });
 });
 onUnmounted(() => {
+  stopLearningFeedback();
   saveNavigationDraft();
   labVisible.value = false;
   appPageAlive = false;

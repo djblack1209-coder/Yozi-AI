@@ -1,7 +1,7 @@
-/* Intelligent Systems opening and the existing Yoga example deck. */
+/* Lena Varga character composition, TOKA blue, and the owner-selected example deck. */
 @font-face {
-  font-family: "Instrument Serif";
-  src: url("FONT_BASE/instrument-serif-italic-latin.woff2") format("woff2");
+  font-family: 'Instrument Serif';
+  src: url('FONT_BASE/instrument-serif-italic-latin.woff2') format('woff2');
   font-style: italic;
   font-weight: 400;
   font-display: swap;
@@ -17,7 +17,7 @@
 .hero-opening {
   position: relative;
   isolation: isolate;
-  background: #122f51;
+  background: var(--accent);
 }
 .hero-stage {
   position: absolute;
@@ -25,83 +25,22 @@
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  background: radial-gradient(ellipse at 84% 89%, #6ab6d4, transparent 65%), #123351;
-}
-.hero-stage::after {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, #102541 0%, #122f51 29%, #1534589c 51%, #122f510c 85%),
-    linear-gradient(180deg, #142d4c 0%, #14335512 26%, transparent 77%, #244c7080);
-  content: "";
+  background: var(--accent);
 }
 .hero-backdrop {
   position: absolute;
-  inset: 0 0 0 auto;
-  width: 75%;
+  inset: 0;
+  width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 81% center;
+  object-position: center;
 }
 .hero-opening-film {
   opacity: 0;
-  transition: opacity .48s var(--entrance-ease);
+  transition: opacity 0.48s var(--entrance-ease);
 }
 .hero-opening-film[data-playing] {
   opacity: 1;
-}
-.hero-wake {
-  position: absolute;
-  z-index: 1;
-  inset: 0 0 0 auto;
-  width: 75%;
-  height: 100%;
-}
-.hero-ink {
-  opacity: .52;
-  transform-origin: 56% 47%;
-  transform: scale(1.12) rotate(9deg);
-}
-.hero-ink--echo {
-  opacity: .35;
-  transform-origin: 56% 54%;
-}
-.hero-sheet {
-  transform: translate(532px, 431px) rotate(28deg);
-  filter: drop-shadow(3px 9px 8px #15284463);
-}
-.hero-sheet--echo {
-  transform: translate(620px, 238px) rotate(52deg);
-}
-.js .hero-ink {
-  animation: hero-ink-spread 3.2s ease-out -1s infinite;
-}
-.js .hero-ink--echo {
-  animation-delay: -2.5s;
-}
-.js .hero-sheet {
-  animation: hero-paper-current 5.8s cubic-bezier(.32,.04,.36,.99) -1.6s infinite;
-}
-.js .hero-sheet--echo {
-  animation-delay: -4.4s;
-}
-.hero-stage[data-offscreen] :is(.hero-ink, .hero-sheet),
-.hero-stage[data-tab-hidden] :is(.hero-ink, .hero-sheet) {
-  animation-play-state: paused;
-}
-@keyframes hero-ink-spread {
-  0% { opacity: 0; transform: scale(.48) rotate(-15deg); }
-  22% { opacity: .65; }
-  70% { opacity: .36; }
-  100% { opacity: 0; transform: scale(1.5) rotate(18deg); }
-}
-@keyframes hero-paper-current {
-  0% { opacity: 0; transform: translate(260px, 675px) rotate(-21deg); }
-  13% { opacity: 1; transform: translate(310px, 530px) rotate(-42deg); }
-  36% { transform: translate(486px, 223px) rotate(-15deg); }
-  56% { transform: translate(639px, 244px) rotate(34deg); }
-  77% { transform: translate(583px, 465px) rotate(74deg); }
-  91% { opacity: 1; }
-  100% { opacity: 0; transform: translate(405px, 682px) rotate(113deg); }
 }
 .hero-pulse {
   position: absolute;
@@ -110,7 +49,9 @@
   aspect-ratio: 1;
   border: 1px solid #e5f8ffb3;
   border-radius: 49% 51% 52% 48%;
-  box-shadow: inset 0 0 17px #dbf5ff32, 0 0 18px #b0e7ff56;
+  box-shadow:
+    inset 0 0 17px #dbf5ff32,
+    0 0 18px #b0e7ff56;
   opacity: 0;
 }
 .mast {
@@ -135,8 +76,10 @@
   align-items: center;
   gap: 7px;
   min-height: 44px;
-  font: 700 19px/1 system-ui, sans-serif;
-  letter-spacing: -.04em;
+  font:
+    700 19px/1 system-ui,
+    sans-serif;
+  letter-spacing: -0.04em;
   white-space: nowrap;
   color: #fff;
 }
@@ -184,7 +127,9 @@
   width: 17px;
   height: 17px;
 }
-.media-button[role="switch"] { padding: 0 4px; }
+.media-button[role='switch'] {
+  padding: 0 4px;
+}
 .motion-switch__track {
   position: relative;
   display: block;
@@ -202,15 +147,23 @@
   border-radius: inherit;
   background: #fff;
   box-shadow: 0 1px 3px #18294035;
-  transition: inset-inline-start 220ms var(--entrance-ease), inset-inline-end 290ms var(--entrance-ease);
+  transition:
+    inset-inline-start 220ms var(--entrance-ease),
+    inset-inline-end 290ms var(--entrance-ease);
 }
-[data-media-toggle][aria-checked="true"] .motion-switch__track { background: var(--navy); }
-[data-media-toggle][aria-checked="true"] .motion-switch__thumb {
+[data-media-toggle][aria-checked='true'] .motion-switch__track {
+  background: var(--navy);
+}
+[data-media-toggle][aria-checked='true'] .motion-switch__thumb {
   inset-inline: 16px 3px;
   transition-duration: 290ms, 220ms;
 }
-[data-media-toggle]:active[aria-checked="false"] .motion-switch__thumb { inset-inline-end: 11px; }
-[data-media-toggle]:active[aria-checked="true"] .motion-switch__thumb { inset-inline-start: 11px; }
+[data-media-toggle]:active[aria-checked='false'] .motion-switch__thumb {
+  inset-inline-end: 11px;
+}
+[data-media-toggle]:active[aria-checked='true'] .motion-switch__thumb {
+  inset-inline-start: 11px;
+}
 .language-button:hover,
 .menu-button:hover,
 .media-button:hover {
@@ -254,32 +207,37 @@ html:not(.js) .media-button {
   margin-top: 8px;
 }
 
+.hero-opening > .landing-wrap {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
 .hero {
   display: grid;
-  min-height: clamp(470px, 67vh, 695px);
-  align-items: center;
-  padding-block: clamp(70px, 8vh, 106px);
+  flex: 1;
+  align-items: end;
+  padding-block: clamp(64px, 10vh, 112px);
 }
 .hero-heading {
-  width: min(100%, 680px);
+  width: min(54%, 680px);
 }
 .hero-heading h1 {
   font-family: var(--font-display);
   font-size: clamp(44px, 6.1vw, 95px);
   font-weight: 750;
   line-height: 1.04;
-  letter-spacing: -.045em;
+  letter-spacing: -0.045em;
   color: #fff;
   text-transform: none;
 }
 .hero-heading .title-line:nth-child(2) {
-  color: #bde4fa;
+  color: #ffffffc9;
 }
-html[lang="en"] .hero-heading .title-line:nth-child(2) {
-  font-family: "Instrument Serif", Georgia, serif;
+html[lang='en'] .hero-heading .title-line:nth-child(2) {
+  font-family: 'Instrument Serif', Georgia, serif;
   font-weight: 400;
   font-style: italic;
-  letter-spacing: -.025em;
+  letter-spacing: -0.025em;
 }
 .title-line,
 .title-line > [data-copy] {
@@ -287,12 +245,12 @@ html[lang="en"] .hero-heading .title-line:nth-child(2) {
 }
 .title-line {
   overflow: clip;
-  padding-bottom: .07em;
+  padding-bottom: 0.07em;
 }
 .hero-support p {
   max-width: 39ch;
   margin-top: clamp(15px, 2.3vh, 24px);
-  color: #e0edf8;
+  color: #fff;
   font-size: clamp(16px, 1.36vw, 19.5px);
   line-height: 1.55;
 }
@@ -306,12 +264,12 @@ html[lang="en"] .hero-heading .title-line:nth-child(2) {
 .hero-download {
   min-height: 50px;
   padding-inline: 23px;
-  background: var(--green);
-  color: #12231a;
+  background: #fff;
+  color: var(--accent);
   font-weight: 700;
 }
 .hero-download:hover {
-  background: #5ae000;
+  background: #edf2ff;
 }
 .hero-signup,
 .collection-start {
@@ -346,11 +304,7 @@ html[lang="en"] .hero-heading .title-line:nth-child(2) {
   padding: clamp(14px, 4.4vw, 64px) clamp(14px, 4.4vw, 64px) 0;
   border-radius: clamp(12px, 1.4vw, 20px);
   overflow: hidden;
-  background:
-    radial-gradient(67% 66% at 59% -10%, #ffdbc4, transparent 75%),
-    radial-gradient(66% 80% at 0 100%, #8dc8ed, transparent 78%),
-    radial-gradient(54% 74% at 100% 100%, #a5b8eb, transparent 83%),
-    linear-gradient(150deg, var(--sky), var(--sky-mid) 62%, #bacdf1);
+  background: var(--surface-hover);
 }
 .showcase:has(.study-preview:not([hidden])) {
   padding-block: clamp(18px, 3.3vw, 48px);
@@ -380,7 +334,7 @@ html[lang="en"] .hero-heading .title-line:nth-child(2) {
 .preview-header h2,
 .preview-panels h3 {
   font: 650 clamp(17px, 2.7cqw, 26px)/1.2 var(--font-display);
-  letter-spacing: -.025em;
+  letter-spacing: -0.025em;
   text-transform: none;
 }
 .collection-start {
@@ -422,8 +376,8 @@ html[lang="en"] .hero-heading .title-line:nth-child(2) {
   background: #f8fafc;
 }
 .preview-panels .preview-correction {
-  background: #f9f5ef;
-  border-color: #f2ede6;
+  background: var(--sky);
+  border-color: var(--sky-mid);
 }
 .preview-panels h3 {
   margin-bottom: 6px;
@@ -454,9 +408,9 @@ html[lang="en"] .hero-heading .title-line:nth-child(2) {
   text-decoration: none;
 }
 .preview-correction ins::after {
-  content: "";
+  content: '';
   position: absolute;
-  inset: auto 0 -.14em;
+  inset: auto 0 -0.14em;
   border-bottom: 2px solid currentColor;
   transform-origin: left;
 }
@@ -483,68 +437,91 @@ html:not(.js) .collection-start {
   margin-top: 12px;
   font-size: clamp(24px, 4vw, 52px);
 }
+/* Pulse 3D's character-to-card reveal, with Yozi's own moving Pudding. */
+.collection-scene {
+  position: relative;
+  isolation: isolate;
+  min-height: 480px;
+  overflow: hidden;
+  margin-top: 30px;
+  padding: 36px;
+  border-radius: 32px;
+  background: var(--accent);
+}
+.collection-companion {
+  position: absolute;
+  inset: 0 0 0 52%;
+  pointer-events: none;
+  animation: companion-present 900ms var(--entrance-ease) both;
+}
+.collection-companion video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: right center;
+}
 .collection-deck {
+  position: relative;
   display: grid;
-  place-items: center;
-  perspective: 840px;
-  padding-top: clamp(28px, 4vw, 54px);
+  width: 53%;
+  gap: 14px;
 }
 .collection-card {
-  --slot-x: 0%;
-  --slot-tilt: 0deg;
-  --slot-depth: 0px;
-  --slot-lift: 0px;
-  --deck-glow: #8ee9ff;
   position: relative;
-  grid-area: 1 / 1;
-  width: clamp(148px, 20vw, 254px);
-  min-width: 0;
-  aspect-ratio: 3 / 4;
-  overflow: hidden;
-  border: 2px solid #f7fcffba;
-  border-radius: 22px;
-  background: var(--navy);
-  box-shadow: 0 15px 40px #0f314238;
-  transform: translate3d(var(--slot-x), var(--slot-lift), var(--slot-depth)) rotateY(var(--slot-tilt));
-  transition: transform .54s cubic-bezier(.19, .8, .25, 1);
   isolation: isolate;
+  display: block;
+  min-height: 116px;
+  padding: 22px 26px;
+  overflow: hidden;
+  border-radius: 22px;
+  background: #fff;
+  color: #171717;
+  box-shadow: 0 6px 24px #002b9933;
+  transition: transform 240ms var(--ease);
+  animation: companion-card 620ms var(--entrance-ease) both;
 }
 .collection-card:nth-child(2) {
-  --deck-glow: #b7b3ff;
+  animation-delay: 140ms;
 }
 .collection-card:nth-child(3) {
-  --deck-glow: #f8c774;
-}
-.collection-card[data-slot="left"] {
-  --slot-x: -94%;
-  --slot-tilt: 40deg;
-  --slot-depth: -85px;
-}
-.collection-card[data-slot="right"] {
-  --slot-x: 94%;
-  --slot-tilt: -40deg;
-  --slot-depth: -85px;
-}
-.collection-card[data-slot="center"] {
-  z-index: 2;
+  animation-delay: 280ms;
 }
 .collection-card:is(:hover, :focus-visible) {
-  --slot-lift: -8px;
-  z-index: 3;
+  transform: translateX(5px);
+}
+@keyframes companion-present {
+  from {
+    transform: translateX(-23%) scale(1.08);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes companion-card {
+  from {
+    transform: translateY(15px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
 }
 .collection-card::before {
-  content: "";
+  content: '';
   position: absolute;
   z-index: 1;
   inset: 0;
   pointer-events: none;
   background: radial-gradient(ellipse at 82% 76%, var(--deck-glow), transparent 65%);
-  opacity: .32;
+  opacity: 0.32;
   mix-blend-mode: screen;
-  transition: opacity .44s ease;
+  transition: opacity 0.44s ease;
 }
-.collection-card[data-slot="center"]::before {
-  opacity: .7;
+.collection-card[data-slot='center']::before {
+  opacity: 0.7;
 }
 .collection-card > img,
 .collection-card > video {
@@ -556,7 +533,7 @@ html:not(.js) .collection-start {
 }
 .collection-card > video {
   opacity: 0;
-  transition: opacity .4s;
+  transition: opacity 0.4s;
 }
 .collection-card > video[data-playing] {
   opacity: 1;
@@ -592,7 +569,10 @@ html:not(.js) .collection-start {
   padding: 10px 13px;
   background: #102c48f5;
   color: var(--cream);
-  font: clamp(14px, 1.4vw, 20px)/1.3 "Anton", "Noto Sans SC", sans-serif;
+  font:
+    clamp(14px, 1.4vw, 20px)/1.3 'Anton',
+    'Noto Sans SC',
+    sans-serif;
   text-align: left;
 }
 .collection-controls:not([hidden]) {
@@ -639,10 +619,10 @@ html:not(.js) .collection-start {
   padding-inline: 12px;
   color: #0b0b0b;
   font-size: clamp(38px, 8.5vw, 122px);
-  letter-spacing: -.037em;
+  letter-spacing: -0.037em;
   text-align: center;
 }
-html:not([lang="en"]) .ink-paper h2 {
+html:not([lang='en']) .ink-paper h2 {
   font-size: clamp(28px, 6.2vw, 89px);
   font-weight: 800;
 }
@@ -728,16 +708,20 @@ html:not(.js) .ink-hint,
 }
 
 .js .study-preview {
-  animation: study-preview-settle .48s var(--entrance-ease);
+  animation: study-preview-settle 0.48s var(--entrance-ease);
 }
 .js .preview-correction ins::after {
-  animation: correction-underline .36s var(--entrance-ease) .12s both;
+  animation: correction-underline 0.36s var(--entrance-ease) 0.12s both;
 }
 @keyframes study-preview-settle {
-  from { transform: translateY(14px); }
+  from {
+    transform: translateY(14px);
+  }
 }
 @keyframes correction-underline {
-  from { transform: scaleX(0); }
+  from {
+    transform: scaleX(0);
+  }
 }
 .motion-paused *,
 .motion-paused *::before,
@@ -746,13 +730,21 @@ html:not(.js) .ink-hint,
   transition-duration: 1ms !important;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .motion-paused .motion-switch__track { transition-duration: 220ms !important; }
-  .motion-paused .motion-switch__thumb { transition-duration: 220ms, 290ms !important; }
+  .motion-paused .motion-switch__track {
+    transition-duration: 220ms !important;
+  }
+  .motion-paused .motion-switch__thumb {
+    transition-duration: 220ms, 290ms !important;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hero-opening-film { transition: none; }
+  .hero-opening-film {
+    transition: none;
+  }
   .motion-switch__track,
-  .motion-switch__thumb { transition: none; }
+  .motion-switch__thumb {
+    transition: none;
+  }
 }
 
 @media (max-width: 1024px) {
@@ -766,7 +758,7 @@ html:not(.js) .ink-hint,
     display: inline-flex;
   }
   .hero-heading {
-    width: min(100%, 580px);
+    width: min(57%, 580px);
   }
   .hero-heading h1 {
     font-size: clamp(38px, 7vw, 66px);
@@ -777,24 +769,18 @@ html:not(.js) .ink-hint,
 }
 @media (max-width: 620px) {
   .hero {
-    min-height: 545px;
+    min-height: 680px;
     align-items: start;
-    padding-block: 47px 225px;
-  }
-  .hero-stage::after {
-    background: linear-gradient(180deg, #102541 0%, #122f51 35%, #173d62d9 58%, #14335512 84%, #254f7380);
+    padding-block: 42px 350px;
   }
   .hero-backdrop {
     inset: auto 0 0;
     width: 100%;
-    height: 57%;
-    object-position: 88% center;
-    mask-image: linear-gradient(to bottom, transparent, #000 31%);
+    height: 58%;
+    object-position: right center;
   }
-  .hero-wake {
-    inset: auto -13% -5% auto;
-    width: 120%;
-    height: 52%;
+  .hero-heading {
+    width: 100%;
   }
   .hero-heading h1 {
     font-size: clamp(32px, 10.25vw, 46px);
@@ -852,5 +838,73 @@ html:not(.js) .ink-hint,
   .ink-controls .button {
     padding-inline: 13px;
     font-size: 12px;
+  }
+}
+
+/* Ink follows the opening directly. Focus and touch expose the same film. */
+@media (pointer: coarse) {
+  .ink-media {
+    mask: none;
+  }
+  .ink-hint {
+    display: none;
+  }
+}
+.motion-paused .ink-media {
+  mask: none;
+}
+.ink-surface:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: -4px;
+}
+
+.collection-scene .collection-card::before,
+.collection-scene .collection-card > img,
+.collection-scene .collection-card > video {
+  display: none;
+}
+.collection-scene .collection-note {
+  position: relative;
+  inset: auto;
+  display: block;
+  max-width: none;
+  margin: 0 0 15px;
+  color: #666;
+  font-size: 13px;
+  transform: none;
+}
+.collection-scene .collection-card-title {
+  position: relative;
+  inset: auto;
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  min-height: 36px;
+  background: transparent;
+  color: #171717;
+  font:
+    600 16px/1.3 Inter,
+    'Noto Sans SC',
+    sans-serif;
+}
+@media (max-width: 620px) {
+  .collection-scene {
+    padding: 200px 18px 18px;
+    min-height: 0;
+    border-radius: 22px;
+  }
+  .collection-companion {
+    inset: 0 0 auto;
+    height: 230px;
+  }
+  .collection-deck {
+    width: 100%;
+    padding-top: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .collection-companion,
+  .collection-card {
+    animation: none;
   }
 }

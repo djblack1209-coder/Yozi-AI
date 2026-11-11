@@ -106,9 +106,10 @@ describe('installed Nodemailer compatibility without sending mail', () => {
     });
     expect(fixture.message.from).toEqual({ name: 'Yozi AI', address: 'fixture@yozi.invalid' });
     expect(fixture.message.to).toEqual([{ address: 'student@yozi-fixture.com', name: '' }]);
-    expect(fixture.message.subject).toBe('【Yozi AI】邮箱验证码');
+    expect(fixture.message.subject).toContain(fixture.row.code);
+    expect(fixture.message.text).toContain(fixture.row.code);
     expect(fixture.message.html).toContain(fixture.row.code);
-    expect(fixture.message.html).toContain('验证码10分钟内有效');
+    expect(fixture.message.html).toContain('10 分钟内有效');
     expect(fixture.envelope).toEqual({ from: 'fixture@yozi.invalid', to: ['student@yozi-fixture.com'] });
     expect(fixture.sends).toBe(1);
     expect(fixture.removed).toEqual([]);
