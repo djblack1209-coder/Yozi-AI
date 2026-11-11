@@ -14,7 +14,6 @@
   const collectionBack = document.querySelector('[data-collection-back]');
   const preview = document.querySelector('.study-preview');
   const features = document.querySelector('.features');
-  const demo = document.querySelector('[data-demo-toggle]');
   const films = [...document.querySelectorAll('video[data-src]')];
   const visibleFilms = new Set();
   const mediaError = document.querySelector('.media-error');
@@ -363,19 +362,6 @@
   collectionBack.addEventListener('click', () => setCollection(false));
   collection.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') setCollection(false);
-  });
-
-  demo.addEventListener('click', () => {
-    const active = features.classList.toggle('is-practising');
-    demo.setAttribute('aria-pressed', String(active));
-    demo.querySelector('[data-before-label]').hidden = active;
-    demo.querySelector('[data-after-label]').hidden = !active;
-    features.querySelectorAll('.feature-still').forEach((photo) => {
-      photo.src = active ? photo.dataset.nightSrc : photo.dataset.daySrc;
-    });
-    features.querySelectorAll('.art-before').forEach((note) => note.setAttribute('aria-hidden', String(active)));
-    features.querySelectorAll('.art-after').forEach((note) => note.setAttribute('aria-hidden', String(!active)));
-    syncFilms();
   });
 
   const expo = document.querySelector('#study-expo');

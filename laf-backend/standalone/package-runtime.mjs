@@ -78,8 +78,8 @@ copyFileSync(
   path.join(output, 'functions/_shared/learning-sympy-worker.py')
 );
 copyFileSync(
-  path.join(backend, 'functions/_shared/yozi-email-logo.gif'),
-  path.join(output, 'functions/_shared/yozi-email-logo.gif')
+  path.join(backend, 'functions/_shared/yozi-email-logo.png'),
+  path.join(output, 'functions/_shared/yozi-email-logo.png')
 );
 const bundle = path.join(output, 'functions/_shared/ts-fsrs-bundle.js');
 // The vendored .ts file is already JavaScript/CommonJS. Copy its bytes unchanged;

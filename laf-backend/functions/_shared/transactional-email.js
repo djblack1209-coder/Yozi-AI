@@ -16,10 +16,9 @@ const heading = (text) =>
   `<h1 style="margin:0 0 22px;font-size:38px;font-weight:600;line-height:1.18;letter-spacing:-1.4px">${text}</h1>`;
 const paragraph = (text) => `<p style="margin:16px 0;font-size:16px;line-height:1.7">${text}</p>`;
 const row = (content, style = '') => `<tr><td class="section" style="padding:38px 40px;${style}">${content}</td></tr>`;
-const logoStyle = 'vertical-align:middle;margin-right:10px;border:0;width:56px;height:56px';
-// Embed the artwork so blocked remote images cannot remove the brand. The GIF
-// stops at its resting portrait; clients without animation show its first frame.
-const brand = `<a href="${SITE}/" style="color:inherit;font-size:22px;font-weight:700;text-decoration:none"><img src="cid:pudding-logo@yozi" width="56" height="56" alt="" style="${logoStyle}">Yozi AI</a>`;
+const logoStyle = 'vertical-align:middle;margin-right:10px;border:0;width:40px;height:40px';
+// The body uses the static master; inbox sender avatars are configured separately.
+const brand = `<a href="${SITE}/" style="color:inherit;font-size:22px;font-weight:700;text-decoration:none"><img src="cid:pudding-logo@yozi" width="40" height="40" alt="" style="${logoStyle}">Yozi AI</a>`;
 const footer = (dark = false) =>
   row(
     `<p style="margin:0 0 14px;font-size:18px;font-weight:600">Yozi AI</p><a href="mailto:yozi@245334.xyz" style="color:inherit">yozi@245334.xyz</a><p style="margin:18px 0 0;font-size:12px;line-height:1.8"><a href="${SITE}/zh/privacy/" style="color:inherit">隐私政策</a>&nbsp;&nbsp; <a href="${SITE}/zh/terms/" style="color:inherit">用户协议</a><br>© 2026 Yozi</p>`,
@@ -27,7 +26,7 @@ const footer = (dark = false) =>
   );
 
 export const EMAIL_REFERENCES = Object.freeze({
-  verification: ['turn-on-automatic-renewal', 'just-one-last-step'],
+  verification: ['uptimerobot-log-in', 'just-one-last-step', 'turn-on-automatic-renewal'],
   welcome: ['get-to-know-these-game-changing-features'],
   subscription: ['turn-on-automatic-renewal'],
   renewal: ['turn-on-automatic-renewal'],
@@ -43,12 +42,12 @@ export function renderTransactionalEmail(kind, data = {}) {
       const code = escape(data.code);
       subject = `【Yozi AI】${data.code} · 邮箱验证码`;
       preview = `${data.code} 是你的 Yozi AI 验证码，10 分钟内有效。`;
-      text = `${preview}\n请在刚才的验证页面输入。请勿把验证码提供给他人。\n如果这不是你的操作，可以忽略此邮件。\n\nYozi AI\nyozi@245334.xyz`;
+      text = `${preview}\n请在刚才的验证页面输入。请勿把验证码提供给他人。\n如果这不是你的操作，可以忽略此邮件。\n\nYozi 官网：${SITE}/\n\nYozi AI\nyozi@245334.xyz`;
       rows =
-        row(brand, 'text-align:center;') +
+        row(brand, 'padding-top:44px;padding-bottom:24px;') +
         row(
-          `${heading('确认你的邮箱')}<p style="margin:0 0 16px;font-size:14px;color:#ffffffc9">验证码</p><div style="padding:22px 12px;border-radius:16px;background:#ffffff;color:#171717;font-size:42px;line-height:1.2;font-weight:700;letter-spacing:9px;font-variant-numeric:tabular-nums">${code}</div>${paragraph('10 分钟内有效。请在刚才的验证页面输入。')}<p style="margin:20px 0 0;font-size:13px;line-height:1.7;color:#ffffffd9">请勿把验证码提供给他人。<br>如果这不是你的操作，可以忽略此邮件。</p>`,
-          `background:${BLUE};color:#ffffff;text-align:center;padding-top:40px;padding-bottom:44px;`
+          `${heading('确认你的邮箱')}${paragraph('请在刚才的验证页面输入以下验证码，10 分钟内有效。')}<p style="margin:34px 0 36px;color:#171717;font-size:42px;line-height:1.2;font-weight:600;letter-spacing:9px;font-variant-numeric:tabular-nums">${code}</p>${button('返回 Yozi 官网', `${SITE}/`)}<p style="margin:22px 0 0;font-size:13px;line-height:1.7"><a href="${SITE}/" style="color:${BLUE}">${SITE}/</a></p><p style="margin:38px 0 0;font-size:13px;line-height:1.7;color:#666666">请勿把验证码提供给他人。如果这不是你的操作，可以忽略此邮件。</p>`,
+          'padding-top:20px;padding-bottom:48px;'
         ) +
         footer();
       break;
@@ -133,10 +132,10 @@ export function renderTransactionalEmail(kind, data = {}) {
     html,
     attachments: [
       {
-        filename: 'pudding-logo.gif',
-        path: fileURLToPath(new URL('./yozi-email-logo.gif', import.meta.url)),
+        filename: 'pudding-logo.png',
+        path: fileURLToPath(new URL('./yozi-email-logo.png', import.meta.url)),
         cid: 'pudding-logo@yozi',
-        contentType: 'image/gif',
+        contentType: 'image/png',
         contentDisposition: 'inline'
       }
     ]

@@ -58,13 +58,15 @@
     "email": {
       "animated": "brand/logo-2026-11-10/yozi-email-logo.gif",
       "poster": "brand/logo-2026-11-10/yozi-email-logo.png",
+      "body": "brand/logo-2026-11-10/yozi-email-logo.png",
+      "animationUsage": "Sender-avatar candidate artwork only; the email body stays static.",
       "source": "brand/logo-2026-11-10/yozi-logo-transparent.png",
       "sizePx": 176,
       "frames": 24,
       "frameDurationMs": 80,
       "plays": 2,
       "motion": "Gentle lift and tilt; first and final frames use the resting portrait.",
-      "embedded": "laf-backend/functions/_shared/yozi-email-logo.gif"
+      "embedded": "laf-backend/functions/_shared/yozi-email-logo.png"
     }
   },
   "previous": "archive/study-index-2026-11-10"

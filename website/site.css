@@ -255,6 +255,11 @@ html:not([lang='en']) [data-copy='en'] {
   object-fit: cover;
   object-position: var(--media-position) 42%;
 }
+.feature-still {
+  height: calc(100% - 88px);
+  object-fit: contain;
+  object-position: center 28%;
+}
 .feature-film {
   opacity: 0;
   pointer-events: none;
@@ -265,7 +270,7 @@ html:not([lang='en']) [data-copy='en'] {
 }
 .feature-scrim {
   pointer-events: none;
-  background: linear-gradient(to top, #f7fbfff2, #f6faffb8 24%, transparent 55%), var(--feature-wash);
+  background: linear-gradient(to top, #f7fbff, #f7fbff 17%, transparent 22%);
 }
 .lesson-notes {
   position: absolute;

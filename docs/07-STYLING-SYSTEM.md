@@ -2,7 +2,7 @@
 
 2026-11-10 品牌定版。官方 Logo 与默认头像、启动海报和陪伴角色统一为橘猫 Pudding。页面使用[透明肖像](../brand/logo-2026-11-10/yozi-logo-transparent.png)。iOS、iPadOS、macOS、watchOS 与自动填底的位置使用[纯蓝版](../brand/logo-2026-11-10/yozi-logo-blue-bg.png)或同色派生版。母版背景实测为 sRGB `#0001BE`。旧标归档，以下日期注明的历史用法供回溯。
 
-2026-11-11 邮件 Logo：验证码与其他产品邮件统一使用当前透明肖像派生的[动图](../brand/logo-2026-11-10/yozi-email-logo.gif)，轻抬与摆动两次后停在原肖像；不播放 GIF 的客户端显示原肖像首帧。[静态图](../brand/logo-2026-11-10/yozi-email-logo.png)保留同帧导出。六类邮件共用一个品牌组件，使用 CID 内嵌图片，避免远程图片被阻拦后丢失 Logo；后端副本与品牌动图逐字节核对，打包时一并携带。
+2026-11-11 邮件更正：六类产品邮件的正文使用当前透明肖像派生的[静态图](../brand/logo-2026-11-10/yozi-email-logo.png)，共用 CID 内嵌品牌组件，打包时携带同一 PNG。验证码邮件沿 UptimeRobot 登录邮件与既定 RGE 参考的简洁留白结构，取消整块蓝底。发件人头像与正文分开配置；[动图](../brand/logo-2026-11-10/yozi-email-logo.gif)只保留为头像候选素材，不宣称标准 BIMI 或 Gmail 支持动画头像。
 
 2026-11-09 22:55 客户更正。界面以客户选定的 React Bits Pro、Recent、Aceternity 与 21st 组件和 Yozi 官网令牌为准，旧 Muse 界面参照仅作历史记录。外壳采用独立可折叠侧栏、固定账户区、内嵌内容框和独立搜索。仅沿用既有学习状态机、目标、资料生成与记忆转文档机制。
 

@@ -73,7 +73,7 @@ function featureCards() {
   return features
     .map(
       (f, i) =>
-        `<article class="feature-card" data-delay="${i * 80}" style="--media-position:${[40, 52, 68][i]}%"><div class="feature-artboard"><img class="feature-still" src="{{base}}/media/feature-day-${i + 1}.jpg" data-day-src="{{base}}/media/feature-day-${i + 1}.jpg" data-night-src="{{base}}/media/feature-night-${i + 1}.jpg" alt="" loading="lazy"><video class="feature-film" data-feature-film data-offset="${i * 2}" data-src="{{base}}/media/yozi-learning-sky.mp4" muted loop playsinline preload="none" aria-hidden="true"></video><div class="feature-scrim" aria-hidden="true"></div><div class="lesson-notes" lang="en"><div class="art-before">${f.front}</div><div class="art-after" aria-hidden="true">${f.back}</div></div><div class="feature-copy"><div class="feature-name">${icon(f.icon)}<h3>${tr(...f.title)}</h3></div>${f.assessment ? `<p>${tr(...f.assessment)}</p>` : ''}</div></div></article>`
+        `<article class="feature-card" data-delay="${i * 80}"><div class="feature-artboard"><img class="feature-still" src="{{base}}/media/feature-day-${i + 2}.jpg" alt="" loading="lazy"><div class="feature-scrim" aria-hidden="true"></div><div class="feature-copy"><div class="feature-name">${icon(f.icon)}<h3>${tr(...f.title)}</h3></div>${f.assessment ? `<p>${tr(...f.assessment)}</p>` : ''}</div></div></article>`
     )
     .join('');
 }
@@ -228,8 +228,6 @@ const words = {
   inkHint: ['划过纸面', 'Trace the paper'],
   mediaError: ['场景加载失败。', 'The scene could not load.'],
   retryMedia: ['重试', 'Retry'],
-  demoBefore: ['看练习结果', 'See the outcomes'],
-  demoAfter: ['返回练习', 'Back to the practice'],
   expoOpen: ['浏览学习路线', 'Explore the study route'],
   expoTitle: ['学习路线', 'Study route'],
   expoHint: ['滚动浏览，或选择一站。', 'Scroll through the route or choose a stop.'],
@@ -323,7 +321,7 @@ export function renderHome(lang = 'zh', root = false) {
     expoBays: features
       .map(
         (feature, index) =>
-          `<div class="expo-bay" data-expo-bay${index === 0 ? ' data-expo-active' : ''}><div class="expo-bay-heading"><h4>${tr(...expoSteps[index])}</h4></div><div class="expo-bay-content"><img src="${base}/media/feature-day-${index + 1}.jpg" alt="" loading="lazy"><p lang="en">${feature.back}</p></div></div>`
+          `<div class="expo-bay" data-expo-bay${index === 0 ? ' data-expo-active' : ''}><div class="expo-bay-heading"><h4>${tr(...expoSteps[index])}</h4></div><div class="expo-bay-content"><img src="${base}/media/feature-day-${index + 2}.jpg" alt="" loading="lazy"><p lang="en">${feature.back}</p></div></div>`
       )
       .join(''),
     expoSteps: expoSteps
@@ -354,7 +352,7 @@ export function renderHome(lang = 'zh', root = false) {
     ]
       .map(
         ([title, [href, note]], i) =>
-          `<a class="collection-card" href="${href}" data-slot="${['left', 'center', 'right'][i]}"><img src="${base}/media/feature-day-${i + 1}.jpg" alt=""><video data-deck-film data-src="${base}/media/yozi-learning-sky.mp4" muted loop playsinline preload="none" aria-hidden="true"></video><span class="collection-note" lang="en" aria-hidden="true">${note}</span><span class="collection-card-title">${tr(...title)}${icon('arrow')}</span></a>`
+          `<a class="collection-card" href="${href}" data-slot="${['left', 'center', 'right'][i]}"><img src="${base}/media/feature-day-${i + 2}.jpg" alt=""><video data-deck-film data-src="${base}/media/yozi-learning-sky.mp4" muted loop playsinline preload="none" aria-hidden="true"></video><span class="collection-note" lang="en" aria-hidden="true">${note}</span><span class="collection-card-title">${tr(...title)}${icon('arrow')}</span></a>`
       )
       .join(''),
     principleSlides: principles

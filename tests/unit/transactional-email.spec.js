@@ -33,11 +33,11 @@ describe('transactional email layouts', () => {
       expect(email.html).toContain('src="cid:pudding-logo@yozi"');
       expect(email.attachments[0]).toMatchObject({
         cid: 'pudding-logo@yozi',
-        contentType: 'image/gif',
+        contentType: 'image/png',
         contentDisposition: 'inline'
       });
       expect(readFileSync(email.attachments[0].path)).toEqual(
-        readFileSync(new URL('../../brand/logo-2026-11-10/yozi-email-logo.gif', import.meta.url))
+        readFileSync(new URL('../../brand/logo-2026-11-10/yozi-email-logo.png', import.meta.url))
       );
       expect(email.text.length).toBeGreaterThan(30);
       expect(
