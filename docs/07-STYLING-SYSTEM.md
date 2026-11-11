@@ -2,6 +2,8 @@
 
 2026-11-10 品牌定版。官方 Logo 与默认头像、启动海报和陪伴角色统一为橘猫 Pudding。页面使用[透明肖像](../brand/logo-2026-11-10/yozi-logo-transparent.png)。iOS、iPadOS、macOS、watchOS 与自动填底的位置使用[纯蓝版](../brand/logo-2026-11-10/yozi-logo-blue-bg.png)或同色派生版。母版背景实测为 sRGB `#0001BE`。旧标归档，以下日期注明的历史用法供回溯。
 
+2026-11-11 邮件 Logo：验证码与其他产品邮件统一使用当前透明肖像派生的[动图](../brand/logo-2026-11-10/yozi-email-logo.gif)，轻抬与摆动两次后停在原肖像；Outlook 与支持减少动态效果的客户端使用同帧[静态图](../brand/logo-2026-11-10/yozi-email-logo.png)。两种图均透明，由官网同源提供；六类邮件共用一个品牌组件。
+
 2026-11-09 22:55 客户更正。界面以客户选定的 React Bits Pro、Recent、Aceternity 与 21st 组件和 Yozi 官网令牌为准，旧 Muse 界面参照仅作历史记录。外壳采用独立可折叠侧栏、固定账户区、内嵌内容框和独立搜索。仅沿用既有学习状态机、目标、资料生成与记忆转文档机制。
 
 2026-11-06 官网重设计以 Yoga Coach 完整原词为准：浅蓝渐变 `#d5effd → #aedcf9 → #8cd0f7`、本地 Anton 大字、Condiment 强调字与 Inter／中文字体；客户已撤销黑白禁令，按内容需要使用深浅色。Hero 采用 Cursor Follow 的暂停视频、相对指针拖动与连续定位，并提供键盘／触摸滑杆；Yoga 两幕切换、返回与叠卡保留，八区块组合后正常滚动。Interior Features 四卡、Arceage 理念轮播、Rocket 费用与分类 FAQ、Vela 三卡 CTA 和 Stark 页脚沿各自原词结构与交互接入统一体系。仅官网采用，App 规则不变；透明品牌标记（2026-11-07 起为 Study Index，取代小猫母版）、双语、真实 2.2.0 下载与权限／费用边界保持。参考角色影片未直接分发，使用项目自制的蓝色书页／铅笔场景；来源、适配差异、实际验证及发布状态见本轮结果（本机 `YOZI-WEBSITE-REDESIGN-RESULT-2026-11-06.md`）。

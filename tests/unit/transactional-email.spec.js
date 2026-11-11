@@ -28,6 +28,10 @@ describe('transactional email layouts', () => {
       });
       expect(email.html).toContain('<html lang="zh-CN">');
       expect(email.html).toContain('yozi@245334.xyz');
+      expect(email.html).toContain('https://yozi.bot.cd/brand/email-logo.gif');
+      expect(email.html).toContain('https://yozi.bot.cd/brand/email-logo.png');
+      expect(email.html).toContain('@media(prefers-reduced-motion:reduce)');
+      expect(email.html).toContain('<!--[if mso]>');
       expect(email.text.length).toBeGreaterThan(30);
       expect(
         [...email.html.matchAll(/(?:src|href)="(https:[^"]+)/g)].every(([, url]) =>

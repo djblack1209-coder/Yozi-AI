@@ -54,7 +54,17 @@
       "adaptiveForegroundPx": [108, 162, 216, 324, 432],
       "adaptiveResources": "brand/logo-2026-11-10/android-adaptive/res"
     },
-    "store": "brand/logo-2026-11-10/store"
+    "store": "brand/logo-2026-11-10/store",
+    "email": {
+      "animated": "brand/logo-2026-11-10/yozi-email-logo.gif",
+      "poster": "brand/logo-2026-11-10/yozi-email-logo.png",
+      "source": "brand/logo-2026-11-10/yozi-logo-transparent.png",
+      "sizePx": 176,
+      "frames": 24,
+      "frameDurationMs": 80,
+      "plays": 2,
+      "motion": "Gentle lift and tilt; first and final frames use the resting portrait."
+    }
   },
   "previous": "archive/study-index-2026-11-10"
 }
