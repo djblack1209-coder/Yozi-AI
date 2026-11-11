@@ -1388,6 +1388,51 @@ const streamBody = (id = 'stream-fixture') => ({
   messages: [{ role: 'user', content: '理解函数' }],
   learningContext: { owner: 'u1' }
 });
+it('forwards only the selected linked memory data to the paid-provider boundary and preserves owner isolation', async () => {
+  await streamProfile(false);
+  const memory = {
+    contract: 'learning-assistant-memory-v1',
+    index: '[当前目标](goals/session.md)',
+    reads: [
+      {
+        path: 'notes/preference.md',
+        content: '先给例子再讲规则',
+        trust: 'verified',
+        basis: 'self_report',
+        sourceRefs: ['accepted-preference'],
+        links: [],
+        unexpected: 'not-forwarded'
+      }
+    ],
+    unexpected: 'not-forwarded'
+  };
+  const body = { ...streamBody('linked-memory'), learningContext: { owner: 'u1', memory } };
+  expect(await ai(context(body))).toMatchObject({ success: true });
+  const system = String(vi.mocked(callLearningProvider).mock.calls[0][1][0].content);
+  expect(system).toContain('先给例子再讲规则');
+  expect(system).toContain('accepted-preference');
+  expect(system).toContain('不表示已掌握');
+  expect(system).not.toContain('not-forwarded');
+  expect(
+    await ai(context({ ...body, requestId: 'wrong-owner', learningContext: { owner: 'u2', memory } }))
+  ).toMatchObject({ code: 403, success: false });
+  expect(callLearningProvider).toHaveBeenCalledTimes(1);
+});
+
+it('rejects malformed memory at the existing request boundary before inference', async () => {
+  await streamProfile(false);
+  const result = await ai(
+    context({
+      ...streamBody('invalid-memory'),
+      learningContext: {
+        owner: 'u1',
+        memory: { contract: 'learning-assistant-memory-v1', index: 'index', reads: [{ trust: 'official' }] }
+      }
+    })
+  );
+  expect(result.success).toBe(false);
+  expect(callLearningProvider).not.toHaveBeenCalled();
+});
 const streamCompleted = {
   content: '{"message":"分步讲解","tools":[]}',
   actualModel: 'explicit-test-id',

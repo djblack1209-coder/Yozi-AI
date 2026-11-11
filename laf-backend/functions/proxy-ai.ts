@@ -1,4 +1,5 @@
 import { personalCorpusInference } from './_shared/learning-writing-corpus.js';
+import { ASSISTANT_MEMORY_PROMPT, normalizeAssistantMemoryContext } from './_shared/learning-assistant-memory.js';
 import {
   normalizeWorkflowEnvelope,
   requestsLearningWorkflow,
@@ -466,6 +467,9 @@ export async function runLearningModelTask(
                 task: normalizeLearningTask(context.task),
                 capabilities: hostCapabilities,
                 snapshot: normalizeLearningSnapshot(context.snapshot),
+                ...(context.memory === undefined || body.feedbackAttemptId !== undefined || image
+                  ? {}
+                  : { memory: normalizeAssistantMemoryContext(context.memory) }),
                 strategy: context.strategy,
                 question: context.question,
                 attempt: context.attempt,
@@ -646,7 +650,13 @@ export async function runLearningModelTask(
             : [])
         ]
       : [
-          { role: 'system', content: system + coachRepairPrompt(options.repair?.feedback || null) },
+          {
+            role: 'system',
+            content:
+              system +
+              (context.memory && !gradingCoach ? '\n' + ASSISTANT_MEMORY_PROMPT : '') +
+              coachRepairPrompt(options.repair?.feedback || null)
+          },
           ...(gradingCoach ? [{ role: 'user', content: gradingCoach.input }] : body.messages)
         ];
     let workflowContext: ReturnType<typeof workflowStageContext> | null = null;

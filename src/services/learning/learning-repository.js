@@ -4,6 +4,7 @@ import { storageService } from '../storageService.js';
 import { getUserId, captureSession, assertSession } from '../auth-storage.js';
 import {
   emptyLearningState,
+  dayKey,
   applyLearningOperation,
   createLearningOperationBatch,
   assert,
@@ -21,8 +22,15 @@ import {
 import { createHistoryStorage } from './history-storage.js';
 import { createHistoryPackage } from '../../../laf-backend/functions/_shared/learning-history.js';
 import { createLearningArtifacts } from './learning-artifacts.js';
+import {
+  ASSISTANT_MEMORY_CONTRACT,
+  reconcileAssistantMemory,
+  retrieveAssistantMemory,
+  readAssistantMemoryDocument
+} from '../../../laf-backend/functions/_shared/learning-assistant-memory.js';
 
 export const LEARNING_KEY = 'conversation_learning_v1';
+export const ASSISTANT_MEMORY_KEY = `${LEARNING_KEY}_assistant_memory`;
 export function createLearningRepository(
   storage = storageService,
   owner = () => getUserId() || 'guest',
@@ -89,6 +97,9 @@ export function createLearningRepository(
   }
   function invalidateLifecycle(advance = true) {
     observeLifecycle();
+    // Derived documents must not retain text removed by deletion, restore or sync.
+    if (storage.get(ASSISTANT_MEMORY_KEY, null) !== null)
+      assert(storage.remove(ASSISTANT_MEMORY_KEY, true), 'STORAGE_FAILED', '旧记忆副本清理失败，请重试');
     const generation =
       globalThis.crypto?.randomUUID?.() ||
       `life_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}_${Math.random().toString(36).slice(2)}`;
@@ -188,6 +199,53 @@ export function createLearningRepository(
   const repository = {
     read,
     assertWriteAccess,
+    readAssistantMemory({ at = Date.now() } = {}) {
+      const state = read();
+      const saved = storage.get(ASSISTANT_MEMORY_KEY, null);
+      if (
+        saved?.contract === ASSISTANT_MEMORY_CONTRACT &&
+        saved.owner === state.owner &&
+        saved.sourceRevision === state.revision &&
+        Array.isArray(saved.notes) &&
+        Array.isArray(saved.documents) &&
+        saved.studyDay === dayKey(at, state.timezone) &&
+        saved.reconciledAt + 86400000 > at
+      )
+        return JSON.parse(JSON.stringify(saved));
+      // Reads can reconstruct without acquiring a write lease or gating learning.
+      return reconcileAssistantMemory(state, saved, { at });
+    },
+    reconcileAssistantMemory({ at = Date.now(), force = false } = {}) {
+      const state = read();
+      const saved = storage.get(ASSISTANT_MEMORY_KEY, null);
+      if (
+        !force &&
+        saved?.contract === ASSISTANT_MEMORY_CONTRACT &&
+        saved.owner === state.owner &&
+        saved.sourceRevision === state.revision &&
+        Array.isArray(saved.notes) &&
+        Array.isArray(saved.documents) &&
+        saved.studyDay === dayKey(at, state.timezone) &&
+        saved.reconciledAt + 86400000 > at
+      )
+        return JSON.parse(JSON.stringify(saved));
+      const next = reconcileAssistantMemory(state, saved, { at });
+      assertWriteAccess();
+      assert(read().revision === state.revision, 'CONFLICT', '记忆整理期间记录已更新');
+      assert(storage.save(ASSISTANT_MEMORY_KEY, next, true), 'STORAGE_FAILED', '记忆文档未保存，原学习记录保持');
+      assert(
+        JSON.stringify(storage.get(ASSISTANT_MEMORY_KEY, null)) === JSON.stringify(next),
+        'STORAGE_FAILED',
+        '记忆文档读回失败，原学习记录保持'
+      );
+      return next;
+    },
+    readMemoryDocument(path) {
+      return readAssistantMemoryDocument(this.readAssistantMemory(), path);
+    },
+    assistantMemoryContext(options) {
+      return retrieveAssistantMemory(this.readAssistantMemory(), read(), options);
+    },
     lifecycleRevision: observeLifecycle,
     lifecycleContext: () => [owner(), observeLifecycle()],
     notificationConsentContext: () => [owner(), lifecycleMarker()?.generation || 'initial'],
@@ -590,7 +648,14 @@ export function createLearningRepository(
       assertWriteAccess();
       preparedHistory = null;
       invalidateLifecycle();
-      for (const suffix of ['', '_recovery', '_migration_backup', '_sync_conflict', '_privacy_pending']) {
+      for (const suffix of [
+        '',
+        '_recovery',
+        '_migration_backup',
+        '_sync_conflict',
+        '_privacy_pending',
+        '_assistant_memory'
+      ]) {
         assert(storage.remove(`${LEARNING_KEY}${suffix}`, true), 'STORAGE_FAILED', '删除失败，请重试');
       }
       assert(storage.clearHistoryCatalog(), 'STORAGE_FAILED', '历史目录清理待重试');

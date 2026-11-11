@@ -158,8 +158,18 @@ export default {
       if (!isSessionUnavailable(error)) logger.warn('[App] 主题恢复失败');
     }
     notificationRuntime?.show();
+    try {
+      useConversationLearningStore(this.$pinia).resumeMemory();
+    } catch {
+      /* Account initialization will schedule its own reconciliation. */
+    }
   },
   onHide() {
+    try {
+      useConversationLearningStore(this.$pinia).pauseMemory();
+    } catch {
+      /* Account disposal has already cancelled its timer. */
+    }
     notificationRuntime?.hide();
     // 应用进入后台 — uni-app 生命周期钩子
     // 当前无需额外操作：主题/用户状态已在各自 store 中实时持久化

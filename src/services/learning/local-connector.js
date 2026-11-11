@@ -346,6 +346,7 @@ export async function callLocalConnector(connection, input, options = {}) {
       goal: context.goal,
       strategy: context.strategy,
       profile: context.profile,
+      memory: context.memory,
       question: context.question,
       attempt: context.attempt,
       summary: context.summary

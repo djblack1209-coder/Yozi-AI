@@ -125,6 +125,7 @@ import {
 import { computed, ref, shallowRef, onScopeDispose, watch } from 'vue';
 import { pendingUploadJournal } from '@/services/learning/pending-upload-journal.js';
 import { learningRepository, LEARNING_KEY } from '@/services/learning/learning-repository.js';
+import { createLearningMemoryReconciler } from '@/services/learning/learning-memory-reconciler.js';
 import {
   getUserId,
   getToken,
@@ -249,6 +250,8 @@ export const CONVERSATION_ACTION_EFFECTS = Object.freeze({
   coachPractice: 'write',
   ensureSessionCurrent: 'write',
   reloadRecords: 'read',
+  resumeMemory: 'read',
+  pauseMemory: 'read',
   searchRecords: 'read',
   openRecord: 'read',
   startFocusedStudy: 'write',
@@ -404,6 +407,8 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   };
   let recordsInitialized = false;
   const state = ref(emptyLearningState(boundSession?.owner || 'guest'));
+  let memoryReconciler = null;
+  const memoryStatus = shallowRef({ phase: 'pending' });
   let notificationObserver = null,
     notificationRefreshTimer = null;
   function attachNotifications(observer) {
@@ -1417,6 +1422,8 @@ export const useConversationLearningStore = defineStore('conversation-learning',
   const teachingProgress = computed(() => observeTeaching(state.value));
   const currentPlan = computed(() => state.value.plans.find((p) => p.id === summary.value.tasks.planId));
   function resetAccountResources() {
+    memoryReconciler?.cancel();
+    memoryStatus.value = { phase: 'pending' };
     accountRead.value = { phase: 'pending', context: null };
     accountReadPromise = null;
     sessionRevision++;
@@ -1549,6 +1556,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
       recordsInitialized = true;
       recordSnapshotContext.value = recordContext();
       recordReadState.value = 'ready';
+      memoryReconciler?.schedule();
       return state.value;
     } catch (cause) {
       if (cause.code === 'SESSION_UNAVAILABLE') {
@@ -1667,7 +1675,32 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     reloadRecords();
   };
   if (typeof window !== 'undefined') window.addEventListener('storage', storageChanged);
+  memoryReconciler = createLearningMemoryReconciler({
+    context: recordContext,
+    ready: () => recordReadState.value === 'ready' && !busy.value && !resettingSession,
+    reconcile: async (isCurrent) => {
+      // First activation may precede the existing browser write lease. Await it
+      // once, and recheck account/lifecycle/cancellation before writing memory.
+      await learningWriteLease.waitUntilWritable(state.value.owner);
+      assert(isCurrent(), 'CONTEXT_CHANGED', '记忆整理已取消或学习记录已变化');
+      return learningRepository.reconcileAssistantMemory();
+    },
+    onResult: (memory) => {
+      memoryStatus.value = {
+        phase: 'ready',
+        sourceRevision: memory.sourceRevision,
+        reconciledAt: memory.reconciledAt,
+        reconciliation: memory.reconciliation,
+        growth: memory.growth
+      };
+    },
+    onError: (error) => {
+      memoryStatus.value = { phase: 'error', code: error.code || 'STORAGE_FAILED' };
+    }
+  });
+  watch([busy, () => state.value.revision, () => state.value.owner], () => memoryReconciler.schedule());
   onScopeDispose(() => {
+    memoryReconciler.dispose();
     recordSearch.clear();
     if (notificationRefreshTimer !== null) clearTimeout(notificationRefreshTimer);
     notificationObserver?.dispose();
@@ -2061,6 +2094,18 @@ export const useConversationLearningStore = defineStore('conversation-learning',
           previewReply(requestController, text);
         }
       };
+      const learningContext = {
+        owner,
+        goal: active.value.goal,
+        snapshot: compactLearningProgress(state.value, conversationId),
+        coach: request.request
+      };
+      if (!recovering && !['feedback', 'essay', 'summary'].includes(phase))
+        learningContext.memory = learningRepository.assistantMemoryContext({
+          conversationId,
+          query: request.request.input,
+          availableChars: Math.max(0, 12000 - JSON.stringify(learningContext).length - ',"memory":'.length)
+        });
       const result = recovering
         ? await fetchLearningResult(request.id, options)
         : await generateLearningTurn(
@@ -2070,12 +2115,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
               requestBinding: request.binding,
               shareConsent: true,
               messages: [{ role: 'user', content: request.request.input }],
-              learningContext: {
-                owner,
-                goal: active.value.goal,
-                snapshot: compactLearningProgress(state.value, conversationId),
-                coach: request.request
-              }
+              learningContext
             },
             options
           );
@@ -3654,6 +3694,15 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     };
     controller = requestController;
     try {
+      if (!request.feedbackAttemptId && !options.visual && !request.workflowContract)
+        payload.learningContext.memory = learningRepository.assistantMemoryContext({
+          conversationId,
+          query: raw,
+          availableChars: Math.max(
+            0,
+            (mode === 'local' ? 8000 : 12000) - JSON.stringify(payload.learningContext).length - 16
+          )
+        });
       busy.value = true;
       streamPreview.value = '';
       workflowContinuation.value = null;
@@ -5860,6 +5909,9 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     accountRecordState,
     readAccountRecords,
     reloadRecords,
+    memoryStatus,
+    resumeMemory: () => memoryReconciler.resume(),
+    pauseMemory: () => memoryReconciler.pause(),
     searchRecords,
     recordFilters: RECORD_SEARCH_FILTERS,
     openRecord,
