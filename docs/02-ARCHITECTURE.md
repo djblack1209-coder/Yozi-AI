@@ -74,4 +74,6 @@ H5 fetch Reader及微信原生RequestTask分块各自适配；当前App明确不
 
 `mail_pool_usage` 按 UTC 原子预留每日／每月额度并轮换供应商；接入前的实际用量作为初始基线。额度拒绝切换下一通道，无法确认接收结果时保留待确认收据，不跨通道盲目重发。`mail_pool_receipts` 只保存产品、服务、状态、时间和幂等指纹，不保存收件人、验证码或正文。
 
+消费者接入后，回退顺序为先恢复 Lazy 的发送适配与受保护配置，再恢复 Yozi 的旧后台／配置；官网可独立回退。Lazy 线上当前只发布发送函数和既有认证钩子，公开密码重置路由不在本次发布范围。
+
 官网 `/ops/` 使用既有管理员鉴权读取 `/operations`，密钥仅保留在页面内存。账户查询使用安全字段投影，订阅服务按当前未启用状态展示。`operations_requests`、`operations_visits`、`operations_activity`、`operations_maintenance` 分别记录归一化接口用量、无 Cookie 的首页／账号访问计数、已认证账号最近活动及实际启动记录；异常沿用 `security_audit_logs`。采集前的数据保持「未记录」。
