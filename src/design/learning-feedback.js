@@ -155,8 +155,8 @@ export function playLearningFeedback(kind, target) {
       audio.volume = 0.2;
       audio.src = recipe.sound;
       audio.play();
-    } else if (typeof Audio !== 'undefined') {
-      audio = new Audio(recipe.sound);
+    } else if (typeof globalThis.Audio === 'function') {
+      audio = new globalThis.Audio(recipe.sound);
       audio.volume = 0.2;
       void audio.play().catch(() => undefined);
     } else if (typeof uni.createInnerAudioContext === 'function') {
