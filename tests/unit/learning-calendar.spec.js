@@ -1,3 +1,16 @@
+// This fixture owns calendar/queue timers. Keep the real, independently tested
+// daily memory controller paused so global fake-clock assertions measure this fixture.
+vi.mock('@/services/learning/learning-memory-reconciler.js', async (importOriginal) => {
+  const original = await importOriginal();
+  return {
+    ...original,
+    createLearningMemoryReconciler(options) {
+      const controller = original.createLearningMemoryReconciler(options);
+      controller.pause();
+      return controller;
+    }
+  };
+});
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { computed } from 'vue';

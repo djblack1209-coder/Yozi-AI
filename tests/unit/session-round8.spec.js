@@ -90,7 +90,9 @@ it('writes-08-01: unavailable analytics cannot abort core launch and show retrie
   expect(
     [...analytics.eventQueue, ...storageService.get('analytics_uploaded', [])].some((x) => x.id === prior.id)
   ).toBe(true);
+  const timersBeforeUnmount = vi.getTimerCount();
   App.beforeUnmount.call(app);
+  expect(vi.getTimerCount()).toBe(timersBeforeUnmount - 1);
 });
 it('regress-8-02: initially unread precheck binds after recovery and refreshes', async () => {
   await tokenRefreshPlugin.saveTokens('fixture-access', 'fixture-refresh', 240);

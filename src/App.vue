@@ -175,6 +175,11 @@ export default {
     // 当前无需额外操作：主题/用户状态已在各自 store 中实时持久化
   },
   beforeUnmount() {
+    try {
+      useConversationLearningStore(this.$pinia).pauseMemory();
+    } catch {
+      /* Account disposal has already cancelled its timer. */
+    }
     clearTimeout(startupTimer);
     startupTimer = null;
     startupTasks.clear();
