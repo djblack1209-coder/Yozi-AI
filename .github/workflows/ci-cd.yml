@@ -63,7 +63,7 @@ jobs:
           curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
             --retry 2 --connect-timeout 15 --max-time 90 \
             "https://yozi.bot.cd/downloads/$archive" --output "$staged"
-          printf '%s  %s\n' 'f3fa6ea8910a25321410186b9667a6eb4899ad6f6188f22e4cc9153714ba8792' "$staged" | sha256sum -c -
+          printf '%s  %s\n' '19b8afa7d77a4defa0c6ed9d1b0235d91faed4bebb3aa5dd733681ab50267858' "$staged" | sha256sum -c -
           mv "$staged" "public/downloads/$archive"
 
       - name: Run Laf source audit
