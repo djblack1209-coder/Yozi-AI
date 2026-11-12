@@ -136,9 +136,14 @@ export function websiteLaunchPlugin(enabled) {
         } else if (BRAND_FILES[route.slice(1)]) {
           res.setHeader(
             'Content-Type',
-            { svg: 'image/svg+xml', ico: 'image/x-icon', png: 'image/png', jpg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' }[
-              route.split('.').pop()
-            ]
+            {
+              svg: 'image/svg+xml',
+              ico: 'image/x-icon',
+              png: 'image/png',
+              jpg: 'image/jpeg',
+              gif: 'image/gif',
+              webp: 'image/webp'
+            }[route.split('.').pop()]
           );
           fs.createReadStream(brandSource(route.slice(1))).pipe(res);
         } else next();
