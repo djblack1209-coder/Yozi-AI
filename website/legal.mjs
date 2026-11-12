@@ -19,7 +19,7 @@ const copy = {
     toc: "目录",
     contact: "联系我们",
     skip: "跳至正文",
-    language: ["en", "EN", "Switch to English"],
+    language: ["en", "EN", "切换到英语"],
   },
   en: {
     privacy: ["Privacy Policy", "How Yozi AI handles your personal information, study records and API keys."],

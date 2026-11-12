@@ -256,21 +256,20 @@ html:not([lang='en']) [data-copy='en'] {
   object-position: var(--media-position) 42%;
 }
 .feature-still {
-  height: calc(100% - 88px);
-  object-fit: contain;
-  object-position: center 28%;
+  object-fit: cover;
+  object-position: center;
 }
 .feature-film {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.24s var(--ease);
 }
-.features.is-practising .feature-film[data-playing] {
+.feature-film[data-playing] {
   opacity: 1;
 }
 .feature-scrim {
   pointer-events: none;
-  background: linear-gradient(to top, #f7fbff, #f7fbff 17%, transparent 22%);
+  background: linear-gradient(to top, #f7fbff 24%, #f7fbffe8 30%, transparent 43%);
 }
 .lesson-notes {
   position: absolute;

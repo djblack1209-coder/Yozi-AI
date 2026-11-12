@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { legalFooterLinks } from './legal.mjs';
 import { brandUrl } from './brand.mjs';
 import { buildSync } from 'esbuild';
 import { BOARD_ICONS } from '../src/components/base/base-icon/board-icons.js';
 
-const source = (name) => readFileSync(new URL(name, import.meta.url), 'utf8');
+const read = (name, encoding) => readFileSync(new URL(name, import.meta.url), encoding);
+const source = (name) => read(name, 'utf8');
 export const download = 'Yozi-AI-2.3.0-macOS-arm64.zip';
 const metadata = {
   zh: {
@@ -19,6 +21,7 @@ const metadata = {
 };
 export const WEBSITE_TITLE = metadata.en.title;
 const tr = (zh, en) => `<span data-copy="zh" lang="zh-CN">${zh}</span><span data-copy="en" lang="en">${en}</span>`;
+const mediaUrl = (name, base) => `${base}/media/${name}?v=${createHash('sha256').update(read(`media/${name}`)).digest('hex').slice(0, 8)}`;
 const label = (lang, zh, en) => `data-label-zh="${zh}" data-label-en="${en}" aria-label="${lang === 'en' ? en : zh}"`;
 const paths = {
   arrow: '<path d="M7 17 17 7M7 7h10v10"/>',
@@ -44,19 +47,21 @@ const symbols = `<svg class="symbols" aria-hidden="true"><defs>${Object.entries(
   .map(([name, path]) => `<symbol id="i-${name}" viewBox="0 0 24 24">${path}</symbol>`)
   .join('')}</defs></svg>`;
 const sample = {
-  attempt: 'I pay attention <span class="underlined">on</span> the details.',
-  correction: 'I pay attention <del>on</del> <ins>to</ins> the details.',
-  review: 'What follows <em>pay attention</em>?'
+  attempt: tr('三角形的内角和是 <span class="underlined">360°</span>。', 'I pay attention <span class="underlined">on</span> the details.'),
+  correction: tr('三角形的内角和是 <del>360°</del> <ins>180°</ins>。', 'I pay attention <del>on</del> <ins>to</ins> the details.'),
+  review: tr('三角形的内角和是多少？', 'What follows <em>pay attention</em>?')
 };
 const features = [
   {
     icon: 'pen',
+    media: 'yozi-glass-route',
     title: ['用自己的资料练习', 'Practise with your material'],
-    front: 'Use <em>pay attention</em> in a sentence.',
+    front: tr('三角形的内角和是多少？', 'Use <em>pay attention</em> in a sentence.'),
     back: sample.attempt
   },
   {
     icon: 'layers',
+    media: 'yozi-study-console',
     title: ['看懂每次反馈', 'Make sense of feedback'],
     assessment: ['AI 评估，非官方评分。', 'AI assessment for practice.'],
     front: sample.attempt,
@@ -64,9 +69,10 @@ const features = [
   },
   {
     icon: 'repeat',
+    media: 'yozi-neon-field',
     title: ['下次接着学', 'Pick up where you left off'],
     front: sample.review,
-    back: 'pay attention <ins>to</ins> + noun'
+    back: tr('三角形的内角和是 <ins>180°</ins>。', 'pay attention <ins>to</ins> + noun')
   }
 ];
 function studyImage(src, className = '') {
@@ -78,7 +84,7 @@ function featureCards() {
   return features
     .map(
       (f, i) =>
-        `<article class="feature-card" data-delay="${i * 80}"><div class="feature-artboard">${studyImage(`{{base}}/media/feature-day-${i + 2}.jpg`, 'feature-still')}<div class="feature-scrim" aria-hidden="true"></div><div class="feature-copy"><div class="feature-name">${icon(f.icon)}<h3>${tr(...f.title)}</h3></div>${f.assessment ? `<p>${tr(...f.assessment)}</p>` : ''}</div></div></article>`
+        `<article class="feature-card" data-delay="${i * 80}"><div class="feature-artboard">${studyImage(mediaUrl(`${f.media}.webp`, '{{base}}'), 'feature-still')}<video class="feature-film" data-feature-film data-src="${mediaUrl(`${f.media}.mp4`, '{{base}}')}" data-poster="${mediaUrl(`${f.media}.webp`, '{{base}}')}" muted loop playsinline preload="none" aria-hidden="true"></video><div class="feature-scrim" aria-hidden="true"></div><div class="feature-copy"><div class="feature-name">${icon(f.icon)}<h3>${tr(...f.title)}</h3></div>${f.assessment ? `<p>${tr(...f.assessment)}</p>` : ''}</div></div></article>`
     )
     .join('');
 }
@@ -224,7 +230,7 @@ const words = {
   previewReview: ['复习', 'Review'],
   previewAttempt: ['首次作答', 'First attempt'],
   previewAssessment: ['AI 反馈', 'AI feedback'],
-  previewExplanation: ['记住搭配：pay attention to + 名词。', 'Remember the pattern: pay attention to + noun.'],
+  previewExplanation: ['记住：三角形的内角和是 180°。', 'Remember the pattern: pay attention to + noun.'],
   startLearning: ['看三张卡', 'See all three cards'],
   backToStart: ['返回预览', 'Back to preview'],
   collectionTitle: ['一次练习的三张卡', 'One practice, three cards'],
@@ -241,6 +247,13 @@ const words = {
   keyAction: ['了解模型连接', 'About model connections'],
   faqTitle: ['常见问题', 'Frequently asked questions'],
   signupLink: ['注册与登录', 'Sign up or sign in'],
+  signupTitle: ['注册或登录 Yozi。', 'Sign up or sign in to Yozi.'],
+  signupBody: ['安装 Yozi 后注册或登录，再接入自己的 API，选择可用模型。', 'Install Yozi to sign up or sign in. Then connect your own API and choose a model.'],
+  pricingTitle: ['套餐', 'Plans'],
+  pricingPoints: ['每月学习点数用于讲解、练习和 AI 反馈。各套餐的点数额度将在开放订阅前公布。', 'Monthly study points fund explanations, practice and AI feedback. Point allowances will be announced before subscriptions open.'],
+  pricingRules: ['DeepSeek Flash 按 1 倍、Pro 模型按 3.5 倍扣点。点数不结转。加油包：¥10／¥30。不设免费档。', 'DeepSeek Flash 1× · Pro model 3.5×. Points do not roll over. Top-ups: ¥10 / ¥30. No free tier.'],
+  pricingAvailability: ['订阅和加油包尚未开售。目前可使用自己的 API 接入应用。', 'Subscriptions and top-ups are not on sale yet. Bring your own API to use the app today.'],
+  appleChip: ['Apple 芯片', 'Apple silicon'],
   downloadOne: ['带上 Yozi。', 'TAKE YOZI'],
   downloadTwo: ['接着学。', 'WITH YOU.'],
   downloadMac: ['下载 Mac 版', 'Download for Mac'],
@@ -287,6 +300,7 @@ export function renderHome(lang = 'zh', root = false) {
   return fill(source('index.html'), {
     ...metadata[lang],
     base,
+    heroPoster: mediaUrl('yozi-pudding-hero-poster.webp', base),
     brandMark: brandUrl('brand/mark-small.webp', base),
     brandMarkReverse: brandUrl('brand/mark-small.webp', base),
     favicon: brandUrl('favicon.svg'),
@@ -320,7 +334,7 @@ export function renderHome(lang = 'zh', root = false) {
     expoBays: features
       .map(
         (feature, index) =>
-          `<div class="expo-bay" data-expo-bay${index === 0 ? ' data-expo-active' : ''}><div class="expo-bay-heading"><h4>${tr(...expoSteps[index])}</h4></div><div class="expo-bay-content">${studyImage(`${base}/media/feature-day-${index + 2}.jpg`)}<p lang="en">${feature.back}</p></div></div>`
+          `<div class="expo-bay" data-expo-bay${index === 0 ? ' data-expo-active' : ''}><div class="expo-bay-heading"><h4>${tr(...expoSteps[index])}</h4></div><div class="expo-bay-content">${studyImage(`${base}/media/feature-day-${index + 2}.jpg`)}<p>${feature.back}</p></div></div>`
       )
       .join(''),
     expoSteps: expoSteps
@@ -332,7 +346,7 @@ export function renderHome(lang = 'zh', root = false) {
     expoNotes: features
       .map(
         (feature, index) =>
-          `<article id="expo-note-${index}" class="expo-note" data-expo-note${index === 0 ? '' : ' hidden'}><h4>${tr(...feature.title)}</h4><p lang="en">${feature.back}</p>${feature.assessment ? `<small>${tr(...feature.assessment)}</small>` : ''}</article>`
+          `<article id="expo-note-${index}" class="expo-note" data-expo-note${index === 0 ? '' : ' hidden'}><h4>${tr(...feature.title)}</h4><p>${feature.back}</p>${feature.assessment ? `<small>${tr(...feature.assessment)}</small>` : ''}</article>`
       )
       .join(''),
     collectionCards: [
@@ -351,7 +365,7 @@ export function renderHome(lang = 'zh', root = false) {
     ]
       .map(
         ([title, [href, note]], i) =>
-          `<a class="collection-card" href="${href}" data-slot="${['left', 'center', 'right'][i]}">${studyImage(`${base}/media/feature-day-${i + 2}.jpg`)}<video data-deck-film data-src="${base}/media/yozi-glass-route.mp4" muted loop playsinline preload="none" aria-hidden="true"></video><span class="collection-note" lang="en" aria-hidden="true">${note}</span><span class="collection-card-title">${tr(...title)}${icon('arrow')}</span></a>`
+          `<a class="collection-card" href="${href}" data-slot="${['left', 'center', 'right'][i]}">${studyImage(`${base}/media/feature-day-${i + 2}.jpg`)}<video data-deck-film data-src="${base}/media/yozi-glass-route.mp4" muted loop playsinline preload="none" aria-hidden="true"></video><span class="collection-note" aria-hidden="true">${note}</span><span class="collection-card-title">${tr(...title)}${icon('arrow')}</span></a>`
       )
       .join(''),
     principleSlides: principles
@@ -375,23 +389,23 @@ export function renderHome(lang = 'zh', root = false) {
     priceCards: [
       {
         name: 'Plus', amount: 19,
-        purpose: 'A steady daily habit',
-        description: 'For short daily practice and follow-up questions.'
+        purpose: ['养成每日学习习惯', 'A steady daily habit'],
+        description: ['适合每天短时练习和随时追问。', 'For short daily practice and follow-up questions.']
       },
       {
         name: 'Pro', amount: 39, featured: true,
-        purpose: 'Room to go deeper',
-        description: 'For regular training, detailed feedback and steady preparation.'
+        purpose: ['让学习更进一步', 'Room to go deeper'],
+        description: ['适合规律练习、详细反馈和持续学习。', 'For regular training, detailed feedback and steady preparation.']
       },
       {
         name: 'Max', amount: 68,
-        purpose: 'For intensive study',
-        description: 'For frequent questions, intensive practice and longer study sessions.'
+        purpose: ['专注高强度学习', 'For intensive study'],
+        description: ['适合频繁提问、密集练习和长时间学习。', 'For frequent questions, intensive practice and longer study sessions.']
       }
     ]
       .map(
         ({ name, amount, featured, purpose, description }, i) =>
-          `<article class="price-card${featured ? ' featured' : ''} reveal" data-delay="${i * 80}"><div class="price-heading"><h3>${name}</h3>${featured ? '<span class="price-badge">Recommended</span>' : ''}</div><p class="price-purpose">${purpose}</p><div class="price-month"><data class="price-value" value="${amount}">¥${amount}</data><span class="price-unit">/ month</span></div><p class="price-annual">Approx. ¥${amount * 10} / year</p><p class="price-description">${description}</p><ul class="price-benefits"><li>${icon('check')}Monthly study points</li><li>${icon('check')}Flash and Pro model usage</li></ul></article>`
+          `<article class="price-card${featured ? ' featured' : ''} reveal" data-delay="${i * 80}"><div class="price-heading"><h3>${name}</h3>${featured ? `<span class="price-badge">${tr('推荐', 'Recommended')}</span>` : ''}</div><p class="price-purpose">${tr(...purpose)}</p><div class="price-month"><data class="price-value" value="${amount}">¥${amount}</data><span class="price-unit">${tr('/ 月', '/ month')}</span></div><p class="price-annual">${tr(`约 ¥${amount * 10} / 年`, `Approx. ¥${amount * 10} / year`)}</p><p class="price-description">${tr(...description)}</p><ul class="price-benefits"><li>${icon('check')}${tr('每月学习点数', 'Monthly study points')}</li><li>${icon('check')}${tr('使用 Flash 和 Pro 模型', 'Flash and Pro model usage')}</li></ul></article>`
       )
       .join(''),
     archive: `/downloads/${download}`,
@@ -402,6 +416,7 @@ export function renderHome(lang = 'zh', root = false) {
   });
 }
 const accountWords = {
+  signinCaption: ['每天，都更明白一点。', 'A little clearer.<br>Every day.'],
   skip: ['跳到主要内容', 'Skip to content'],
   languageText: ['EN', '中文'],
   signOut: ['退出登录', 'Sign out'],

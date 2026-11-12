@@ -1,6 +1,6 @@
 # Website motion — November 11, 2026
 
-The owner-selected directions were identified in the [Wangshiliang catalog](https://wangshiliang.cn/news). The corresponding full films were inspected on [MotionSites](https://motionsites.ai/backgrounds). All choices are provisional until the owner selects replacements. The Hero keeps its existing Pudding footage.
+The owner-selected directions were identified in the [Wangshiliang catalog](https://wangshiliang.cn/news). The corresponding full films were inspected on [MotionSites](https://motionsites.ai/backgrounds). The November 12 fixes connect Motion Background 18, Ember Trail and the Neon Flux interpretation to the three homepage feature cards in that order. Matching posters cover loading, reduced motion and JavaScript-free browsing. The Hero keeps its existing Pudding footage; its complete loading poster is extracted at 4 seconds from that film.
 
 | Published asset | Source and treatment |
 | --- | --- |

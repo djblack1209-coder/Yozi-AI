@@ -13,7 +13,6 @@
   const collectionStart = document.querySelector('[data-collection-open]');
   const collectionBack = document.querySelector('[data-collection-back]');
   const preview = document.querySelector('.study-preview');
-  const features = document.querySelector('.features');
   const films = [...document.querySelectorAll('video[data-src]')];
   const visibleFilms = new Set();
   const nearbyFilms = new Set();
@@ -176,7 +175,6 @@
         play &&=
           requestedFrame === null && (inkOpen || particles.length > 0 || matchMedia('(pointer: coarse)').matches);
       if (film.hasAttribute('data-collection-film')) play &&= !collection.hidden;
-      if (film.hasAttribute('data-feature-film')) play &&= features.classList.contains('is-practising');
       if (film.hasAttribute('data-deck-film')) play &&= film.closest('a').matches(':hover, :focus-within');
       if (play) {
         loadFilm(film);
@@ -204,14 +202,11 @@
   for (const film of films) {
     film.addEventListener('canplay', syncFilms);
     film.addEventListener('playing', () => {
-      film.dataset.playing = '';
+      const reveal = () => { if (!film.paused) film.dataset.playing = ''; };
+      if (film.requestVideoFrameCallback) film.requestVideoFrameCallback(reveal);
+      else reveal();
       if (film === openingFilm) prepareNearbyFilms();
     });
-    if (film.hasAttribute('data-feature-film')) {
-      film.addEventListener('loadedmetadata', () => {
-        if (film.duration > 0) film.currentTime = Number(film.dataset.offset) % film.duration;
-      });
-    }
     if (film.hasAttribute('data-deck-film')) {
       for (const event of ['pointerenter', 'pointerleave', 'focus', 'blur']) {
         film.closest('a').addEventListener(event, syncFilms);
