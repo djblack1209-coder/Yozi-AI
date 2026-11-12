@@ -101,7 +101,7 @@
     "@dcloudio/vite-plugin-uni": "3.0.0-5030420261029001",
     "@tauri-apps/cli": "2.12.2",
     "@vitejs/plugin-vue": "^6.0.10",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/coverage-v8": "^5.1.0",
     "@vue/test-utils": "^2.5.1",
     "adm-zip": "^0.6.1",
     "commitlint": "^20.4.1",
