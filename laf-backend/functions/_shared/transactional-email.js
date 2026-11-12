@@ -16,9 +16,9 @@ const heading = (text) =>
   `<h1 style="margin:0 0 22px;font-size:38px;font-weight:600;line-height:1.18;letter-spacing:-1.4px">${text}</h1>`;
 const paragraph = (text) => `<p style="margin:16px 0;font-size:16px;line-height:1.7">${text}</p>`;
 const row = (content, style = '') => `<tr><td class="section" style="padding:38px 40px;${style}">${content}</td></tr>`;
-const logoStyle = 'vertical-align:middle;margin-right:10px;border:0;width:40px;height:40px';
+const logoStyle = 'vertical-align:middle;margin-right:10px;border:0;width:32px;height:32px';
 // The body uses the static master; inbox sender avatars are configured separately.
-const brand = `<a href="${SITE}/" style="color:inherit;font-size:22px;font-weight:700;text-decoration:none"><img src="cid:pudding-logo@yozi" width="40" height="40" alt="" style="${logoStyle}">Yozi AI</a>`;
+const brand = `<a href="${SITE}/" style="color:inherit;font-size:20px;font-weight:600;text-decoration:none"><img src="cid:pudding-logo@yozi" width="32" height="32" alt="" style="${logoStyle}">Yozi AI</a>`;
 const footer = (dark = false) =>
   row(
     `<p style="margin:0 0 14px;font-size:18px;font-weight:600">Yozi AI</p><a href="mailto:yozi@245334.xyz" style="color:inherit">yozi@245334.xyz</a><p style="margin:18px 0 0;font-size:12px;line-height:1.8"><a href="${SITE}/zh/privacy/" style="color:inherit">隐私政策</a>&nbsp;&nbsp; <a href="${SITE}/zh/terms/" style="color:inherit">用户协议</a><br>© 2026 Yozi</p>`,
@@ -44,12 +44,15 @@ export function renderTransactionalEmail(kind, data = {}) {
       preview = `${data.code} 是你的 Yozi AI 验证码，10 分钟内有效。`;
       text = `${preview}\n请在刚才的验证页面输入。请勿把验证码提供给他人。\n如果这不是你的操作，可以忽略此邮件。\n\nYozi 官网：${SITE}/\n\nYozi AI\nyozi@245334.xyz`;
       rows =
-        row(brand, 'padding-top:44px;padding-bottom:24px;') +
+        row(brand, 'padding-top:48px;padding-bottom:40px;') +
         row(
-          `${heading('确认你的邮箱')}${paragraph('请在刚才的验证页面输入以下验证码，10 分钟内有效。')}<p style="margin:34px 0 36px;color:#171717;font-size:42px;line-height:1.2;font-weight:600;letter-spacing:9px;font-variant-numeric:tabular-nums">${code}</p>${button('返回 Yozi 官网', `${SITE}/`)}<p style="margin:22px 0 0;font-size:13px;line-height:1.7"><a href="${SITE}/" style="color:${BLUE}">${SITE}/</a></p><p style="margin:38px 0 0;font-size:13px;line-height:1.7;color:#666666">请勿把验证码提供给他人。如果这不是你的操作，可以忽略此邮件。</p>`,
-          'padding-top:20px;padding-bottom:48px;'
+          `${heading('你的邮箱验证码')}${paragraph('请回到刚才的验证页面输入，10 分钟内有效。')}<div style="margin:30px 0 32px;padding:24px 0;border-top:1px solid #eaeaea;border-bottom:1px solid #eaeaea"><p style="margin:0;color:#171717;font-size:42px;line-height:1.3;font-weight:600;letter-spacing:9px;font-variant-numeric:tabular-nums;white-space:nowrap">${code}</p></div>${button('打开 Yozi 官网', `${SITE}/`)}<p style="margin:22px 0 0;font-size:13px;line-height:1.7"><a href="${SITE}/" style="color:${BLUE};overflow-wrap:anywhere">${SITE}/</a></p><p style="margin:36px 0 0;font-size:13px;line-height:1.7;color:#666666">请勿把验证码提供给他人。如果这不是你的操作，可以忽略此邮件。</p>`,
+          'padding-top:0;padding-bottom:40px;'
         ) +
-        footer();
+        row(
+          `<a href="mailto:yozi@245334.xyz" style="font-size:12px;color:#666666;text-decoration:none">yozi@245334.xyz</a><p style="margin:12px 0 0;font-size:12px;line-height:1.8;color:#666666"><a href="${SITE}/zh/privacy/" style="color:inherit">隐私政策</a>&nbsp;&nbsp; <a href="${SITE}/zh/terms/" style="color:inherit">用户协议</a><br>© 2026 Yozi</p>`,
+          'padding-top:24px;padding-bottom:40px;border-top:1px solid #eaeaea;'
+        );
       break;
     }
     case 'welcome': {
@@ -125,7 +128,7 @@ export function renderTransactionalEmail(kind, data = {}) {
     default:
       throw new Error('Unknown transactional email');
   }
-  const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${escape(subject)}</title><style>@media(max-width:600px){.section{padding:28px 22px!important}h1{font-size:30px!important}}</style></head><body style="margin:0;padding:0;background:#f5f5f5;color:#171717;font-family:${FONT}"><div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${escape(preview)}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center"><table role="presentation" class="email" width="680" cellspacing="0" cellpadding="0" style="width:100%;max-width:680px;background:#ffffff;font-family:${FONT}">${rows}</table></td></tr></table></body></html>`;
+  const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${escape(subject)}</title><style>@media(max-width:600px){.section{padding:28px 22px!important}h1{font-size:30px!important}}</style></head><body style="margin:0;padding:0;background:#f5f5f5;color:#171717;font-family:${FONT}"><div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${escape(preview)}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center"><table role="presentation" class="email" width="600" cellspacing="0" cellpadding="0" style="width:100%;max-width:600px;background:#ffffff;font-family:${FONT}">${rows}</table></td></tr></table></body></html>`;
   return {
     subject,
     text,

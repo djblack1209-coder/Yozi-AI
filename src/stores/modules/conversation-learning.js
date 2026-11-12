@@ -261,6 +261,7 @@ export const CONVERSATION_ACTION_EFFECTS = Object.freeze({
   scopedSummary: 'read',
   journeyContext: 'read',
   configureJourney: 'write',
+  startBeadArt: 'write',
   startTraining: 'write',
   submitTraining: 'write',
   selectTraining: 'read',
@@ -1729,6 +1730,11 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     state.value = result.state;
     uni.$emit('conversationLearningUpdated');
     return result.result;
+  }
+  function startBeadArt(expectedContext, conversationId, artwork, deadline) {
+    ensureSessionCurrent();
+    assert(recordContext() === expectedContext, 'CONTEXT_CHANGED', '当前账户已变化，请重新打开图案');
+    return commit('bead.start', { conversationId, artwork, deadline });
   }
   function confirmProfile(expectedContext, conversationId, fields, suggestion, id = learningId('profile')) {
     ensureSessionCurrent();
@@ -5933,6 +5939,7 @@ export const useConversationLearningStore = defineStore('conversation-learning',
     journeySummary,
     journeyContext,
     configureJourney,
+    startBeadArt,
     trainingGroup,
     trainingResult,
     batchTrainingActive,

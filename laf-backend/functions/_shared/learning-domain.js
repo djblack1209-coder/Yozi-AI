@@ -1,4 +1,5 @@
 import { dayKey } from './learning-date-time.js';
+import { startBeadArt } from './learning-bead-art.js';
 import { ENTRY_EVENTS, applyEntryOperation, normalizeEntrySchedule } from './learning-entries.js';
 import { applyAdherenceOperation, ADHERENCE_EVENTS, reviewFacts } from './learning-adherence.js';
 import { normalizeLearningProposal, assertLearningProposalAcceptance } from './learning-proposals.js';
@@ -1238,6 +1239,10 @@ function reduceLearningOperation(original, operation, owned = false, budget = nu
     assertLearningProposalAcceptance(state, operation.type, data, { assert, fingerprint: operationFingerprint, now });
   }
   switch (operation.type) {
+    case 'bead.start': {
+      result = startBeadArt(state, { ...operation, id: opId, at: now, data }, { assert, dayKey });
+      break;
+    }
     case 'review.batch.start':
     case 'review.open':
     case 'review.skip':

@@ -11,17 +11,21 @@ export const download = 'Yozi-AI-2.3.0-macOS-arm64.zip';
 const metadata = {
   zh: {
     title: 'Yozi AI',
-    description: '记得进度的 AI 学习 App。用自己的资料练习、订正和复习。自带 API Key，自选模型。当前版本 2.3.0。'
+    description: '记得进度的 AI 学习 App。用自己的资料练习、订正和复习。自带 API Key，自选模型。'
   },
   en: {
     title: 'Yozi AI',
     description:
-      'An AI study app that remembers your progress through practice, feedback and review. Bring your own API key. Version 2.3.0.'
+      'An AI study app that remembers your progress through practice, feedback and review. Bring your own API key.'
   }
 };
 export const WEBSITE_TITLE = metadata.en.title;
 const tr = (zh, en) => `<span data-copy="zh" lang="zh-CN">${zh}</span><span data-copy="en" lang="en">${en}</span>`;
-const mediaUrl = (name, base) => `${base}/media/${name}?v=${createHash('sha256').update(read(`media/${name}`)).digest('hex').slice(0, 8)}`;
+const mediaUrl = (name, base) =>
+  `${base}/media/${name}?v=${createHash('sha256')
+    .update(read(`media/${name}`))
+    .digest('hex')
+    .slice(0, 8)}`;
 const label = (lang, zh, en) => `data-label-zh="${zh}" data-label-en="${en}" aria-label="${lang === 'en' ? en : zh}"`;
 const paths = {
   arrow: '<path d="M7 17 17 7M7 7h10v10"/>',
@@ -47,8 +51,14 @@ const symbols = `<svg class="symbols" aria-hidden="true"><defs>${Object.entries(
   .map(([name, path]) => `<symbol id="i-${name}" viewBox="0 0 24 24">${path}</symbol>`)
   .join('')}</defs></svg>`;
 const sample = {
-  attempt: tr('三角形的内角和是 <span class="underlined">360°</span>。', 'I pay attention <span class="underlined">on</span> the details.'),
-  correction: tr('三角形的内角和是 <del>360°</del> <ins>180°</ins>。', 'I pay attention <del>on</del> <ins>to</ins> the details.'),
+  attempt: tr(
+    '三角形的内角和是 <span class="underlined">360°</span>。',
+    'I pay attention <span class="underlined">on</span> the details.'
+  ),
+  correction: tr(
+    '三角形的内角和是 <del>360°</del> <ins>180°</ins>。',
+    'I pay attention <del>on</del> <ins>to</ins> the details.'
+  ),
   review: tr('三角形的内角和是多少？', 'What follows <em>pay attention</em>?')
 };
 const features = [
@@ -124,10 +134,10 @@ const faqs = [
         ]
       ],
       [
-        ['现在可以下载哪些版本？', 'Which version can I download?'],
+        ['现在可以下载哪些平台？', 'Which platforms are available?'],
         [
-          '当前提供 2.3.0 Mac 版，需要 macOS 14 或更新版本、Apple 芯片。Windows 与手机 App 正在规划开发中，尚未提供下载。',
-          'Version 2.3.0 is available for Mac, with macOS 14 or later and Apple silicon. Windows and mobile apps are planned and in development; downloads are not available yet.'
+          '当前提供 Mac 版，需要 macOS 14 或更新版本、Apple 芯片。Windows 与手机 App 正在规划开发中，尚未提供下载。',
+          'Yozi is available for Mac, with macOS 14 or later and Apple silicon. Windows and mobile apps are planned and in development; downloads are not available yet.'
         ]
       ],
       [
@@ -248,11 +258,23 @@ const words = {
   faqTitle: ['常见问题', 'Frequently asked questions'],
   signupLink: ['注册与登录', 'Sign up or sign in'],
   signupTitle: ['注册或登录 Yozi。', 'Sign up or sign in to Yozi.'],
-  signupBody: ['安装 Yozi 后注册或登录，再接入自己的 API，选择可用模型。', 'Install Yozi to sign up or sign in. Then connect your own API and choose a model.'],
+  signupBody: [
+    '安装 Yozi 后注册或登录，再接入自己的 API，选择可用模型。',
+    'Install Yozi to sign up or sign in. Then connect your own API and choose a model.'
+  ],
   pricingTitle: ['套餐', 'Plans'],
-  pricingPoints: ['每月学习点数用于讲解、练习和 AI 反馈。各套餐的点数额度将在开放订阅前公布。', 'Monthly study points fund explanations, practice and AI feedback. Point allowances will be announced before subscriptions open.'],
-  pricingRules: ['DeepSeek Flash 按 1 倍、Pro 模型按 3.5 倍扣点。点数不结转。加油包：¥10／¥30。不设免费档。', 'DeepSeek Flash 1× · Pro model 3.5×. Points do not roll over. Top-ups: ¥10 / ¥30. No free tier.'],
-  pricingAvailability: ['订阅和加油包尚未开售。目前可使用自己的 API 接入应用。', 'Subscriptions and top-ups are not on sale yet. Bring your own API to use the app today.'],
+  pricingPoints: [
+    '每月学习点数用于讲解、练习和 AI 反馈。各套餐的点数额度将在开放订阅前公布。',
+    'Monthly study points fund explanations, practice and AI feedback. Point allowances will be announced before subscriptions open.'
+  ],
+  pricingRules: [
+    'DeepSeek Flash 按 1 倍、Pro 模型按 3.5 倍扣点。点数不结转。加油包：¥10／¥30。不设免费档。',
+    'DeepSeek Flash 1× · Pro model 3.5×. Points do not roll over. Top-ups: ¥10 / ¥30. No free tier.'
+  ],
+  pricingAvailability: [
+    '订阅和加油包尚未开售。目前可使用自己的 API 接入应用。',
+    'Subscriptions and top-ups are not on sale yet. Bring your own API to use the app today.'
+  ],
   appleChip: ['Apple 芯片', 'Apple silicon'],
   downloadOne: ['带上 Yozi。', 'TAKE YOZI'],
   downloadTwo: ['接着学。', 'WITH YOU.'],
@@ -388,19 +410,29 @@ export function renderHome(lang = 'zh', root = false) {
       .join(''),
     priceCards: [
       {
-        name: 'Plus', amount: 19,
+        name: 'Plus',
+        amount: 19,
         purpose: ['养成每日学习习惯', 'A steady daily habit'],
         description: ['适合每天短时练习和随时追问。', 'For short daily practice and follow-up questions.']
       },
       {
-        name: 'Pro', amount: 39, featured: true,
+        name: 'Pro',
+        amount: 39,
+        featured: true,
         purpose: ['让学习更进一步', 'Room to go deeper'],
-        description: ['适合规律练习、详细反馈和持续学习。', 'For regular training, detailed feedback and steady preparation.']
+        description: [
+          '适合规律练习、详细反馈和持续学习。',
+          'For regular training, detailed feedback and steady preparation.'
+        ]
       },
       {
-        name: 'Max', amount: 68,
+        name: 'Max',
+        amount: 68,
         purpose: ['专注高强度学习', 'For intensive study'],
-        description: ['适合频繁提问、密集练习和长时间学习。', 'For frequent questions, intensive practice and longer study sessions.']
+        description: [
+          '适合频繁提问、密集练习和长时间学习。',
+          'For frequent questions, intensive practice and longer study sessions.'
+        ]
       }
     ]
       .map(

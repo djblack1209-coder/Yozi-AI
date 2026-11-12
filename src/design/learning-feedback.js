@@ -1,4 +1,5 @@
 import { dayKey } from '@/services/learning/learning-domain.js';
+import { beadArtProgress } from '../../laf-backend/functions/_shared/learning-bead-art.js';
 import { museGoals } from '@/services/learning/muse-workspace-data.js';
 import { isSoundEnabled } from '@/pages/practice-sub/utils/quiz-sound.js';
 import { isHapticEnabled, vibrateLight } from '@/utils/helpers/haptic.js';
@@ -82,6 +83,14 @@ export function savedLearningFeedback(before, after, now = Date.now()) {
   }
   if (added.some((event) => event.type === 'coach.result' && ['feedback', 'essay'].includes(event.data.output?.kind)))
     return 'correction';
+  if (
+    after.conversations.some((conversation) => {
+      const current = beadArtProgress(after, conversation.id, now, dayKey);
+      const prior = beadArtProgress(before, conversation.id, now, dayKey);
+      return current && prior && current.earned > prior.earned;
+    })
+  )
+    return 'checkin';
   const answer = added.find((event) => submissions.has(event.type));
   if (
     answer &&

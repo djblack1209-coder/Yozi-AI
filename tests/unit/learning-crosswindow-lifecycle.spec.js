@@ -894,6 +894,8 @@ describe('加密同账户会话与凭据请求边界', () => {
     const afterLogin = JSON.stringify(global.__mockStorage);
     expect(beforeLogin).not.toBe(afterLogin);
     const safeReads = new Set([
+      'resumeMemory',
+      'pauseMemory',
       'reloadRecords',
       'refresh',
       'searchRecords',

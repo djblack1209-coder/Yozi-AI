@@ -50,8 +50,8 @@
         </view>
         <MuseStudyBeads
           :key="JSON.stringify([learning.recordContext(), context.id.value])"
-          :recent="data.submissionDays"
-          :prior="data.priorSubmissionDays"
+          :state="context.state.value"
+          :now="learning.calendarTime"
           :dark="theme.isDark"
         />
         <text class="quota-sub">本机记录，不等于供应商账单。提交含练习原答与段落初稿，不含改写和复习自评。</text>
