@@ -134,7 +134,7 @@
     userRows(data);
     const providers = $('[data-providers]');
     providers.replaceChildren();
-    if (!data.pool.providers.length) providers.append(element('p', '尚未接入发信服务', 'ops-empty'));
+    if (!data.pool.providers.length) providers.append(element('p', '尚未启用发信服务', 'ops-empty'));
     for (const provider of data.pool.providers) {
       const card = element('article', null, 'ops-provider');
       card.append(element('h3', provider.id));
